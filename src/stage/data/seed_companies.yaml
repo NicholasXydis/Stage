@@ -1,0 +1,198 @@
+- { name: Behaviour Interactive, section: montreal, priority: high }
+- { name: Bombardier, section: montreal, priority: high }
+- { name: CAE, section: montreal, priority: high }
+- { name: Coveo, section: montreal, priority: high }
+- { name: Desjardins, section: montreal, priority: high }
+- { name: Eidos-Montréal, section: montreal, priority: high }
+- { name: Gameloft, section: montreal, priority: high }
+- { name: Genetec, section: montreal, priority: high }
+- { name: Hydro-Québec, section: montreal, priority: high }
+- { name: Intact, section: montreal, priority: high }
+- { name: Laurentian Bank, section: montreal, priority: high }
+- { name: Lightspeed, section: montreal, priority: high }
+- { name: Matrox, section: montreal, priority: high }
+- { name: Mila, section: montreal, priority: high }
+- { name: National Bank of Canada, section: montreal, priority: high }
+- { name: Nuvei, section: montreal, priority: high, note: not listed, consider }
+- { name: Pratt & Whitney Canada, section: montreal, priority: high }
+- { name: Squarepoint Capital, section: montreal, priority: high }
+- { name: Ubisoft, section: montreal, priority: high }
+- { name: Valsoft, section: montreal, priority: high }
+- { name: Videotron, section: montreal, priority: high }
+- { name: Warner Bros Games, section: montreal, priority: high }
+
+- { name: BlackBerry, section: canada, priority: high }
+- { name: BlackBerry QNX, section: canada, priority: high }
+- { name: BMO, section: canada, priority: high }
+- { name: Bell, section: canada, priority: high }
+- { name: CGI, section: canada, priority: high }
+- { name: CIBC, section: canada, priority: high }
+- { name: Ciena, section: canada, priority: high }
+- { name: Interac, section: canada, priority: high }
+- { name: Mackenzie Investments, section: canada, priority: high }
+- { name: Manulife, section: canada, priority: high }
+- { name: MDA Space, section: canada, priority: high }
+- { name: OpenText, section: canada, priority: high, note: not listed, consider }
+- { name: RBC, section: canada, priority: high }
+- { name: Rogers, section: canada, priority: high }
+- { name: Scotiabank, section: canada, priority: high }
+- { name: Shopify, section: canada, priority: high }
+- { name: Sun Life, section: canada, priority: high }
+- { name: TD Bank, section: canada, priority: high }
+- { name: Telus, section: canada, priority: high }
+- { name: Wealthsimple, section: canada, priority: high }
+
+- { name: Akuna Capital, section: quant, priority: normal }
+- { name: Citadel, section: quant, priority: normal }
+- { name: Citadel Securities, section: quant, priority: normal }
+- { name: D.E. Shaw, section: quant, priority: normal }
+- { name: DRW, section: quant, priority: normal }
+- { name: Hudson River Trading, section: quant, priority: normal }
+- { name: Jane Street, section: quant, priority: normal }
+- { name: Jump Trading, section: quant, priority: normal }
+- { name: Maven Securities, section: quant, priority: normal }
+- { name: Optiver, section: quant, priority: normal }
+- { name: Renaissance Technologies, section: quant, priority: low, note: does not recruit publicly }
+- { name: Tower Research Capital, section: quant, priority: normal }
+- { name: Two Sigma, section: quant, priority: normal }
+
+- { name: Adobe, section: bigtech, priority: normal }
+- { name: Amazon, section: bigtech, priority: normal }
+- { name: AMD, section: bigtech, priority: normal }
+- { name: Apple, section: bigtech, priority: normal }
+- { name: Broadcom, section: bigtech, priority: normal }
+- { name: ByteDance, section: bigtech, priority: normal }
+- { name: Cisco, section: bigtech, priority: normal }
+- { name: Cisco Meraki, section: bigtech, priority: normal }
+- { name: Cisco ThousandEyes, section: bigtech, priority: normal }
+- { name: Dell, section: bigtech, priority: normal }
+- { name: Ericsson, section: bigtech, priority: normal }
+- { name: Google, section: bigtech, priority: normal }
+- { name: Hewlett Packard Enterprise, section: bigtech, priority: normal }
+- { name: Hitachi, section: bigtech, priority: low, note: low yield for a Montreal student }
+- { name: Huawei, section: bigtech, priority: normal }
+- { name: IBM, section: bigtech, priority: normal }
+- { name: Intel, section: bigtech, priority: normal }
+- { name: LinkedIn, section: bigtech, priority: normal }
+- { name: Meta, section: bigtech, priority: normal }
+- { name: Microsoft, section: bigtech, priority: normal }
+- { name: Motorola, section: bigtech, priority: low, note: low yield for a Montreal student }
+- { name: Netflix, section: bigtech, priority: normal }
+- { name: Nokia, section: bigtech, priority: normal }
+- { name: NVIDIA, section: bigtech, priority: normal }
+- { name: Oracle, section: bigtech, priority: normal }
+- { name: Qualcomm, section: bigtech, priority: normal, note: not listed }
+- { name: Salesforce, section: bigtech, priority: normal }
+- { name: Samsung, section: bigtech, priority: normal }
+- { name: SAP, section: bigtech, priority: normal }
+- { name: Slack, section: bigtech, priority: normal }
+- { name: Sony Interactive Entertainment, section: bigtech, priority: normal }
+- { name: TikTok, section: bigtech, priority: normal }
+- { name: Tesla, section: bigtech, priority: normal }
+- { name: Uber, section: bigtech, priority: normal }
+- { name: VMware, section: bigtech, priority: normal }
+- { name: X (Twitter), section: bigtech, priority: normal }
+- { name: Zoom, section: bigtech, priority: normal }
+
+- { name: American Express, section: finance, priority: normal }
+- { name: Bank of America, section: finance, priority: normal }
+- { name: BlackRock, section: finance, priority: normal }
+- { name: Bloomberg, section: finance, priority: normal }
+- { name: BNP Paribas, section: finance, priority: normal }
+- { name: Capital One, section: finance, priority: normal }
+- { name: Citigroup, section: finance, priority: normal }
+- { name: Fidelity Investments, section: finance, priority: normal }
+- { name: Goldman Sachs, section: finance, priority: normal }
+- { name: JPMorgan Chase, section: finance, priority: normal }
+- { name: Mastercard, section: finance, priority: normal }
+- { name: Morgan Stanley, section: finance, priority: normal }
+- { name: PayPal, section: finance, priority: normal }
+- { name: Visa, section: finance, priority: normal }
+- { name: Wells Fargo, section: finance, priority: normal }
+
+- { name: Accenture, section: consulting, priority: normal, note: not listed, consider }
+- { name: Deloitte, section: consulting, priority: normal }
+- { name: KPMG, section: consulting, priority: normal }
+- { name: PwC, section: consulting, priority: normal }
+- { name: Red Hat, section: consulting, priority: normal }
+- { name: Splunk, section: consulting, priority: normal }
+
+- { name: Analog Devices, section: industrial, priority: normal }
+- { name: Anduril Industries, section: industrial, priority: normal }
+- { name: BAE Systems, section: industrial, priority: normal }
+- { name: Ford, section: industrial, priority: low, note: low yield for a Montreal student }
+- { name: General Motors, section: industrial, priority: low, note: low yield for a Montreal student }
+- { name: Lockheed Martin, section: industrial, priority: normal }
+- { name: SpaceX, section: industrial, priority: normal }
+- { name: Waymo, section: industrial, priority: normal }
+
+- { name: 1Password, section: security, priority: normal }
+- { name: Akamai, section: security, priority: normal }
+- { name: Arctic Wolf, section: security, priority: normal }
+- { name: Cloudflare, section: security, priority: normal }
+- { name: CrowdStrike, section: security, priority: normal }
+- { name: Fortinet, section: security, priority: normal }
+- { name: Okta, section: security, priority: normal, note: not listed }
+- { name: Palo Alto Networks, section: security, priority: normal }
+- { name: Wiz, section: security, priority: normal }
+
+- { name: Affirm, section: startups, priority: normal }
+- { name: Airbnb, section: startups, priority: normal }
+- { name: Atlassian, section: startups, priority: normal }
+- { name: Autodesk, section: startups, priority: normal }
+- { name: Bumble, section: startups, priority: normal }
+- { name: Canva, section: startups, priority: normal }
+- { name: CircleCI, section: startups, priority: normal }
+- { name: Coinbase, section: startups, priority: normal }
+- { name: Databricks, section: startups, priority: normal }
+- { name: Datadog, section: startups, priority: normal }
+- { name: DigitalOcean, section: startups, priority: normal }
+- { name: Discord, section: startups, priority: normal }
+- { name: Docker, section: startups, priority: normal }
+- { name: DoorDash, section: startups, priority: normal }
+- { name: Dropbox, section: startups, priority: normal }
+- { name: Duolingo, section: startups, priority: normal }
+- { name: eBay, section: startups, priority: normal }
+- { name: Expedia, section: startups, priority: normal }
+- { name: Figma, section: startups, priority: normal }
+- { name: GitHub, section: startups, priority: normal }
+- { name: Grammarly, section: startups, priority: normal }
+- { name: HashiCorp, section: startups, priority: normal }
+- { name: Hugging Face, section: startups, priority: normal }
+- { name: Instacart, section: startups, priority: normal }
+- { name: Lyft, section: startups, priority: normal }
+- { name: MongoDB, section: startups, priority: normal }
+- { name: Notion, section: startups, priority: normal }
+- { name: Palantir, section: startups, priority: normal }
+- { name: Pinterest, section: startups, priority: normal }
+- { name: Postman, section: startups, priority: normal }
+- { name: Quora, section: startups, priority: normal }
+- { name: Reddit, section: startups, priority: normal }
+- { name: Roblox, section: startups, priority: normal }
+- { name: Scale AI, section: startups, priority: normal }
+- { name: Snowflake, section: startups, priority: normal }
+- { name: Spotify, section: startups, priority: normal }
+- { name: Stripe, section: startups, priority: normal }
+- { name: Supabase, section: startups, priority: normal }
+- { name: Twilio, section: startups, priority: normal }
+- { name: Unity, section: startups, priority: normal }
+- { name: Wayfair, section: startups, priority: normal }
+- { name: Yelp, section: startups, priority: normal }
+- { name: Zillow, section: startups, priority: normal }
+
+- { name: Activision Blizzard, section: gaming, priority: normal }
+- { name: Bandai Namco, section: gaming, priority: low, note: negligible North American CS pipeline }
+- { name: Blackbird Interactive, section: gaming, priority: normal }
+- { name: Bungie, section: gaming, priority: normal }
+- { name: Capcom, section: gaming, priority: low, note: negligible North American CS pipeline }
+- { name: CD Projekt Red, section: gaming, priority: normal }
+- { name: EA, section: gaming, priority: normal }
+- { name: Epic Games, section: gaming, priority: normal }
+- { name: FromSoftware, section: gaming, priority: low, note: negligible North American CS pipeline }
+- { name: Halo Studios, section: gaming, priority: normal }
+- { name: Microsoft Xbox Game Studios, section: gaming, priority: normal }
+- { name: Nintendo, section: gaming, priority: low, note: negligible North American CS pipeline }
+- { name: Riot Games, section: gaming, priority: normal }
+- { name: Square Enix, section: gaming, priority: low, note: negligible North American CS pipeline }
+- { name: Supercell, section: gaming, priority: low, note: negligible North American CS pipeline }
+- { name: Take-Two Interactive, section: gaming, priority: normal }

@@ -15,11 +15,11 @@ class Company:
     rate_profile: str | None = None
     last_verified: date | None = None
     source_of_record: SourceOfRecord = SourceOfRecord.MANUAL
-    notes: str | None = None
     workday_tenant: str | None = None
     workday_site: str | None = None
     workday_dc: str | None = None
     workday_facet: str | None = None
+    name_gate_exempt: bool = False
 
     @property
     def registry_key(self) -> str:
