@@ -1,0 +1,344 @@
+{
+  "pairs": [
+    {
+      "company": "Autodesk",
+      "source": "simplify",
+      "location_raw": "Canada",
+      "title_raw": "Software Developer Intern - Stagiaire en Développement Logiciel",
+      "en": "Software Developer Intern",
+      "fr": "Stagiaire en Développement Logiciel",
+      "internship": true,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Data Development Team Lead  (maternity leave replacement)  | Chef·fe d’équipe en développement de données (remplacement de congé de maternité)",
+      "en": "Data Development Team Lead  (maternity leave replacement)",
+      "fr": "Chef·fe d’équipe en développement de données (remplacement de congé de maternité)",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Financial Analyst | Analyste financier·e",
+      "en": "Financial Analyst",
+      "fr": "Analyste financier·e",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior  Talent Acquisition Business Partner |  Partenaire d'affaires  Senior·e en Acquisition de Talents",
+      "en": "Senior  Talent Acquisition Business Partner",
+      "fr": "Partenaire d'affaires  Senior·e en Acquisition de Talents",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior Backend Programmer –  7 Days To Die| Programmeur·euse Backend senior·e – 7 Days To Die",
+      "en": "Senior Backend Programmer",
+      "fr": "Programmeur·euse Backend senior·e",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior BuildOps  | BuildOps sénior·e",
+      "en": "Senior BuildOps",
+      "fr": "BuildOps sénior·e",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior Data Developer | Développeur·euse de données sénior·e",
+      "en": "Senior Data Developer",
+      "fr": "Développeur·euse de données sénior·e",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior Facilities Maintenance Technician | Technicien·ne d'entretien des installations sénior·e",
+      "en": "Senior Facilities Maintenance Technician",
+      "fr": "Technicien·ne d'entretien des installations sénior·e",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior Financial Analyst | Analyste financier·e Sénior·e",
+      "en": "Senior Financial Analyst",
+      "fr": "Analyste financier·e Sénior·e",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior Game Designer - 7 days to die| Concepteur ·trice de jeu sénior - 7 days to die",
+      "en": "Senior Game Designer",
+      "fr": "Concepteur ·trice de jeu sénior",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior Sourcing Advisor | Conseiller·ère senior·e en Sourcing",
+      "en": "Senior Sourcing Advisor",
+      "fr": "Conseiller·ère senior·e en Sourcing",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Behaviour Interactive",
+      "source": "lever",
+      "location_raw": "Montreal, QC",
+      "title_raw": "Senior Tools Programmer | Programmeur·se outils sénior·e",
+      "en": "Senior Tools Programmer",
+      "fr": "Programmeur·se outils sénior·e",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Highdive",
+      "source": "greenhouse",
+      "location_raw": "Toronto",
+      "title_raw": "Generalist Content Tech Director - Directeur Technique Généraliste de Contenu",
+      "en": "Generalist Content Tech Director",
+      "fr": "Directeur Technique Généraliste de Contenu",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Hootsuite",
+      "source": "greenhouse",
+      "location_raw": "Ottawa, Canada; Toronto, Canada; Waterloo, Canada, Montreal, Quebec, Canada",
+      "title_raw": "Lead, Data Development, AI Platform | Chef(fe), Développement des données – Plateforme d’IA",
+      "en": "Lead, Data Development, AI Platform",
+      "fr": "Chef(fe), Développement des données",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "KRAFTON Montréal Studio",
+      "source": "greenhouse",
+      "location_raw": "Montreal",
+      "title_raw": "Game Director / Directeur·trice de Jeu",
+      "en": "Game Director",
+      "fr": "Directeur·trice de Jeu",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "KRAFTON Montréal Studio",
+      "source": "greenhouse",
+      "location_raw": "Montreal, Quebec, Canada",
+      "title_raw": "Programming Intern Fall 2026  / Stagiaire en Programmation Automne 2026",
+      "en": "Programming Intern Fall 2026",
+      "fr": "Stagiaire en Programmation Automne 2026",
+      "internship": true,
+      "provenance": "harvested"
+    },
+    {
+      "company": "KRAFTON Montréal Studio",
+      "source": "greenhouse",
+      "location_raw": "Montreal, Quebec, Canada",
+      "title_raw": "Senior 3D Modeler  / Modeleur-euse 3D Sénior(e)",
+      "en": "Senior 3D Modeler",
+      "fr": "Modeleur-euse 3D Sénior(e)",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "KRAFTON Montréal Studio",
+      "source": "greenhouse",
+      "location_raw": "Montreal, Quebec, Canada",
+      "title_raw": "Talent & Culture Manager   /  Gestionnaire, Talents et Culture ",
+      "en": "Talent & Culture Manager",
+      "fr": "Gestionnaire, Talents et Culture",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "KRAFTON Montréal Studio",
+      "source": "greenhouse",
+      "location_raw": "Montreal, Quebec, Canada",
+      "title_raw": "Tools Programmer / Programmeur-euse Outils",
+      "en": "Tools Programmer",
+      "fr": "Programmeur-euse Outils",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Combat Designer | Concepteur de combats",
+      "en": "Combat Designer",
+      "fr": "Concepteur de combats",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Engine Programmer | Programmeur moteur",
+      "en": "Engine Programmer",
+      "fr": "Programmeur moteur",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Environment Artist Intern | Artiste d’environnement stagiaire",
+      "en": "Environment Artist Intern",
+      "fr": "Artiste d’environnement stagiaire",
+      "internship": true,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Gameplay Programmer | Programmeur de gameplay",
+      "en": "Gameplay Programmer",
+      "fr": "Programmeur de gameplay",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Graphics Programmer | Programmeur graphique",
+      "en": "Graphics Programmer",
+      "fr": "Programmeur graphique",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Lead Engine Programmer | Responsable programmation moteur",
+      "en": "Lead Engine Programmer",
+      "fr": "Responsable programmation moteur",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Lead Graphics Programmer  | Programmeur de graphismes principal",
+      "en": "Lead Graphics Programmer",
+      "fr": "Programmeur de graphismes principal",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Lead Tools Programmer | Responsable Programmeur outils",
+      "en": "Lead Tools Programmer",
+      "fr": "Responsable Programmeur outils",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Level Designer | Concepteur de niveaux",
+      "en": "Level Designer",
+      "fr": "Concepteur de niveaux",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "RPG Designer | Concepteur des Jeux de rôle",
+      "en": "RPG Designer",
+      "fr": "Concepteur des Jeux de rôle",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Senior Engine Programmer | Programmeur moteur senior",
+      "en": "Senior Engine Programmer",
+      "fr": "Programmeur moteur senior",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Systems Designer | Concepteur de systèmes",
+      "en": "Systems Designer",
+      "fr": "Concepteur de systèmes",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Tech Audio Designer  | Concepteur sonore technique",
+      "en": "Tech Audio Designer",
+      "fr": "Concepteur sonore technique",
+      "internship": false,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Larian Studios",
+      "source": "lever",
+      "location_raw": "Quebec",
+      "title_raw": "Technical QA Tester Internship - Testeur QA technique stagiaire",
+      "en": "Technical QA Tester Internship",
+      "fr": "Testeur QA technique stagiaire",
+      "internship": true,
+      "provenance": "harvested"
+    },
+    {
+      "company": "Autodesk",
+      "source": "workday",
+      "location_raw": "Quebec, CAN - Remote",
+      "title_raw": "Intern Software Developer, Stagiaire en Développement Logiciel",
+      "en": "Intern Software Developer",
+      "fr": "Stagiaire en Développement Logiciel",
+      "internship": true,
+      "provenance": "harvested"
+    }
+  ]
+}

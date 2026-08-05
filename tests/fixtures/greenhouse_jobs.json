@@ -1,0 +1,31 @@
+{
+  "jobs": [
+    {
+      "id": 4012345,
+      "title": "Software Engineering Intern, Summer 2027",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/4012345",
+      "updated_at": "2026-07-20T14:03:11-04:00",
+      "location": { "name": "Montréal, QC" },
+      "content": "&lt;p&gt;Join the platform team for a 4-month &lt;b&gt;stage&lt;/b&gt;.&lt;/p&gt;&lt;p&gt;Requirements&lt;/p&gt;",
+      "departments": [{ "id": 1, "name": "Engineering" }],
+      "metadata": []
+    },
+    {
+      "id": 4012346,
+      "title": "Stagiaire en génie logiciel — Été 2027",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/4012346",
+      "updated_at": "2026-07-21T09:00:00-04:00",
+      "location": { "name": "Montréal, QC" },
+      "content": "&lt;p&gt;Stage de 4 mois au sein de l'équipe infonuagique.&lt;/p&gt;"
+    },
+    {
+      "id": 4012347,
+      "title": "Marketing Intern",
+      "absolute_url": "https://boards.greenhouse.io/acme/jobs/4012347",
+      "updated_at": "2026-07-19T11:30:00-04:00",
+      "location": { "name": "Toronto, ON" },
+      "content": "&lt;p&gt;Support the brand team.&lt;/p&gt;"
+    }
+  ],
+  "meta": { "total": 3 }
+}
