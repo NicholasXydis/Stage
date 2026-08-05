@@ -1,0 +1,50 @@
+* text=auto
+
+*.py      text diff=python
+*.pyi     text diff=python
+*.sql     text
+*.yaml    text
+*.yml     text
+*.json    text
+*.toml    text
+*.md      text diff=markdown
+*.cfg     text
+*.ini     text
+*.txt     text
+.python-version text
+.gitignore      text
+.gitattributes  text
+
+*.sh      text eol=lf
+*.bash    text eol=lf
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+*.ps1     text eol=crlf
+
+*.db      binary
+*.db-wal  binary
+*.db-shm  binary
+*.sqlite  binary
+*.sqlite3 binary
+*.ttf     binary
+*.otf     binary
+*.woff    binary
+*.woff2   binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.pdf     binary
+*.zip     binary
+*.gz      binary
+*.whl     binary
+
+uv.lock text linguist-generated=true
+
+tests/fixtures/**  linguist-vendored=true
+tests/golden/**    linguist-generated=true
+
+data/companies.yaml     text
+data/seed_companies.yaml text
+data/lexicon/**         text
