@@ -1,0 +1,105 @@
+markers:
+  - intern
+  - interns
+  - internship
+  - internships
+  - co-op
+  - coop
+  - co-ops
+  - co op student
+  - co-op student
+  - co-op term
+  - cooperative education
+  - work term
+  - industrial placement
+  - student placement
+  - summer analyst
+  - summer associate
+  - summer scholar
+  - summer intern program
+  - working student
+  - trainee
+  - traineeship
+  - apprentice
+  - apprenticeship
+  - undergraduate researcher
+  - student researcher
+  - student
+  - students
+  - undergraduate student
+  - part time student
+  - graduate student
+  - stagiaire
+  - stagiaires
+  - stage
+  - stages
+  - stage étudiant
+  - étudiant stagiaire
+  - programme de stage
+  - stage coop
+  - stage d'été
+  - stage d'automne
+  - stage d'hiver
+  - alternance
+  - alternant
+  - alternante
+  - apprenti
+  - apprentie
+  - étudiant
+  - étudiante
+
+blocked_bigrams:
+  - internal auditor
+  - internal audit
+  - internal communications
+  - internal controls
+  - internal coach
+  - internal tech
+  - internal events
+  - internal medicine
+  - internal sales
+  - internal it
+  - stage manager
+  - stage management
+  - stage lighting
+  - stage technician
+  - stage design
+  - on stage
+  - main stage
+  - early stage
+  - late stage
+  - growth stage
+  - series stage
+  - seed stage
+  - trainee manager
+  - student barista
+  - students welcome
+  - students and second
+  - jobs welcome
+  - student housing
+  - student loan
+  - student affairs
+  - student services
+  - student life
+  - student success
+  - student engagement
+
+disqualifiers:
+  - new grad
+  - new graduate
+  - recent graduate
+  - graduate program
+  - graduate programme
+  - entry level
+  - full time permanent
+  - permanent full time
+  - manager of interns
+  - intern manager
+  - internship program manager
+  - internship coordinator
+  - mentor interns
+  - supervise interns
+  - nouveau diplômé
+  - nouvelle diplômée
+  - jeune diplômé
+  - poste permanent

@@ -1,0 +1,76 @@
+summer:
+  - summer
+  - été
+  - ete
+  - estival
+  - estivale
+  - summer term
+  - session d'été
+  - stage d'été
+
+fall:
+  - fall
+  - autumn
+  - automne
+  - fall term
+  - session d'automne
+  - stage d'automne
+
+winter:
+  - winter
+  - hiver
+  - hivernale
+  - winter term
+  - session d'hiver
+  - stage d'hiver
+
+spring:
+  - spring
+  - printemps
+  - spring term
+  - session du printemps
+  - stage du printemps
+
+fillers:
+  - of
+  - de
+  - du
+  - des
+  - d
+  - the
+  - la
+  - le
+  - term
+  - session
+  - start
+  - starting
+  - intake
+  - cohort
+  - programme
+  - program
+
+blocked_bigrams:
+  - spring boot
+  - spring framework
+  - spring frameworks
+  - spring security
+  - spring mvc
+  - spring data
+  - spring cloud
+  - spring batch
+  - spring actuator
+  - spring health
+  - spring environments
+  - spring integration
+  - spring webflux
+  - summer camp
+  - winter garden
+  - fall protection
+  - fall risk
+  - fall arrest
+  - spring loaded
+  - spring valley
+  - winter park
+  - summer street
+  - spring street
+  - spring hill

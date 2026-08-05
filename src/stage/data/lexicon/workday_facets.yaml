@@ -1,0 +1,32 @@
+facet_parameters:
+  - timeType
+  - workerSubType
+  - jobFamily
+  - employmentType
+
+intern_descriptors:
+  - intern
+  - interns
+  - internship
+  - internships
+  - intern/co-op
+  - co-op
+  - coop
+  - co-op/intern
+  - co-op student
+  - stage
+  - stagiaire
+  - stage etudiant
+  - stagiaire etudiant
+  - student
+  - student worker
+  - etudiant
+  - trainee
+  - trainee program
+  - apprentice
+  - apprenticeship
+  - apprenti
+  - alternance
+  - alternant
+  - summer intern
+  - summer student

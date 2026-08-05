@@ -1,0 +1,706 @@
+montreal:
+  - Montréal
+  - Montreal
+  - Ville de Montréal
+  - Montréal-Ouest
+  - Montréal-Nord
+  - Mont-Royal
+  - Mount Royal
+  - Longueuil
+  - Brossard
+  - Ville Saint-Laurent
+  - Saint-Hubert
+  - Saint-Bruno
+  - Saint-Jean-sur-Richelieu
+  - Boucherville
+  - Dorval
+  - Pointe-Claire
+  - Westmount
+  - Dollard-des-Ormeaux
+  - Repentigny
+  - Blainville
+  - Boisbriand
+  - Vaudreuil-Dorion
+  - Greater Montreal
+  - Grand Montréal
+
+montreal_ambiguous:
+  - Laval
+  - Verdun
+  - Anjou
+  - Lachine
+  - LaSalle
+  - Beaconsfield
+  - Saint-Laurent
+  - Mirabel
+  - Terrebonne
+  - Ville-Marie
+
+canada_cities:
+  - Toronto
+  - Vancouver
+  - Ottawa
+  - Gatineau
+  - Calgary
+  - Edmonton
+  - Winnipeg
+  - Halifax
+  - Saskatoon
+  - Regina
+  - Mississauga
+  - Brampton
+  - Markham
+  - Vaughan
+  - Oakville
+  - Burlington
+  - Burnaby
+  - Coquitlam
+  - Kelowna
+  - Québec City
+  - Quebec City
+  - Ville de Québec
+  - Sherbrooke
+  - Trois-Rivières
+  - Saguenay
+  - Lévis
+  - Drummondville
+  - Granby
+  - Rimouski
+  - Kitchener
+  - Guelph
+  - Barrie
+  - Oshawa
+  - Scarborough
+  - Etobicoke
+  - North York
+  - Mont-Tremblant
+  - Moncton
+  - Fredericton
+  - Bathurst
+  - Charlottetown
+  - Dartmouth
+  - Sydney NS
+  - Whitehorse
+  - Yellowknife
+  - Iqaluit
+  - Thunder Bay
+  - Sudbury
+  - Brantford
+  - Cambridge Ontario
+  - Kanata
+
+canada_ambiguous:
+  - London
+  - Hamilton
+  - Kingston
+  - Windsor
+  - Victoria
+  - Richmond
+  - Surrey
+  - Waterloo
+  - Kitchener-Waterloo
+  - Cambridge
+  - Newmarket
+  - Milton
+  - Aurora
+  - Ajax
+  - Whitby
+  - Chatham
+  - Sarnia
+  - Delta
+  - Langley
+  - Abbotsford
+  - Nanaimo
+  - Red Deer
+  - Lethbridge
+  - Saint John
+  - St. John's
+
+canada_regions:
+  - Alberta
+  - British Columbia
+  - Colombie-Britannique
+  - Manitoba
+  - New Brunswick
+  - Nouveau-Brunswick
+  - Newfoundland
+  - Newfoundland and Labrador
+  - Terre-Neuve
+  - Northwest Territories
+  - Nova Scotia
+  - Nouvelle-Écosse
+  - Nunavut
+  - Ontario
+  - Prince Edward Island
+  - Île-du-Prince-Édouard
+  - Quebec
+  - Québec
+  - Saskatchewan
+  - Yukon
+  - Maritimes
+  - Atlantic Canada
+
+canada_codes:
+  - "AB"
+  - "BC"
+  - "MB"
+  - "NB"
+  - "NL"
+  - "NS"
+  - "NT"
+  - "NU"
+  - "ON"
+  - "PE"
+  - "QC"
+  - "SK"
+  - "YT"
+
+canada_country:
+  - Canada
+  - Canadian
+
+usa_cities:
+  - New York
+  - New York City
+  - NYC
+  - Brooklyn
+  - Manhattan
+  - San Francisco
+  - SF
+  - Bay Area
+  - San Francisco Bay Area
+  - Palo Alto
+  - Mountain View
+  - Menlo Park
+  - Sunnyvale
+  - Santa Clara
+  - San Jose
+  - Cupertino
+  - Redwood City
+  - Oakland
+  - Berkeley
+  - Los Angeles
+  - Santa Monica
+  - Culver City
+  - Irvine
+  - Costa Mesa
+  - Santa Ana
+  - San Diego
+  - Sacramento
+  - Seattle
+  - Bellevue
+  - Redmond
+  - Kirkland WA
+  - Portland
+  - Boston
+  - Cambridge Massachusetts
+  - Somerville
+  - Chicago
+  - Evanston
+  - Austin
+  - Dallas
+  - Houston
+  - San Antonio
+  - Plano
+  - Bastrop
+  - Starbase
+  - McGregor
+  - Hawthorne
+  - Atlanta
+  - Denver
+  - Boulder
+  - Phoenix
+  - Tempe
+  - Scottsdale
+  - Chandler
+  - Las Vegas
+  - Salt Lake City
+  - Miami
+  - Orlando
+  - Tampa
+  - Jacksonville
+  - Charlotte
+  - Raleigh
+  - Durham
+  - Nashville
+  - Pittsburgh
+  - Philadelphia
+  - Baltimore
+  - Washington DC
+  - Washington D.C.
+  - Arlington Virginia
+  - Alexandria Virginia
+  - McLean
+  - Reston
+  - Herndon
+  - Detroit
+  - Ann Arbor
+  - Minneapolis
+  - Saint Paul
+  - Milwaukee
+  - Indianapolis
+  - Columbus
+  - Cleveland
+  - Cincinnati
+  - Kansas City
+  - Saint Louis
+  - New Orleans
+  - Des Moines
+  - Omaha
+  - Boise
+  - Cape Canaveral
+  - Huntsville
+  - Melbourne Florida
+  - Sioux City
+  - Davenport
+  - Annapolis Junction
+  - Alpharetta
+  - Lombard
+  - Stockton
+  - Ashville Ohio
+  - American Fork
+  - Abilene
+  - Ames
+  - Anaheim
+  - Albany
+
+canada_overrides:
+  - Ontario California
+  - Ontario CA
+  - Vancouver Washington
+  - Vancouver WA
+  - London Kentucky
+  - London KY
+  - Hamilton Ohio
+  - Hamilton OH
+  - Kingston New York
+  - Kingston NY
+  - Windsor Connecticut
+  - Windsor CT
+  - Victoria Australia
+  - Waterloo Iowa
+  - Waterloo IA
+  - Waterloo Belgium
+
+usa_regions:
+  - Alabama
+  - Alaska
+  - Arizona
+  - Arkansas
+  - California
+  - Colorado
+  - Connecticut
+  - Delaware
+  - Florida
+  - Georgia
+  - Hawaii
+  - Idaho
+  - Illinois
+  - Indiana
+  - Iowa
+  - Kansas
+  - Kentucky
+  - Louisiana
+  - Maine
+  - Maryland
+  - Massachusetts
+  - Michigan
+  - Minnesota
+  - Mississippi
+  - Missouri
+  - Montana
+  - Nebraska
+  - Nevada
+  - New Hampshire
+  - New Jersey
+  - New Mexico
+  - North Carolina
+  - North Dakota
+  - Ohio
+  - Oklahoma
+  - Oregon
+  - Pennsylvania
+  - Rhode Island
+  - South Carolina
+  - South Dakota
+  - Tennessee
+  - Texas
+  - Utah
+  - Vermont
+  - Virginia
+  - Washington State
+  - District of Columbia
+  - West Virginia
+  - Wisconsin
+  - Wyoming
+  - Puerto Rico
+
+usa_codes:
+  - "AL"
+  - "AK"
+  - "AZ"
+  - "AR"
+  - "CA"
+  - "CO"
+  - "CT"
+  - "DC"
+  - "DE"
+  - "FL"
+  - "GA"
+  - "HI"
+  - "IA"
+  - "ID"
+  - "IL"
+  - "IN"
+  - "KS"
+  - "KY"
+  - "LA"
+  - "MA"
+  - "MD"
+  - "ME"
+  - "MI"
+  - "MN"
+  - "MO"
+  - "MS"
+  - "MT"
+  - "NC"
+  - "ND"
+  - "NE"
+  - "NH"
+  - "NJ"
+  - "NM"
+  - "NV"
+  - "NY"
+  - "OH"
+  - "OK"
+  - "OR"
+  - "PA"
+  - "PR"
+  - "RI"
+  - "SC"
+  - "SD"
+  - "TN"
+  - "TX"
+  - "UT"
+  - "VA"
+  - "VT"
+  - "WA"
+  - "WI"
+  - "WV"
+  - "WY"
+
+usa_country:
+  - United States
+  - United States of America
+  - USA
+  - US
+  - U.S.
+  - U.S.A.
+  - États-Unis
+  - Etats-Unis
+
+international:
+  - Afghanistan
+  - Albania
+  - Algeria
+  - Argentina
+  - Armenia
+  - Australia
+  - Austria
+  - Azerbaijan
+  - Bahrain
+  - Bangladesh
+  - Belarus
+  - Belgium
+  - Bolivia
+  - Bosnia
+  - Brazil
+  - Brasil
+  - Bulgaria
+  - Cambodia
+  - Cameroon
+  - Chile
+  - China
+  - Colombia
+  - Costa Rica
+  - Croatia
+  - Cyprus
+  - Czechia
+  - Czech Republic
+  - Denmark
+  - Dominican Republic
+  - Ecuador
+  - Egypt
+  - El Salvador
+  - Estonia
+  - Ethiopia
+  - Finland
+  - France
+  - Germany
+  - Deutschland
+  - Ghana
+  - Greece
+  - Guatemala
+  - Honduras
+  - Hong Kong
+  - Hungary
+  - Iberia
+  - Iceland
+  - India
+  - Indonesia
+  - Iraq
+  - Ireland
+  - Israel
+  - Italy
+  - Italia
+  - Ivory Coast
+  - Jamaica
+  - Japan
+  - Jordan
+  - Kazakhstan
+  - Kenya
+  - Kuwait
+  - Latvia
+  - Lebanon
+  - Lithuania
+  - Luxembourg
+  - Malaysia
+  - Malta
+  - Mauritius
+  - Mexico
+  - México
+  - Moldova
+  - Mongolia
+  - Morocco
+  - Myanmar
+  - Nepal
+  - Netherlands
+  - New Zealand
+  - Nicaragua
+  - Nigeria
+  - Norway
+  - Oman
+  - Pakistan
+  - Panama
+  - Paraguay
+  - Peru
+  - Philippines
+  - Poland
+  - Polska
+  - Portugal
+  - Qatar
+  - Romania
+  - Russia
+  - Russian Federation
+  - Kyrgyzstan
+  - Angola
+  - Saudi Arabia
+  - Senegal
+  - Serbia
+  - Singapore
+  - Slovakia
+  - Slovenia
+  - South Africa
+  - South Korea
+  - Korea
+  - Spain
+  - España
+  - Sri Lanka
+  - Sweden
+  - Sverige
+  - Switzerland
+  - Suisse
+  - Taiwan
+  - Tanzania
+  - Thailand
+  - Tunisia
+  - Turkey
+  - Türkiye
+  - Uganda
+  - Ukraine
+  - United Arab Emirates
+  - UAE
+  - United Kingdom
+  - UK
+  - Great Britain
+  - England
+  - Scotland
+  - Wales
+  - Northern Ireland
+  - Uruguay
+  - Uzbekistan
+  - Venezuela
+  - Vietnam
+  - Zimbabwe
+  - EMEA
+  - APAC
+  - LATAM
+  - ANZ
+  - Benelux
+  - DACH
+  - Nordics
+  - Middle East
+  - Latin America
+  - Amérique latine
+  - Asia Pacific
+  - Southeast Asia
+  - Sub-Saharan Africa
+  - Europe
+  - Asia
+  - Africa
+  - Oceania
+  - South America
+
+international_cities:
+  - Abu Dhabi
+  - Ahmedabad
+  - Amman
+  - Amsterdam
+  - Amstelveen
+  - Athens
+  - Auckland
+  - Baku
+  - Bangalore
+  - Bengaluru
+  - Barcelona
+  - Beijing
+  - Belfast
+  - Belgrade
+  - Berlin
+  - Bogotá
+  - Bogota
+  - Brisbane
+  - Bristol
+  - Brussels
+  - Bucharest
+  - Budapest
+  - Buenos Aires
+  - Cairo
+  - Cape Town
+  - Chennai
+  - Cluj
+  - Copenhagen
+  - Delhi
+  - New Delhi
+  - Dhaka
+  - Doha
+  - Dubai
+  - Dublin
+  - Düsseldorf
+  - Edinburgh
+  - Frankfurt
+  - Galway
+  - Geneva
+  - Gurgaon
+  - Gurugram
+  - Hamburg
+  - Helsinki
+  - Ho Chi Minh City
+  - Hyderabad
+  - Islamabad
+  - Istanbul
+  - Jakarta
+  - Johannesburg
+  - Karachi
+  - Kolkata
+  - Kraków
+  - Krakow
+  - Kuala Lumpur
+  - Lagos
+  - Lahore
+  - Leeds
+  - Lima
+  - Limassol
+  - Lisbon
+  - Lisboa
+  - Ljubljana
+  - London
+  - Greater London
+  - City of London
+  - Guildford
+  - Minsk
+  - Chisinau
+  - Moscow
+  - Porto
+  - Montevideo
+  - Tbilisi
+  - Bishkek
+  - Luxembourg City
+  - Lyon
+  - Madrid
+  - Manchester
+  - Manila
+  - Marseille
+  - Medellín
+  - Melbourne
+  - Mexico City
+  - Milan
+  - Milano
+  - Mumbai
+  - Munich
+  - München
+  - Nairobi
+  - Noida
+  - Osaka
+  - Oslo
+  - Paris
+  - Perth
+  - Prague
+  - Praha
+  - Pune
+  - Reykjavik
+  - Riga
+  - Riyadh
+  - Rome
+  - Roma
+  - Rotterdam
+  - São Paulo
+  - Sao Paulo
+  - Rio de Janeiro
+  - Seoul
+  - Shanghai
+  - Shenzhen
+  - Sofia
+  - Stockholm
+  - Stuttgart
+  - Sydney
+  - Taipei
+  - Tallinn
+  - Tel Aviv
+  - Tokyo
+  - Toulouse
+  - Utrecht
+  - Vienna
+  - Vilnius
+  - Warsaw
+  - Warszawa
+  - Wellington
+  - Wrocław
+  - Wroclaw
+  - Zagreb
+  - Zurich
+  - Zürich
+
+remote:
+  - Remote
+  - Fully Remote
+  - Remote First
+  - Work From Home
+  - Work From Anywhere
+  - Home Based
+  - Home Office
+  - Anywhere
+  - Virtual
+  - Distributed
+  - Télétravail
+  - En télétravail
+  - À distance
+  - Travail à distance
+  - Poste à distance
+  - Partout
+
+hybrid:
+  - Hybrid
+  - Hybride
+  - Travail hybride
+  - Mode hybride

@@ -1,0 +1,103 @@
+degree_required:
+  phd:
+    - phd required
+    - ph.d. required
+    - phd candidates only
+    - doctorate required
+    - must be enrolled in a phd
+    - currently pursuing a phd
+    - doctorat requis
+    - inscrit au doctorat
+  masters:
+    - masters required
+    - master's required
+    - msc required
+    - graduate students only
+    - must be enrolled in a master
+    - maitrise requise
+    - inscrit a la maitrise
+  bachelors:
+    - bachelor's degree required
+    - bachelors degree required
+    - must be enrolled in a bachelor
+    - baccalaureat requis
+
+work_auth_excluded:
+  - must be a us citizen
+  - u.s. citizenship is required
+  - us citizenship required
+  - must be a united states citizen
+  - active security clearance required
+  - requires an active secret clearance
+  - requires ts/sci
+  - must be authorized to work in the united states without sponsorship
+  - citoyennete canadienne requise
+  - habilitation de securite requise
+
+non_cs:
+  - registered nurse
+  - nurse practitioner
+  - phlebotomist
+  - dental hygienist
+  - occupational therapist
+  - physical therapist
+  - veterinary technician
+  - massage therapist
+  - truck driver
+  - forklift operator
+  - warehouse associate
+  - line cook
+  - sous chef
+  - barista
+  - server assistant
+  - housekeeping attendant
+  - retail sales associate
+  - cashier
+  - stock associate
+  - beauty advisor
+  - personal shopper
+  - loan officer
+  - insurance agent
+  - real estate agent
+  - social worker
+  - paralegal
+  - court clerk
+  - welder
+  - millwright
+  - pipefitter
+  - hvac technician
+  - heavy equipment operator
+  - landscape technician
+  - infirmiere autorisee
+  - preposee aux beneficiaires
+  - cuisinier
+  - commis de vente
+
+non_cs_rescue:
+  - software
+  - developer
+  - developpeur
+  - developpeuse
+  - engineer
+  - engineering
+  - genie logiciel
+  - informatique
+  - data
+  - donnees
+  - machine learning
+  - analytics
+  - cyber
+  - security
+  - securite
+  - devops
+  - cloud
+  - firmware
+  - hardware
+  - embedded
+  - qa
+  - quality assurance
+  - it
+  - technology
+  - technologie
+  - programmer
+  - programmeur

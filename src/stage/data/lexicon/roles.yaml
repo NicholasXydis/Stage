@@ -1,0 +1,232 @@
+swe:
+  - software engineer
+  - software engineering
+  - software developer
+  - software development
+  - software dev
+  - developer
+  - development engineer
+  - programmer
+  - programming
+  - full stack
+  - fullstack
+  - full-stack
+  - backend
+  - back end
+  - back-end
+  - frontend
+  - front end
+  - front-end
+  - web developer
+  - mobile developer
+  - ios developer
+  - android developer
+  - application developer
+  - platform engineer
+  - api engineer
+  - qa engineer
+  - test engineer
+  - quality assurance
+  - sdet
+  - génie logiciel
+  - genie logiciel
+  - développement logiciel
+  - developpement logiciel
+  - développeur
+  - developpeur
+  - développeuse
+  - développeure
+  - programmeur
+  - programmeuse
+  - programmation
+  - analyste programmeur
+  - ingénieur logiciel
+  - ingenieur logiciel
+  - développement web
+  - développement mobile
+  - assurance qualité
+  - testeur
+
+security:
+  - security engineer
+  - security engineering
+  - cybersecurity
+  - cyber security
+  - information security
+  - infosec
+  - appsec
+  - application security
+  - product security
+  - offensive security
+  - penetration tester
+  - penetration testing
+  - red team
+  - blue team
+  - threat intelligence
+  - threat detection
+  - incident response
+  - security research
+  - security analyst
+  - cryptography
+  - sécurité informatique
+  - securite informatique
+  - cybersécurité
+  - cybersecurite
+  - sécurité applicative
+  - sécurité de l'information
+  - analyste en sécurité
+  - cryptographie
+
+data:
+  - data science
+  - data scientist
+  - data engineer
+  - data engineering
+  - data analyst
+  - data analytics
+  - analytics engineer
+  - business intelligence
+  - bi developer
+  - etl developer
+  - data platform
+  - data warehouse
+  - database engineer
+  - science des données
+  - science des donnees
+  - scientifique des données
+  - ingénieur de données
+  - ingenieur de donnees
+  - analyste de données
+  - analyste de donnees
+  - analyse de données
+  - données
+  - donnees
+  - intelligence d'affaires
+  - entrepôt de données
+
+ml-ai:
+  - machine learning
+  - deep learning
+  - artificial intelligence
+  - ml engineer
+  - ai engineer
+  - ml research
+  - ai research
+  - computer vision
+  - natural language processing
+  - nlp
+  - llm
+  - large language model
+  - generative ai
+  - reinforcement learning
+  - research scientist
+  - applied scientist
+  - apprentissage automatique
+  - apprentissage profond
+  - intelligence artificielle
+  - vision par ordinateur
+  - traitement du langage
+  - modèle de langage
+  - chercheur en ia
+
+quant:
+  - quantitative
+  - quantitative researcher
+  - quantitative research
+  - quantitative developer
+  - quantitative trader
+  - quantitative analyst
+  - quant researcher
+  - quant developer
+  - quant trader
+  - algorithmic trading
+  - trading systems
+  - systematic trading
+  - market making
+  - finance quantitative
+  - recherche quantitative
+  - analyste quantitatif
+  - négociation algorithmique
+
+infra:
+  - infrastructure engineer
+  - site reliability
+  - sre
+  - devops
+  - platform reliability
+  - cloud engineer
+  - cloud infrastructure
+  - systems engineer
+  - network engineer
+  - kubernetes
+  - observability
+  - build engineer
+  - release engineer
+  - production engineer
+  - infonuagique
+  - infrastructure infonuagique
+  - ingénieur systèmes
+  - ingenieur systemes
+  - fiabilité des sites
+  - administrateur systèmes
+  - réseautique
+
+hardware:
+  - hardware engineer
+  - hardware engineering
+  - asic
+  - fpga
+  - rtl design
+  - verification engineer
+  - silicon engineer
+  - chip design
+  - vlsi
+  - analog design
+  - digital design
+  - pcb
+  - signal integrity
+  - semiconductor
+  - génie électrique
+  - genie electrique
+  - ingénieur matériel
+  - conception de circuits
+  - microélectronique
+
+embedded:
+  - embedded engineer
+  - embedded software
+  - embedded systems
+  - embedded software engineer
+  - embedded software engineering
+  - embedded systems engineer
+  - embedded software developer
+  - firmware
+  - firmware engineer
+  - device driver
+  - rtos
+  - bare metal
+  - microcontroller
+  - robotics software
+  - control systems
+  - avionics software
+  - logiciel embarqué
+  - logiciel embarque
+  - systèmes embarqués
+  - systemes embarques
+  - micrologiciel
+  - microcontrôleur
+  - robotique
+
+source_categories:
+  swe:
+    - Software
+    - Software Engineering
+  hardware:
+    - Hardware
+    - Hardware Engineering
+  quant:
+    - Quant
+    - Quantitative Finance
+  security:
+    - Security
+    - Cybersecurity
