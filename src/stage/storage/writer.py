@@ -1,0 +1,148 @@
+import asyncio
+import threading
+from collections.abc import Callable, Mapping
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
+from types import TracebackType
+from typing import Self, TypeVar
+
+from stage.domain import (
+    HttpValidator,
+    Job,
+    JobFilters,
+    PurgeResult,
+    QuarantinedJob,
+    QuarantineFilters,
+    RateState,
+    SourceVisit,
+    SyncRun,
+    WorkdayFacet,
+)
+from stage.storage.repository import Repository, SourceBatch, SourceBatchResult
+from stage.storage.sqlite_repo import SqliteRepository
+
+T = TypeVar("T")
+
+
+class WriterNotStartedError(RuntimeError):
+    pass
+
+
+class DatabaseWriter:
+    def __init__(self, db_path: Path) -> None:
+        self._db_path = db_path
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stage-writer")
+        self._repository: Repository | None = None
+        self._thread_id: int | None = None
+
+    @property
+    def thread_id(self) -> int | None:
+        return self._thread_id
+
+    async def _submit(self, fn: Callable[[], T]) -> T:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._executor, fn)
+
+    def _open(self) -> None:
+        self._thread_id = threading.get_ident()
+        self._repository = SqliteRepository.connect(self._db_path)
+
+    def _shutdown(self) -> None:
+        if self._repository is not None:
+            self._repository.close()
+            self._repository = None
+
+    async def start(self) -> Self:
+        await self._submit(self._open)
+        return self
+
+    async def aclose(self) -> None:
+        await self._submit(self._shutdown)
+        self._executor.shutdown(wait=True)
+
+    async def __aenter__(self) -> Self:
+        return await self.start()
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        await self.aclose()
+
+    async def run(self, fn: Callable[[Repository], T]) -> T:
+        def call() -> T:
+            repository = self._repository
+            if repository is None:
+                raise WriterNotStartedError("DatabaseWriter.start() has not been awaited")
+            return fn(repository)
+
+        return await self._submit(call)
+
+
+class AsyncRepository:
+    def __init__(self, writer: DatabaseWriter) -> None:
+        self._writer = writer
+
+    async def apply_source_batch(self, batch: SourceBatch) -> SourceBatchResult:
+        return await self._writer.run(lambda repository: repository.apply_source_batch(batch))
+
+    async def load_validators(self, source: str) -> Mapping[str, HttpValidator]:
+        return await self._writer.run(lambda repository: repository.load_validators(source))
+
+    async def load_rate_state(self) -> Mapping[str, RateState]:
+        return await self._writer.run(lambda repository: repository.load_rate_state())
+
+    async def clear_rate_state(self, bucket: str | None = None) -> int:
+        return await self._writer.run(lambda repository: repository.clear_rate_state(bucket))
+
+    async def stale_members(self, source: str, before: datetime) -> list[SourceVisit]:
+        return await self._writer.run(lambda repository: repository.stale_members(source, before))
+
+    async def detail_queue(self, source: str, limit: int) -> list[str]:
+        return await self._writer.run(lambda repository: repository.detail_queue(source, limit))
+
+    async def detail_queue_size(self, source: str) -> int:
+        return await self._writer.run(lambda repository: repository.detail_queue_size(source))
+
+    async def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
+        return await self._writer.run(lambda repository: repository.load_workday_facets())
+
+
+    async def cached_url_count(self) -> int:
+        return await self._writer.run(lambda repository: repository.cached_url_count())
+
+    async def list_quarantined(self, filters: QuarantineFilters) -> list[QuarantinedJob]:
+        return await self._writer.run(lambda repository: repository.list_quarantined(filters))
+
+    async def count_quarantined(self, filters: QuarantineFilters) -> int:
+        return await self._writer.run(lambda repository: repository.count_quarantined(filters))
+
+    async def quarantine_reason_counts(self) -> dict[str, int]:
+        return await self._writer.run(lambda repository: repository.quarantine_reason_counts())
+
+    async def count_duplicates(self) -> int:
+        return await self._writer.run(lambda repository: repository.count_duplicates())
+
+    async def purge(self, now: datetime) -> PurgeResult:
+        return await self._writer.run(lambda repository: repository.purge(now))
+
+    async def tombstone_count(self) -> int:
+        return await self._writer.run(lambda repository: repository.tombstone_count())
+
+    async def list_jobs(self, filters: JobFilters) -> list[Job]:
+        return await self._writer.run(lambda repository: repository.list_jobs(filters))
+
+    async def count_jobs(self, filters: JobFilters) -> int:
+        return await self._writer.run(lambda repository: repository.count_jobs(filters))
+
+    async def get_job(self, job_id: str) -> Job | None:
+        return await self._writer.run(lambda repository: repository.get_job(job_id))
+
+    async def record_sync_run(self, run: SyncRun) -> None:
+        await self._writer.run(lambda repository: repository.record_sync_run(run))
+
+    async def last_sync_at(self) -> datetime | None:
+        return await self._writer.run(lambda repository: repository.last_sync_at())
