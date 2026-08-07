@@ -124,6 +124,8 @@ class HostBudget:
     slow_latency: float = 0.0
     samples: int = 0
     last_tightened_at: int = 0
+    rejections: int = 0
+    seeded_interval_s: float = 0.0
     last_error: str = ""
     deferred_s: float = 0.0
     deferred_reason: str = ""
@@ -138,6 +140,7 @@ class HostBudget:
             if self.seed.min_interval_override is not None:
                 self.min_interval_s = max(self.min_interval_s, self.seed.min_interval_override)
             self.breaker.consecutive_failures = self.seed.consecutive_failures
+        self.seeded_interval_s = self.min_interval_s
 
     @property
     def stride(self) -> float:
@@ -148,18 +151,21 @@ class HostBudget:
             self.deferred_s = seconds
             self.deferred_reason = reason
 
-    def tighten(self, factor: float) -> None:
+    def tighten(self, factor: float, *, rejected: bool = False) -> None:
         self.min_interval_s = min(MAX_INTERVAL_S, self.min_interval_s * factor)
         self.metrics.tightenings += 1
         self.last_tightened_at = self.requests
+        if rejected:
+            self.rejections += 1
 
-    def observe_latency(self, elapsed_s: float) -> None:
+    def observe_latency(self, time_to_headers_s: float) -> None:
+        sample = time_to_headers_s
         self.samples += 1
         self.fast_latency = (
-            elapsed_s if self.samples == 1 else 0.6 * elapsed_s + 0.4 * self.fast_latency
+            sample if self.samples == 1 else 0.6 * sample + 0.4 * self.fast_latency
         )
         self.slow_latency = (
-            elapsed_s if self.samples == 1 else 0.15 * elapsed_s + 0.85 * self.slow_latency
+            sample if self.samples == 1 else 0.15 * sample + 0.85 * self.slow_latency
         )
         if (
             self.samples >= 8
@@ -170,8 +176,11 @@ class HostBudget:
 
     def settle(self, bucket: str, now: datetime) -> RateState:
         baseline = self.posture.min_interval_s
-        tightened = self.metrics.tightenings > 0
-        override = self.min_interval_s if tightened else decay(self.min_interval_s, baseline)
+        override = (
+            self.min_interval_s
+            if self.rejections
+            else decay(self.seeded_interval_s, baseline)
+        )
         if override is not None and override <= baseline:
             override = None
 
@@ -233,6 +242,7 @@ class HttpClient:
         self._budgets: dict[str, HostBudget] = {} if budgets is None else budgets
         self._postures = dict(postures or {})
         self._touched: set[str] = set()
+        self._tighten_baseline: dict[str, int] = {}
         self._own = HostMetrics()
         self._log: list[RequestRecord] = []
         self._rng = rng or random.Random()
@@ -284,7 +294,10 @@ class HttpClient:
 
     @property
     def tightening_count(self) -> int:
-        return self._own.tightenings
+        return sum(
+            self._budgets[bucket].metrics.tightenings - baseline
+            for bucket, baseline in self._tighten_baseline.items()
+        )
 
     def latency_percentiles(self) -> tuple[float, float]:
         if not self._own.latencies:
@@ -307,6 +320,7 @@ class HttpClient:
             if self._jitter and budget.min_interval_s > 0:
                 budget.next_allowed_at = time.monotonic() + self._rng.uniform(0.0, JITTER_MAX_S)
             self._budgets[bucket] = budget
+        self._tighten_baseline.setdefault(bucket, budget.metrics.tightenings)
         self._touched.add(bucket)
         return budget
 
@@ -445,20 +459,26 @@ class HttpClient:
         attempt: int,
         method: str = "GET",
         body: Any = None,
+        revalidate: bool = False,
     ) -> JsonResponse:
         if attempt > 1:
             budget.metrics.retries += 1
             self._own.retries += 1
-        tightenings_before = budget.metrics.tightenings
         target = request_url(url, params)
         key = str(target)
-        headers = self._cache.conditional_headers(key) if method == "GET" else {}
+        headers = (
+            self._cache.conditional_headers(key)
+            if method == "GET" and not revalidate
+            else {}
+        )
+        headers_at = 0.0
         try:
             async with budget.semaphore:
                 await self._reserve(bucket, budget)
                 self._own.requests += 1
                 started = time.perf_counter()
                 response = await self._send(target, headers, method, body)
+                headers_at = time.perf_counter()
                 try:
                     content = await self._read_capped(bucket, response)
                 finally:
@@ -493,6 +513,7 @@ class HttpClient:
             raise
 
         elapsed_s = time.perf_counter() - started
+        time_to_headers_s = headers_at - started
         budget.metrics.latencies.append(elapsed_s * 1000)
         self._own.latencies.append(elapsed_s * 1000)
         self._log.append(
@@ -508,11 +529,10 @@ class HttpClient:
         if response.status_code in BLOCKING_STATUSES:
             budget.metrics.failures += 1
             budget.breaker.record_failure()
-            budget.tighten(2.0)
+            budget.tighten(2.0, rejected=True)
             reason = f"HTTP {response.status_code}"
             budget.last_error = reason
             budget.defer_for(BLOCKED_COOLDOWN_S, reason)
-            self._own.tightenings += budget.metrics.tightenings - tightenings_before
             raise ForbiddenError(f"{bucket} returned {response.status_code}")
 
         if response.status_code in RETRYABLE_STATUSES:
@@ -520,11 +540,10 @@ class HttpClient:
             budget.breaker.record_failure()
             raw_retry_after = self._retry_after_raw(response)
             if response.status_code == 429 or raw_retry_after is not None:
-                budget.tighten(2.0)
+                budget.tighten(2.0, rejected=True)
             if raw_retry_after is not None and raw_retry_after > MAX_RETRY_AFTER_S:
                 budget.defer_for(raw_retry_after, f"Retry-After: {raw_retry_after:.0f}s")
             budget.last_error = f"HTTP {response.status_code}"
-            self._own.tightenings += budget.metrics.tightenings - tightenings_before
             raise RetryableStatusError(
                 f"{bucket} returned {response.status_code}",
                 response.status_code,
@@ -533,24 +552,28 @@ class HttpClient:
 
         if response.status_code == 304:
             budget.breaker.record_success()
-            budget.observe_latency(elapsed_s)
+            budget.observe_latency(time_to_headers_s)
             budget.metrics.not_modified += 1
             self._own.not_modified += 1
-            self._own.tightenings += budget.metrics.tightenings - tightenings_before
             return JsonResponse(status=304, payload=None, not_modified=True)
 
         response.raise_for_status()
         budget.breaker.record_success()
-        budget.observe_latency(elapsed_s)
+        budget.observe_latency(time_to_headers_s)
 
-        self._own.tightenings += budget.metrics.tightenings - tightenings_before
         payload = json.loads(content)
         if method == "GET":
             self._cache.record(key, response.headers, datetime.now(UTC))
         return JsonResponse(status=response.status_code, payload=payload, not_modified=False)
 
-    async def get_json(self, url: str, *, params: dict[str, str] | None = None) -> JsonResponse:
-        return await self._request("GET", url, params=params)
+    async def get_json(
+        self,
+        url: str,
+        *,
+        params: dict[str, str] | None = None,
+        revalidate: bool = False,
+    ) -> JsonResponse:
+        return await self._request("GET", url, params=params, revalidate=revalidate)
 
     async def post_json(self, url: str, *, body: Any) -> JsonResponse:
         return await self._request("POST", url, body=body)
@@ -562,6 +585,7 @@ class HttpClient:
         *,
         params: dict[str, str] | None = None,
         body: Any = None,
+        revalidate: bool = False,
     ) -> JsonResponse:
         bucket, budget = self._authorize(url)
 
@@ -587,6 +611,8 @@ class HttpClient:
         ):
             with wrapped:
                 attempt += 1
-                return await self._attempt(bucket, budget, url, params, attempt, method, body)
+                return await self._attempt(
+                    bucket, budget, url, params, attempt, method, body, revalidate
+                )
         raise HttpError(f"{bucket} exhausted retries for {url}")
 

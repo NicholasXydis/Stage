@@ -1,6 +1,7 @@
 import asyncio
 import time
 from collections.abc import AsyncIterator
+from contextlib import suppress
 
 import httpx
 import pytest
@@ -230,3 +231,66 @@ async def test_a_body_under_the_ceiling_still_parses() -> None:
         response = await client.get_json(ENDPOINT)
 
     assert response.payload == {"jobs": [{"id": 1}]}
+
+
+@respx.mock
+async def test_one_tightening_is_counted_once_not_once_per_request_in_flight() -> None:
+    respx.get(ENDPOINT).mock(return_value=httpx.Response(200, json={"jobs": []}))
+    posture = RatePosture(concurrency=4, min_interval_s=0.0, max_requests_per_run=50)
+    in_flight = 6
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"boards-api.greenhouse.io"}), posture=posture, jitter=False
+    ) as client:
+        budget = client._budget_for("boards-api.greenhouse.io")
+
+        async def tighten_midflight() -> None:
+            await asyncio.sleep(0)
+            budget.tighten(1.5)
+
+        await asyncio.gather(
+            *(client.get_json(ENDPOINT) for _ in range(in_flight)), tighten_midflight()
+        )
+
+        assert budget.metrics.tightenings == 1, "the fixture must tighten exactly once"
+        assert client.tightening_count == 1, f"counted {client.tightening_count} for one"
+
+
+@respx.mock
+async def test_a_slow_body_transfer_is_not_evidence_the_host_is_stressed() -> None:
+    server_time_s = 0.01
+    transfer_chunks = 20
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        big = request.url.params.get("big") == "1"
+        await asyncio.sleep(server_time_s)
+
+        class _Body(httpx.AsyncByteStream):
+            async def __aiter__(self) -> AsyncIterator[bytes]:
+                if not big:
+                    yield b"{}"
+                    return
+                for _ in range(transfer_chunks):
+                    await asyncio.sleep(server_time_s)
+                    yield b" "
+
+        return httpx.Response(200, stream=_Body(), headers={"content-type": "text/plain"})
+
+    respx.get(url__startswith=ENDPOINT).mock(side_effect=respond)
+    posture = RatePosture(concurrency=1, min_interval_s=0.0, max_requests_per_run=80)
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"boards-api.greenhouse.io"}), posture=posture, jitter=False
+    ) as client:
+        budget = client._budget_for("boards-api.greenhouse.io")
+        for index in range(12):
+            with suppress(Exception):
+                await client.get_json(f"{ENDPOINT}?small={index}")
+        small_only = budget.metrics.tightenings
+        for index in range(8):
+            with suppress(Exception):
+                await client.get_json(f"{ENDPOINT}?big=1&n={index}")
+
+    assert small_only == 0, "the warm-up tightened, so the fixture measures noise"
+    assert budget.samples == 20, "every response must still be sampled"
+    assert budget.metrics.tightenings == 0, "tightened on transfer time, not server time"

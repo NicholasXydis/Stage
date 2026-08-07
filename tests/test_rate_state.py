@@ -20,6 +20,7 @@ from stage.domain import (
     decay,
 )
 from stage.http import BucketBlockedError, HostBudget, HttpClient, RatePosture, profile
+from stage.http.client import MAX_INTERVAL_S
 from stage.storage import SourceBatch, open_repository
 
 WORKDAY_BASELINE = 1.5
@@ -104,10 +105,28 @@ def test_a_run_that_was_throttled_persists_the_tightening_instead_of_decaying_it
     posture = RatePosture(concurrency=2, min_interval_s=WORKDAY_BASELINE, max_requests_per_run=120)
     budget = HostBudget(posture=posture)
     budget.requests = 4
-    budget.tighten(2.0)
+    budget.tighten(2.0, rejected=True)
 
     settled = budget.settle("workday", datetime(2026, 8, 3, 12, 0, tzinfo=UTC))
     assert settled.min_interval_override == pytest.approx(3.0)
+
+
+def test_a_latency_tightening_still_decays_so_the_interval_cannot_ratchet() -> None:
+    posture = RatePosture(concurrency=2, min_interval_s=WORKDAY_BASELINE, max_requests_per_run=120)
+    now = datetime(2026, 8, 3, 12, 0, tzinfo=UTC)
+    override = WORKDAY_BASELINE
+
+    for run in range(6):
+        budget = HostBudget(posture=posture, seed=_state(min_interval_override=override))
+        budget.requests = 40
+        budget.tighten(1.5)
+        settled = budget.settle("workday", now)
+        if settled.min_interval_override is None:
+            break
+        assert settled.min_interval_override < MAX_INTERVAL_S, f"run {run} hit the ceiling"
+        override = settled.min_interval_override
+
+    assert override <= WORKDAY_BASELINE * 4, f"ratcheted to {override}s"
 
 
 def test_a_run_that_never_reached_the_bucket_writes_nothing_for_it() -> None:
@@ -581,3 +600,37 @@ def test_an_expired_block_renders_distinctly_from_a_live_one(db_path: Path) -> N
     assert "blocked" in output
     assert not expired.is_blocked(now)
     assert live.is_blocked(now)
+
+
+def test_no_number_of_latency_tightenings_can_raise_the_persisted_interval() -> None:
+    posture = RatePosture(concurrency=3, min_interval_s=0.25, max_requests_per_run=300)
+    now = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)
+    override: float | None = 0.25
+
+    for run in range(8):
+        seed = _state(min_interval_override=override) if override is not None else None
+        budget = HostBudget(posture=posture, seed=seed)
+        budget.requests = 94
+        for _ in range(6):
+            budget.tighten(1.5)
+
+        assert budget.min_interval_s > budget.seeded_interval_s, "paced within the run"
+
+        settled = budget.settle("boards-api.greenhouse.io", now)
+        override = settled.min_interval_override
+        if override is None:
+            break
+        assert override <= 0.25, f"run {run} ratcheted to {override}s above the seed"
+
+    assert override is None, "a never-rejected host must return to baseline"
+
+
+def test_a_rejection_still_outlives_the_run_that_saw_it() -> None:
+    posture = RatePosture(concurrency=3, min_interval_s=0.25, max_requests_per_run=300)
+    budget = HostBudget(posture=posture)
+    budget.requests = 10
+    budget.tighten(1.5)
+    budget.tighten(2.0, rejected=True)
+
+    settled = budget.settle("boards-api.greenhouse.io", datetime(2026, 8, 7, tzinfo=UTC))
+    assert settled.min_interval_override == pytest.approx(0.75), "a rejection persists"
