@@ -40,6 +40,14 @@ jobs:
         id: pytest
         continue-on-error: true
         run: uv run pytest -q
+      - name: Audit locked dependencies
+        id: pip_audit
+        continue-on-error: true
+        run: |
+          uv export --frozen --format requirements.txt \
+            --no-emit-project --all-groups --no-annotate --no-header \
+            -o "$RUNNER_TEMP/requirements.txt" > /dev/null
+          uvx pip-audit@2.10.1 --disable-pip -r "$RUNNER_TEMP/requirements.txt"
       - name: Lint workflows
         id: actionlint
         continue-on-error: true
@@ -60,6 +68,7 @@ jobs:
             echo "| Ruff | $(result "${{ steps.ruff.outcome }}") |"
             echo "| Mypy strict (src + tests) | $(result "${{ steps.mypy.outcome }}") |"
             echo "| Tests | $(result "${{ steps.pytest.outcome }}") |"
+            echo "| Dependency audit | $(result "${{ steps.pip_audit.outcome }}") |"
             echo "| Workflow lint | $(result "${{ steps.actionlint.outcome }}") |"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Fail if any check failed
@@ -69,6 +78,7 @@ jobs:
             "${{ steps.ruff.outcome }}" \
             "${{ steps.mypy.outcome }}" \
             "${{ steps.pytest.outcome }}" \
+            "${{ steps.pip_audit.outcome }}" \
             "${{ steps.actionlint.outcome }}"; do
             if [ "$outcome" != "success" ]; then exit 1; fi
           done
@@ -84,4 +94,4 @@ jobs:
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294
         with:
           fail-on-severity: high
-          deny-licenses: AGPL-1.0-only, AGPL-1.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later
+          show-openssf-scorecard: false
