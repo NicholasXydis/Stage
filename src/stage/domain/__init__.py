@@ -43,6 +43,19 @@ from stage.domain.events import (
     UnroutableCompanies,
 )
 from stage.domain.filters import DEFAULT_LIMIT, DEFAULT_WINDOW_DAYS, JobFilters
+from stage.domain.health import (
+    MIN_VOLUME_HISTORY,
+    STALE_AFTER_DAYS,
+    UNRECORDED_VOLUME,
+    VOLUME_DROP_RATIO,
+    IntegrityFinding,
+    VisitState,
+    VolumePoint,
+    VolumeSignal,
+    VolumeVerdict,
+    assess_volume,
+    classify_visit,
+)
 from stage.domain.ids import board_key, job_id
 from stage.domain.job import Job
 from stage.domain.matching import location_agrees, term_agrees
@@ -143,7 +156,18 @@ __all__ = [
     "blocked",
     "decay",
     "rotate",
+    "MIN_VOLUME_HISTORY",
+    "STALE_AFTER_DAYS",
+    "UNRECORDED_VOLUME",
+    "VOLUME_DROP_RATIO",
+    "IntegrityFinding",
+    "VisitState",
+    "VolumePoint",
+    "VolumeSignal",
+    "VolumeVerdict",
+    "assess_volume",
     "board_key",
+    "classify_visit",
     "job_id",
     "location_agrees",
     "source_rank",
