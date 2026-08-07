@@ -1,0 +1,613 @@
+{
+  "cases": [
+    {
+      "id": "swe-en",
+      "input": {
+        "source": "greenhouse",
+        "company": "Stripe",
+        "title_raw": "Software Engineer Intern, Summer 2027",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "summer-2027",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "security-en",
+      "input": {
+        "source": "greenhouse",
+        "company": "Cloudflare",
+        "title_raw": "Security Engineer Intern",
+        "location_raw": "Austin, TX",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "usa",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "security",
+        "language": "en"
+      }
+    },
+    {
+      "id": "data-en",
+      "input": {
+        "source": "lever",
+        "company": "Databricks",
+        "title_raw": "Data Engineer Intern - Fall 2026",
+        "location_raw": "Toronto, ON, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": null,
+        "term": "fall-2026",
+        "role": "data",
+        "language": "en"
+      }
+    },
+    {
+      "id": "mlai-en",
+      "input": {
+        "source": "greenhouse",
+        "company": "Cohere",
+        "title_raw": "Machine Learning Engineer Intern",
+        "location_raw": "Toronto, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "ml-ai",
+        "language": "en"
+      }
+    },
+    {
+      "id": "quant-en",
+      "input": {
+        "source": "greenhouse",
+        "company": "Jane Street",
+        "title_raw": "Quantitative Trader Intern, Summer 2027",
+        "location_raw": "New York, NY",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "usa",
+        "remote_scope": null,
+        "term": "summer-2027",
+        "role": "quant",
+        "language": "en"
+      }
+    },
+    {
+      "id": "infra-en",
+      "input": {
+        "source": "lever",
+        "company": "HashiCorp",
+        "title_raw": "Site Reliability Engineering Intern",
+        "location_raw": "Remote - Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": "remote-canada",
+        "term": "unknown",
+        "role": "infra",
+        "language": "en"
+      }
+    },
+    {
+      "id": "hardware-en",
+      "input": {
+        "source": "greenhouse",
+        "company": "AMD",
+        "title_raw": "FPGA Design Intern",
+        "location_raw": "Markham, ON, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "hardware",
+        "language": "unknown"
+      }
+    },
+    {
+      "id": "embedded-en",
+      "input": {
+        "source": "greenhouse",
+        "company": "Tesla",
+        "title_raw": "Embedded Software Engineer Intern",
+        "location_raw": "Palo Alto, CA",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "usa",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "embedded",
+        "language": "en"
+      }
+    },
+    {
+      "id": "swe-fr",
+      "input": {
+        "source": "lever",
+        "company": "Behaviour Interactive",
+        "title_raw": "Stagiaire en génie logiciel",
+        "location_raw": "Montréal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "data-fr",
+      "input": {
+        "source": "smartrecruiters",
+        "company": "Ubisoft",
+        "title_raw": "Stagiaire en science des données",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "data",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "security-fr",
+      "input": {
+        "source": "lever",
+        "company": "Genetec",
+        "title_raw": "Stagiaire en cybersécurité",
+        "location_raw": "Montréal, Québec, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "security",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "mlai-fr",
+      "input": {
+        "source": "lever",
+        "company": "Mila",
+        "title_raw": "Stagiaire en apprentissage automatique",
+        "location_raw": "Montréal, QC",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "ml-ai",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "embedded-fr",
+      "input": {
+        "source": "greenhouse",
+        "company": "CAE",
+        "title_raw": "Stagiaire — logiciel embarqué",
+        "location_raw": "Saint-Laurent, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "embedded",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "inclusive-fr",
+      "input": {
+        "source": "smartrecruiters",
+        "company": "Ubisoft",
+        "title_raw": "Développeur·euse logiciel stagiaire",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "term-fr-automne",
+      "input": {
+        "source": "lever",
+        "company": "KRAFTON",
+        "title_raw": "Stagiaire en Programmation Automne 2026",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "fall-2026",
+        "role": "swe",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "term-coop",
+      "input": {
+        "source": "greenhouse",
+        "company": "Shopify",
+        "title_raw": "Winter 2027 Co-op — Backend Developer",
+        "location_raw": "Ottawa, ON, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": null,
+        "term": "winter-2027",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "term-structured",
+      "input": {
+        "source": "simplify",
+        "company": "Google",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "Waterloo, ON, Canada",
+        "signals": {
+          "terms": [
+            "Summer 2027"
+          ],
+          "category": "Software"
+        }
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": null,
+        "term": "summer-2027",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "term-season-only",
+      "input": {
+        "source": "vanshb03",
+        "company": "Meta",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "Toronto, ON, Canada",
+        "signals": {
+          "season": "Fall"
+        }
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "term-conflict",
+      "input": {
+        "source": "simplify",
+        "company": "Snap",
+        "title_raw": "Fall 2026 Software Engineer Intern",
+        "location_raw": "Seattle, WA",
+        "signals": {
+          "terms": [
+            "Summer 2027"
+          ]
+        }
+      },
+      "expected": {
+        "kept": true,
+        "location": "usa",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "loc-remote-us",
+      "input": {
+        "source": "greenhouse",
+        "company": "GitLab",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "Remote - United States",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "usa",
+        "remote_scope": "remote-us",
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "loc-remote-bare",
+      "input": {
+        "source": "lever",
+        "company": "Automattic",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "Remote",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "remote",
+        "remote_scope": "remote-unspecified",
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "loc-multi",
+      "input": {
+        "source": "greenhouse",
+        "company": "Shopify",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "Montreal, QC / Toronto, ON",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "loc-hybrid-unknown",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "Hybrid",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "unknown",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "loc-scope-split",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "Montreal, QC; Remote, US",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": "remote-us",
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "reject-location",
+      "input": {
+        "source": "smartrecruiters",
+        "company": "Ubisoft",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "Bengaluru, Karnataka, India",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "out-of-scope-location",
+        "matched_phrase": "bengaluru, india",
+        "location": "other"
+      }
+    },
+    {
+      "id": "reject-not-internship",
+      "input": {
+        "source": "greenhouse",
+        "company": "Stripe",
+        "title_raw": "Staff Software Engineer",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-an-internship",
+        "matched_phrase": "no internship marker in title",
+        "location": "montreal"
+      }
+    },
+    {
+      "id": "reject-internal",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Internal Auditor",
+        "location_raw": "Toronto, ON, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-an-internship",
+        "matched_phrase": "internal auditor",
+        "location": "canada"
+      }
+    },
+    {
+      "id": "reject-stage-noun",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Stage Manager",
+        "location_raw": "New York, NY",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-an-internship",
+        "matched_phrase": "stage manager",
+        "location": "usa"
+      }
+    },
+    {
+      "id": "reject-new-grad",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "New Grad Software Engineer",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-an-internship",
+        "matched_phrase": "new grad",
+        "location": "montreal"
+      }
+    },
+    {
+      "id": "reject-program-manager",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Internship Program Manager",
+        "location_raw": "Austin, TX",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-an-internship",
+        "matched_phrase": "internship program manager",
+        "location": "usa"
+      }
+    },
+    {
+      "id": "trap-spring-boot",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Spring Boot Developer Intern",
+        "location_raw": "Austin, TX",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "usa",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "trap-summer-analyst",
+      "input": {
+        "source": "greenhouse",
+        "company": "Goldman Sachs",
+        "title_raw": "Summer Analyst",
+        "location_raw": "New York, NY",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "usa",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "unknown",
+        "language": "en"
+      }
+    },
+    {
+      "id": "bilingual",
+      "input": {
+        "source": "simplify",
+        "company": "Autodesk",
+        "title_raw": "Software Developer Intern - Stagiaire en Développement Logiciel",
+        "location_raw": "Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "bilingual"
+      }
+    },
+    {
+      "id": "trap-apprentissage",
+      "input": {
+        "source": "smartrecruiters",
+        "company": "Ubisoft",
+        "title_raw": "Programmeur·se Senior C++ - Apprentissage automatique",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-an-internship",
+        "matched_phrase": "no internship marker in title",
+        "location": "montreal"
+      }
+    }
+  ]
+}
