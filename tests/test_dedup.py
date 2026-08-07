@@ -230,6 +230,17 @@ def test_a_url_shared_by_several_requisitions_is_not_an_identity_key() -> None:
     assert resolve_duplicates([left, right, feed], []) == ()
 
 
+def test_a_generic_url_is_detected_across_boards_not_only_within_one() -> None:
+    shared = "https://job-boards.greenhouse.io/embed/job_app"
+    rows = [
+        job("vanshb03:aquatic:1", "vanshb03", "Aquatic Capital", "SWE Intern", url=shared),
+        job("vanshb03:cubist:2", "vanshb03", "Cubist Systematic", "Quant Dev Intern", url=shared),
+        job("vanshb03:gemini:3", "vanshb03", "Gemini", "Software Engineering Intern", url=shared),
+    ]
+    assert len({row.board_key for row in rows}) == 3, "one row per board, or it is blind"
+    assert resolve_duplicates(rows, []) == (), "a URL shared inside one source is generic"
+
+
 def test_the_canonical_row_does_not_depend_on_arrival_order() -> None:
     direct = job("a", "greenhouse", "Acme", "Software Engineer Intern")
     feed = job("z", "simplify", "Acme", "Software Engineer Intern")
