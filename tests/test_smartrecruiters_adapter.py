@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from stage.domain import Company, Platform
+from stage.domain import Company, Platform, job_id
 from stage.http import HttpClient, profile
 from stage.sources import get_adapter
 from stage.sources.base import PayloadValidationError
@@ -68,6 +68,59 @@ async def test_a_304_on_the_first_page_skips_the_rest(
     assert result.not_modified is True
     assert result.jobs == ()
     assert route.call_count == 1
+
+
+@respx.mock
+async def test_a_queued_detail_row_makes_the_listing_bypass_its_validator(
+    acme_sr: Company, run_time: datetime
+) -> None:
+    detail = respx.get(f"{ENDPOINT}/0").mock(
+        return_value=httpx.Response(
+            200, json={"jobAd": {"sections": {"body": {"text": "<p>Build things.</p>"}}}}
+        )
+    )
+    listing = respx.get(url__startswith=f"{ENDPOINT}?").mock(
+        return_value=httpx.Response(200, json=_page(1, 0, 1))
+    )
+    adapter = get_adapter("smartrecruiters")
+    queued = job_id("smartrecruiters", "acme", "0")
+
+    async with _client() as client:
+        client.cache.record(
+            f"{ENDPOINT}?limit={PAGE_SIZE}&offset=0",
+            httpx.Headers({"etag": '"v1"'}),
+            run_time,
+        )
+        result = await adapter.fetch(acme_sr, client, run_time, None, [queued])
+
+    assert "if-none-match" not in {
+        header.lower() for header in listing.calls[0].request.headers
+    }, "a queued board must skip its validator, or the 304 skips the detail phase"
+    assert detail.call_count == 1
+    assert result.jobs[0].description == "Build things."
+    assert result.authoritative, "the listing was fetched in full, so it still closes"
+
+
+@respx.mock
+async def test_a_board_with_nothing_queued_still_sends_its_validator(
+    acme_sr: Company, run_time: datetime
+) -> None:
+    listing = respx.get(url__startswith=f"{ENDPOINT}?").mock(return_value=httpx.Response(304))
+    adapter = get_adapter("smartrecruiters")
+    other_board = job_id("smartrecruiters", "othercorp", "0")
+
+    async with _client() as client:
+        client.cache.record(
+            f"{ENDPOINT}?limit={PAGE_SIZE}&offset=0",
+            httpx.Headers({"etag": '"v1"'}),
+            run_time,
+        )
+        result = await adapter.fetch(acme_sr, client, run_time, None, [other_board])
+
+    assert result.not_modified is True
+    assert listing.calls[0].request.headers.get("if-none-match") == '"v1"', (
+        "the bypass is per board, not per source"
+    )
 
 
 @respx.mock

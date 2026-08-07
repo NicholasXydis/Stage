@@ -94,9 +94,13 @@ class SmartRecruitersAdapter:
         stale_page = False
         malformed = 0
 
+        wanted = {job for job in details if job.startswith(f"{self.board_key(company)}:")}
+
         for page in range(MAX_PAGES):
             response = await client.get_json(
-                url, params={"limit": str(PAGE_SIZE), "offset": str(page * PAGE_SIZE)}
+                url,
+                params={"limit": str(PAGE_SIZE), "offset": str(page * PAGE_SIZE)},
+                revalidate=bool(wanted),
             )
             if response.not_modified:
                 if page == 0:
@@ -124,7 +128,6 @@ class SmartRecruitersAdapter:
         if malformed:
             notes.append(malformed_note(malformed))
         paired = [(posting, self._to_job(company, posting, now)) for posting in postings]
-        wanted = set(details)
         fetched: list[DetailFetch] = []
         if wanted:
             paired, fetched = await self._attach_descriptions(company, client, paired, wanted)
