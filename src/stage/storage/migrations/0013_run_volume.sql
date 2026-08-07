@@ -1,0 +1,1 @@
+ALTER TABLE sync_run_sources ADD COLUMN stored INTEGER NOT NULL DEFAULT -1;

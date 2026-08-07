@@ -12,6 +12,7 @@ from stage.domain import (
     UNKNOWN_TERM,
     DegreeRequirement,
     HttpValidator,
+    IntegrityFinding,
     Job,
     JobFilters,
     JobStatus,
@@ -24,14 +25,21 @@ from stage.domain import (
     RejectionReason,
     RemoteScope,
     RoleCategory,
+    SourceRunStats,
     SourceVisit,
+    SyncOutcome,
     SyncRun,
+    VolumePoint,
     WorkdayFacet,
     source_rank,
 )
 from stage.paths import restrict_permissions
 from stage.storage.migrations import migrate
 from stage.storage.repository import SourceBatch, SourceBatchResult
+
+_COMPOSITION_COLUMNS = frozenset(
+    {"source", "location", "role", "term", "language", "status", "degree_requirement"}
+)
 
 _JOB_COLUMNS = (
     "id",
@@ -646,6 +654,10 @@ class SqliteRepository:
                 )
 
         updated = sum(1 for job in jobs if job.id in existing)
+        stored = conn.execute(
+            "SELECT COUNT(*) AS total FROM jobs WHERE source = ? AND status = ?",
+            (batch.source, JobStatus.OPEN.value),
+        ).fetchone()
         return SourceBatchResult(
             source=batch.source,
             fetched=len(jobs) + len(batch.quarantined),
@@ -655,6 +667,7 @@ class SqliteRepository:
             touched=touched,
             quarantined=len(batch.quarantined),
             duplicates=linked,
+            stored=int(stored["total"]),
         )
 
     def load_validators(self, source: str) -> Mapping[str, HttpValidator]:
@@ -854,8 +867,8 @@ class SqliteRepository:
                 "INSERT INTO sync_run_sources "
                 "(run_id, source, fetched, added, updated, closed, quarantined, errors, "
                 "requests, not_modified, retries, tightenings, latency_p50_ms, "
-                "latency_p95_ms, elapsed_ms, deferred, blocked) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "latency_p95_ms, elapsed_ms, deferred, blocked, stored) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     (
                         run_id,
@@ -875,6 +888,7 @@ class SqliteRepository:
                         stats.elapsed_ms,
                         stats.deferred,
                         int(stats.blocked),
+                        stats.stored,
                     )
                     for stats in run.sources
                 ],
@@ -885,3 +899,157 @@ class SqliteRepository:
             "SELECT finished_at FROM sync_runs ORDER BY finished_at DESC LIMIT 1"
         ).fetchone()
         return _from_text(row["finished_at"]) if row else None
+
+    def schema_version(self) -> int:
+        row = self._conn.execute(
+            "SELECT MAX(version) AS version FROM schema_migrations"
+        ).fetchone()
+        return int(row["version"]) if row and row["version"] is not None else 0
+
+    def stored_counts(self) -> dict[str, int]:
+        rows = self._conn.execute(
+            "SELECT source, COUNT(*) AS total FROM jobs WHERE status = ? GROUP BY source",
+            (JobStatus.OPEN.value,),
+        ).fetchall()
+        return {str(row["source"]): int(row["total"]) for row in rows}
+
+    def composition(self, column: str) -> dict[str, int]:
+        if column not in _COMPOSITION_COLUMNS:
+            raise ValueError(
+                f"{column!r} is not a composition column; "
+                f"known: {', '.join(sorted(_COMPOSITION_COLUMNS))}"
+            )
+        rows = self._conn.execute(
+            f"SELECT {column} AS bucket, COUNT(*) AS total FROM jobs "
+            "WHERE duplicate_of IS NULL GROUP BY bucket ORDER BY total DESC"
+        ).fetchall()
+        return {str(row["bucket"]): int(row["total"]) for row in rows}
+
+    def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]:
+        rows = self._conn.execute(
+            "SELECT source, stored, deferred, blocked FROM sync_run_sources "
+            "WHERE run_id IN (SELECT id FROM sync_runs ORDER BY id DESC LIMIT ?) "
+            "ORDER BY run_id DESC",
+            (limit,),
+        ).fetchall()
+        history: dict[str, list[VolumePoint]] = {}
+        for row in rows:
+            history.setdefault(str(row["source"]), []).append(
+                VolumePoint(
+                    stored=int(row["stored"]),
+                    deferred=int(row["deferred"]),
+                    blocked=bool(row["blocked"]),
+                )
+            )
+        return history
+
+    def run_history(self, limit: int) -> list[SyncRun]:
+        runs = self._conn.execute(
+            "SELECT id, started_at, finished_at, outcome FROM sync_runs "
+            "ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        if not runs:
+            return []
+        placeholders = ", ".join("?" * len(runs))
+        stats = self._conn.execute(
+            "SELECT * FROM sync_run_sources "
+            f"WHERE run_id IN ({placeholders}) ORDER BY run_id DESC, source",
+            tuple(int(run["id"]) for run in runs),
+        ).fetchall()
+        by_run: dict[int, list[SourceRunStats]] = {}
+        for row in stats:
+            by_run.setdefault(int(row["run_id"]), []).append(
+                SourceRunStats(
+                    source=str(row["source"]),
+                    fetched=int(row["fetched"]),
+                    added=int(row["added"]),
+                    updated=int(row["updated"]),
+                    closed=int(row["closed"]),
+                    quarantined=int(row["quarantined"]),
+                    errors=int(row["errors"]),
+                    requests=int(row["requests"]),
+                    not_modified=int(row["not_modified"]),
+                    retries=int(row["retries"]),
+                    tightenings=int(row["tightenings"]),
+                    latency_p50_ms=float(row["latency_p50_ms"]),
+                    latency_p95_ms=float(row["latency_p95_ms"]),
+                    elapsed_ms=float(row["elapsed_ms"]),
+                    deferred=int(row["deferred"]),
+                    blocked=bool(row["blocked"]),
+                    stored=int(row["stored"]),
+                )
+            )
+        return [
+            SyncRun(
+                started_at=_require_datetime(run["started_at"], "started_at"),
+                finished_at=_require_datetime(run["finished_at"], "finished_at"),
+                outcome=SyncOutcome(str(run["outcome"])),
+                sources=tuple(by_run.get(int(run["id"]), ())),
+            )
+            for run in runs
+        ]
+
+    def all_visits(self) -> list[SourceVisit]:
+        rows = self._conn.execute(
+            "SELECT source, board, label, last_attempt_at, last_success_at, "
+            "consecutive_failures, last_error FROM source_visits "
+            "ORDER BY last_success_at IS NOT NULL, last_success_at, source, board"
+        ).fetchall()
+        return [
+            SourceVisit(
+                source=str(row["source"]),
+                board=str(row["board"]),
+                label=str(row["label"]),
+                last_attempt_at=_require_datetime(row["last_attempt_at"], "last_attempt_at"),
+                last_success_at=_from_text(row["last_success_at"]),
+                consecutive_failures=int(row["consecutive_failures"]),
+                last_error=str(row["last_error"]),
+            )
+            for row in rows
+        ]
+
+    def integrity_findings(self) -> list[IntegrityFinding]:
+        checks = (
+            (
+                "dangling duplicate links",
+                "SELECT COUNT(*) AS total FROM jobs a LEFT JOIN jobs b ON a.duplicate_of = b.id "
+                "WHERE a.duplicate_of IS NOT NULL AND b.id IS NULL",
+                "the survivor is gone, so the posting is invisible",
+            ),
+            (
+                "duplicate chains",
+                "SELECT COUNT(*) AS total FROM jobs a JOIN jobs b ON a.duplicate_of = b.id "
+                "WHERE b.duplicate_of IS NOT NULL",
+                "followers must repoint at the survivor",
+            ),
+            (
+                "same-source merges",
+                "SELECT COUNT(*) AS total FROM jobs a JOIN jobs b ON a.duplicate_of = b.id "
+                "WHERE a.source = b.source",
+                "two rows from one source are two requisitions",
+            ),
+            (
+                "postings in both tables",
+                "SELECT COUNT(*) AS total FROM jobs j JOIN quarantine q ON q.id = j.id",
+                "quarantine is a move, not a copy",
+            ),
+            (
+                "tombstoned rows re-ingested as new",
+                "SELECT COUNT(*) AS total FROM jobs j JOIN tombstones t ON t.id = j.id "
+                "WHERE j.first_seen > t.first_seen",
+                "a purged posting came back with a fresh date",
+            ),
+            (
+                "open postings with no first_seen",
+                "SELECT COUNT(*) AS total FROM jobs WHERE first_seen IS NULL OR first_seen = ''",
+                "first_seen is the sort key and is assigned locally",
+            ),
+        )
+        findings: list[IntegrityFinding] = []
+        for check, sql, detail in checks:
+            row = self._conn.execute(sql).fetchone()
+            findings.append(
+                IntegrityFinding(check=check, count=int(row["total"]), detail=detail)
+            )
+        return findings

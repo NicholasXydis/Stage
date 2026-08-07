@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from stage.domain.enums import SyncOutcome
+from stage.domain.health import UNRECORDED_VOLUME
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +22,7 @@ class SourceRunStats:
     latency_p95_ms: float = 0.0
     elapsed_ms: float = 0.0
     deferred: int = 0
+    stored: int = UNRECORDED_VOLUME
 
     blocked: bool = False
 

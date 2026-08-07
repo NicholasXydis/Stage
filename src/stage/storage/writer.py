@@ -9,6 +9,7 @@ from typing import Self, TypeVar
 
 from stage.domain import (
     HttpValidator,
+    IntegrityFinding,
     Job,
     JobFilters,
     PurgeResult,
@@ -17,6 +18,7 @@ from stage.domain import (
     RateState,
     SourceVisit,
     SyncRun,
+    VolumePoint,
     WorkdayFacet,
 )
 from stage.storage.repository import Repository, SourceBatch, SourceBatchResult
@@ -146,3 +148,24 @@ class AsyncRepository:
 
     async def last_sync_at(self) -> datetime | None:
         return await self._writer.run(lambda repository: repository.last_sync_at())
+
+    async def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]:
+        return await self._writer.run(lambda repository: repository.volume_history(limit))
+
+    async def run_history(self, limit: int) -> list[SyncRun]:
+        return await self._writer.run(lambda repository: repository.run_history(limit))
+
+    async def all_visits(self) -> list[SourceVisit]:
+        return await self._writer.run(lambda repository: repository.all_visits())
+
+    async def integrity_findings(self) -> list[IntegrityFinding]:
+        return await self._writer.run(lambda repository: repository.integrity_findings())
+
+    async def composition(self, column: str) -> dict[str, int]:
+        return await self._writer.run(lambda repository: repository.composition(column))
+
+    async def stored_counts(self) -> dict[str, int]:
+        return await self._writer.run(lambda repository: repository.stored_counts())
+
+    async def schema_version(self) -> int:
+        return await self._writer.run(lambda repository: repository.schema_version())

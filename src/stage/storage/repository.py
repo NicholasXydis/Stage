@@ -7,6 +7,7 @@ from stage.domain import (
     CompanyVisit,
     DetailFetch,
     HttpValidator,
+    IntegrityFinding,
     Job,
     JobFilters,
     PurgeResult,
@@ -15,6 +16,7 @@ from stage.domain import (
     RateState,
     SourceVisit,
     SyncRun,
+    VolumePoint,
     WorkdayFacet,
 )
 
@@ -48,6 +50,7 @@ class SourceBatchResult:
     touched: int = 0
     quarantined: int = 0
     duplicates: int = 0
+    stored: int = 0
 
 
 class Repository(Protocol):
@@ -91,6 +94,20 @@ class Repository(Protocol):
     def last_sync_at(self) -> datetime | None: ...
 
     def cached_url_count(self) -> int: ...
+
+    def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]: ...
+
+    def run_history(self, limit: int) -> list[SyncRun]: ...
+
+    def all_visits(self) -> list[SourceVisit]: ...
+
+    def integrity_findings(self) -> list[IntegrityFinding]: ...
+
+    def composition(self, column: str) -> dict[str, int]: ...
+
+    def stored_counts(self) -> dict[str, int]: ...
+
+    def schema_version(self) -> int: ...
 
     def close(self) -> None: ...
 

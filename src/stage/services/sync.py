@@ -700,6 +700,7 @@ def _stats(
         latency_p50_ms=p50,
         latency_p95_ms=p95,
         elapsed_ms=elapsed_ms,
+        stored=counts.stored,
     )
 
 
