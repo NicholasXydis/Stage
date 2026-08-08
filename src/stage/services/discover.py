@@ -194,9 +194,8 @@ def resolve_careers_url(url: str) -> DiscoveryEvent:
         return UrlUnrecognized(
             url=url,
             detail=(
-                "no known ATS in this URL's shape. Open the page, DevTools -> Network, "
-                "filter Fetch/XHR, and find the request returning the job list — if there "
-                "is one, this is a custom_json entry"
+                "no known ATS in this URL's shape. DevTools -> Network, filter "
+                "Fetch/XHR: if a request returns the job list, this is custom_json"
             ),
         )
     detail = ""

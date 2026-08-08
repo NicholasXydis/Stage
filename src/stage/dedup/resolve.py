@@ -23,7 +23,7 @@ def _ambiguous_urls(jobs: Sequence[Job]) -> frozenset[str]:
     for job in jobs:
         if not job.apply_url_canonical:
             continue
-        key = (job.board_key, job.apply_url_canonical)
+        key = (job.source, job.apply_url_canonical)
         seen[key] = seen.get(key, 0) + 1
     return frozenset(url for (_, url), count in seen.items() if count > 1)
 

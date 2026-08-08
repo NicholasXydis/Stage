@@ -41,8 +41,8 @@ def malformed_note(dropped: int) -> str:
     if not dropped:
         return ""
     return (
-        f"{dropped} posting(s) failed validation and were dropped; raw rows captured. "
-        "The listing is incomplete, so it closes nothing this run"
+        f"{dropped} posting(s) failed validation and were dropped, raw rows "
+        "captured; the listing is incomplete so it closes nothing"
     )
 
 

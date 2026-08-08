@@ -212,20 +212,17 @@ class WorkdayAdapter:
                         "workday-nofacets", company.slug, response.payload
                     )
                     degraded = (
-                        f"the response carried no facet list at all while facet "
-                        f"{facet.facet_ids!r} was applied, so staleness could not be "
-                        f"decided - body shape, response path or parameter names. The "
-                        f"facet is kept unchanged and nothing is closed. Raw payload "
-                        f"captured at {captured}"
+                        f"no facet list at all while facet {facet.facet_ids!r} applied, "
+                        f"so staleness is undecided; facet kept, nothing closed. "
+                        f"Payload captured at {captured}"
                     )
             elif facet is not None and not facet_still_offered(page, facet):
                 stale_facet = True
                 if facet.pinned:
                     degraded = (
                         f"pinned facet {facet.facet_ids!r} is no longer offered under "
-                        f"{facet.parameter!r}; the pin is honoured and the results may be "
-                        "empty. Re-pin it with `stage discover --url` or clear "
-                        "`workday_facet` to let resolution run"
+                        f"{facet.parameter!r}; honoured anyway. Re-pin with "
+                        "`stage discover --url` or clear `workday_facet`"
                     )
                 else:
                     degraded = (
@@ -307,8 +304,8 @@ def _fallback_reason(page: WorkdayPage, company: Company, payload: Any) -> str:
         )
     captured = capture_payload("workday-nofacets", company.slug, payload)
     return (
-        "the response carried no facet list at all, so resolution could not run - body "
-        f"shape, response path or parameter names. Raw payload captured at {captured}"
+        "no facet list at all, so resolution could not run; "
+        f"payload captured at {captured}"
     )
 
 

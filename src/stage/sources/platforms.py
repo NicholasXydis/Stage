@@ -21,8 +21,8 @@ def safe_slug(slug: str) -> str:
     lowered = slug.strip().lower()
     if not SAFE_SLUG.match(lowered):
         raise SlugRejectedError(
-            f"{slug!r} is not a usable board token — expected lowercase letters, digits "
-            "and hyphens only (it interpolates into a hostname for some platforms)"
+            f"{slug!r} is not a usable board token — it interpolates into a "
+            "hostname, so lowercase letters, digits and hyphens only"
         )
     return lowered
 
@@ -43,9 +43,8 @@ def workday_target(tenant: str, site: str, dc: str) -> tuple[str, str]:
     ]
     if missing:
         raise SlugRejectedError(
-            f"registry row is missing {', '.join(missing)} — resolve it with "
-            "`stage discover --url <careers-page>`; §6.2 is explicit that a Workday "
-            "tenant, site and datacenter cannot be derived from a company name"
+            f"registry row is missing {', '.join(missing)} — a Workday tenant, site "
+            "and datacenter cannot be guessed. Use `stage discover --url`"
         )
 
     safe_tenant = safe_slug(tenant)
@@ -58,8 +57,8 @@ def workday_target(tenant: str, site: str, dc: str) -> tuple[str, str]:
     stripped_site = site.strip()
     if not SAFE_WORKDAY_SITE.match(stripped_site):
         raise SlugRejectedError(
-            f"{site!r} is not a usable Workday site — expected letters, digits, "
-            "underscores and hyphens only (it interpolates into the request path)"
+            f"{site!r} is not a usable Workday site — it interpolates into the "
+            "request path, so letters, digits, underscores and hyphens only"
         )
     host = f"{safe_tenant}.{stripped_dc}.myworkdayjobs.com"
     return host, f"/wday/cxs/{safe_tenant}/{stripped_site}/jobs"
