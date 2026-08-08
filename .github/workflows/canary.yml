@@ -1,0 +1,96 @@
+name: Canary
+
+on:
+  schedule:
+    - cron: "0 14 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          python -m pip install uv==0.11.28
+          uv sync --frozen
+      - name: Probe one board per platform
+        id: probe
+        continue-on-error: true
+        env:
+          STAGE_CAPTURE_DIR: ${{ runner.temp }}/captured
+        run: |
+          uv run stage canary --db "$RUNNER_TEMP/canary.db" | tee "$RUNNER_TEMP/canary.txt"
+          exit "${PIPESTATUS[0]}"
+      - name: Report captured payloads
+        if: steps.probe.outcome != 'success'
+        env:
+          STAGE_CAPTURE_DIR: ${{ runner.temp }}/captured
+        run: |
+          if [ -d "$STAGE_CAPTURE_DIR" ]; then
+            echo "Captured payloads:"
+            ls -la "$STAGE_CAPTURE_DIR"
+            for file in "$STAGE_CAPTURE_DIR"/*; do
+              echo "--- $file"
+              head -c 4000 "$file"
+              echo
+            done
+          else
+            echo "No payload was captured, so no adapter model rejected a body."
+          fi
+      - name: Write summary
+        if: always()
+        run: |
+          {
+            echo "## Canary"
+            echo ""
+            echo '```'
+            cat "$RUNNER_TEMP/canary.txt" 2>/dev/null || echo "the probe produced no output"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Open an issue when a source changed shape
+        if: steps.probe.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create canary --color d93f0b --description "Live source drift" --force
+          open=$(gh issue list --label canary --state open --json number --jq 'length')
+          if [ "$open" != "0" ]; then
+            echo "A canary issue is already open; not filing a duplicate."
+            exit 0
+          fi
+          {
+            echo "A scheduled probe of one board per platform failed."
+            echo ""
+            echo '```'
+            cat "$RUNNER_TEMP/canary.txt" 2>/dev/null || echo "the probe produced no output"
+            echo '```'
+            echo ""
+            echo "Captured payloads are printed in the run log: $RUN_URL"
+            echo ""
+            echo "A validation failure means the vendor changed shape. Rebuild the fixture"
+            echo "from the captured payload rather than loosening the model."
+          } > "$RUNNER_TEMP/issue.md"
+          gh issue create --label canary \
+            --title "Canary: a source no longer answers the shape we parse" \
+            --body-file "$RUNNER_TEMP/issue.md"
+      - name: Fail if the probe failed
+        if: always()
+        run: |
+          if [ "${{ steps.probe.outcome }}" != "success" ]; then exit 1; fi
