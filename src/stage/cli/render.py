@@ -1,3 +1,4 @@
+import json
 import re
 import unicodedata
 from collections.abc import AsyncIterator, Callable, Sequence
@@ -67,8 +68,6 @@ def _json_safe(value: object) -> object:
 
 
 def _dump(payload: object) -> str:
-    import json
-
     return json.dumps(_json_safe(payload), indent=2, ensure_ascii=False, default=_json_default)
 
 
@@ -619,8 +618,10 @@ async def render_sync(
     async for event in events:
         match event:
             case SyncStarted(sources=sources, companies=companies):
-                names = ", ".join(sources)
-                console.print(f"[bold]Syncing[/bold] {companies} company board(s) via {names}")
+                source_names = ", ".join(sources)
+                console.print(
+                    f"[bold]Syncing[/bold] {companies} company board(s) via {source_names}"
+                )
             case UnroutableCompanies(companies=stranded, platforms=platforms):
                 console.print(
                     f"\n[bold red]No adapter for {', '.join(platforms)}[/bold red] — "
@@ -632,11 +633,12 @@ async def render_sync(
                     "without failing the run.[/dim]"
                 )
             case BucketPlan() as bound:
-                names = ", ".join(bound.sources)
-                marker = "[yellow]" if bound.exceeds_ceiling else "[dim]"
-                close = "[/yellow]" if bound.exceeds_ceiling else "[/dim]"
+                shared = f" ({', '.join(bound.sources)})" if len(bound.sources) > 1 else ""
+                open_tag = "[yellow]" if bound.exceeds_ceiling else "[dim]"
+                close_tag = "[/yellow]" if bound.exceeds_ceiling else "[/dim]"
                 console.print(
-                    f"  {marker}bucket {bound.bucket}{close} — {bound.planned} planned, "
+                    f"  {open_tag}bucket {bound.bucket}{close_tag}{shared} — "
+                    f"{bound.planned} planned, "
                     f"worst case {bound.worst_case} against a ceiling of {bound.ceiling}"
                     f"{' (the ceiling stops the run early)' if bound.exceeds_ceiling else ''}"
                 )
@@ -669,17 +671,19 @@ async def render_sync(
                     )
                 planned += 1
                 validated += int(cached)
-                marker = "[cyan]cached[/cyan]" if cached else "[yellow]cold  [/yellow]"
+                cache_marker = "[cyan]cached[/cyan]" if cached else "[yellow]cold  [/yellow]"
                 room = max(20, console.width - 34)
-                console.print(f"  {marker} {truncate(company, 22):<22} {truncate(url, room)}")
+                console.print(
+                    f"  {cache_marker} {truncate(company, 22):<22} {truncate(url, room)}"
+                )
             case RequestLogged() as record:
                 _write_request_log(request_log, record)
             case CompanyFinished(
                 company=company, fetched=fetched, elapsed_ms=elapsed, degraded=degraded
             ):
-                marker = "[yellow]part[/yellow]" if degraded else "[green]ok[/green]  "
+                status_marker = "[yellow]part[/yellow]" if degraded else "[green]ok[/green]  "
                 console.print(
-                    f"  {marker} {sanitize(company):<28} "
+                    f"  {status_marker} {sanitize(company):<28} "
                     f"{fetched:>4} posting(s)  {elapsed:>7.0f}ms"
                 )
                 if degraded:
@@ -896,8 +900,6 @@ def _render_source_summary(console: Console, event: SourceFinished) -> None:
 def _write_request_log(stream: TextIO | None, record: RequestLogged) -> None:
     if stream is None:
         return
-    import json
-
     stream.write(
         json.dumps(
             {
