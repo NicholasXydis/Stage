@@ -6,6 +6,8 @@ from typing import Annotated, Any
 
 import typer
 
+from stage.domain import STALE_AFTER_DAYS
+
 
 def run_async[T](coroutine: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(coroutine)
@@ -219,6 +221,105 @@ def purge(db: DatabaseOption = None) -> None:
 
 
 @app.command()
+def doctor(
+    stale_days: Annotated[
+        int,
+        typer.Option("--stale-days", help="Days without a success before a board is stale"),
+    ] = STALE_AFTER_DAYS,
+    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    db: DatabaseOption = None,
+) -> None:
+    from datetime import UTC, datetime
+
+    from rich.console import Console
+
+    from stage.cli.render import health_to_json, render_doctor
+    from stage.services.health import DoctorReport
+    from stage.services.health import doctor as run_doctor
+    from stage.storage import open_repository
+
+    console = Console()
+    now = datetime.now(UTC)
+
+    async def run() -> DoctorReport:
+        async with open_repository(_database(db)) as repository:
+            return await run_doctor(repository, now=now, stale_after_days=stale_days)
+
+    report = run_async(run())
+    if as_json:
+        console.print_json(health_to_json(report))
+    else:
+        render_doctor(console, report, now)
+    if not report.is_healthy:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def stats(
+    runs: Annotated[
+        int,
+        typer.Option("--runs", help="How many recent syncs to show"),
+    ] = 10,
+    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    db: DatabaseOption = None,
+) -> None:
+    from datetime import UTC, datetime
+
+    from rich.console import Console
+
+    from stage.cli.render import render_stats, stats_to_json
+    from stage.services.health import StatsReport, statistics
+    from stage.storage import open_repository
+
+    console = Console()
+
+    async def run() -> StatsReport:
+        async with open_repository(_database(db)) as repository:
+            return await statistics(repository, history=max(1, runs))
+
+    report = run_async(run())
+    if as_json:
+        console.print_json(stats_to_json(report))
+    else:
+        render_stats(console, report, datetime.now(UTC))
+
+
+@app.command()
+def canary(
+    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    registry: RegistryOption = None,
+    db: DatabaseOption = None,
+) -> None:
+    from rich.console import Console
+
+    from stage.cli.render import canary_to_json, render_canary
+    from stage.companies import RegistryError, load_companies
+    from stage.services.canary import CanaryReport
+    from stage.services.canary import canary as run_canary
+    from stage.storage import open_repository
+
+    console = Console()
+
+    async def run() -> CanaryReport:
+        companies = load_companies(registry)
+        async with open_repository(_database(db)) as repository:
+            return await run_canary(repository, companies)
+
+    try:
+        report = run_async(run())
+    except RegistryError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+
+    if as_json:
+        console.print_json(canary_to_json(report))
+    else:
+        render_canary(console, report)
+    if not report.passed:
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def sources(
     clear: Annotated[
         str | None,
@@ -228,27 +329,46 @@ def sources(
         bool,
         typer.Option("--clear-all", help="Clear every bucket"),
     ] = False,
+    boards: Annotated[
+        bool,
+        typer.Option("--boards", help="List every board that is failing or stale"),
+    ] = False,
+    stale_days: Annotated[
+        int,
+        typer.Option("--stale-days", help="Days without a success before a board is stale"),
+    ] = STALE_AFTER_DAYS,
+    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
     db: DatabaseOption = None,
 ) -> None:
     from datetime import UTC, datetime
 
     from rich.console import Console
 
-    from stage.cli.render import render_rate_state
+    from stage.cli.render import (
+        health_to_json,
+        render_board_health,
+        render_rate_state,
+        render_source_health,
+    )
+    from stage.services.health import DoctorReport
+    from stage.services.health import doctor as run_doctor
     from stage.services.maintenance import RateStateView, rate_state
     from stage.storage import open_repository
 
     console = Console()
+    now = datetime.now(UTC)
 
     if clear is not None and clear_all:
         console.print("[red]Pass either --clear <bucket> or --clear-all, not both.[/red]")
         raise typer.Exit(code=2)
 
-    async def run() -> RateStateView:
+    async def run() -> tuple[RateStateView, DoctorReport]:
         async with open_repository(_database(db)) as repository:
-            return await rate_state(repository, bucket=clear, clear_all=clear_all)
+            view = await rate_state(repository, bucket=clear, clear_all=clear_all)
+            report = await run_doctor(repository, now=now, stale_after_days=stale_days)
+            return view, report
 
-    view = run_async(run())
+    view, report = run_async(run())
     cleared, states = view.cleared, view.states
 
     if clear is not None or clear_all:
@@ -258,7 +378,16 @@ def sources(
         else:
             console.print(f"[yellow]No stored rate state for {target}.[/yellow]")
 
-    render_rate_state(console, states, datetime.now(UTC))
+    if as_json:
+        console.print_json(health_to_json(report))
+        return
+
+    render_source_health(console, report.sources, report.stale_after_days)
+    console.print()
+    render_rate_state(console, states, now)
+    if boards:
+        console.print()
+        render_board_health(console, report.sources, now)
 
 
 @app.command()
