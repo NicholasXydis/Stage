@@ -276,16 +276,18 @@ async def _merge(streams: Sequence[AsyncIterator[SyncEvent]]) -> AsyncIterator[S
             yield event
         return
 
-    queue: asyncio.Queue[SyncEvent | BaseException | None] = asyncio.Queue()
+    queue: asyncio.Queue[SyncEvent | Exception | None] = asyncio.Queue()
 
     async def pump(stream: AsyncIterator[SyncEvent]) -> None:
         try:
             async for event in stream:
                 await queue.put(event)
-        except BaseException as exc:  # noqa: BLE001 - re-raised on the consumer side
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - re-raised on the consumer side
             await queue.put(exc)
         finally:
-            await queue.put(None)
+            queue.put_nowait(None)
 
     tasks = [asyncio.create_task(pump(stream)) for stream in streams]
     try:
@@ -294,7 +296,7 @@ async def _merge(streams: Sequence[AsyncIterator[SyncEvent]]) -> AsyncIterator[S
             item = await queue.get()
             if item is None:
                 done += 1
-            elif isinstance(item, BaseException):
+            elif isinstance(item, Exception):
                 raise item
             else:
                 yield item
