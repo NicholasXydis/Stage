@@ -15,13 +15,14 @@ class FeedAdapter(Protocol):
     hosts: ClassVar[frozenset[str]]
     bucket_key: ClassVar[str]
 
-    def season_year(self, now: datetime) -> int: ...
+    def season_year(self, now: datetime) -> int:
+        pass
 
-    def plan(self, now: datetime) -> tuple[str, ...]: ...
+    def plan(self, now: datetime) -> tuple[str, ...]:
+        pass
 
-    async def fetch(self, client: HttpClient, now: datetime) -> FetchResult: ...
-
-
+    async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
+        pass
 def register_feed[F: FeedAdapter](cls: type[F]) -> type[F]:
     adapter = cls()
     existing = _FEEDS.get(adapter.name)

@@ -241,7 +241,7 @@ class _FlakyFeed:
 async def test_a_partial_feed_run_never_closes_the_whole_source(
     db_path: Path, run_time: datetime, monkeypatch: pytest.MonkeyPatch, outcome: str
 ) -> None:
-    import stage.services.sync as sync_module
+    from stage.services import sync as sync_module
     from stage.storage import SourceBatch, open_repository
 
     monkeypatch.setattr(sync_module, "get_feeds", lambda: {"flaky": _FlakyFeed(outcome)})

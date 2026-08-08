@@ -73,11 +73,14 @@ class Adapter(Protocol):
 
     max_requests_per_company: ClassVar[int]
 
-    def board_key(self, company: Company) -> str: ...
+    def board_key(self, company: Company) -> str:
+        pass
 
-    def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]: ...
+    def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:
+        pass
 
-    def plan(self, company: Company) -> tuple[str, ...]: ...
+    def plan(self, company: Company) -> tuple[str, ...]:
+        pass
 
     async def fetch(
         self,
@@ -86,9 +89,8 @@ class Adapter(Protocol):
         now: datetime,
         facets: Any = None,
         details: Sequence[str] = (),
-    ) -> FetchResult: ...
-
-
+    ) -> FetchResult:
+        pass
 def capture_payload(source: str, slug: str, payload: Any) -> str:
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%f")
     target = capture_dir() / f"{source}-{slug}-{stamp}.json"

@@ -298,7 +298,6 @@ async def test_no_facet_falls_back_to_search_text_and_says_so() -> None:
     captured: list[dict[str, object]] = []
 
     def record(request: httpx.Request) -> httpx.Response:
-        import json
 
         captured.append(json.loads(request.content))
         return httpx.Response(
@@ -331,7 +330,6 @@ async def test_a_pinned_facet_is_sent_and_never_overwritten_by_resolution() -> N
     captured: list[dict[str, object]] = []
 
     def record(request: httpx.Request) -> httpx.Response:
-        import json
 
         captured.append(json.loads(request.content))
         return httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": _facets()})
@@ -584,7 +582,6 @@ async def test_a_cached_facet_is_applied_without_re_resolving() -> None:
     captured: list[dict[str, object]] = []
 
     def record(request: httpx.Request) -> httpx.Response:
-        import json
 
         captured.append(json.loads(request.content))
         return httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": _facets()})
@@ -681,7 +678,6 @@ async def test_every_matching_picklist_value_is_applied_not_just_the_first() -> 
     captured: list[dict[str, object]] = []
 
     def record(request: httpx.Request) -> httpx.Response:
-        import json
 
         captured.append(json.loads(request.content))
         return httpx.Response(

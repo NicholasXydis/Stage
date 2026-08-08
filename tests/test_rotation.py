@@ -1,4 +1,5 @@
 
+import sqlite3
 from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -455,7 +456,6 @@ async def test_a_rotated_run_records_what_it_deferred_so_history_stays_readable(
         async for _ in sync_module.sync(repository, _registry(5), now_fn=_at(NOW)):
             pass
 
-    import sqlite3
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -471,7 +471,6 @@ async def test_a_rotated_run_records_what_it_deferred_so_history_stays_readable(
 async def test_a_blocked_source_records_history_rather_than_recording_nothing(
     db_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import sqlite3
 
     from stage.services import sync as sync_module
 

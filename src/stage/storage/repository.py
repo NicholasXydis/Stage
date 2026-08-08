@@ -54,62 +54,87 @@ class SourceBatchResult:
 
 
 class Repository(Protocol):
-    def apply_source_batch(self, batch: SourceBatch) -> SourceBatchResult: ...
+    def apply_source_batch(self, batch: SourceBatch) -> SourceBatchResult:
+        pass
 
-    def load_validators(self, source: str) -> Mapping[str, HttpValidator]: ...
+    def load_validators(self, source: str) -> Mapping[str, HttpValidator]:
+        pass
 
-    def load_rate_state(self) -> Mapping[str, RateState]: ...
+    def load_rate_state(self) -> Mapping[str, RateState]:
+        pass
 
-    def clear_rate_state(self, bucket: str | None = None) -> int: ...
+    def clear_rate_state(self, bucket: str | None = None) -> int:
+        pass
 
-    def stale_members(self, source: str, before: datetime) -> list[SourceVisit]: ...
+    def stale_members(self, source: str, before: datetime) -> list[SourceVisit]:
+        pass
 
-    def detail_queue(self, source: str, limit: int) -> list[str]: ...
+    def detail_queue(self, source: str, limit: int) -> list[str]:
+        pass
 
-    def detail_queue_size(self, source: str) -> int: ...
+    def detail_queue_size(self, source: str) -> int:
+        pass
 
-    def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]: ...
+    def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
+        pass
 
+    def list_quarantined(self, filters: QuarantineFilters) -> list[QuarantinedJob]:
+        pass
 
-    def list_quarantined(self, filters: QuarantineFilters) -> list[QuarantinedJob]: ...
+    def count_duplicates(self) -> int:
+        pass
 
-    def count_duplicates(self) -> int: ...
+    def purge(self, now: datetime) -> PurgeResult:
+        pass
 
-    def purge(self, now: datetime) -> PurgeResult: ...
+    def tombstone_count(self) -> int:
+        pass
 
-    def tombstone_count(self) -> int: ...
+    def count_quarantined(self, filters: QuarantineFilters) -> int:
+        pass
 
-    def count_quarantined(self, filters: QuarantineFilters) -> int: ...
+    def quarantine_reason_counts(self) -> dict[str, int]:
+        pass
 
-    def quarantine_reason_counts(self) -> dict[str, int]: ...
+    def list_jobs(self, filters: JobFilters) -> list[Job]:
+        pass
 
-    def list_jobs(self, filters: JobFilters) -> list[Job]: ...
+    def get_job(self, job_id: str) -> Job | None:
+        pass
 
-    def get_job(self, job_id: str) -> Job | None: ...
+    def count_jobs(self, filters: JobFilters) -> int:
+        pass
 
-    def count_jobs(self, filters: JobFilters) -> int: ...
+    def record_sync_run(self, run: SyncRun) -> None:
+        pass
 
-    def record_sync_run(self, run: SyncRun) -> None: ...
+    def last_sync_at(self) -> datetime | None:
+        pass
 
-    def last_sync_at(self) -> datetime | None: ...
+    def cached_url_count(self) -> int:
+        pass
 
-    def cached_url_count(self) -> int: ...
+    def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]:
+        pass
 
-    def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]: ...
+    def run_history(self, limit: int) -> list[SyncRun]:
+        pass
 
-    def run_history(self, limit: int) -> list[SyncRun]: ...
+    def all_visits(self) -> list[SourceVisit]:
+        pass
 
-    def all_visits(self) -> list[SourceVisit]: ...
+    def integrity_findings(self) -> list[IntegrityFinding]:
+        pass
 
-    def integrity_findings(self) -> list[IntegrityFinding]: ...
+    def composition(self, column: str) -> dict[str, int]:
+        pass
 
-    def composition(self, column: str) -> dict[str, int]: ...
+    def stored_counts(self) -> dict[str, int]:
+        pass
 
-    def stored_counts(self) -> dict[str, int]: ...
+    def schema_version(self) -> int:
+        pass
 
-    def schema_version(self) -> int: ...
-
-    def close(self) -> None: ...
-
-
+    def close(self) -> None:
+        pass
 __all__ = ["Repository", "SourceBatch", "SourceBatchResult"]

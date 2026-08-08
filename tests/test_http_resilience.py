@@ -95,7 +95,6 @@ async def test_retry_after_is_honored_over_backoff() -> None:
         ]
     )
 
-    import time
 
 
     async with _client() as client:
