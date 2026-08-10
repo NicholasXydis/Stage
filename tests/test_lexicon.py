@@ -71,6 +71,4 @@ def test_no_phrase_is_both_non_cs_and_a_rescue() -> None:
 
     lexicon = eligibility_lexicon()
     overlap = lexicon.non_cs & lexicon.non_cs_rescue
-    assert not overlap, (
-        f"{sorted(overlap)} would both reject and rescue the same title"
-    )
+    assert not overlap, f"{sorted(overlap)} would both reject and rescue the same title"

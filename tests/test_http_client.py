@@ -114,9 +114,7 @@ async def test_concurrency_is_enforced_not_merely_declared() -> None:
         transport=httpx.MockTransport(handler),
         jitter=False,
     ) as client:
-        await asyncio.gather(
-            *(client.get_json(f"https://example.com/{n}") for n in range(9))
-        )
+        await asyncio.gather(*(client.get_json(f"https://example.com/{n}") for n in range(9)))
 
     assert peak == 3
 
@@ -134,9 +132,7 @@ async def test_the_stride_divides_the_interval_by_concurrency() -> None:
         jitter=False,
     ) as client:
         started = time.perf_counter()
-        await asyncio.gather(
-            *(client.get_json(f"https://example.com/{n}") for n in range(8))
-        )
+        await asyncio.gather(*(client.get_json(f"https://example.com/{n}") for n in range(8)))
         elapsed = time.perf_counter() - started
 
     assert 0.6 < elapsed < 1.2, elapsed

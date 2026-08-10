@@ -107,9 +107,7 @@ async def test_one_bad_row_is_dropped_and_costs_the_board_its_authority(
     acme_lever: Company, run_time: datetime
 ) -> None:
     respx.get(ENDPOINT).mock(
-        return_value=httpx.Response(
-            200, json=[{"id": "abc", "text": "Intern"}, {"text": "no id"}]
-        )
+        return_value=httpx.Response(200, json=[{"id": "abc", "text": "Intern"}, {"text": "no id"}])
     )
     adapter = get_adapter("lever")
     async with _client() as client:

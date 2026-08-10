@@ -1,4 +1,3 @@
-
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
@@ -141,7 +140,5 @@ def test_an_unresolvable_row_gets_a_key_of_its_own_that_matches_no_job() -> None
     a = _safe_board_key(cast(Adapter, adapter), first)
     b = _safe_board_key(cast(Adapter, adapter), second)
 
-    assert a != b, (
-        "a shared fallback key lets one broken row close another's postings"
-    )
+    assert a != b, "a shared fallback key lets one broken row close another's postings"
     assert not a.startswith("workday:"), "it must match no real job id, so it closes nothing"

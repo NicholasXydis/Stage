@@ -1,4 +1,3 @@
-
 import pytest
 
 from stage.domain import Platform as _Platform
@@ -57,9 +56,7 @@ def test_every_workday_registry_row_passes_validation_today() -> None:
             continue
         workday_target(row.workday_tenant or "", row.workday_site or "", row.workday_dc or "")
 
-    assert len(no_site) == 2, (
-        "tenant, site and datacenter cannot be derived from a name"
-    )
+    assert len(no_site) == 2, "tenant, site and datacenter cannot be derived from a name"
 
 
 @pytest.mark.parametrize(

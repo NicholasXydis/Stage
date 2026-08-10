@@ -57,9 +57,7 @@ async def test_pagination_collects_every_page(acme_sr: Company, run_time: dateti
 
 
 @respx.mock
-async def test_a_304_on_the_first_page_skips_the_rest(
-    acme_sr: Company, run_time: datetime
-) -> None:
+async def test_a_304_on_the_first_page_skips_the_rest(acme_sr: Company, run_time: datetime) -> None:
     route = respx.get(ENDPOINT).mock(return_value=httpx.Response(304))
     adapter = get_adapter("smartrecruiters")
     async with _client() as client:
@@ -93,9 +91,9 @@ async def test_a_queued_detail_row_makes_the_listing_bypass_its_validator(
         )
         result = await adapter.fetch(acme_sr, client, run_time, None, [queued])
 
-    assert "if-none-match" not in {
-        header.lower() for header in listing.calls[0].request.headers
-    }, "a queued board must skip its validator, or the 304 skips the detail phase"
+    assert "if-none-match" not in {header.lower() for header in listing.calls[0].request.headers}, (
+        "a queued board must skip its validator, or the 304 skips the detail phase"
+    )
     assert detail.call_count == 1
     assert result.jobs[0].description == "Build things."
     assert result.authoritative, "the listing was fetched in full, so it still closes"

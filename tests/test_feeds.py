@@ -16,9 +16,7 @@ from stage.sources.simplify import SimplifyFeed
 
 
 def _client(feed: SimplifyFeed) -> HttpClient:
-    return HttpClient(
-        allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False
-    )
+    return HttpClient(allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False)
 
 
 def test_the_feed_self_registers_on_its_own_axis() -> None:
@@ -86,9 +84,7 @@ async def test_a_non_list_payload_is_a_shape_change_and_fails_loudly(
     run_time: datetime,
 ) -> None:
     feed = SimplifyFeed()
-    respx.get(feed.plan(run_time)[0]).mock(
-        return_value=httpx.Response(200, json={"listings": []})
-    )
+    respx.get(feed.plan(run_time)[0]).mock(return_value=httpx.Response(200, json={"listings": []}))
     from stage.sources.base import PayloadValidationError
 
     async with _client(feed) as client:
@@ -261,9 +257,7 @@ async def test_a_partial_feed_run_never_closes_the_whole_source(
         await repository.apply_source_batch(
             SourceBatch(source="flaky", run_started_at=run_time, jobs=(seeded,))
         )
-        async for _ in sync_module.sync(
-            repository, [], sources=["flaky"], now_fn=lambda: later
-        ):
+        async for _ in sync_module.sync(repository, [], sources=["flaky"], now_fn=lambda: later):
             pass
         survivor = await repository.get_job("flaky-1")
 
@@ -275,7 +269,6 @@ async def test_a_partial_feed_run_never_closes_the_whole_source(
 async def test_a_degraded_fetch_does_not_freeze_its_truncated_view(
     db_path: Path, run_time: datetime
 ) -> None:
-    from stage.companies import load_companies
     from stage.domain import Company, Platform
     from stage.services.sync import sync
     from stage.storage import open_repository
@@ -296,7 +289,6 @@ async def test_a_degraded_fetch_does_not_freeze_its_truncated_view(
         async for _ in sync(repository, [acme], sources=["greenhouse"], now_fn=lambda: run_time):
             pass
         assert dict(await repository.load_validators("greenhouse")) == {}
-    assert load_companies is not None
 
 
 @respx.mock

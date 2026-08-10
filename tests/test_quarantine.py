@@ -1,4 +1,3 @@
-
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -81,9 +80,7 @@ def test_screen_location_rejects_other_and_nothing_else(
     assert rejected is (bucket is LocationBucket.OTHER), bucket
 
 
-async def test_quarantined_postings_leave_the_jobs_table(
-    db_path: Path, run_time: datetime
-) -> None:
+async def test_quarantined_postings_leave_the_jobs_table(db_path: Path, run_time: datetime) -> None:
     async with open_repository(db_path) as repository:
         kept, rejected = normalize_batch(
             [
@@ -142,9 +139,7 @@ async def test_a_released_posting_keeps_its_original_first_seen(
     async with open_repository(db_path) as repository:
         _, rejected = normalize_batch([_job("row", "Bengaluru, India", run_time)])
         await repository.apply_source_batch(
-            SourceBatch(
-                source="greenhouse", run_started_at=run_time, quarantined=rejected
-            )
+            SourceBatch(source="greenhouse", run_started_at=run_time, quarantined=rejected)
         )
 
         released = _job("row", "Montreal, QC, Canada", later)
@@ -170,9 +165,7 @@ async def test_quarantine_filters(db_path: Path, run_time: datetime) -> None:
             ]
         )
         await repository.apply_source_batch(
-            SourceBatch(
-                source="greenhouse", run_started_at=run_time, quarantined=rejected
-            )
+            SourceBatch(source="greenhouse", run_started_at=run_time, quarantined=rejected)
         )
         assert await repository.count_quarantined(QuarantineFilters()) == 2
         assert await repository.count_quarantined(QuarantineFilters(source="lever")) == 0

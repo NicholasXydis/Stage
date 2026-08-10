@@ -1,4 +1,3 @@
-
 import json
 from pathlib import Path
 
@@ -103,8 +102,9 @@ def test_every_harvested_pair_detects_as_expected() -> None:
 def test_the_full_bilingual_title_beats_either_half() -> None:
     pairs = json.loads(FIXTURE.read_text(encoding="utf-8"))["pairs"]
     bilingual = [
-        pair
-        for pair in pairs
-        if detect_language(pair["title_raw"]).language is Language.BILINGUAL
+        pair for pair in pairs if detect_language(pair["title_raw"]).language is Language.BILINGUAL
     ]
-    assert len(bilingual) >= 2, "the fixture should exercise the bilingual path"
+    assert len(bilingual) >= 4, (
+        f"only {len(bilingual)} of {len(pairs)} single titles resolve bilingual; a floor of 2 "
+        "passed on a fixture where the path was barely exercised"
+    )

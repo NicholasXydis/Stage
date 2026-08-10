@@ -95,8 +95,6 @@ async def test_retry_after_is_honored_over_backoff() -> None:
         ]
     )
 
-
-
     async with _client() as client:
         started = time.perf_counter()
         response = await client.get_json(ENDPOINT)
@@ -189,9 +187,7 @@ def test_a_claimed_probe_can_be_handed_back() -> None:
     assert not breaker.allows(), "a second caller must not get one"
 
     breaker.release_probe()
-    assert breaker.allows(), (
-        "a reservation that claims the probe and aborts must hand it back"
-    )
+    assert breaker.allows(), "a reservation that claims the probe and aborts must hand it back"
 
 
 def test_is_open_does_not_consume_the_probe() -> None:

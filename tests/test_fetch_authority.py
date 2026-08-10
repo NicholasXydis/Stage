@@ -1,4 +1,3 @@
-
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -19,10 +18,7 @@ def _sr_company() -> Company:
 
 
 def _sr_url(offset: int) -> str:
-    return (
-        "https://api.smartrecruiters.com/v1/companies/acme/postings"
-        f"?limit=100&offset={offset}"
-    )
+    return f"https://api.smartrecruiters.com/v1/companies/acme/postings?limit=100&offset={offset}"
 
 
 def _sr_page(ids: list[int], total: int) -> dict[str, object]:
@@ -201,9 +197,7 @@ async def test_first_seen_survives_the_jobs_to_quarantine_direction(db_path: Pat
             SourceBatch(source="greenhouse", run_started_at=original, jobs=(job(original),))
         )
         await repository.apply_source_batch(
-            SourceBatch(
-                source="greenhouse", run_started_at=later, quarantined=(rejected(later),)
-            )
+            SourceBatch(source="greenhouse", run_started_at=later, quarantined=(rejected(later),))
         )
         held = await repository.list_quarantined(
             __import__("stage.domain", fromlist=["QuarantineFilters"]).QuarantineFilters()

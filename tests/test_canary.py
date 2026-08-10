@@ -66,9 +66,7 @@ def test_a_board_answering_with_no_postings_fails_the_canary() -> None:
 
 
 def test_an_unchanged_board_is_not_an_empty_board() -> None:
-    report = CanaryReport(
-        probes=(BoardProbe(source="greenhouse", company="Acme", unchanged=True),)
-    )
+    report = CanaryReport(probes=(BoardProbe(source="greenhouse", company="Acme", unchanged=True),))
     assert not report.empties, "a 304 says the board did not change, not that it is empty"
     assert report.passed
 

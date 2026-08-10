@@ -137,9 +137,7 @@ def test_a_division_with_its_own_board_is_resolved_under_its_parent_seed() -> No
 
 def test_a_name_collision_is_not_a_division() -> None:
     seeds = (Seed(name="Meta"),)
-    entries = (
-        DatasetEntry(name="Meta Theory", ats_links=("https://jobs.lever.co/metatheory",)),
-    )
+    entries = (DatasetEntry(name="Meta Theory", ats_links=("https://jobs.lever.co/metatheory",)),)
     report = crossref(seeds, entries)
     assert report.resolved == []
     assert [name for _, name in report.name_collisions] == ["Meta Theory"]

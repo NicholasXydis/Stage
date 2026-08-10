@@ -1,4 +1,3 @@
-
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -309,10 +308,7 @@ async def test_a_blocked_source_names_itself_and_when_it_clears(
                 ),
             )
         )
-        events = [
-            event
-            async for event in sync_module.sync(repository, [acme], now_fn=lambda: now)
-        ]
+        events = [event async for event in sync_module.sync(repository, [acme], now_fn=lambda: now)]
 
     announced = [event for event in events if isinstance(event, SourceBlocked)]
     assert len(announced) == 1
@@ -356,10 +352,7 @@ async def test_an_expired_block_lets_the_source_run_again(
                 ),
             )
         )
-        events = [
-            event
-            async for event in sync_module.sync(repository, [acme], now_fn=lambda: now)
-        ]
+        events = [event async for event in sync_module.sync(repository, [acme], now_fn=lambda: now)]
 
     assert not [event for event in events if isinstance(event, SourceBlocked)]
 
