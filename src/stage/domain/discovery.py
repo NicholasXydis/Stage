@@ -6,7 +6,6 @@ from stage.domain.events import RequestLogged
 
 @dataclass(frozen=True, slots=True)
 class PlatformCandidate:
-
     platform: Platform
     slug: str
     workday_tenant: str | None = None

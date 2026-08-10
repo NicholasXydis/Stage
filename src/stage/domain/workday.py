@@ -4,7 +4,6 @@ from datetime import datetime
 
 @dataclass(frozen=True, slots=True)
 class WorkdayFacet:
-
     tenant: str
     site: str
     parameter: str

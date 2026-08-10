@@ -10,7 +10,7 @@ CLEAR_RATIO = 1.05
 
 def block_duration(consecutive_failures: int) -> float:
     steps = max(0, consecutive_failures - BREAKER_THRESHOLD)
-    return min(BLOCK_CAP_S, BASE_BLOCK_S * float(2**min(steps, 16)))
+    return min(BLOCK_CAP_S, BASE_BLOCK_S * float(2 ** min(steps, 16)))
 
 
 def decay(override: float, baseline: float) -> float | None:
@@ -22,7 +22,6 @@ def decay(override: float, baseline: float) -> float | None:
 
 @dataclass(frozen=True, slots=True)
 class RateState:
-
     bucket: str
     updated_at: datetime
     blocked_until: datetime | None = None

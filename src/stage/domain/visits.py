@@ -4,7 +4,6 @@ from datetime import datetime
 
 @dataclass(frozen=True, slots=True)
 class CompanyVisit:
-
     board: str
     succeeded: bool
     error: str = ""
@@ -13,7 +12,6 @@ class CompanyVisit:
 
 @dataclass(frozen=True, slots=True)
 class SourceVisit:
-
     source: str
     board: str
     last_attempt_at: datetime
@@ -29,7 +27,6 @@ class SourceVisit:
 
 @dataclass(frozen=True, slots=True)
 class DetailFetch:
-
     id: str
     resolved: bool = False
     failed: bool = False

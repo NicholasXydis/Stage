@@ -1,4 +1,3 @@
-
 import pytest
 
 from stage.domain import LocationBucket, RemoteScope

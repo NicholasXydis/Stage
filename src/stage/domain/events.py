@@ -49,14 +49,12 @@ class CompanyUnchanged:
 
 @dataclass(frozen=True, slots=True)
 class UnroutableCompanies:
-
     companies: tuple[str, ...]
     platforms: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class SourceBlocked:
-
     source: str
     bucket: str
     blocked_until: datetime
@@ -67,7 +65,6 @@ class SourceBlocked:
 
 @dataclass(frozen=True, slots=True)
 class SourceRotated:
-
     source: str
     bucket: str
     selected: int
@@ -87,7 +84,6 @@ class PlannedRequest:
 
 @dataclass(frozen=True, slots=True)
 class BucketPlan:
-
     bucket: str
     sources: tuple[str, ...]
     planned: int

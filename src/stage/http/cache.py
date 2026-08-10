@@ -42,4 +42,3 @@ class ValidatorCache:
     @property
     def pending(self) -> Mapping[str, HttpValidator]:
         return dict(self._dirty)
-

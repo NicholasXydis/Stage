@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from typing import ClassVar, Protocol, runtime_checkable
 
@@ -23,6 +22,8 @@ class FeedAdapter(Protocol):
 
     async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
         pass
+
+
 def register_feed[F: FeedAdapter](cls: type[F]) -> type[F]:
     adapter = cls()
     existing = _FEEDS.get(adapter.name)

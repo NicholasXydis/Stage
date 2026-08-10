@@ -1,4 +1,3 @@
-
 SOURCE_PRIORITY: tuple[str, ...] = (
     "greenhouse",
     "lever",

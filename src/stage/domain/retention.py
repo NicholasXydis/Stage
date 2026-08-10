@@ -14,7 +14,6 @@ class PurgeResult:
 
 @dataclass(frozen=True, slots=True)
 class Tombstone:
-
     id: str
     source: str
     first_seen: datetime
