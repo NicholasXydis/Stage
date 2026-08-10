@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from datetime import date
 
+from stage.domain.custom_board import CustomBoard
 from stage.domain.enums import Platform, Priority, SourceOfRecord
 
 
 @dataclass(frozen=True, slots=True)
 class Company:
-
     name: str
     platform: Platform
     slug: str
@@ -20,6 +20,8 @@ class Company:
     workday_dc: str | None = None
     workday_facet: str | None = None
     name_gate_exempt: bool = False
+    notes: str | None = None
+    custom: CustomBoard | None = None
 
     @property
     def registry_key(self) -> str:

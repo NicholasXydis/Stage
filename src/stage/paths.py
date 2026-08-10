@@ -44,6 +44,16 @@ def lexicon_dir() -> Path:
     return Path(__file__).resolve().parent / "data" / "lexicon"
 
 
+def font_path() -> Path:
+    packaged = Path(__file__).resolve().parent / "data" / "fonts" / "DejaVuSans.ttf"
+    if not packaged.exists():
+        raise FileNotFoundError(
+            f"the embedded PDF font is missing from {packaged.parent} — "
+            "export --format csv needs no font"
+        )
+    return packaged
+
+
 def capture_dir() -> Path:
     override = os.environ.get("STAGE_CAPTURE_DIR")
     root = Path(override).expanduser() if override else data_dir() / "captured"

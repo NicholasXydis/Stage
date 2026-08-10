@@ -1,4 +1,3 @@
-
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -66,7 +65,6 @@ def workday_target(tenant: str, site: str, dc: str) -> tuple[str, str]:
 
 @dataclass(frozen=True, slots=True)
 class PlatformProbe:
-
     platform: Platform
     host: str
     probe_url: str
@@ -271,7 +269,10 @@ _RESERVED_PATH_SEGMENTS = frozenset({"jobs", "job", "careers", "search", "embed"
 def _split(url: str) -> tuple[str, str] | None:
     from urllib.parse import urlsplit
 
-    parts = urlsplit(url if "//" in url else f"https://{url}")
+    try:
+        parts = urlsplit(url if "//" in url else f"https://{url}")
+    except ValueError:
+        return None
     if parts.scheme not in ("https", "http", ""):
         return None
     host = (parts.hostname or "").lower()

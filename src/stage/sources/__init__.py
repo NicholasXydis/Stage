@@ -9,6 +9,7 @@ from stage.sources.base import (
     FetchResult,
     PayloadValidationError,
     capture_payload,
+    convert_rows,
 )
 from stage.sources.feed import (
     FeedAdapter,
@@ -70,6 +71,7 @@ __all__ = [
     "PayloadValidationError",
     "adapter_for_platform",
     "capture_payload",
+    "convert_rows",
     "get_feeds",
     "get_adapter",
     "get_adapters",

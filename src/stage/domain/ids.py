@@ -15,6 +15,13 @@ def board_key(source: str, board_slug: str) -> str:
     return _SEPARATOR.join(parts)
 
 
+def board_of(identifier: str, fallback: str) -> str:
+    parts = identifier.split(_SEPARATOR)
+    if len(parts) < 3:
+        return fallback
+    return _SEPARATOR.join(parts[:2])
+
+
 def job_id(source: str, board_slug: str, native_id: str) -> str:
     native = _slugify(native_id)
     if not native:

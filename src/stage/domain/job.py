@@ -10,6 +10,7 @@ from stage.domain.enums import (
     RemoteScope,
     RoleCategory,
 )
+from stage.domain.ids import board_of
 from stage.domain.signals import SourceSignals
 
 
@@ -37,11 +38,10 @@ class Job:
     degree_requirement: DegreeRequirement = DegreeRequirement.UNKNOWN
     compensation: str | None = None
     source_posted_at: datetime | None = None
+    duplicate_of: str | None = None
 
     @property
     def board_key(self) -> str:
-        parts = self.id.split(":")
-        if len(parts) < 3:
-            return self.source
-        return ":".join(parts[:2])
+        return board_of(self.id, self.source)
+
     signals: SourceSignals = SourceSignals()

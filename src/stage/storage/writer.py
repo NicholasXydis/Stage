@@ -112,6 +112,8 @@ class AsyncRepository:
     async def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
         return await self._writer.run(lambda repository: repository.load_workday_facets())
 
+    async def clear_validators(self, source: str | None = None) -> int:
+        return await self._writer.run(lambda repository: repository.clear_validators(source))
 
     async def cached_url_count(self) -> int:
         return await self._writer.run(lambda repository: repository.cached_url_count())
@@ -142,6 +144,21 @@ class AsyncRepository:
 
     async def get_job(self, job_id: str) -> Job | None:
         return await self._writer.run(lambda repository: repository.get_job(job_id))
+
+    async def duplicates_of(self, job_id: str) -> list[Job]:
+        return await self._writer.run(lambda repository: repository.duplicates_of(job_id))
+
+    async def search_jobs(self, query: str, filters: JobFilters) -> list[Job]:
+        return await self._writer.run(lambda repository: repository.search_jobs(query, filters))
+
+    async def count_search(self, query: str, filters: JobFilters) -> int:
+        return await self._writer.run(lambda repository: repository.count_search(query, filters))
+
+    async def board_counts(self) -> dict[str, int]:
+        return await self._writer.run(lambda repository: repository.board_counts())
+
+    async def company_counts(self) -> dict[str, dict[str, int]]:
+        return await self._writer.run(lambda repository: repository.company_counts())
 
     async def record_sync_run(self, run: SyncRun) -> None:
         await self._writer.run(lambda repository: repository.record_sync_run(run))

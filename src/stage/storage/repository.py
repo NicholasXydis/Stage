@@ -102,13 +102,31 @@ class Repository(Protocol):
     def get_job(self, job_id: str) -> Job | None:
         pass
 
+    def duplicates_of(self, job_id: str) -> list[Job]:
+        pass
+
+    def search_jobs(self, query: str, filters: JobFilters) -> list[Job]:
+        pass
+
+    def count_search(self, query: str, filters: JobFilters) -> int:
+        pass
+
     def count_jobs(self, filters: JobFilters) -> int:
+        pass
+
+    def board_counts(self) -> dict[str, int]:
+        pass
+
+    def company_counts(self) -> dict[str, dict[str, int]]:
         pass
 
     def record_sync_run(self, run: SyncRun) -> None:
         pass
 
     def last_sync_at(self) -> datetime | None:
+        pass
+
+    def clear_validators(self, source: str | None = None) -> int:
         pass
 
     def cached_url_count(self) -> int:
@@ -137,4 +155,6 @@ class Repository(Protocol):
 
     def close(self) -> None:
         pass
+
+
 __all__ = ["Repository", "SourceBatch", "SourceBatchResult"]

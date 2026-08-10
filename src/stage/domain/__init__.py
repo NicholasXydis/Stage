@@ -1,4 +1,16 @@
 from stage.domain.company import Company
+from stage.domain.coverage import (
+    CoverageRow,
+    CoverageState,
+    UnregisteredCompany,
+    coverage_state,
+)
+from stage.domain.custom_board import (
+    KNOWN_FIELDS,
+    REQUIRED_FIELDS,
+    TITLE_FIELD,
+    CustomBoard,
+)
 from stage.domain.discovery import (
     CandidateSkipped,
     DiscoveryEvent,
@@ -14,6 +26,7 @@ from stage.domain.enums import (
     UNKNOWN_TERM,
     DegreeRequirement,
     EmployerSize,
+    ExportFormat,
     JobStatus,
     Language,
     LocationBucket,
@@ -56,7 +69,7 @@ from stage.domain.health import (
     assess_volume,
     classify_visit,
 )
-from stage.domain.ids import board_key, job_id
+from stage.domain.ids import board_key, board_of, job_id
 from stage.domain.job import Job
 from stage.domain.matching import location_agrees, term_agrees
 from stage.domain.priority import SOURCE_PRIORITY, source_rank
@@ -83,6 +96,16 @@ from stage.domain.retention import (
 from stage.domain.rotation import Rotation, RotationMember, rotate
 from stage.domain.signals import SourceSignals
 from stage.domain.sync_run import SourceRunStats, SyncRun
+from stage.domain.text import (
+    dump,
+    first_line,
+    graphemes,
+    json_safe,
+    sanitize,
+    summary,
+    truncate,
+    web_url,
+)
 from stage.domain.validator import HttpValidator
 from stage.domain.visits import CompanyVisit, DetailFetch, SourceVisit
 from stage.domain.workday import WorkdayFacet
@@ -99,6 +122,10 @@ __all__ = [
     "UNKNOWN_TERM",
     "CandidateSkipped",
     "Company",
+    "CustomBoard",
+    "KNOWN_FIELDS",
+    "REQUIRED_FIELDS",
+    "TITLE_FIELD",
     "CompanyVisit",
     "DetailFetch",
     "CompanyFailed",
@@ -109,6 +136,7 @@ __all__ = [
     "DiscoveryFinished",
     "DiscoveryStarted",
     "EmployerSize",
+    "ExportFormat",
     "HttpValidator",
     "Job",
     "JobFilters",
@@ -167,9 +195,22 @@ __all__ = [
     "VolumeVerdict",
     "assess_volume",
     "board_key",
+    "board_of",
     "classify_visit",
+    "CoverageRow",
+    "CoverageState",
+    "UnregisteredCompany",
+    "coverage_state",
+    "dump",
+    "first_line",
+    "graphemes",
     "job_id",
+    "json_safe",
     "location_agrees",
+    "sanitize",
     "source_rank",
+    "summary",
     "term_agrees",
+    "truncate",
+    "web_url",
 ]

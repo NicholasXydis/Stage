@@ -5,7 +5,16 @@ from typing import Any
 
 import yaml
 
-from stage.domain import Company, Platform, Priority, SourceOfRecord
+from stage.domain import (
+    KNOWN_FIELDS,
+    REQUIRED_FIELDS,
+    Company,
+    CustomBoard,
+    Platform,
+    Priority,
+    SourceOfRecord,
+    web_url,
+)
 from stage.paths import registry_path
 
 
@@ -31,15 +40,81 @@ def _optional_str(row: dict[str, Any], key: str) -> str | None:
     return value.strip() or None
 
 
-def _parse_date(row: dict[str, Any], key: str) -> date | None:
+def _require_bool(row: dict[str, Any], key: str, index: int, *, default: bool) -> bool:
+    value = row.get(key, default)
+    if not isinstance(value, bool):
+        raise RegistryError(
+            f"companies.yaml entry {index}: {key!r} must be an unquoted true or false, "
+            f"not {type(value).__name__} {value!r}"
+        )
+    return value
+
+
+def _parse_date(row: dict[str, Any], key: str, index: int) -> date | None:
     value = row.get(key)
     if value is None:
         return None
+    if isinstance(value, bool):
+        raise RegistryError(f"companies.yaml entry {index}: field {key!r} must be a date")
     if isinstance(value, date):
         return value
     if isinstance(value, str):
-        return date.fromisoformat(value)
-    raise RegistryError(f"companies.yaml: field {key!r} must be a date")
+        try:
+            return date.fromisoformat(value)
+        except ValueError as exc:
+            raise RegistryError(
+                f"companies.yaml entry {index}: field {key!r} must be an ISO date like "
+                f"2026-08-08, not {value!r}"
+            ) from exc
+    raise RegistryError(f"companies.yaml entry {index}: field {key!r} must be a date")
+
+
+def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> CustomBoard | None:
+    raw = row.get("custom")
+    if raw is None:
+        if platform is Platform.CUSTOM_JSON:
+            raise RegistryError(
+                f"companies.yaml entry {index}: platform custom_json needs a 'custom' block "
+                "with url and a title field mapping"
+            )
+        return None
+    if platform is not Platform.CUSTOM_JSON:
+        raise RegistryError(
+            f"companies.yaml entry {index}: a 'custom' block only belongs on platform custom_json"
+        )
+    if not isinstance(raw, dict):
+        raise RegistryError(f"companies.yaml entry {index}: 'custom' must be a mapping")
+
+    url = web_url(str(raw.get("url", "")))
+    if url is None:
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.url must be a plain http or https address"
+        )
+    mapping = raw.get("fields", {})
+    if not isinstance(mapping, dict):
+        raise RegistryError(f"companies.yaml entry {index}: custom.fields must be a mapping")
+    unknown = sorted(set(mapping) - set(KNOWN_FIELDS))
+    if unknown:
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.fields has unknown key(s) "
+            f"{', '.join(unknown)}; known: {', '.join(KNOWN_FIELDS)}"
+        )
+    missing = [name for name in REQUIRED_FIELDS if not str(mapping.get(name, "")).strip()]
+    if missing:
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.fields must map {', '.join(missing)}"
+        )
+    for key, value in mapping.items():
+        if not isinstance(value, str) or not value.strip():
+            raise RegistryError(
+                f"companies.yaml entry {index}: custom.fields[{key!r}] must be a non-empty string"
+            )
+    return CustomBoard(
+        url=url,
+        jobs_path=str(raw.get("jobs_path", "") or ""),
+        fields={key: value.strip() for key, value in mapping.items()},
+        url_template=str(raw.get("url_template", "") or ""),
+    )
 
 
 def _company_from_row(row: dict[str, Any], index: int) -> Company:
@@ -67,9 +142,8 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
             f"companies.yaml entry {index}: unknown source_of_record {record_value!r}"
         ) from exc
 
-    enabled = row.get("enabled", True)
-    if not isinstance(enabled, bool):
-        raise RegistryError(f"companies.yaml entry {index}: field 'enabled' must be a boolean")
+    enabled = _require_bool(row, "enabled", index, default=True)
+    name_gate_exempt = _require_bool(row, "name_gate_exempt", index, default=False)
 
     return Company(
         name=_require_str(row, "name", index),
@@ -78,13 +152,15 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
         priority=priority,
         enabled=enabled,
         rate_profile=_optional_str(row, "rate_profile"),
-        last_verified=_parse_date(row, "last_verified"),
+        last_verified=_parse_date(row, "last_verified", index),
         source_of_record=source_of_record,
         workday_tenant=_optional_str(row, "workday_tenant"),
         workday_site=_optional_str(row, "workday_site"),
         workday_dc=_optional_str(row, "workday_dc"),
         workday_facet=_optional_str(row, "workday_facet"),
-        name_gate_exempt=bool(row.get("name_gate_exempt", False)),
+        name_gate_exempt=name_gate_exempt,
+        notes=_optional_str(row, "notes"),
+        custom=_custom_board(row, index, platform),
     )
 
 
@@ -118,6 +194,16 @@ def _registry_row(company: Company) -> dict[str, Any]:
         row["name_gate_exempt"] = True
     if not company.enabled:
         row["enabled"] = False
+    if company.notes:
+        row["notes"] = company.notes
+    if company.custom is not None:
+        block: dict[str, Any] = {"url": company.custom.url}
+        if company.custom.jobs_path:
+            block["jobs_path"] = company.custom.jobs_path
+        block["fields"] = dict(company.custom.fields)
+        if company.custom.url_template:
+            block["url_template"] = company.custom.url_template
+        row["custom"] = block
     return row
 
 
@@ -132,15 +218,19 @@ def write_registry(companies: Sequence[Company], path: Path | None = None) -> Pa
     target = path or registry_path()
     order = {Priority.HIGH: 0, Priority.NORMAL: 1, Priority.LOW: 2}
     ordered = sorted(companies, key=lambda item: (order[item.priority], item.name.lower()))
-    target.write_text(
-        yaml.safe_dump(
-            [_registry_row(item) for item in ordered],
-            sort_keys=False,
-            allow_unicode=True,
-            default_flow_style=False,
-        ),
-        encoding="utf-8",
+    payload = yaml.safe_dump(
+        [_registry_row(item) for item in ordered],
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
     )
+    staged = target.with_name(f"{target.name}.partial")
+    try:
+        staged.write_text(payload, encoding="utf-8")
+        staged.replace(target)
+    except OSError as exc:
+        staged.unlink(missing_ok=True)
+        raise RegistryError(f"{target} could not be written: {exc.strerror or exc}") from exc
     return target
 
 
@@ -149,7 +239,12 @@ def load_companies(path: Path | None = None) -> tuple[Company, ...]:
     if not source.exists():
         raise RegistryError(f"registry not found at {source}")
 
-    raw = yaml.safe_load(source.read_text(encoding="utf-8"))
+    try:
+        raw = yaml.safe_load(source.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise RegistryError(f"{source} is not valid YAML: {exc}") from exc
+    except OSError as exc:
+        raise RegistryError(f"{source} could not be read: {exc.strerror or exc}") from exc
     if raw is None:
         return ()
     if not isinstance(raw, list):

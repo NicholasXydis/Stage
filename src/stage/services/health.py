@@ -180,17 +180,13 @@ async def doctor(
         last_sync_at=await repository.last_sync_at(),
         integrity=tuple(await repository.integrity_findings()),
         sources=sources,
-        blocks=tuple(
-            state for state in rate_state.values() if state.is_blocked(moment)
-        ),
+        blocks=tuple(state for state in rate_state.values() if state.is_blocked(moment)),
         never_synced=not runs,
         stale_after_days=stale_after_days,
     )
 
 
-async def statistics(
-    repository: AsyncRepository, *, history: int = RUN_HISTORY
-) -> StatsReport:
+async def statistics(repository: AsyncRepository, *, history: int = RUN_HISTORY) -> StatsReport:
     composition = {column: await repository.composition(column) for column in COMPOSITION_COLUMNS}
     return StatsReport(
         runs=tuple(await repository.run_history(history)),
