@@ -1,4 +1,3 @@
-
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -48,8 +47,10 @@ def feminine_suffixes() -> frozenset[str]:
     return frozenset(suffixes)
 
 
-_INCLUSIVE_MIDDOT = re.compile(r"([a-z]{3,})\s*·\s*([a-z]{1,6})")
-_INCLUSIVE_TIGHT = re.compile(r"([a-z]{3,})[.(]([a-z]{1,6})\)?")
+LONGEST_WORD_STEM = 30
+
+_INCLUSIVE_MIDDOT = re.compile(rf"([a-z]{{3,{LONGEST_WORD_STEM}}})\s*·\s*([a-z]{{1,6}})")
+_INCLUSIVE_TIGHT = re.compile(rf"([a-z]{{3,{LONGEST_WORD_STEM}}})[.(]([a-z]{{1,6}})\)?")
 
 
 def _collapse_inclusive(text: str) -> str:
@@ -120,7 +121,6 @@ def _folded_phrases(payload: dict[str, Any], key: str, source: str) -> frozenset
 
 @dataclass(frozen=True, slots=True)
 class LocationLexicon:
-
     montreal: frozenset[str]
     montreal_ambiguous: frozenset[str]
     canada_cities: frozenset[str]
@@ -159,12 +159,12 @@ ROLE_CATEGORIES: tuple[str, ...] = (
     "infra",
     "hardware",
     "embedded",
+    "general-cs",
 )
 
 
 @dataclass(frozen=True, slots=True)
 class LanguageLexicon:
-
     french: frozenset[str]
     english: frozenset[str]
     loanwords: frozenset[str]
@@ -187,10 +187,10 @@ def language_lexicon() -> LanguageLexicon:
 
 @dataclass(frozen=True, slots=True)
 class InternshipLexicon:
-
     markers: frozenset[str]
     blocked_bigrams: frozenset[str]
     disqualifiers: frozenset[str]
+    structured_internship: frozenset[str]
 
 
 @lru_cache(maxsize=1)
@@ -200,6 +200,7 @@ def internship_lexicon() -> InternshipLexicon:
         markers=_folded_phrases(payload, "markers", source),
         blocked_bigrams=_folded_phrases(payload, "blocked_bigrams", source),
         disqualifiers=_folded_phrases(payload, "disqualifiers", source),
+        structured_internship=_folded_phrases(payload, "structured_internship", source),
     )
 
 
@@ -209,6 +210,9 @@ class EligibilityLexicon:
     work_auth_excluded: frozenset[str]
     non_cs: frozenset[str]
     non_cs_rescue: frozenset[str]
+    phd_required: frozenset[str]
+    phd_title_tokens: frozenset[str]
+    degree_list_tokens: frozenset[str]
 
 
 @lru_cache(maxsize=1)
@@ -227,6 +231,9 @@ def eligibility_lexicon() -> EligibilityLexicon:
         work_auth_excluded=_folded_phrases(payload, "work_auth_excluded", source),
         non_cs=_folded_phrases(payload, "non_cs", source),
         non_cs_rescue=_folded_phrases(payload, "non_cs_rescue", source),
+        phd_required=_folded_phrases(payload, "phd_required", source),
+        phd_title_tokens=_folded_phrases(payload, "phd_title_tokens", source),
+        degree_list_tokens=_folded_phrases(payload, "degree_list_tokens", source),
     )
 
 
@@ -262,7 +269,6 @@ def role_lexicon() -> dict[str, frozenset[str]]:
 
 @dataclass(frozen=True, slots=True)
 class TermLexicon:
-
     seasons: dict[str, frozenset[str]]
     fillers: frozenset[str]
     blocked_bigrams: frozenset[str]

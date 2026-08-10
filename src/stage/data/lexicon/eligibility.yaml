@@ -22,6 +22,65 @@ degree_required:
     - must be enrolled in a bachelor
     - baccalaureat requis
 
+phd_required:
+  - phd candidates only
+  - phd students only
+  - phd only
+  - open only to phd
+  - must be enrolled in a phd
+  - must be enrolled in a doctoral program
+  - currently enrolled in a phd
+  - currently enrolled in a doctoral program
+  - currently pursuing a phd
+  - must be pursuing a phd
+  - enrolled in a phd program
+  - enrolled in a doctoral program
+  - phd required
+  - phd is required
+  - doctorate required
+  - doctoral degree required
+  - doctorat requis
+  - doctorat exige
+  - inscrit au doctorat
+  - inscrite au doctorat
+  - inscrit e au doctorat
+  - etudes doctorales requises
+
+phd_title_tokens:
+  - phd
+  - phds
+  - ph d
+  - doctoral
+  - doctorate
+  - doctorat
+  - doctorant
+  - doctorante
+  - stage doctoral
+  - stagiaire doctoral
+  - stagiaire doctorale
+  - etudes doctorales
+
+degree_list_tokens:
+  - bachelor
+  - bachelors
+  - bachelor s
+  - bs
+  - bsc
+  - ba
+  - beng
+  - undergraduate
+  - undergrad
+  - master
+  - masters
+  - master s
+  - ms
+  - msc
+  - meng
+  - mba
+  - baccalaureat
+  - maitrise
+  - licence
+
 work_auth_excluded:
   - must be a us citizen
   - u.s. citizenship is required

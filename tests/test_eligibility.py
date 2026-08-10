@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from stage.classify import resolve_eligibility, screen_is_cs_role
+from stage.classify import resolve_eligibility, screen_degree_scope, screen_is_cs_role
 from stage.domain import (
     DegreeRequirement,
     Job,
@@ -74,9 +74,7 @@ def test_a_french_degree_requirement_resolves_too() -> None:
 
 def test_work_auth_is_set_only_on_positive_exclusion() -> None:
     assert resolve_eligibility(_job("Intern", "Must be a US citizen.")).work_auth_flag
-    assert resolve_eligibility(
-        _job("Intern", "Active security clearance required.")
-    ).work_auth_flag
+    assert resolve_eligibility(_job("Intern", "Active security clearance required.")).work_auth_flag
 
 
 @pytest.mark.parametrize(
@@ -133,7 +131,7 @@ def test_an_unknown_role_is_never_rejected_for_being_unknown() -> None:
 
 
 async def test_eligibility_round_trips_through_storage_and_filters(db_path: Path) -> None:
-    doctorate = _job("Research Intern", "PhD required for this role.")
+    doctorate = _job("Research Intern", "Master's or PhD required.")
     open_to_all = _job("Software Engineer Intern", "Build things.")
     kept, _ = normalize_batch([doctorate, open_to_all])
     assert len(kept) == 2
@@ -143,9 +141,7 @@ async def test_eligibility_round_trips_through_storage_and_filters(db_path: Path
             SourceBatch(source="greenhouse", run_started_at=NOW, jobs=kept)
         )
         stored = {job.id: job for job in await repository.list_jobs(JobFilters())}
-        phd_only = await repository.list_jobs(
-            JobFilters(degree=DegreeRequirement.PHD)
-        )
+        phd_only = await repository.list_jobs(JobFilters(degree=DegreeRequirement.PHD))
 
     assert stored[doctorate.id].degree_requirement is DegreeRequirement.PHD
     assert stored[open_to_all.id].degree_requirement is DegreeRequirement.UNKNOWN
@@ -173,3 +169,168 @@ async def test_a_non_cs_posting_lands_in_quarantine_not_the_jobs_table(
     assert len(kept) == 1
     assert [entry.reason for entry in entries] == [RejectionReason.NOT_A_CS_ROLE]
     assert counts["not-a-cs-role"] == 1
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "PhD Research Intern",
+        "Research Scientist Intern, PhD",
+        "PhD Student Researcher",
+        "Doctoral Intern",
+        "Machine Learning Intern, PhD",
+        "Quantitative Research Intern (PHD)",
+        "Model Correlation & SI Intern - Ph. D Degree",
+        "Data Science PhD Intern",
+    ],
+)
+def test_an_english_phd_restricted_internship_is_quarantined(title: str) -> None:
+    rejection = screen_degree_scope(_job(title))
+    assert rejection is not None, title
+    assert rejection.reason is RejectionReason.OUT_OF_SCOPE_DEGREE
+    assert rejection.matched_phrase, "a rejection must name the evidence that produced it"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "PhD candidates only.",
+        "Applicants must be enrolled in a PhD program.",
+        "You must be currently pursuing a PhD.",
+        "Doctorate required.",
+        "A doctoral degree required for this role.",
+    ],
+)
+def test_an_english_phd_requirement_in_the_body_is_quarantined(body: str) -> None:
+    rejection = screen_degree_scope(_job("Software Engineer Intern", body))
+    assert rejection is not None, body
+    assert rejection.reason is RejectionReason.OUT_OF_SCOPE_DEGREE
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Stage doctoral en apprentissage automatique",
+        "Stagiaire doctoral, vision par ordinateur",
+        "Stagiaire doctorale en génie logiciel",
+        "Stagiaire — doctorant en informatique",
+    ],
+)
+def test_a_french_phd_restricted_internship_is_quarantined(title: str) -> None:
+    rejection = screen_degree_scope(_job(title))
+    assert rejection is not None, title
+    assert rejection.reason is RejectionReason.OUT_OF_SCOPE_DEGREE
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "Doctorat requis.",
+        "Vous devez être inscrit au doctorat.",
+        "Le candidat doit être inscrite au doctorat.",
+    ],
+)
+def test_a_french_phd_requirement_in_the_body_is_quarantined(body: str) -> None:
+    rejection = screen_degree_scope(_job("Stagiaire en génie logiciel", body))
+    assert rejection is not None, body
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "PhD preferred but not required.",
+        "A PhD is a plus.",
+        "PhD or equivalent experience.",
+        "Bachelor's, Master's or PhD accepted.",
+        "Open to bachelors, masters or PhD students majoring in computer science.",
+        "You will work alongside scientists who hold PhDs.",
+        "Our team includes several PhD holders.",
+        "Un doctorat est un atout.",
+        "Master's or PhD required.",
+        "Candidate must be currently pursuing a PhD degree or MS degree.",
+    ],
+)
+def test_a_phd_mention_that_is_not_a_requirement_is_kept(body: str) -> None:
+    assert screen_degree_scope(_job("Software Engineer Intern", body)) is None, body
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Research Intern - BS/MS/PhD",
+        "Software Engineering Intern",
+        "Stagiaire en génie logiciel",
+        "Machine Learning Intern",
+        "Data Science Intern - Master's or PhD",
+    ],
+)
+def test_a_title_naming_a_lower_degree_beside_the_doctorate_is_kept(title: str) -> None:
+    assert screen_degree_scope(_job(title)) is None, title
+
+
+def test_the_degree_screen_runs_after_internship_and_before_the_cs_role_screen() -> None:
+    ordinary = _job("Senior Data Scientist, PhD")
+    kept, rejected = normalize_batch([ordinary])
+    assert not kept
+    assert rejected[0].reason is RejectionReason.NOT_AN_INTERNSHIP, (
+        "a posting that is not an internship is rejected on that ground first"
+    )
+
+    doctorate = _job("PhD Research Intern")
+    kept, rejected = normalize_batch([doctorate])
+    assert not kept
+    assert rejected[0].reason is RejectionReason.OUT_OF_SCOPE_DEGREE
+
+
+async def test_a_phd_internship_reaches_quarantine_and_never_the_jobs_table(
+    db_path: Path,
+) -> None:
+    doctorate = _job("PhD Research Intern")
+    ordinary = _job("Software Engineer Intern")
+    kept, rejected = normalize_batch([doctorate, ordinary])
+
+    assert [job.id for job in kept] == [ordinary.id]
+    assert [entry.id for entry in rejected] == [doctorate.id]
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=kept, quarantined=rejected)
+        )
+        stored = {job.id for job in await repository.list_jobs(JobFilters())}
+        held = await repository.list_quarantined(
+            QuarantineFilters(reason=RejectionReason.OUT_OF_SCOPE_DEGREE)
+        )
+
+    assert doctorate.id not in stored
+    assert [entry.id for entry in held] == [doctorate.id]
+    assert held[0].matched_phrase
+
+
+def test_the_recorded_evidence_is_deterministic_and_the_most_specific_match() -> None:
+    job = _job("Software Engineer Intern", "PhD candidates only. A PhD is required.")
+    first = screen_degree_scope(job)
+    assert first is not None
+    assert first.matched_phrase == "phd candidates only", (
+        "the longest match is the most informative evidence, and a set iteration order "
+        "would make the audit trail differ between processes"
+    )
+    assert all(screen_degree_scope(_job(job.title_raw, job.description)) == first for _ in range(5))
+
+
+def test_a_degree_list_near_the_requirement_keeps_the_posting() -> None:
+    body = "Open to bachelors, masters or PhD students. Applicants must be enrolled in a PhD."
+    assert screen_degree_scope(_job("Software Engineer Intern", body)) is None, (
+        "a lower degree beside the requirement suppresses the rejection; losing a genuine "
+        "internship is worse than showing one the reader cannot apply to"
+    )
+
+
+def test_a_distant_unguarded_requirement_is_not_masked_by_an_earlier_list() -> None:
+    filler = "We build distributed systems and care about craft. " * 3
+    body = f"Open to bachelors, masters or PhD students. {filler} PhD candidates only."
+    rejection = screen_degree_scope(_job("Software Engineer Intern", body))
+    assert rejection is not None, (
+        "scanning only the first occurrence would stop at the guarded list and never reach "
+        "the unguarded requirement further down"
+    )
+    assert rejection.matched_phrase == "phd candidates only"

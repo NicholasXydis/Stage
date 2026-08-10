@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from stage.classify import (
     classify_role,
     resolve_eligibility,
+    screen_degree_scope,
     screen_is_cs_role,
     screen_is_internship,
     screen_location,
@@ -53,7 +54,14 @@ from stage.normalize import (
     resolve_location,
     resolve_term,
 )
-from stage.sources import Adapter, FeedAdapter, FetchResult, adapter_for_platform, get_feeds
+from stage.sources import (
+    Adapter,
+    FeedAdapter,
+    FetchResult,
+    adapter_for_platform,
+    get_adapters,
+    get_feeds,
+)
 from stage.storage import AsyncRepository, SourceBatch, SourceBatchResult
 
 
@@ -116,19 +124,31 @@ def _group_by_adapter(
 
 
 def _select(
-    companies: Sequence[Company], sources: Sequence[str] | None
+    companies: Sequence[Company],
+    sources: Sequence[str] | None,
+    excluded: Sequence[str] | None = None,
 ) -> tuple[dict[str, tuple[Adapter, list[Company]]], dict[str, FeedAdapter], list[Company]]:
     grouped, unroutable = _group_by_adapter(companies)
     feeds = dict(get_feeds())
+    known = set(grouped) | set(feeds) | set(get_adapters())
     if sources is not None:
         selected = set(sources)
-        unknown = selected - set(grouped) - set(feeds)
+        unknown = selected - known
         if unknown:
             raise NoSourcesSelectedError(
                 f"no enabled companies for source(s): {', '.join(sorted(unknown))}"
             )
         grouped = {name: value for name, value in grouped.items() if name in selected}
         feeds = {name: value for name, value in feeds.items() if name in selected}
+    if excluded:
+        dropped = set(excluded)
+        unknown = dropped - known
+        if unknown:
+            raise NoSourcesSelectedError(
+                f"unknown source(s) to exclude: {', '.join(sorted(unknown))}"
+            )
+        grouped = {name: value for name, value in grouped.items() if name not in dropped}
+        feeds = {name: value for name, value in feeds.items() if name not in dropped}
     if not grouped and not feeds:
         detail = ""
         if unroutable:
@@ -168,6 +188,7 @@ def normalize_batch(jobs: Sequence[Job]) -> tuple[tuple[Job, ...], tuple[Quarant
         rejection = (
             screen_location(normalized, location.evidence)
             or screen_is_internship(normalized)
+            or screen_degree_scope(normalized)
             or screen_is_cs_role(normalized)
         )
         if rejection is None:
@@ -194,12 +215,8 @@ async def _fetch_company(
     return company, result, "", (time.perf_counter() - started) * 1000
 
 
-def _keepable_validators(
-    cache: ValidatorCache, skip_urls: set[str]
-) -> tuple[HttpValidator, ...]:
-    return tuple(
-        validator for url, validator in cache.pending.items() if url not in skip_urls
-    )
+def _keepable_validators(cache: ValidatorCache, skip_urls: set[str]) -> tuple[HttpValidator, ...]:
+    return tuple(validator for url, validator in cache.pending.items() if url not in skip_urls)
 
 
 def _advance_cursor(
@@ -214,7 +231,6 @@ def _advance_cursor(
     if not any(state.bucket == bucket for state in updated):
         updated.append(RateState(bucket=bucket, updated_at=now, rotation_cursor=rotation.cursor))
     return tuple(updated)
-
 
 
 def _bucket_plans(
@@ -445,9 +461,7 @@ async def _run_company_source(
                 errors += 1
                 skip_urls.update(_safe_plan(adapter, company)[0])
                 visits.append(
-                    CompanyVisit(
-                        board=board, succeeded=False, error=error, label=company.name
-                    )
+                    CompanyVisit(board=board, succeeded=False, error=error, label=company.name)
                 )
                 yield CompanyFailed(
                     source=source_name, company=company.name, error=error, elapsed_ms=elapsed
@@ -455,9 +469,7 @@ async def _run_company_source(
             elif result.not_modified:
                 visits.append(CompanyVisit(board=board, succeeded=True, label=company.name))
                 unchanged.append(board)
-                yield CompanyUnchanged(
-                    source=source_name, company=company.name, elapsed_ms=elapsed
-                )
+                yield CompanyUnchanged(source=source_name, company=company.name, elapsed_ms=elapsed)
             else:
                 visits.append(CompanyVisit(board=board, succeeded=True, label=company.name))
                 collected.extend(result.jobs)
@@ -538,9 +550,7 @@ async def _run_feed_source(
     plan_bounds: list[tuple[str, str, int, int]],
 ) -> AsyncIterator[SyncEvent]:
     source_name = feed.name
-    block = _active_block(
-        rate_state, _bucket_keys(feed.hosts, feed.bucket_key), run_started_at
-    )
+    block = _active_block(rate_state, _bucket_keys(feed.hosts, feed.bucket_key), run_started_at)
     if block is not None:
         blocked_sources.append(source_name)
         if not dry_run:
@@ -737,11 +747,12 @@ async def sync(
     companies: Sequence[Company],
     *,
     sources: Sequence[str] | None = None,
+    excluded: Sequence[str] | None = None,
     dry_run: bool = False,
     now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
     rng: random.Random | None = None,
 ) -> AsyncIterator[SyncEvent]:
-    grouped, feeds, unroutable = _select(companies, sources)
+    grouped, feeds, unroutable = _select(companies, sources, excluded)
     shuffler = rng or random.Random()
 
     run_started_at = now_fn()
@@ -812,9 +823,7 @@ async def sync(
         for event in _bucket_plans(plan_bounds, postures):
             yield event
         yield SyncFinished(
-            outcome=(
-                SyncOutcome.PARTIAL if unroutable or blocked_sources else SyncOutcome.SUCCESS
-            ),
+            outcome=(SyncOutcome.PARTIAL if unroutable or blocked_sources else SyncOutcome.SUCCESS),
             added=0,
             updated=0,
             closed=0,

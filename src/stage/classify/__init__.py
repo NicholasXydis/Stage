@@ -1,6 +1,7 @@
 from stage.classify.eligibility import (
     EligibilityVerdict,
     resolve_eligibility,
+    screen_degree_scope,
     screen_is_cs_role,
 )
 from stage.classify.internship import InternshipVerdict, screen_internship
@@ -16,6 +17,7 @@ from stage.classify.scope import (
 __all__ = [
     "EligibilityVerdict",
     "resolve_eligibility",
+    "screen_degree_scope",
     "screen_is_cs_role",
     "OUT_OF_SCOPE_BUCKETS",
     "InternshipVerdict",
