@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -66,10 +65,7 @@ def would_merge(left: Job, right: Job) -> MatchResult:
     if left.board_key == right.board_key:
         return MatchResult()
 
-    if (
-        left.apply_url_canonical
-        and left.apply_url_canonical == right.apply_url_canonical
-    ):
+    if left.apply_url_canonical and left.apply_url_canonical == right.apply_url_canonical:
         return MatchResult(MatchKind.URL, left.apply_url_canonical)
 
     if not _company_matches(left, right):
@@ -100,5 +96,3 @@ def _cross_language(left: Job, right: Job) -> MatchResult:
 
 def _rank(job: Job) -> tuple[int, str]:
     return source_rank(job.source, job.id)
-
-

@@ -1,23 +1,12 @@
-from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 
-from stage.domain import Company, Job, Platform, board_key, job_id
-from stage.http import HttpClient
+from stage.domain import Company, Job, Platform, SourceSignals, job_id
 from stage.sources import register
 from stage.sources._text import collapse_whitespace, strip_html
-from stage.sources.base import (
-    FetchResult,
-    NullableBool,
-    NullableStr,
-    PayloadValidationError,
-    capture_payload,
-    malformed_note,
-    validate_rows,
-)
-from stage.sources.platforms import safe_slug
+from stage.sources.base import BoardAdapter, NullableBool, NullableStr
 
 BASE_URL = "https://apply.workable.com/api/v1/widget/accounts/{slug}"
 HOST = "apply.workable.com"
@@ -63,72 +52,32 @@ class WorkableBoard(BaseModel):
 
 
 @register
-class WorkableAdapter:
+class WorkableAdapter(BoardAdapter):
     name: ClassVar[str] = "workable"
     platform: ClassVar[Platform] = Platform.WORKABLE
     rate_profile: ClassVar[str] = "conservative"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
-    bucket_key: ClassVar[str] = ""
     detail_budget: ClassVar[int] = 0
-    rotation_slice: ClassVar[int] = 0
-
     max_requests_per_company: ClassVar[int] = 1
 
-    def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:  # noqa: ARG002
-        return self.hosts
+    base_url: ClassVar[str] = BASE_URL
+    query: ClassVar[tuple[tuple[str, str], ...]] = (("details", "true"),)
+    root_model: ClassVar[type[BaseModel] | None] = WorkableBoard
+    rows_field: ClassVar[str] = "jobs"
+    row_model: ClassVar[type[BaseModel]] = WorkablePosting
 
-    def board_key(self, company: Company) -> str:
-        return board_key(self.name, company.slug)
-
-    def plan(self, company: Company) -> tuple[str, ...]:
-        return (f"{BASE_URL.format(slug=safe_slug(company.slug))}?details=true",)
-
-    async def fetch(
-        self,
-        company: Company,
-        client: HttpClient,
-        now: datetime,
-        facets: object = None,  # noqa: ARG002
-        details: Sequence[str] = (),  # noqa: ARG002
-    ) -> FetchResult:
-        response = await client.get_json(
-            BASE_URL.format(slug=safe_slug(company.slug)), params={"details": "true"}
-        )
-        if response.not_modified:
-            return FetchResult(not_modified=True)
-        postings, dropped = self._validate(company, response.payload)
-        return FetchResult(
-            jobs=tuple(self._to_job(company, posting, now) for posting in postings),
-            degraded=malformed_note(dropped),
-            authoritative=not dropped,
-        )
-
-    def _validate(self, company: Company, payload: Any) -> tuple[list[WorkablePosting], int]:
-        try:
-            board = WorkableBoard.model_validate(payload)
-        except ValidationError as exc:
-            captured = capture_payload(self.name, company.slug, payload)
-            first = exc.errors()[0]
-            field = ".".join(str(part) for part in first["loc"]) or "<root>"
-            raise PayloadValidationError(
-                f"workable/{company.slug}: field {field!r} failed validation "
-                f"({first['msg']}); raw payload captured at {captured}"
-            ) from exc
-        return validate_rows(
-            WorkablePosting, board.jobs, source=self.name, slug=company.slug
-        )
-
-    def _to_job(self, company: Company, posting: WorkablePosting, now: datetime) -> Job:
-        title = collapse_whitespace(posting.title)
+    def to_job(self, company: Company, row: Any, now: datetime) -> Job:
+        title = collapse_whitespace(row.title)
         return Job(
-            id=job_id(self.name, company.slug, posting.shortcode),
+            id=job_id(self.name, company.slug, row.shortcode),
             source=self.name,
             company=company.name,
             title_raw=title,
             title_normalized=title.lower(),
-            apply_url_raw=posting.url or posting.application_url or posting.shortlink,
-            description=posting.body(),
-            location_raw=collapse_whitespace(posting.where()),
+            apply_url_raw=row.url or row.application_url or row.shortlink,
+            description=row.body(),
+            location_raw=collapse_whitespace(row.where()),
             first_seen=now,
             last_seen=now,
+            signals=SourceSignals(employment_type=row.employment_type),
         )

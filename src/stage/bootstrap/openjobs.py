@@ -1,4 +1,3 @@
-
 import argparse
 import json
 import sys
@@ -326,9 +325,7 @@ def format_report(report: CrossReference, total_seeds: int) -> str:
         "",
         "platform          hits",
     ]
-    lines.extend(
-        f"{platform.value:<17} {count}" for platform, count in report.platform_histogram()
-    )
+    lines.extend(f"{platform.value:<17} {count}" for platform, count in report.platform_histogram())
     if report.collisions:
         lines.append("")
         lines.append("collisions (one board claimed by several seeds — excluded, review by hand):")

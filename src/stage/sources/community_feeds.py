@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -9,8 +8,10 @@ from stage.http import HttpClient
 from stage.sources._text import collapse_whitespace
 from stage.sources.base import (
     FetchResult,
+    NonEmptyStr,
     PayloadValidationError,
     capture_payload,
+    convert_rows,
     malformed_note,
     validate_rows,
 )
@@ -23,8 +24,8 @@ class CommunityListing(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str = ""
-    company_name: str
-    title: str
+    company_name: NonEmptyStr
+    title: NonEmptyStr
     url: str = ""
     locations: list[str] = Field(default_factory=list)
     active: bool = True
@@ -69,12 +70,14 @@ class _CommunityFeed:
                 continue
             modified = True
             listings, dropped = self._validate(response.payload, url, now)
-            malformed += dropped
-            jobs.extend(
-                self._to_job(listing, now)
-                for listing in listings
-                if listing.active and listing.is_visible
+            converted, unconvertible = convert_rows(
+                lambda listing: self._to_job(listing, now),
+                [listing for listing in listings if listing.active and listing.is_visible],
+                source=self.name,
+                slug=str(self.season_year(now)),
             )
+            malformed += dropped + unconvertible
+            jobs.extend(converted)
         if failures and not jobs:
             raise PayloadValidationError(f"{self.name}: every file failed — {'; '.join(failures)}")
         if not modified and not failures:

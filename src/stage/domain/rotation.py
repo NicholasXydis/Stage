@@ -21,9 +21,7 @@ class Rotation:
         return bool(self.deferred)
 
 
-def rotate(
-    members: Sequence[RotationMember], *, cursor: str = "", budget: int = 0
-) -> Rotation:
+def rotate(members: Sequence[RotationMember], *, cursor: str = "", budget: int = 0) -> Rotation:
     if budget <= 0:
         keys = tuple(member.key for member in members)
         return Rotation(selected=keys, deferred=(), cursor=cursor)

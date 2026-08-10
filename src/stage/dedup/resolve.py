@@ -1,4 +1,3 @@
-
 from collections.abc import Sequence
 from dataclasses import dataclass
 
@@ -58,9 +57,7 @@ def resolve_duplicates(
             if boards[left_root] & boards[right_root]:
                 continue
             match = would_merge(left, right)
-            if not match or (
-                match.kind is MatchKind.URL and left.apply_url_canonical in ambiguous
-            ):
+            if not match or (match.kind is MatchKind.URL and left.apply_url_canonical in ambiguous):
                 continue
             parent[right_root] = left_root
             boards[left_root] |= boards[right_root]

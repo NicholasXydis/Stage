@@ -1,4 +1,3 @@
-
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -13,7 +12,6 @@ _PROXIMITY = 2
 
 @dataclass(frozen=True, slots=True)
 class ResolvedTerm:
-
     term: str = UNKNOWN_TERM
     season: str = ""
     year: int | None = None
@@ -90,9 +88,9 @@ def _terms_in(text: str, pivot_year: int | None) -> tuple[set[str], set[str], li
     return terms, seasons, evidence
 
 
-def _structured(values: Sequence[str], season: str, pivot_year: int | None) -> tuple[
-    set[str], set[str], list[str]
-]:
+def _structured(
+    values: Sequence[str], season: str, pivot_year: int | None
+) -> tuple[set[str], set[str], list[str]]:
     terms: set[str] = set()
     seasons: set[str] = set()
     evidence: list[str] = []

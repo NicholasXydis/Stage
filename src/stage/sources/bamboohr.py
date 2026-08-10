@@ -1,23 +1,12 @@
-from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 
-from stage.domain import Company, Job, Platform, board_key, job_id
-from stage.http import HttpClient
+from stage.domain import Company, Job, Platform, job_id
 from stage.sources import register
 from stage.sources._text import collapse_whitespace
-from stage.sources.base import (
-    FetchResult,
-    NullableBool,
-    NullableStr,
-    PayloadValidationError,
-    capture_payload,
-    malformed_note,
-    validate_rows,
-)
-from stage.sources.platforms import SlugRejectedError, safe_slug
+from stage.sources.base import BoardAdapter, NullableBool, NullableStr
 
 HOST_TEMPLATE = "{slug}.bamboohr.com"
 PATH = "/careers/list"
@@ -61,76 +50,31 @@ class BambooBoard(BaseModel):
 
 
 @register
-class BambooHrAdapter:
+class BambooHrAdapter(BoardAdapter):
     name: ClassVar[str] = "bamboohr"
     platform: ClassVar[Platform] = Platform.BAMBOOHR
     rate_profile: ClassVar[str] = "moderate"
-    hosts: ClassVar[frozenset[str]] = frozenset()
     bucket_key: ClassVar[str] = "bamboohr"
     detail_budget: ClassVar[int] = 0
-    rotation_slice: ClassVar[int] = 0
-
     max_requests_per_company: ClassVar[int] = 1
 
-    def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:
-        allowed: set[str] = set()
-        for company in companies:
-            try:
-                allowed.add(HOST_TEMPLATE.format(slug=safe_slug(company.slug)))
-            except SlugRejectedError:
-                continue
-        return frozenset(allowed)
+    host_template: ClassVar[str] = HOST_TEMPLATE
+    path: ClassVar[str] = PATH
+    root_model: ClassVar[type[BaseModel] | None] = BambooBoard
+    rows_field: ClassVar[str] = "result"
+    row_model: ClassVar[type[BaseModel]] = BambooPosting
 
-    def board_key(self, company: Company) -> str:
-        return board_key(self.name, company.slug)
-
-    def plan(self, company: Company) -> tuple[str, ...]:
-        host = HOST_TEMPLATE.format(slug=safe_slug(company.slug))
-        return (f"https://{host}{PATH}",)
-
-    async def fetch(
-        self,
-        company: Company,
-        client: HttpClient,
-        now: datetime,
-        facets: object = None,  # noqa: ARG002
-        details: Sequence[str] = (),  # noqa: ARG002
-    ) -> FetchResult:
-        response = await client.get_json(self.plan(company)[0])
-        if response.not_modified:
-            return FetchResult(not_modified=True)
-        postings, dropped = self._validate(company, response.payload)
-        return FetchResult(
-            jobs=tuple(self._to_job(company, posting, now) for posting in postings),
-            degraded=malformed_note(dropped),
-            authoritative=not dropped,
-        )
-
-    def _validate(self, company: Company, payload: Any) -> tuple[list[BambooPosting], int]:
-        try:
-            board = BambooBoard.model_validate(payload)
-        except ValidationError as exc:
-            captured = capture_payload(self.name, company.slug, payload)
-            first = exc.errors()[0]
-            field = ".".join(str(part) for part in first["loc"]) or "<root>"
-            raise PayloadValidationError(
-                f"bamboohr/{company.slug}: field {field!r} failed validation "
-                f"({first['msg']}); raw payload captured at {captured}"
-            ) from exc
-        return validate_rows(BambooPosting, board.result, source=self.name, slug=company.slug)
-
-    def _to_job(self, company: Company, posting: BambooPosting, now: datetime) -> Job:
-        title = collapse_whitespace(posting.jobOpeningName)
-        host = HOST_TEMPLATE.format(slug=safe_slug(company.slug))
+    def to_job(self, company: Company, row: Any, now: datetime) -> Job:
+        title = collapse_whitespace(row.jobOpeningName)
         return Job(
-            id=job_id(self.name, company.slug, str(posting.id)),
+            id=job_id(self.name, company.slug, str(row.id)),
             source=self.name,
             company=company.name,
             title_raw=title,
             title_normalized=title.lower(),
-            apply_url_raw=f"https://{host}/careers/{posting.id}",
+            apply_url_raw=f"https://{self.host_for(company)}/careers/{row.id}",
             description="",
-            location_raw=collapse_whitespace(posting.where()),
+            location_raw=collapse_whitespace(row.where()),
             first_seen=now,
             last_seen=now,
         )

@@ -1,4 +1,3 @@
-
 import time
 from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import dataclass, replace
@@ -21,6 +20,7 @@ from stage.domain import (
     SourceOfRecord,
     UrlResolved,
     UrlUnrecognized,
+    first_line,
 )
 from stage.http import (
     HostBudgetExceededError,
@@ -41,6 +41,11 @@ from stage.sources.platforms import (
     job_count,
     safe_slug,
 )
+
+
+class NoMatchingCompanyError(Exception):
+    pass
+
 
 MAX_CANDIDATES_PER_COMPANY = 3
 DISCOVERY_PROFILE = "discovery"
@@ -98,7 +103,7 @@ def slug_candidates(name: str) -> SlugPlan:
     return SlugPlan(tuple(accepted[:MAX_CANDIDATES_PER_COMPANY]), tuple(skipped))
 
 
-def _name_tokens(value: str) -> frozenset[str]:
+def name_tokens(value: str) -> frozenset[str]:
     return frozenset(token for token in fold(value).split() if token not in _LEGAL_SUFFIXES)
 
 
@@ -111,8 +116,8 @@ def _acquisition_named(company: Company) -> bool:
 
 
 def name_matches(company: str, board_name: str) -> bool:
-    wanted = _name_tokens(company)
-    found = _name_tokens(board_name)
+    wanted = name_tokens(company)
+    found = name_tokens(board_name)
     if not wanted or not found:
         return False
     if _joined(company) == _joined(board_name):
@@ -228,7 +233,7 @@ def to_company(
         platform=candidate.platform,
         slug=candidate.slug,
         priority=priority,
-        enabled=routable,
+        enabled=routable and verified_on is not None,
         source_of_record=SourceOfRecord.DISCOVER,
         last_verified=verified_on,
         workday_tenant=candidate.workday_tenant,
@@ -285,9 +290,7 @@ async def probe_companies(
 
     for probe in probes:
         posture = resolve(probe.rate_profile, [DISCOVERY_PROFILE])
-        hosts = frozenset(
-            probe.host_for(slug) for plan in plans.values() for slug in plan.accepted
-        )
+        hosts = frozenset(probe.host_for(slug) for plan in plans.values() for slug in plan.accepted)
         if not hosts:
             continue
         blocked = False
@@ -409,14 +412,19 @@ async def verify_registry(
     companies: Sequence[Company],
     *,
     platforms: Sequence[Platform] | None = None,
+    only: Sequence[str] | None = None,
     client_factory: ClientFactory = _default_client,
 ) -> AsyncIterator[DiscoveryEvent]:
+    wanted = None if only is None else {fold(name) for name in only}
     selected = [
         company
         for company in companies
         if company.platform in PROBES_BY_PLATFORM
         and (platforms is None or company.platform in platforms)
+        and (wanted is None or fold(company.name) in wanted)
     ]
+    if wanted is not None and not selected:
+        raise NoMatchingCompanyError(f"no registry row matches: {', '.join(sorted(only or ()))}")
     grouped: dict[Platform, list[Company]] = {}
     for company in selected:
         grouped.setdefault(company.platform, []).append(company)
@@ -532,22 +540,26 @@ async def verify_registry(
 def apply_verification(
     companies: Sequence[Company], outcome: DiscoveryFinished, today: date
 ) -> tuple[tuple[Company, ...], int, int]:
-    live = {result.company for result in outcome.matched + outcome.unverified}
-    dead = {
-        result.company: result.detail or result.verdict.value
-        for result in outcome.rejected
-    }
+    live = {result.company for result in outcome.matched}
+    dead = {result.company: result.detail or result.verdict.value for result in outcome.rejected}
     updated: list[Company] = []
     verified = disabled = 0
     for company in companies:
         if company.name in live:
             if company.last_verified != today or not company.enabled:
                 verified += 1
-            updated.append(replace(company, enabled=True, last_verified=today))
+            updated.append(replace(company, enabled=True, last_verified=today, notes=None))
         elif company.name in dead:
             if company.enabled:
                 disabled += 1
-            updated.append(replace(company, enabled=False, last_verified=None))
+            updated.append(
+                replace(
+                    company,
+                    enabled=False,
+                    last_verified=None,
+                    notes=f"{today.isoformat()}: {first_line(dead[company.name])[:200]}",
+                )
+            )
         else:
             updated.append(company)
     return tuple(updated), verified, disabled

@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -9,8 +8,10 @@ from stage.http import HttpClient
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
     FetchResult,
+    NonEmptyStr,
     PayloadValidationError,
     capture_payload,
+    convert_rows,
     malformed_note,
     validate_rows,
 )
@@ -26,9 +27,9 @@ LISTINGS_URL = (
 class SimplifyListing(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    id: str
-    company_name: str
-    title: str
+    id: NonEmptyStr
+    company_name: NonEmptyStr
+    title: NonEmptyStr
     url: str = ""
     locations: list[str] = Field(default_factory=list)
     active: bool = True
@@ -58,12 +59,15 @@ class SimplifyFeed:
         if response.not_modified:
             return FetchResult(not_modified=True)
         listings, dropped = self._validate(response.payload, now)
+        jobs, unconvertible = convert_rows(
+            lambda listing: self._to_job(listing, now),
+            [listing for listing in listings if listing.active and listing.is_visible],
+            source=self.name,
+            slug=str(self.season_year(now)),
+        )
+        dropped += unconvertible
         return FetchResult(
-            jobs=tuple(
-                self._to_job(listing, now)
-                for listing in listings
-                if listing.active and listing.is_visible
-            ),
+            jobs=tuple(jobs),
             degraded=malformed_note(dropped),
             authoritative=not dropped,
         )

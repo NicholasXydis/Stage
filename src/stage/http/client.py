@@ -112,7 +112,6 @@ class HostMetrics:
 
 @dataclass(slots=True)
 class HostBudget:
-
     posture: RatePosture
     seed: RateState | None = None
     metrics: HostMetrics = field(default_factory=HostMetrics)
@@ -161,9 +160,7 @@ class HostBudget:
     def observe_latency(self, time_to_headers_s: float) -> None:
         sample = time_to_headers_s
         self.samples += 1
-        self.fast_latency = (
-            sample if self.samples == 1 else 0.6 * sample + 0.4 * self.fast_latency
-        )
+        self.fast_latency = sample if self.samples == 1 else 0.6 * sample + 0.4 * self.fast_latency
         self.slow_latency = (
             sample if self.samples == 1 else 0.15 * sample + 0.85 * self.slow_latency
         )
@@ -177,9 +174,7 @@ class HostBudget:
     def settle(self, bucket: str, now: datetime) -> RateState:
         baseline = self.posture.min_interval_s
         override = (
-            self.min_interval_s
-            if self.rejections
-            else decay(self.seeded_interval_s, baseline)
+            self.min_interval_s if self.rejections else decay(self.seeded_interval_s, baseline)
         )
         if override is not None and override <= baseline:
             override = None
@@ -325,7 +320,10 @@ class HttpClient:
         return budget
 
     def _authorize(self, url: str) -> tuple[str, HostBudget]:
-        host = (urlsplit(url).hostname or "").lower()
+        try:
+            host = (urlsplit(url).hostname or "").lower()
+        except ValueError:
+            host = ""
         if host not in self._allowed_hosts:
             raise HostNotAllowedError(f"{host or url!r} is not a registry host")
         bucket = self.bucket_for(host)
@@ -394,7 +392,6 @@ class HttpClient:
         if when.tzinfo is None:
             when = when.replace(tzinfo=UTC)
         return max(0.0, (when - datetime.now(UTC)).total_seconds())
-
 
     def _validate_hop(self, url: httpx.URL) -> None:
         if url.scheme != "https":
@@ -466,11 +463,7 @@ class HttpClient:
             self._own.retries += 1
         target = request_url(url, params)
         key = str(target)
-        headers = (
-            self._cache.conditional_headers(key)
-            if method == "GET" and not revalidate
-            else {}
-        )
+        headers = self._cache.conditional_headers(key) if method == "GET" and not revalidate else {}
         headers_at = 0.0
         try:
             async with budget.semaphore:
@@ -615,4 +608,3 @@ class HttpClient:
                     bucket, budget, url, params, attempt, method, body, revalidate
                 )
         raise HttpError(f"{bucket} exhausted retries for {url}")
-

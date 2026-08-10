@@ -1,4 +1,3 @@
-
 import re
 from dataclasses import dataclass
 from functools import lru_cache
@@ -12,7 +11,6 @@ _FIELD_SPLIT = re.compile(r"[,\-]+")
 
 @dataclass(frozen=True, slots=True)
 class ResolvedLocation:
-
     bucket: LocationBucket = LocationBucket.UNKNOWN
     remote_scope: RemoteScope | None = None
     evidence: tuple[str, ...] = ()
@@ -29,7 +27,6 @@ class _Segment:
 
 
 class _PhraseIndex:
-
     __slots__ = ("_by_first_token",)
 
     def __init__(self, categories: dict[str, frozenset[str]]) -> None:
@@ -108,9 +105,7 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
         or ("canada_cities" in found and not overridden)
         or ("canada_ambiguous" in found and canada_context)
     )
-    usa = (
-        "usa_country" in found or "usa_regions" in found or "usa_cities" in found or code_usa
-    )
+    usa = "usa_country" in found or "usa_regions" in found or "usa_cities" in found or code_usa
     other = "international" in found or "international_cities" in found
     return _Segment(
         montreal=montreal,

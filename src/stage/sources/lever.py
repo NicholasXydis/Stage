@@ -1,21 +1,12 @@
-
-from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from stage.domain import Company, Job, Platform, board_key, job_id
-from stage.http import HttpClient
+from stage.domain import Company, Job, Platform, SourceSignals, job_id
 from stage.sources import register
 from stage.sources._text import collapse_whitespace
-from stage.sources.base import (
-    FetchResult,
-    PayloadValidationError,
-    capture_payload,
-    malformed_note,
-    validate_rows,
-)
+from stage.sources.base import BoardAdapter
 
 BASE_URL = "https://api.lever.co/v0/postings/{slug}"
 HOST = "api.lever.co"
@@ -50,75 +41,34 @@ class LeverPosting(BaseModel):
 
 
 @register
-class LeverAdapter:
+class LeverAdapter(BoardAdapter):
     name: ClassVar[str] = "lever"
     platform: ClassVar[Platform] = Platform.LEVER
     rate_profile: ClassVar[str] = "standard"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
-    bucket_key: ClassVar[str] = ""
     detail_budget: ClassVar[int] = 0
-    rotation_slice: ClassVar[int] = 0
-
     max_requests_per_company: ClassVar[int] = 1
 
-    def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:  # noqa: ARG002
-        return self.hosts
+    base_url: ClassVar[str] = BASE_URL
+    query: ClassVar[tuple[tuple[str, str], ...]] = (("mode", "json"),)
+    row_model: ClassVar[type[BaseModel]] = LeverPosting
 
-    def board_key(self, company: Company) -> str:
-        return board_key(self.name, company.slug)
-
-    def plan(self, company: Company) -> tuple[str, ...]:
-        return (f"{BASE_URL.format(slug=company.slug)}?mode=json",)
-
-    async def fetch(
-        self,
-        company: Company,
-        client: HttpClient,
-        now: datetime,
-        facets: object = None,  # noqa: ARG002
-        details: Sequence[str] = (),  # noqa: ARG002
-    ) -> FetchResult:
-        response = await client.get_json(
-            BASE_URL.format(slug=company.slug), params={"mode": "json"}
-        )
-        if response.not_modified:
-            return FetchResult(not_modified=True)
-        postings, dropped = self._validate(company, response.payload)
-        return FetchResult(
-            jobs=tuple(self._to_job(company, posting, now) for posting in postings),
-            degraded=malformed_note(dropped),
-            authoritative=not dropped,
-        )
-
-    def _validate(self, company: Company, payload: Any) -> tuple[list[LeverPosting], int]:
-        if not isinstance(payload, list):
-            captured = capture_payload(self.name, company.slug, payload)
-            raise PayloadValidationError(
-                f"lever/{company.slug}: field '<root>' failed validation (expected a JSON "
-                f"list of postings); raw payload captured at {captured}"
-            )
-        return validate_rows(LeverPosting, payload, source=self.name, slug=company.slug)
-
-    def _to_job(self, company: Company, posting: LeverPosting, now: datetime) -> Job:
-        posted = (
-            datetime.fromtimestamp(posting.createdAt / 1000, tz=UTC)
-            if posting.createdAt
-            else None
-        )
-        parts = (posting.descriptionPlain, posting.additionalPlain)
-        body = "\n\n".join(part for part in parts if part)
+    def to_job(self, company: Company, row: Any, now: datetime) -> Job:
+        posted = datetime.fromtimestamp(row.createdAt / 1000, tz=UTC) if row.createdAt else None
+        parts = (row.descriptionPlain, row.additionalPlain)
         return Job(
-            id=job_id(self.name, company.slug, posting.id),
+            id=job_id(self.name, company.slug, row.id),
             source=self.name,
             company=company.name,
-            title_raw=posting.text,
-            title_normalized=collapse_whitespace(posting.text),
-            apply_url_raw=posting.hostedUrl or posting.applyUrl,
-            description=body,
-            location_raw=collapse_whitespace(
-                posting.categories.label() if posting.categories else ""
-            ),
+            title_raw=row.text,
+            title_normalized=collapse_whitespace(row.text),
+            apply_url_raw=row.hostedUrl or row.applyUrl,
+            description="\n\n".join(part for part in parts if part),
+            location_raw=collapse_whitespace(row.categories.label() if row.categories else ""),
             first_seen=now,
             last_seen=now,
             source_posted_at=posted,
+            signals=SourceSignals(
+                employment_type=row.categories.commitment if row.categories else ""
+            ),
         )

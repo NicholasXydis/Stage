@@ -608,6 +608,78 @@
         "matched_phrase": "no internship marker in title",
         "location": "montreal"
       }
+    },
+    {
+      "id": "hardware-en-full",
+      "input": {
+        "source": "greenhouse",
+        "company": "NVIDIA",
+        "title_raw": "Hardware Engineering Intern, Summer 2027",
+        "location_raw": "Santa Clara, CA, USA",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "usa",
+        "remote_scope": null,
+        "term": "summer-2027",
+        "role": "hardware",
+        "language": "en"
+      }
+    },
+    {
+      "id": "quant-fr",
+      "input": {
+        "source": "greenhouse",
+        "company": "Banque Nationale",
+        "title_raw": "Stagiaire en finance quantitative, Été 2027",
+        "location_raw": "Montréal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "summer-2027",
+        "role": "quant",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "infra-fr",
+      "input": {
+        "source": "greenhouse",
+        "company": "Videotron",
+        "title_raw": "Stagiaire en infrastructure infonuagique",
+        "location_raw": "Montréal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "infra",
+        "language": "fr"
+      }
+    },
+    {
+      "id": "hardware-fr",
+      "input": {
+        "source": "greenhouse",
+        "company": "CAE",
+        "title_raw": "Stagiaire en génie électrique",
+        "location_raw": "Montréal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "hardware",
+        "language": "fr"
+      }
     }
   ]
 }

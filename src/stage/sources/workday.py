@@ -1,4 +1,3 @@
-
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime
@@ -11,6 +10,7 @@ from stage.domain import (
     DetailFetch,
     Job,
     Platform,
+    SourceSignals,
     WorkdayFacet,
     board_key,
     job_id,
@@ -208,9 +208,7 @@ class WorkdayAdapter:
             if facet is not None and page.facets is None:
                 if not drifted:
                     drifted = True
-                    captured = capture_payload(
-                        "workday-nofacets", company.slug, response.payload
-                    )
+                    captured = capture_payload("workday-nofacets", company.slug, response.payload)
                     degraded = (
                         f"no facet list at all while facet {facet.facet_ids!r} applied, "
                         f"so staleness is undecided; facet kept, nothing closed. "
@@ -273,7 +271,8 @@ class WorkdayAdapter:
         if malformed:
             degraded = malformed_note(malformed) + (f" ({degraded})" if degraded else "")
 
-        paired = [(posting, _to_job(company, posting, now)) for posting in postings]
+        faceted = "internship" if applied else ""
+        paired = [(posting, _to_job(company, posting, now, faceted)) for posting in postings]
         wanted = set(details)
         fetched: list[DetailFetch] = []
         if wanted:
@@ -303,10 +302,7 @@ def _fallback_reason(page: WorkdayPage, company: Company, payload: Any) -> str:
             "to resolve; walking the whole board instead"
         )
     captured = capture_payload("workday-nofacets", company.slug, payload)
-    return (
-        "no facet list at all, so resolution could not run; "
-        f"payload captured at {captured}"
-    )
+    return f"no facet list at all, so resolution could not run; payload captured at {captured}"
 
 
 def _pinned_facet(company: Company) -> WorkdayFacet | None:
@@ -388,7 +384,9 @@ def _board(company: Company) -> str:
     return f"{company.workday_tenant or company.slug}-{company.workday_site or ''}"
 
 
-def _to_job(company: Company, posting: WorkdayPosting, now: datetime) -> Job:
+def _to_job(
+    company: Company, posting: WorkdayPosting, now: datetime, employment_type: str = ""
+) -> Job:
     host, _ = workday_target(
         company.workday_tenant or "", company.workday_site or "", company.workday_dc or ""
     )
@@ -407,4 +405,5 @@ def _to_job(company: Company, posting: WorkdayPosting, now: datetime) -> Job:
         location_raw=collapse_whitespace(posting.locationsText),
         first_seen=now,
         last_seen=now,
+        signals=SourceSignals(employment_type=employment_type),
     )

@@ -1,4 +1,3 @@
-
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import datetime
@@ -52,7 +51,6 @@ class SmartRecruitersPosting(BaseModel):
 
 
 class SmartRecruitersPage(BaseModel):
-
     model_config = ConfigDict(extra="ignore")
 
     totalFound: int  # noqa: N815 - the API's own field name
@@ -78,7 +76,7 @@ class SmartRecruitersAdapter:
         return board_key(self.name, company.slug)
 
     def plan(self, company: Company) -> tuple[str, ...]:
-        return (f"{BASE_URL.format(slug=company.slug)}?limit={PAGE_SIZE}&offset=0",)
+        return (f"{BASE_URL.format(slug=safe_slug(company.slug))}?limit={PAGE_SIZE}&offset=0",)
 
     async def fetch(
         self,
@@ -88,7 +86,7 @@ class SmartRecruitersAdapter:
         facets: object = None,  # noqa: ARG002
         details: Sequence[str] = (),
     ) -> FetchResult:
-        url = BASE_URL.format(slug=company.slug)
+        url = BASE_URL.format(slug=safe_slug(company.slug))
         postings: list[SmartRecruitersPosting] = []
         truncated = False
         stale_page = False

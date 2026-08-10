@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 
 from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
@@ -24,7 +23,7 @@ def screen_location(job: Job, evidence: tuple[str, ...] = ()) -> Rejection | Non
 def screen_is_internship(job: Job) -> Rejection | None:
     from stage.classify.internship import screen_internship
 
-    verdict = screen_internship(job.title_raw)
+    verdict = screen_internship(job.title_raw, job.signals.employment_type)
     if verdict.is_internship:
         return None
     return Rejection(

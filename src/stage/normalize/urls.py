@@ -1,6 +1,5 @@
-
 import re
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 TRACKER_DOMAINS: frozenset[str] = frozenset(
     {
@@ -20,8 +19,16 @@ TRACKER_DOMAINS: frozenset[str] = frozenset(
 _LOCALE_SEGMENT = re.compile(r"^[a-z]{2}([-_][a-zA-Z]{2})?$")
 
 
+def _split(url: str) -> SplitResult | None:
+    try:
+        return urlsplit(url)
+    except ValueError:
+        return None
+
+
 def _host(url: str) -> str:
-    return (urlsplit(url).hostname or "").lower()
+    parts = _split(url)
+    return "" if parts is None else (parts.hostname or "").lower()
 
 
 def is_tracker_url(url: str) -> bool:
@@ -34,8 +41,8 @@ def is_tracker_url(url: str) -> bool:
 def canonical_apply_url(raw: str) -> str:
     if not raw or not raw.strip():
         return ""
-    parts = urlsplit(raw.strip())
-    if parts.scheme not in ("http", "https"):
+    parts = _split(raw.strip())
+    if parts is None or parts.scheme not in ("http", "https"):
         return ""
     host = (parts.hostname or "").lower()
     if not host or is_tracker_url(raw):
