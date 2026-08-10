@@ -220,7 +220,7 @@ async def test_a_source_with_no_boards_reports_no_success_rate(db_path: Path) ->
 async def test_the_json_views_round_trip_through_a_parser(db_path: Path) -> None:
     import json
 
-    from stage.cli.render import health_to_json, stats_to_json
+    from stage.cli.serialize import health_to_json, stats_to_json
     from stage.services.health import statistics
 
     async with open_repository(db_path) as repository:

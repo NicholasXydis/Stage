@@ -4,6 +4,7 @@ import httpx
 import pytest
 
 from stage.domain import (
+    Company,
     DiscoveryEvent,
     DiscoveryFinished,
     EmployerSize,
@@ -310,9 +311,7 @@ async def test_probing_never_contacts_a_host_outside_the_platform_table() -> Non
         seen.append(request.url.host)
         return httpx.Response(404)
 
-    await _collect(
-        probe_companies(["Faire", "Coveo"], client_factory=_client_factory(handler))
-    )
+    await _collect(probe_companies(["Faire", "Coveo"], client_factory=_client_factory(handler)))
     from stage.sources.platforms import PROBES
 
     templates = {probe.host for probe in PROBES}
@@ -339,9 +338,17 @@ def test_a_platform_with_no_adapter_is_emitted_disabled() -> None:
     assert "notes" not in rendered
 
 
-def test_a_platform_with_an_adapter_is_emitted_enabled() -> None:
-    company = to_company("Faire", PlatformCandidate(Platform.GREENHOUSE, "faire"))
-    assert company.enabled is True
+def test_a_row_is_emitted_enabled_only_once_something_verified_it() -> None:
+    from datetime import date
+
+    unverified = to_company("Faire", PlatformCandidate(Platform.GREENHOUSE, "faire"))
+    assert unverified.enabled is False
+    assert unverified.last_verified is None
+
+    verified = to_company(
+        "Faire", PlatformCandidate(Platform.GREENHOUSE, "faire"), verified_on=date(2026, 8, 1)
+    )
+    assert verified.enabled is True
 
 
 def test_every_emitted_row_carries_provenance_and_verification_date() -> None:
@@ -522,3 +529,106 @@ def test_an_omitted_enabled_key_defaults_to_polled(tmp_path: "object") -> None:
     rows = {row.slug: row for row in load_companies(target)}
     assert rows["implicit"].enabled is True
     assert rows["switched-off"].enabled is False
+
+
+def test_applying_a_rejection_records_why_the_row_was_disabled() -> None:
+    from datetime import date
+
+    from stage.domain import ProbeResult
+    from stage.services.discover import apply_verification
+
+    rejected = ProbeResult(
+        company="Coveo (FR)",
+        candidate=PlatformCandidate(platform=Platform.GREENHOUSE, slug="coveofr"),
+        verdict=ProbeVerdict.REJECTED,
+        url="https://boards.example.test/coveofr",
+        board_name="Coveo Solutions",
+        job_count=12,
+        detail="board is named 'Coveo Solutions', which does not contain 'Coveo (FR)'",
+    )
+    outcome = DiscoveryFinished(
+        matched=(),
+        unverified=(),
+        rejected=(rejected,),
+        missed=0,
+        errors=0,
+        requests=1,
+        elapsed_ms=1.0,
+    )
+    row = Company(name="Coveo (FR)", platform=Platform.GREENHOUSE, slug="coveofr")
+
+    updated, verified, disabled = apply_verification((row,), outcome, date(2026, 8, 8))
+    assert (verified, disabled) == (0, 1)
+    assert updated[0].enabled is False
+    assert updated[0].notes is not None
+    assert updated[0].notes.startswith("2026-08-08: ")
+    assert "Coveo Solutions" in updated[0].notes
+
+
+def test_re_enabling_a_row_clears_the_reason_it_was_disabled_for() -> None:
+    from datetime import date
+
+    from stage.domain import ProbeResult
+    from stage.services.discover import apply_verification
+
+    matched = ProbeResult(
+        company="Coveo",
+        candidate=PlatformCandidate(platform=Platform.GREENHOUSE, slug="coveo"),
+        verdict=ProbeVerdict.MATCH,
+        url="https://boards.example.test/coveo",
+        board_name="Coveo Solutions",
+        job_count=12,
+    )
+    outcome = DiscoveryFinished(
+        matched=(matched,),
+        unverified=(),
+        rejected=(),
+        missed=0,
+        errors=0,
+        requests=1,
+        elapsed_ms=1.0,
+    )
+    stale = Company(
+        name="Coveo",
+        platform=Platform.GREENHOUSE,
+        slug="coveo",
+        enabled=False,
+        notes="2026-01-01: name-gate rejection",
+    )
+    updated, _, _ = apply_verification((stale,), outcome, date(2026, 8, 8))
+    assert updated[0].enabled is True
+    assert updated[0].notes is None, "a disable reason is a claim about a moment that has passed"
+
+
+def test_apply_never_enables_a_board_that_exposes_no_name() -> None:
+    from datetime import date
+
+    from stage.domain import ProbeResult
+    from stage.services.discover import apply_verification
+
+    unverified = ProbeResult(
+        company="Acme",
+        candidate=PlatformCandidate(platform=Platform.LEVER, slug="acme"),
+        verdict=ProbeVerdict.UNVERIFIED,
+        url="https://api.lever.co/v0/postings/acme",
+        board_name="",
+        job_count=12,
+        detail="lever exposes no board name",
+    )
+    outcome = DiscoveryFinished(
+        matched=(),
+        unverified=(unverified,),
+        rejected=(),
+        missed=0,
+        errors=0,
+        requests=1,
+        elapsed_ms=1.0,
+    )
+    off = Company(name="Acme", platform=Platform.LEVER, slug="acme", enabled=False)
+    updated, verified, disabled = apply_verification((off,), outcome, date(2026, 8, 8))
+    assert (verified, disabled) == (0, 0)
+    assert updated[0].enabled is False, "a 200 with jobs is not evidence of the right company"
+
+    on = Company(name="Acme", platform=Platform.LEVER, slug="acme", enabled=True)
+    kept, _, _ = apply_verification((on,), outcome, date(2026, 8, 8))
+    assert kept[0].enabled is True, "an already-enabled row must not be switched off either"
