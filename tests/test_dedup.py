@@ -1,4 +1,3 @@
-
 from datetime import UTC, datetime
 
 import pytest
@@ -102,7 +101,10 @@ def test_two_rows_from_the_same_source_never_fuzzy_merge() -> None:
 
 def test_the_same_title_at_different_locations_must_not_merge() -> None:
     left = job(
-        "a", "greenhouse", "Ubisoft", "Gameplay Programmer Intern",
+        "a",
+        "greenhouse",
+        "Ubisoft",
+        "Gameplay Programmer Intern",
         location=LocationBucket.MONTREAL,
     )
     right = job(
@@ -119,12 +121,8 @@ def test_a_different_employer_never_merges_on_title_alone() -> None:
 
 def test_remote_does_not_agree_with_a_city() -> None:
     assert not location_agrees(LocationBucket.REMOTE, LocationBucket.MONTREAL)
-    left = job(
-        "a", "greenhouse", "Shopify", "Backend Intern", location=LocationBucket.REMOTE
-    )
-    right = job(
-        "b", "simplify", "Shopify", "Backend Intern", location=LocationBucket.MONTREAL
-    )
+    left = job("a", "greenhouse", "Shopify", "Backend Intern", location=LocationBucket.REMOTE)
+    right = job("b", "simplify", "Shopify", "Backend Intern", location=LocationBucket.MONTREAL)
     assert not would_merge(left, right)
 
 
@@ -137,12 +135,22 @@ def test_unresolved_locations_never_satisfy_the_guardrail(bucket: LocationBucket
 
 def test_cross_language_requires_company_location_and_term() -> None:
     english = job(
-        "a", "greenhouse", "Ubisoft", "Software Engineering Intern",
-        location=LocationBucket.MONTREAL, term="summer-2027", language=Language.EN,
+        "a",
+        "greenhouse",
+        "Ubisoft",
+        "Software Engineering Intern",
+        location=LocationBucket.MONTREAL,
+        term="summer-2027",
+        language=Language.EN,
     )
     french = job(
-        "b", "simplify", "Ubisoft", "Stagiaire en génie logiciel",
-        location=LocationBucket.MONTREAL, term="summer-2027", language=Language.FR,
+        "b",
+        "simplify",
+        "Ubisoft",
+        "Stagiaire en génie logiciel",
+        location=LocationBucket.MONTREAL,
+        term="summer-2027",
+        language=Language.FR,
     )
     assert would_merge(english, french).kind is MatchKind.CROSS_LANGUAGE
 
@@ -159,12 +167,22 @@ def test_cross_language_is_refused_when_any_guardrail_field_disagrees(
     term: str, location: LocationBucket
 ) -> None:
     english = job(
-        "a", "greenhouse", "Ubisoft", "Software Engineering Intern",
-        location=LocationBucket.MONTREAL, term="summer-2027", language=Language.EN,
+        "a",
+        "greenhouse",
+        "Ubisoft",
+        "Software Engineering Intern",
+        location=LocationBucket.MONTREAL,
+        term="summer-2027",
+        language=Language.EN,
     )
     french = job(
-        "b", "simplify", "Ubisoft", "Stagiaire en génie logiciel",
-        location=location, term=term, language=Language.FR,
+        "b",
+        "simplify",
+        "Ubisoft",
+        "Stagiaire en génie logiciel",
+        location=location,
+        term=term,
+        language=Language.FR,
     )
     assert not would_merge(english, french)
 
@@ -172,12 +190,22 @@ def test_cross_language_is_refused_when_any_guardrail_field_disagrees(
 def test_cross_language_needs_a_canonicalizable_title() -> None:
     assert title_canonical("Summer Intern") == ""
     english = job(
-        "a", "greenhouse", "Ubisoft", "Summer Intern",
-        location=LocationBucket.MONTREAL, term="summer-2027", language=Language.EN,
+        "a",
+        "greenhouse",
+        "Ubisoft",
+        "Summer Intern",
+        location=LocationBucket.MONTREAL,
+        term="summer-2027",
+        language=Language.EN,
     )
     french = job(
-        "b", "simplify", "Ubisoft", "Stagiaire",
-        location=LocationBucket.MONTREAL, term="summer-2027", language=Language.FR,
+        "b",
+        "simplify",
+        "Ubisoft",
+        "Stagiaire",
+        location=LocationBucket.MONTREAL,
+        term="summer-2027",
+        language=Language.FR,
     )
     assert not would_merge(english, french)
 

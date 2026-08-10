@@ -1,4 +1,3 @@
-
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -48,8 +47,12 @@ async def test_only_rows_a_description_could_change_are_queued(db_path: Path) ->
                     _job("needs-term", role=RoleCategory.SWE),
                     _job("needs-role", term="summer-2027"),
                     _job("resolved", term="summer-2027", role=RoleCategory.SWE),
-                    _job("has-body", description="a prose body", term="summer-2027",
-                         role=RoleCategory.SWE),
+                    _job(
+                        "has-body",
+                        description="a prose body",
+                        term="summer-2027",
+                        role=RoleCategory.SWE,
+                    ),
                 ),
             )
         )
@@ -104,8 +107,7 @@ async def test_a_queue_larger_than_the_ceiling_is_served_newest_first_and_the_re
     db_path: Path,
 ) -> None:
     jobs = tuple(
-        _job(f"job-{index:03d}", first_seen=NOW - timedelta(days=index))
-        for index in range(200)
+        _job(f"job-{index:03d}", first_seen=NOW - timedelta(days=index)) for index in range(200)
     )
     async with open_repository(db_path) as repository:
         await repository.apply_source_batch(
@@ -158,8 +160,11 @@ async def test_a_queued_posting_gets_its_body_merged_before_it_leaves_the_adapte
             json={
                 "totalFound": 1,
                 "content": [
-                    {"id": "P1", "name": "Software Engineer Intern",
-                     "location": {"city": "Montreal"}}
+                    {
+                        "id": "P1",
+                        "name": "Software Engineer Intern",
+                        "location": {"city": "Montreal"},
+                    }
                 ],
             },
         )
@@ -170,9 +175,7 @@ async def test_a_queued_posting_gets_its_body_merged_before_it_leaves_the_adapte
         allowed_hosts=frozenset({"api.smartrecruiters.com"}), posture=unpaced, jitter=False
     ) as client:
         job_ident = job_id("smartrecruiters", "acme", "P1")
-        result = await SmartRecruitersAdapter().fetch(
-            company, client, NOW, None, [job_ident]
-        )
+        result = await SmartRecruitersAdapter().fetch(company, client, NOW, None, [job_ident])
 
     assert len(result.jobs) == 1
     assert "Build things." in result.jobs[0].description
@@ -240,19 +243,25 @@ async def test_a_row_that_already_has_a_body_never_enters_the_queue(db_path: Pat
                 source="greenhouse",
                 run_started_at=NOW,
                 jobs=(
-                    _job("described-unknown-term", source="greenhouse",
-                         description="a full prose body", role=RoleCategory.SWE),
-                    _job("described-unknown-role", source="greenhouse",
-                         description="a full prose body", term="summer-2027"),
+                    _job(
+                        "described-unknown-term",
+                        source="greenhouse",
+                        description="a full prose body",
+                        role=RoleCategory.SWE,
+                    ),
+                    _job(
+                        "described-unknown-role",
+                        source="greenhouse",
+                        description="a full prose body",
+                        term="summer-2027",
+                    ),
                     _job("thin", source="greenhouse"),
                 ),
             )
         )
         queued = await repository.detail_queue("greenhouse", 50)
 
-    assert queued == ["thin"], (
-        "a description that exists cannot be improved by fetching it again"
-    )
+    assert queued == ["thin"], "a description that exists cannot be improved by fetching it again"
 
 
 async def test_a_failed_fetch_is_retried_while_an_answered_one_is_not(db_path: Path) -> None:
@@ -277,9 +286,7 @@ async def test_a_failed_fetch_is_retried_while_an_answered_one_is_not(db_path: P
         )
         queued = await repository.detail_queue("smartrecruiters", 50)
 
-    assert queued == ["failed"], (
-        "only the row that never received an answer may be tried again"
-    )
+    assert queued == ["failed"], "only the row that never received an answer may be tried again"
 
 
 async def test_a_retry_is_bounded_so_a_dead_endpoint_cannot_hold_the_queue(
@@ -289,9 +296,7 @@ async def test_a_retry_is_bounded_so_a_dead_endpoint_cannot_hold_the_queue(
 
     async with open_repository(db_path) as repository:
         await repository.apply_source_batch(
-            SourceBatch(
-                source="smartrecruiters", run_started_at=NOW, jobs=(_job("doomed"),)
-            )
+            SourceBatch(source="smartrecruiters", run_started_at=NOW, jobs=(_job("doomed"),))
         )
         for _ in range(MAX_DETAIL_ATTEMPTS):
             assert await repository.detail_queue("smartrecruiters", 50) == ["doomed"]

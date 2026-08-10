@@ -1,4 +1,3 @@
-
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -65,14 +64,24 @@ def test_golden(case: dict[str, Any]) -> None:
     assert actual == {key: expected[key] for key in actual}
 
 
+RULE_CATEGORIES = frozenset(
+    {"swe", "security", "data", "ml-ai", "quant", "infra", "hardware", "embedded"}
+)
+
+
 def test_the_goldens_cover_every_rule_category_in_both_languages() -> None:
     cases = _cases()
     kept = [case["expected"] for case in cases if case["expected"]["kept"]]
-    roles = {entry["role"] for entry in kept}
-    assert {"swe", "security", "data", "ml-ai", "quant", "infra", "hardware", "embedded"} <= roles
 
     languages = {entry["language"] for entry in kept}
     assert {"en", "fr", "bilingual"} <= languages
+
+    for language in ("en", "fr"):
+        covered = {entry["role"] for entry in kept if entry["language"] == language}
+        assert covered >= RULE_CATEGORIES, (
+            f"{sorted(RULE_CATEGORIES - covered)} have no {language} golden; asserting the "
+            "role and language unions separately let one language carry every category"
+        )
 
     reasons = {case["expected"]["reason"] for case in cases if not case["expected"]["kept"]}
     assert {"out-of-scope-location", "not-an-internship"} == reasons
@@ -89,5 +98,8 @@ def test_french_and_english_reach_the_same_role() -> None:
         ("security-en", "security-fr"),
         ("mlai-en", "mlai-fr"),
         ("embedded-en", "embedded-fr"),
+        ("quant-en", "quant-fr"),
+        ("infra-en", "infra-fr"),
+        ("hardware-en", "hardware-fr"),
     ]:
         assert by_id[english]["role"] == by_id[french]["role"], (english, french)

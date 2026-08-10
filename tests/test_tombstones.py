@@ -1,4 +1,3 @@
-
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -7,6 +6,7 @@ import pytest
 from stage.dedup import SOURCE_PRIORITY, resolve_duplicates
 from stage.domain import Job, JobStatus, LocationBucket
 from stage.storage import SourceBatch, open_repository
+from stage.storage.sqlite_repo import SqliteRepository
 
 NOW = datetime(2026, 8, 3, 12, 0, tzinfo=UTC)
 
@@ -71,9 +71,7 @@ async def test_a_purged_posting_does_not_resurrect_with_a_fresh_date(db_path: Pa
 
         later = NOW + timedelta(days=1)
         await repository.apply_source_batch(
-            SourceBatch(
-                source="greenhouse", run_started_at=later, jobs=(job("row", seen=later),)
-            )
+            SourceBatch(source="greenhouse", run_started_at=later, jobs=(job("row", seen=later),))
         )
         restored = await repository.get_job("row")
         assert restored is not None
@@ -105,9 +103,7 @@ async def test_a_duplicate_is_promoted_when_its_survivor_is_purged(db_path: Path
         survivor = job("direct", source="greenhouse", seen=old)
         duplicate = job("feed", source="simplify", seen=NOW - timedelta(days=1))
         links = resolve_duplicates([survivor, duplicate], [])
-        assert [(link.duplicate_id, link.canonical_id) for link in links] == [
-            ("feed", "direct")
-        ]
+        assert [(link.duplicate_id, link.canonical_id) for link in links] == [("feed", "direct")]
         await repository.apply_source_batch(
             SourceBatch(
                 source="greenhouse",
@@ -182,3 +178,96 @@ async def test_the_window_is_measured_from_first_seen(db_path: Path, days: int) 
         )
         result = await repository.purge(NOW)
         assert result.purged == (1 if days > 14 else 0)
+
+
+def test_promotion_never_hands_a_cluster_to_a_row_it_is_about_to_purge(db_path: Path) -> None:
+    repository = SqliteRepository.connect(db_path)
+    old = NOW - timedelta(days=5)
+    repository.apply_source_batch(
+        SourceBatch(
+            source="seed",
+            run_started_at=old,
+            jobs=(
+                _job("greenhouse:postman:1", "greenhouse", old, status=JobStatus.CLOSED),
+                _job("lever:postman:2", "lever", old, status=JobStatus.CLOSED),
+                _job("vanshb03:postman:3", "vanshb03", NOW),
+            ),
+        )
+    )
+    repository._conn.executemany(
+        "UPDATE jobs SET duplicate_of = ? WHERE id = ?",
+        [
+            ("greenhouse:postman:1", "lever:postman:2"),
+            ("greenhouse:postman:1", "vanshb03:postman:3"),
+        ],
+    )
+    repository._conn.commit()
+
+    result = repository.purge(NOW)
+    assert result.purged == 2
+    survivors = repository._conn.execute("SELECT id, duplicate_of FROM jobs ORDER BY id").fetchall()
+    assert [row["id"] for row in survivors] == ["vanshb03:postman:3"]
+    assert survivors[0]["duplicate_of"] is None, "the only surviving row must become canonical"
+    assert _dangling(repository) == 0
+    repository.close()
+
+
+def test_a_purge_heals_a_link_that_was_already_dangling(db_path: Path) -> None:
+    repository = SqliteRepository.connect(db_path)
+    repository.apply_source_batch(
+        SourceBatch(
+            source="seed",
+            run_started_at=NOW,
+            jobs=(
+                _job("greenhouse:postman:1", "greenhouse", NOW),
+                _job("vanshb03:postman:3", "vanshb03", NOW),
+            ),
+        )
+    )
+    repository._conn.execute(
+        "UPDATE jobs SET duplicate_of = ? WHERE id = ?",
+        ("greenhouse:postman:1", "vanshb03:postman:3"),
+    )
+    repository._conn.execute("DELETE FROM jobs WHERE id = 'greenhouse:postman:1'")
+    repository._conn.commit()
+    assert _dangling(repository) == 1
+
+    repository.purge(NOW)
+    assert _dangling(repository) == 0
+    row = repository._conn.execute(
+        "SELECT duplicate_of FROM jobs WHERE id = 'vanshb03:postman:3'"
+    ).fetchone()
+    assert row["duplicate_of"] is None
+    repository.close()
+
+
+def _dangling(repository: SqliteRepository) -> int:
+    return int(
+        repository._conn.execute(
+            "SELECT COUNT(*) AS n FROM jobs a LEFT JOIN jobs b ON a.duplicate_of = b.id "
+            "WHERE a.duplicate_of IS NOT NULL AND b.id IS NULL"
+        ).fetchone()["n"]
+    )
+
+
+def _job(
+    identifier: str,
+    source: str,
+    first_seen: datetime,
+    *,
+    status: JobStatus = JobStatus.OPEN,
+) -> Job:
+    return Job(
+        id=identifier,
+        source=source,
+        company="Postman",
+        title_raw="AI Engineer Intern",
+        title_normalized="ai engineer intern",
+        apply_url_raw="https://boards.example.test/postman",
+        description="",
+        first_seen=first_seen,
+        last_seen=first_seen,
+        location_raw="Remote",
+        location=LocationBucket.USA,
+        status=status,
+    )

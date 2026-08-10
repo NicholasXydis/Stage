@@ -313,8 +313,35 @@ async def test_a_validation_failure_does_not_persist_its_validator(
         )
     )
     async with open_repository(db_path) as repository:
-        async for _ in sync(
-            repository, [acme], sources=["greenhouse"], now_fn=lambda: run_time
-        ):
+        async for _ in sync(repository, [acme], sources=["greenhouse"], now_fn=lambda: run_time):
             pass
         assert dict(await repository.load_validators("greenhouse")) == {}
+
+
+def test_excluding_a_source_drops_it_and_keeps_the_rest() -> None:
+    from stage.services.sync import _select
+
+    rows = (
+        Company(name="A", platform=Platform.GREENHOUSE, slug="a"),
+        Company(name="B", platform=Platform.LEVER, slug="b"),
+    )
+    grouped, feeds, _ = _select(rows, None, ["greenhouse", "simplify"])
+    assert set(grouped) == {"lever"}
+    assert "simplify" not in feeds
+    assert "vanshb03" in feeds
+
+
+def test_excluding_an_unknown_source_is_an_error_not_a_silent_no_op() -> None:
+    from stage.services.sync import NoSourcesSelectedError, _select
+
+    rows = (Company(name="A", platform=Platform.GREENHOUSE, slug="a"),)
+    with pytest.raises(NoSourcesSelectedError, match="unknown source"):
+        _select(rows, None, ["greehnouse"])
+
+
+def test_excluding_a_source_with_no_enabled_rows_still_works() -> None:
+    from stage.services.sync import _select
+
+    rows = (Company(name="A", platform=Platform.GREENHOUSE, slug="a"),)
+    grouped, _, _ = _select(rows, None, ["workday"])
+    assert set(grouped) == {"greenhouse"}

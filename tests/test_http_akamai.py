@@ -1,4 +1,3 @@
-
 import asyncio
 from datetime import UTC, datetime, timedelta
 
@@ -76,9 +75,7 @@ async def test_a_request_refused_after_reserving_refunds_the_ceiling() -> None:
     paced = RatePosture(concurrency=2, min_interval_s=0.2, max_requests_per_run=120)
 
     async with _client(paced) as client:
-        await asyncio.gather(
-            *(client.get_json(URL) for _ in range(6)), return_exceptions=True
-        )
+        await asyncio.gather(*(client.get_json(URL) for _ in range(6)), return_exceptions=True)
         budget = client._budgets["workday"]
         sent = len(respx.calls)
 
@@ -133,9 +130,7 @@ async def test_a_redirect_within_the_allow_list_is_followed() -> None:
     respx.get(URL).mock(
         return_value=httpx.Response(302, headers={"Location": f"https://{HOST}/v2/jobs"})
     )
-    respx.get(f"https://{HOST}/v2/jobs").mock(
-        return_value=httpx.Response(200, json={"ok": True})
-    )
+    respx.get(f"https://{HOST}/v2/jobs").mock(return_value=httpx.Response(200, json={"ok": True}))
     async with _client() as client:
         result = await client.get_json(URL)
     assert result.payload == {"ok": True}
@@ -164,14 +159,21 @@ async def test_a_client_reports_only_its_own_requests_not_the_whole_shared_dict(
 
     shared: dict[str, HostBudget] = {}
     async with HttpClient(
-        allowed_hosts=frozenset({HOST}), posture=FAST, bucket_key="workday",
-        jitter=False, now=NOW, budgets=shared,
+        allowed_hosts=frozenset({HOST}),
+        posture=FAST,
+        bucket_key="workday",
+        jitter=False,
+        now=NOW,
+        budgets=shared,
     ) as first:
         await first.get_json(URL)
         await first.get_json(URL)
 
         async with HttpClient(
-            allowed_hosts=frozenset({other}), posture=FAST, jitter=False, now=NOW,
+            allowed_hosts=frozenset({other}),
+            posture=FAST,
+            jitter=False,
+            now=NOW,
             budgets=shared,
         ) as second:
             await second.get_json(f"https://{other}/x")
@@ -187,8 +189,12 @@ async def test_two_clients_on_one_bucket_each_report_their_own_share() -> None:
 
     def build() -> HttpClient:
         return HttpClient(
-            allowed_hosts=frozenset({HOST}), posture=FAST, bucket_key="workday",
-            jitter=False, now=NOW, budgets=shared,
+            allowed_hosts=frozenset({HOST}),
+            posture=FAST,
+            bucket_key="workday",
+            jitter=False,
+            now=NOW,
+            budgets=shared,
         )
 
     async with build() as first:

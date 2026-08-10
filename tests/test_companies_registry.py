@@ -8,12 +8,20 @@ from stage.domain import Company, Platform
 
 def test_sibling_workday_sites_on_one_tenant_are_distinct_boards() -> None:
     external = Company(
-        name="RBC", platform=Platform.WORKDAY, slug="rbc",
-        workday_tenant="rbc", workday_site="External", workday_dc="wd3",
+        name="RBC",
+        platform=Platform.WORKDAY,
+        slug="rbc",
+        workday_tenant="rbc",
+        workday_site="External",
+        workday_dc="wd3",
     )
     capital_markets = Company(
-        name="RBC Capital Markets", platform=Platform.WORKDAY, slug="rbc",
-        workday_tenant="rbc", workday_site="CapitalMarkets", workday_dc="wd3",
+        name="RBC Capital Markets",
+        platform=Platform.WORKDAY,
+        slug="rbc",
+        workday_tenant="rbc",
+        workday_site="CapitalMarkets",
+        workday_dc="wd3",
     )
     assert board_identity(external) != board_identity(capital_markets)
 

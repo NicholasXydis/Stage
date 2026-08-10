@@ -1,4 +1,3 @@
-
 import json
 from pathlib import Path
 
@@ -166,9 +165,7 @@ _ORPHANS = {"euse", "euses", "trice", "trices", "rice", "rices", "ere", "eres", 
 def test_no_inclusive_suffix_survives_except_the_hyphen_form() -> None:
     pairs = json.loads(FIXTURE.read_text(encoding="utf-8"))["pairs"]
     assert pairs, "fixture is empty"
-    leftover = {
-        pair["fr"] for pair in pairs if set(fold(pair["fr"]).split()) & _ORPHANS
-    }
+    leftover = {pair["fr"] for pair in pairs if set(fold(pair["fr"]).split()) & _ORPHANS}
     assert all("-" in text for text in leftover), leftover
     assert leftover == {"Modeleur-euse 3D Sénior(e)", "Programmeur-euse Outils"}, leftover
 
@@ -186,3 +183,24 @@ def test_the_fixture_is_real_employer_text() -> None:
     for pair in pairs:
         assert pair["en"] and pair["fr"]
         assert pair["en"] in pair["title_raw"]
+
+
+def test_a_long_unbroken_run_of_letters_does_not_stall_the_fold() -> None:
+    import time
+
+    payload = "a" * 65536
+    started = time.perf_counter()
+    folded = fold.__wrapped__(payload)
+    elapsed = time.perf_counter() - started
+
+    assert folded == payload
+    assert elapsed < 1.0, f"folding {len(payload)} chars took {elapsed:.1f}s, needs the stem bound"
+
+
+def test_the_stem_bound_is_wide_enough_for_the_longest_real_word() -> None:
+    from stage.lexicon import LONGEST_WORD_STEM
+
+    stem = "a" * LONGEST_WORD_STEM
+    assert fold.__wrapped__(f"{stem}·euse") == stem
+    assert fold.__wrapped__("anticonstitutionnellement·euse") == "anticonstitutionnellement"
+    assert fold.__wrapped__("Programmeur·euse") == "programmeur"

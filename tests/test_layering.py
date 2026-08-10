@@ -49,13 +49,14 @@ def test_sources_do_not_import_normalize() -> None:
         assert "stage.normalize" not in path.read_text(encoding="utf-8"), path.name
 
 
-def test_the_list_path_never_imports_http_or_validation() -> None:
+HEAVY = ("httpx", "pydantic", "textual", "fpdf", "PIL", "fontTools")
+
+
+def _heavy_after(imports: str) -> str:
     probe = (
         "import sys\n"
-        "from stage.services.query import list_jobs\n"
-        "from stage.storage import open_repository\n"
-        "from stage.domain import JobFilters\n"
-        "heavy = [name for name in ('httpx', 'pydantic', 'textual') if name in sys.modules]\n"
+        f"{imports}\n"
+        f"heavy = [name for name in {HEAVY!r} if name in sys.modules]\n"
         "print(','.join(heavy))\n"
     )
     result = subprocess.run(
@@ -64,7 +65,22 @@ def test_the_list_path_never_imports_http_or_validation() -> None:
         text=True,
         check=True,
     )
-    assert result.stdout.strip() == ""
+    return result.stdout.strip()
+
+
+def test_the_list_path_never_imports_http_or_validation() -> None:
+    assert (
+        _heavy_after(
+            "from stage.services.query import list_jobs, search_jobs, get_posting\n"
+            "from stage.storage import open_repository\n"
+            "from stage.domain import JobFilters"
+        )
+        == ""
+    )
+
+
+def test_the_export_path_loads_the_pdf_stack_only_when_a_pdf_is_written() -> None:
+    assert _heavy_after("from stage.services.export import export_jobs, render_csv") == ""
 
 
 def test_lexicon_depends_on_nothing_in_the_chain() -> None:
@@ -106,9 +122,7 @@ def _prose_strings(root: Path) -> list[str]:
 def test_no_docstrings_or_prose_strings_anywhere() -> None:
     root = Path(__file__).resolve().parents[1]
     offenders = _prose_strings(root / "src") + _prose_strings(root / "tests")
-    assert not offenders, (
-        f"{len(offenders)} prose string(s) reappeared: {offenders[:10]}"
-    )
+    assert not offenders, f"{len(offenders)} prose string(s) reappeared: {offenders[:10]}"
 
 
 def test_no_hash_comments_outside_tooling_directives() -> None:
@@ -129,9 +143,7 @@ def test_no_hash_comments_outside_tooling_directives() -> None:
                 if text.startswith(("noqa", "type:")):
                     continue
                 offenders.append(f"{path.name}:{token.start[0]} {token.string[:40]}")
-    assert not offenders, (
-        f"{len(offenders)} comment(s) reappeared: {offenders[:10]}"
-    )
+    assert not offenders, f"{len(offenders)} comment(s) reappeared: {offenders[:10]}"
 
 
 def test_packaged_data_resolves_inside_the_package_not_the_repo() -> None:
@@ -166,4 +178,23 @@ def test_captures_do_not_write_into_the_source_tree() -> None:
     target = capture_dir().resolve()
     assert root not in target.parents and target != root, (
         f"{target} writes captures into the checkout; an installed tool has no writable source tree"
+    )
+
+
+def test_the_json_path_never_loads_the_renderer() -> None:
+    probe = (
+        "import sys\n"
+        "from stage.cli.app import app\n"
+        "try:\n"
+        "    app(['list', '--company', 'NO_SUCH_COMPANY', '--json'])\n"
+        "except SystemExit:\n"
+        "    pass\n"
+        "print('rich.console' in sys.modules)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+    )
+    assert result.stdout.strip().endswith("False"), (
+        "--json is the scripting path; console.print_json re-parses the string only to "
+        "colour it, so loading the renderer there is pure cost"
     )

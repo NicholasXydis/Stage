@@ -1,4 +1,3 @@
-
 import sqlite3
 from collections.abc import Callable, Mapping
 from dataclasses import replace
@@ -234,8 +233,7 @@ async def test_a_deferred_board_is_announced_rather_than_silently_absent(
 
     async with open_repository(db_path) as repository:
         events = [
-            event
-            async for event in sync_module.sync(repository, _registry(5), now_fn=lambda: NOW)
+            event async for event in sync_module.sync(repository, _registry(5), now_fn=lambda: NOW)
         ]
 
     announced = [event for event in events if isinstance(event, SourceRotated)]
@@ -302,9 +300,9 @@ async def test_a_persistently_failing_member_is_distinguishable_from_a_deferred_
 
     assert stale[0].board == "greenhouse:t1", "never-succeeded members order first"
     healthy = {visit.board for visit in stale} - {"greenhouse:t1"}
-    assert all(
-        not visit.never_succeeded for visit in stale if visit.board in healthy
-    ), "a member that has been fetched is stale by date, not by never having worked"
+    assert all(not visit.never_succeeded for visit in stale if visit.board in healthy), (
+        "a member that has been fetched is stale by date, not by never having worked"
+    )
 
 
 @respx.mock
@@ -431,9 +429,7 @@ async def test_a_dry_run_on_a_clear_bucket_still_leaves_the_cursor_alone(
     monkeypatch.setattr(sync_module, "get_feeds", dict)
 
     async with open_repository(db_path) as repository:
-        async for _ in sync_module.sync(
-            repository, _registry(5), dry_run=True, now_fn=_at(NOW)
-        ):
+        async for _ in sync_module.sync(repository, _registry(5), dry_run=True, now_fn=_at(NOW)):
             pass
         assert await repository.load_rate_state() == {}
         assert await repository.stale_members("greenhouse", NOW + timedelta(days=1)) == []
@@ -455,7 +451,6 @@ async def test_a_rotated_run_records_what_it_deferred_so_history_stays_readable(
     async with open_repository(db_path) as repository:
         async for _ in sync_module.sync(repository, _registry(5), now_fn=_at(NOW)):
             pass
-
 
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -528,6 +523,7 @@ async def test_two_sources_on_one_bucket_pace_as_one(
     )
 
     seen: list[int] = []
+
     class _Probe(HttpClient):
         def __init__(self, **kwargs: Any) -> None:
             super().__init__(**kwargs)
@@ -552,9 +548,7 @@ def test_the_shipped_feeds_really_do_share_a_bucket() -> None:
     from stage.sources import get_feeds as real_feeds
 
     feeds = real_feeds()
-    buckets = {
-        name: _bucket_keys(feed.hosts, feed.bucket_key) for name, feed in feeds.items()
-    }
+    buckets = {name: _bucket_keys(feed.hosts, feed.bucket_key) for name, feed in feeds.items()}
     assert buckets["simplify"] == buckets["vanshb03"] == ("raw.githubusercontent.com",)
 
 
@@ -611,6 +605,7 @@ async def test_each_run_gets_fresh_budgets_so_a_second_sync_is_not_pre_spent(
     )
 
     captured: list[Mapping[str, object]] = []
+
     class _Probe(HttpClient):
         def __init__(self, **kwargs: Any) -> None:
             super().__init__(**kwargs)
