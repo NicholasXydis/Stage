@@ -3,7 +3,7 @@
   slug: bhvr
   priority: high
   source_of_record: openjobs
-  last_verified: &id005 2026-08-04
+  last_verified: &id003 2026-08-04
 - name: BMO
   platform: workday
   slug: bmo
@@ -13,12 +13,23 @@
   workday_site: External
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
+- name: Bombardier
+  platform: successfactors
+  slug: bombardier
+  priority: high
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-08: no adapter — resolve via custom_json once the JSON request URL
+    is captured'
 - name: CAE
   platform: workday
   slug: cae
   priority: high
   source_of_record: openjobs
-  last_verified: &id004 2026-08-03
+  last_verified: &id002 2026-08-03
   workday_tenant: cae
   workday_site: career
   workday_dc: wd3
@@ -31,19 +42,24 @@
   workday_site: campus
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Coveo
   platform: greenhouse
   slug: coveoen
   priority: high
   source_of_record: discover
-  last_verified: &id001 2026-08-04
+  last_verified: &id001 2026-08-09
 - name: Coveo (FR)
   platform: greenhouse
   slug: coveofr
   priority: high
   source_of_record: discover
-  enabled: false
+  last_verified: &id004 2026-08-08
   name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''Coveo Solutions''; the name gate
+    rejects this caption, and the board is confirmed correct'
 - name: Desjardins
   platform: workday
   slug: desjardins
@@ -53,6 +69,9 @@
   workday_site: Desjardins
   workday_dc: wd10
   enabled: false
+  notes: 0 CS internships in the 2026-08-08 August run and each costs ~25 requests
+    against workday's 120-per-run ceiling, which starved the productive tenants; re-enable
+    and re-measure in October when bank and insurer student programmes open
 - name: Desjardins (students)
   platform: workday
   slug: desjardins
@@ -62,12 +81,20 @@
   workday_site: EtudiantsetStagiaires
   workday_dc: wd10
   enabled: false
+  notes: 0 CS internships in the 2026-08-08 August run and each costs ~25 requests
+    against workday's 120-per-run ceiling, which starved the productive tenants; re-enable
+    and re-measure in October when bank and insurer student programmes open
 - name: Eidos-Montreal
   platform: jobvite
   slug: eidosmontreal
   priority: high
   source_of_record: discover
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Faire
   platform: greenhouse
   slug: faire
@@ -79,13 +106,13 @@
   slug: gameloft
   priority: high
   source_of_record: openjobs
-  last_verified: &id003 2026-08-04
+  last_verified: *id001
 - name: Genetec
   platform: workable
   slug: genetec-inc
   priority: high
   source_of_record: discover
-  last_verified: &id002 2026-08-05
+  last_verified: *id001
 - name: Hootsuite
   platform: greenhouse
   slug: hootsuite
@@ -101,34 +128,47 @@
   workday_site: intactfc
   workday_dc: wd3
   enabled: false
+  notes: 0 CS internships in the 2026-08-08 August run and each costs ~25 requests
+    against workday's 120-per-run ceiling, which starved the productive tenants; re-enable
+    and re-measure in October when bank and insurer student programmes open
 - name: Lightspeed
   platform: greenhouse
   slug: lightspeedhq
   priority: high
   source_of_record: discover
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Lightspeed (FR)
   platform: greenhouse
   slug: lightspeedhqfr
   priority: high
   source_of_record: discover
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Mila
   platform: workable
   slug: mila-2
   priority: high
   source_of_record: discover
-  last_verified: *id002
+  last_verified: *id001
+- name: National Bank of Canada
+  platform: avature
+  slug: bnc
+  priority: high
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-08: no adapter — resolve via custom_json once the JSON request URL
+    is captured'
 - name: Pratt & Whitney Canada
   platform: workday
   slug: globalhr
-  name_gate_exempt: true
   priority: high
   source_of_record: discover
+  last_verified: 2026-08-08
   workday_tenant: globalhr
   workday_site: REC_RTX_Ext_Gateway
   workday_dc: wd5
-  enabled: false
+  name_gate_exempt: true
 - name: RBC (early talent)
   platform: workday
   slug: rbc
@@ -138,47 +178,76 @@
   workday_site: RBCEARLYTALENT1
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
+- name: Scotiabank
+  platform: successfactors
+  slug: scotiabank
+  priority: high
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-08: no adapter — resolve via custom_json once the JSON request URL
+    is captured'
 - name: Shopify
   platform: smartrecruiters
   slug: shopify
   priority: high
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
+- name: TD Bank
+  platform: workday
+  slug: td
+  priority: high
+  source_of_record: discover
+  workday_tenant: td
+  workday_site: TD_Bank_Careers
+  workday_dc: wd3
+  enabled: false
+  notes: 0 CS internships in the 2026-08-08 August run and each costs ~25 requests
+    against workday's 120-per-run ceiling, which starved the productive tenants; re-enable
+    and re-measure in October when bank and insurer student programmes open
 - name: TELUS Digital
   platform: greenhouse
   slug: telusdigitalbr
-  name_gate_exempt: true
   priority: high
   source_of_record: discover
+  name_gate_exempt: true
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: TELUS Health
   platform: workday
   slug: lifeworks
-  name_gate_exempt: true
   priority: high
   source_of_record: discover
   workday_tenant: lifeworks
   workday_site: External
   workday_dc: wd3
+  name_gate_exempt: true
   enabled: false
+  notes: 0 CS internships in the 2026-08-08 August run and each costs ~25 requests
+    against workday's 120-per-run ceiling, which starved the productive tenants; re-enable
+    and re-measure in October when bank and insurer student programmes open
 - name: Ubisoft
   platform: smartrecruiters
   slug: ubisoft2
   priority: high
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Videotron
   platform: smartrecruiters
   slug: Videotron
   priority: high
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id001
 - name: Warner Bros Games
   platform: workday
   slug: warnerbros
   priority: high
   source_of_record: openjobs
-  last_verified: *id004
+  last_verified: *id002
   workday_tenant: warnerbros
   workday_site: global
   workday_dc: wd5
@@ -187,7 +256,7 @@
   slug: adobe
   priority: normal
   source_of_record: openjobs
-  last_verified: *id004
+  last_verified: *id002
   workday_tenant: adobe
   workday_site: external_experienced
   workday_dc: wd5
@@ -208,7 +277,7 @@
   slug: autodesk
   priority: normal
   source_of_record: openjobs
-  last_verified: *id004
+  last_verified: *id002
   workday_tenant: autodesk
   workday_site: Ext
   workday_dc: wd1
@@ -217,13 +286,15 @@
   slug: blackbirdinteractive
   priority: normal
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: BlackRock
   platform: bamboohr
   slug: blackrock
   priority: normal
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Broadcom
   platform: workday
   slug: broadcom
@@ -233,6 +304,9 @@
   workday_site: External_Career
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Bungie
   platform: greenhouse
   slug: bungie
@@ -244,19 +318,19 @@
   slug: bytedance
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Canva
   platform: smartrecruiters
   slug: canva
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: CD Projekt Red
   platform: smartrecruiters
   slug: cdprojektred
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: CircleCI
   platform: greenhouse
   slug: circleci
@@ -284,6 +358,9 @@
   workday_site: crowdstrikecareers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Databricks
   platform: greenhouse
   slug: databricks
@@ -323,6 +400,9 @@
   workday_site: apply
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Epic Games
   platform: greenhouse
   slug: epicgames
@@ -338,6 +418,9 @@
   workday_site: private
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Figma
   platform: greenhouse
   slug: figma
@@ -349,7 +432,7 @@
   slug: huggingface
   priority: normal
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Instacart
   platform: greenhouse
   slug: instacart
@@ -361,7 +444,7 @@
   slug: intel
   priority: normal
   source_of_record: openjobs
-  last_verified: *id004
+  last_verified: *id002
   workday_tenant: intel
   workday_site: External
   workday_dc: wd1
@@ -376,7 +459,7 @@
   slug: linkedin3
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Lyft
   platform: greenhouse
   slug: lyft
@@ -392,6 +475,9 @@
   workday_site: CUOReqSite
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Mastercard
   platform: workday
   slug: mastercard
@@ -401,12 +487,17 @@
   workday_site: CorporateCareers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Meta
   platform: bamboohr
   slug: meta
   priority: normal
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: MongoDB
   platform: greenhouse
   slug: mongodb
@@ -419,6 +510,7 @@
   priority: normal
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: NVIDIA
   platform: workday
   slug: nvidia
@@ -428,6 +520,9 @@
   workday_site: NVIDIAExternalCareerSite
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: NVIDIA
   platform: workday
   slug: nvidia
@@ -436,6 +531,9 @@
   workday_tenant: nvidia
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Okta
   platform: greenhouse
   slug: okta
@@ -448,6 +546,8 @@
   priority: normal
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: PayPal
   platform: workday
   slug: paypal
@@ -456,6 +556,9 @@
   workday_tenant: paypal
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Pinterest
   platform: greenhouse
   slug: pinterest
@@ -477,12 +580,17 @@
   workday_site: Global_Experienced_Careers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Quora
   platform: ashby
   slug: quora
   priority: normal
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Reddit
   platform: greenhouse
   slug: reddit
@@ -498,6 +606,9 @@
   workday_site: External_Career_Site
   workday_dc: wd12
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Samsung Semiconductor
   platform: greenhouse
   slug: samsungsemiconductor
@@ -516,6 +627,8 @@
   priority: normal
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Sony Interactive Entertainment
   platform: greenhouse
   slug: siei
@@ -529,6 +642,8 @@
   source_of_record: openjobs
   last_verified: *id001
   name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''PlayStation Global''; the name gate
+    rejects this caption, and the board is confirmed correct'
 - name: SpaceX
   platform: greenhouse
   slug: spacex
@@ -540,7 +655,7 @@
   slug: spotify
   priority: normal
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Stripe
   platform: greenhouse
   slug: stripe
@@ -553,6 +668,8 @@
   priority: normal
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Take-Two Interactive
   platform: greenhouse
   slug: taketwo
@@ -576,19 +693,19 @@
   slug: uber
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Visa
   platform: smartrecruiters
   slug: visa
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Wayfair
   platform: smartrecruiters
   slug: wayfair
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Waymo
   platform: greenhouse
   slug: waymo
@@ -604,6 +721,9 @@
   workday_site: X
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: 2k vegas
   platform: greenhouse
   slug: 2kvegas
@@ -615,13 +735,15 @@
   slug: acceldata
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Activate Games
   platform: bamboohr
   slug: activategames
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Activision
   platform: workday
   slug: activision
@@ -631,6 +753,9 @@
   workday_site: External
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Addepar
   platform: greenhouse
   slug: addepar1
@@ -646,12 +771,20 @@
   workday_site: ADTRAN
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Advanced Systems Group, LLC
   platform: jobvite
   slug: asgllc
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Adyen
   platform: greenhouse
   slug: adyen
@@ -663,25 +796,32 @@
   slug: aerospike
   priority: low
   source_of_record: openjobs
-  last_verified: *id001
+  last_verified: 2026-08-04
 - name: Aerovect
   platform: ashby
   slug: aerovect
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: AGS - American Gaming Systems
   platform: jobvite
   slug: agscareer
   priority: low
   source_of_record: openjobs
   enabled: false
-- name: AirlabInc
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
+- name: Airlab Inc.
   platform: smartrecruiters
   slug: airlabinc
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: &id005 2026-08-09
   name_gate_exempt: true
 - name: Alpha Sense
   platform: greenhouse
@@ -698,18 +838,31 @@
   workday_site: Alphawave_External
   workday_dc: wd10
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Amber
   platform: jobvite
   slug: amberstudiocareers
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Anthology Inc
   platform: jobvite
   slug: anthology
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Aptive
   platform: workday
   slug: aptiv
@@ -719,6 +872,9 @@
   workday_site: APTIV_CAREERS
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Aristocrat
   platform: workday
   slug: aristocrat
@@ -728,12 +884,17 @@
   workday_site: AristocratExternalCareersSite
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Artists Animation
   platform: bamboohr
   slug: artistsanimation
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Atomic cartoons
   platform: greenhouse
   slug: atomiccartoons
@@ -745,7 +906,7 @@
   slug: avalanchestudios
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Axon
   platform: greenhouse
   slug: axon
@@ -764,12 +925,16 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Beamdog
   platform: bamboohr
   slug: beamdog
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Black Bery
   platform: workday
   slug: bb
@@ -779,48 +944,53 @@
   workday_site: QNX
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: blue isle studios
   platform: smartrecruiters
   slug: blueislestudios
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: bounteous
   platform: lever
   slug: bounteous
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Brain Hunter
   platform: smartrecruiters
   slug: brainhunter
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Brillio
   platform: lever
   slug: brillio-2
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Buckman
-  platform: jobvite
+  platform: smartrecruiters
   slug: buckman
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: &id006 2026-08-09
 - name: Budge Studios
   platform: bamboohr
   slug: budge
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Build Staff
   platform: smartrecruiters
   slug: buildstaffinc
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Cadence
   platform: workday
   slug: cadence
@@ -830,6 +1000,9 @@
   workday_site: External_Careers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Calix
   platform: workday
   slug: calix
@@ -839,6 +1012,9 @@
   workday_site: External
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Canonical
   platform: greenhouse
   slug: canonical
@@ -857,6 +1033,11 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Car Gurus
   platform: greenhouse
   slug: cargurus
@@ -869,6 +1050,7 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Cerence
   platform: workday
   slug: cerence
@@ -878,6 +1060,9 @@
   workday_site: Cerence
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: ChainGuard
   platform: greenhouse
   slug: chainguard
@@ -893,6 +1078,9 @@
   workday_site: Cineplex
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Cloud Chamber
   platform: greenhouse
   slug: cloudchamberen
@@ -905,18 +1093,21 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Cold Iron Studios
   platform: breezy
   slug: cold-iron-studios
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: ComeOn Group
   platform: workable
   slug: comeon-group
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: CommerceIQ
   platform: greenhouse
   slug: commerceiq
@@ -929,6 +1120,8 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: conga
   platform: greenhouse
   slug: conga
@@ -946,7 +1139,7 @@
   slug: coupa
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Critical mass
   platform: greenhouse
   slug: criticalmass
@@ -962,30 +1155,39 @@
   workday_site: cubic_global_careers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Dark Slope
   platform: bamboohr
   slug: darkslope
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: DataVisor
   platform: workable
   slug: datavisor-jobs
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Decagon
   platform: ashby
   slug: decagon
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: deel.
   platform: ashby
   slug: deel
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: DEPT
   platform: greenhouse
   slug: dept
@@ -1016,12 +1218,17 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Don't Nod
   platform: smartrecruiters
   slug: dontnod
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: DraftKings
   platform: workday
   slug: draftkings
@@ -1031,36 +1238,46 @@
   workday_site: DraftKings
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: dun bradstreet
   platform: lever
   slug: dnb
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: ElevenLabs
   platform: ashby
   slug: elevenlabs
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Endava
   platform: smartrecruiters
   slug: endava
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Enverus
   platform: jobvite
   slug: drillinginfo
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Escape Velocity Entertainment
   platform: workable
   slug: escape-velocity-entertainment-inc
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Ethernovia
   platform: greenhouse
   slug: ethernovia
@@ -1072,19 +1289,21 @@
   slug: evolution
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: extreme network
   platform: lever
   slug: extremenetworks
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Eyeline
   platform: lever
   slug: scanlinevfx
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: FanDuel
   platform: greenhouse
   slug: fanduel
@@ -1097,6 +1316,8 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: FICO
   platform: workday
   slug: fico
@@ -1106,18 +1327,23 @@
   workday_site: External
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Final Strike Games
   platform: bamboohr
   slug: finalstrikegames
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Findem
   platform: lever
   slug: findem
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Flexera Software
   platform: workday
   slug: flexerasoftware
@@ -1127,6 +1353,9 @@
   workday_site: FlexeraSoftware
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Fluxon
   platform: greenhouse
   slug: fluxon
@@ -1139,6 +1368,8 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: Fox Factory
   platform: workday
   slug: foxfactory
@@ -1148,42 +1379,61 @@
   workday_site: FOX
   workday_dc: wd1
   enabled: false
-- name: frames store
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
+- name: Framestore
   platform: recruitee
   slug: framestore
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: &id007 2026-08-08
 - name: Frima
   platform: jobvite
   slug: frima-studio
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Full Circle
   platform: bamboohr
   slug: fullcircle
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Game Mode One
   platform: bamboohr
   slug: gamemodeone
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Gardens Interactive
   platform: ashby
   slug: gardens
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Gigamon
   platform: jobvite
   slug: gigamon
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: gitlab
   platform: greenhouse
   slug: gitlab
@@ -1195,15 +1445,19 @@
   slug: globalizationpartners
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: *id004
   name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''G-P''; the name gate rejects this
+    caption, and the board is confirmed correct'
 - name: Gloss Genius
   platform: greenhouse
   slug: glossgenius
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: *id004
   name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''Genius AI''; the name gate rejects
+    this caption, and the board is confirmed correct'
 - name: GOAT Group
   platform: greenhouse
   slug: goatgroup
@@ -1221,8 +1475,10 @@
   slug: gomotive
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: *id004
   name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''Motive''; the name gate rejects this
+    caption, and the board is confirmed correct'
 - name: Groupon
   platform: greenhouse
   slug: groupon
@@ -1235,6 +1491,8 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Halcyon
   platform: greenhouse
   slug: halcyon
@@ -1250,12 +1508,17 @@
   workday_site: GSKCareers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Harvey
   platform: ashby
   slug: harvey
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Hasbro
   platform: greenhouse
   slug: hasbro
@@ -1274,6 +1537,8 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: HB studios
   platform: greenhouse
   slug: hbstudios
@@ -1285,7 +1550,7 @@
   slug: high-voltage-software
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Highdive
   platform: greenhouse
   slug: highdive
@@ -1297,25 +1562,27 @@
   slug: highspot
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Hitachi
   platform: smartrecruiters
   slug: hitachisolutions
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Hololabs
   platform: bamboohr
   slug: hololabs
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: HP
   platform: workday
   slug: hp
   priority: low
   source_of_record: openjobs
-  last_verified: *id004
+  last_verified: *id002
   workday_tenant: hp
   workday_site: ExternalCareerSite
   workday_dc: wd5
@@ -1325,24 +1592,31 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Icon Creative
   platform: bamboohr
   slug: iconcreative
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: ideogram
   platform: ashby
   slug: ideogram
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: IGG
   platform: bamboohr
   slug: igg
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Illumina
   platform: workday
   slug: illumina
@@ -1352,30 +1626,37 @@
   workday_site: illumina-careers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Image Engine
   platform: bamboohr
   slug: imageengine
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Interactive Brokers
   platform: greenhouse
   slug: ibkr
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Inworld AI
   platform: greenhouse
   slug: inworldai
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Ion
   platform: lever
   slug: ion
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Iron Mountain
   platform: workday
   slug: ironmountain
@@ -1385,12 +1666,20 @@
   workday_site: iron-mountain-jobs
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: ISG
   platform: jobvite
   slug: isg-one
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: ISS Stoxx
   platform: workday
   slug: issgovernance
@@ -1400,30 +1689,33 @@
   workday_site: ISScareers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: J.S. Held LLC
   platform: smartrecruiters
   slug: jsheldllc
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Jam City
   platform: lever
   slug: jamcity
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Kabam
   platform: lever
   slug: kabam
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Keywords Studios
   platform: workable
   slug: keywords-intl1
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: KRAFTON Montréal Studio
   platform: greenhouse
   slug: studiokraftonboard
@@ -1436,54 +1728,68 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: LangChain
   platform: ashby
   slug: langchain
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Larian Studios
   platform: lever
   slug: larian
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: LBC Studios
   platform: bamboohr
   slug: lbcstudiosca
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Lead Venture
   platform: jobvite
   slug: leadventure
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Lightcast
   platform: lever
   slug: economicmodeling
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Lilt
   platform: ashby
   slug: lilt
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Liquid Development
   platform: workable
   slug: liquid-development
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Litmus
   platform: greenhouse
   slug: litmus46
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: London stock Exchange
   platform: workday
   slug: lseg
@@ -1493,24 +1799,33 @@
   workday_site: Careers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Loyalty Juggernaut
   platform: bamboohr
   slug: lji
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Lucky VR
   platform: breezy
   slug: lucky-vr
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Lumeto
   platform: bamboohr
   slug: lumeto
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Maersk
   platform: workday
   slug: maersk
@@ -1520,12 +1835,17 @@
   workday_site: Maersk_Careers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Magic School
   platform: ashby
   slug: magicschool
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Marsh McLennan
   platform: workday
   slug: mmc
@@ -1535,12 +1855,15 @@
   workday_site: MMC
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Marvell
   platform: workday
   slug: marvell
   priority: low
   source_of_record: openjobs
-  last_verified: *id004
+  last_verified: *id002
   workday_tenant: marvell
   workday_site: MarvellCareers
   workday_dc: wd1
@@ -1555,25 +1878,31 @@
   slug: matchgroup
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Mavericks VFX
   platform: bamboohr
   slug: mavericksvfx
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Mediatonic Games
   platform: greenhouse
   slug: mediatonic
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: Megazebra
   platform: bamboohr
   slug: megazebragmbh
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Mercury
   platform: greenhouse
   slug: mercury
@@ -1585,7 +1914,7 @@
   slug: meta4
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Minecast
   platform: workday
   slug: mimecast
@@ -1595,30 +1924,34 @@
   workday_site: Mimecast-Careers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: mino games
   platform: teamtailor
   slug: minogames
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: no adapter — one row, below the build threshold'
 - name: Miratech
   platform: smartrecruiters
   slug: miratech1
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Mistplay
   platform: lever
   slug: mistplay
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: MixMob
   platform: smartrecruiters
   slug: mixmob
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Morning Star
   platform: workday
   slug: morningstar
@@ -1628,6 +1961,9 @@
   workday_site: Americas
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Motorola solutions
   platform: workday
   slug: motorolasolutions
@@ -1637,6 +1973,9 @@
   workday_site: Careers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Mozilla
   platform: greenhouse
   slug: mozilla
@@ -1649,18 +1988,20 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Nagarro
   platform: smartrecruiters
   slug: nagarro1
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Nasdaq
   platform: workday
   slug: nasdaq
   priority: low
   source_of_record: openjobs
-  last_verified: *id004
+  last_verified: *id002
   workday_tenant: nasdaq
   workday_site: Global_External_Site
   workday_dc: wd1
@@ -1670,6 +2011,11 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: net ease group
   platform: workday
   slug: netease
@@ -1679,6 +2025,9 @@
   workday_site: NetEasegroup
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: NetEase Games
   platform: greenhouse
   slug: neteasegames
@@ -1690,43 +2039,45 @@
   slug: netomi
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
-- name: Newrick Network
+  last_verified: *id003
+- name: Newrich Network
   platform: workable
   slug: newrich-network
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: *id001
 - name: Next Level Business Services
   platform: smartrecruiters
   slug: nextlevelbusinessservicesinc2
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: NielsenIQ
   platform: smartrecruiters
   slug: nielseniq
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Nium
   platform: lever
   slug: nium
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: nubank
   platform: greenhouse
   slug: nubank
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: Nvizzio Creations
   platform: smartrecruiters
   slug: nvizziocreations
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: NXP
   platform: workday
   slug: nxp
@@ -1736,18 +2087,25 @@
   workday_site: careers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Octopus
   platform: lever
   slug: octopus
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Off world studios
   platform: bamboohr
   slug: owi
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Olg
   platform: workday
   slug: olg
@@ -1757,24 +2115,31 @@
   workday_site: Careers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: OneLocal
   platform: greenhouse
   slug: onelocal
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Open Systems Technologies
   platform: smartrecruiters
   slug: opensystemstechnologies
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: Opendoor
   platform: greenhouse
   slug: opendoor
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Optiv
   platform: workday
   slug: optiv
@@ -1784,6 +2149,9 @@
   workday_site: Optiv_Careers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Penn Interactive
   platform: greenhouse
   slug: penninteractive
@@ -1799,12 +2167,15 @@
   workday_site: Pentair_Careers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: People Can Fly
   platform: smartrecruiters
   slug: peoplecanfly
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Philips
   platform: workday
   slug: philips
@@ -1814,6 +2185,9 @@
   workday_site: jobs-and-careers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Plug power
   platform: workday
   slug: plugpower
@@ -1823,6 +2197,9 @@
   workday_site: Plug_Power_Inc
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Pluralsight
   platform: workday
   slug: pluralsight
@@ -1832,42 +2209,55 @@
   workday_site: Careers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: PopReach
   platform: bamboohr
   slug: popreach
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Publicis Groupe
   platform: smartrecruiters
   slug: publicisgroupe
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: Puzzle Cats
   platform: breezy
   slug: puzzle-cats
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: QS Quacquarelli Symonds
   platform: bamboohr
   slug: qs
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Quantic Dream
   platform: lever
   slug: quanticdream
   priority: low
   source_of_record: openjobs
   enabled: false
-- name: quience
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
+- name: Quince
   platform: greenhouse
   slug: quince
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: *id005
   name_gate_exempt: true
 - name: Rackspace Technology
   platform: lever
@@ -1875,12 +2265,16 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Ramp
   platform: ashby
   slug: ramp
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: RAPP
   platform: greenhouse
   slug: rapp
@@ -1893,18 +2287,24 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: reflector entertainment
   platform: recruitee
   slug: reflectorentertainment
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: recruitee publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: relic entertainment
   platform: bamboohr
   slug: relicentertainment
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Reltio
   platform: greenhouse
   slug: reltio
@@ -1923,6 +2323,11 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Rocket
   platform: workday
   slug: rocket
@@ -1932,6 +2337,9 @@
   workday_site: rocket_careers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Rockstar Games
   platform: greenhouse
   slug: rockstargames
@@ -1947,12 +2355,15 @@
   workday_site: professional
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Rovio
   platform: lever
   slug: rovio-2
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Ruselle Investments
   platform: workday
   slug: russell
@@ -1962,6 +2373,9 @@
   workday_site: russellinvestments
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Rush street interactive
   platform: greenhouse
   slug: rushstreetinteractive
@@ -1983,24 +2397,29 @@
   workday_site: SailPoint
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Sandbox VR
   platform: lever
   slug: sandboxvr
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: SandboxAQ
   platform: ashby
   slug: sandboxaq
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Saviynt
   platform: lever
   slug: saviynt
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Scientific Games
   platform: workday
   slug: sglottery
@@ -2010,18 +2429,21 @@
   workday_site: ScientificGamesExternalCareers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Scopely
-  platform: jobvite
+  platform: greenhouse
   slug: scopely
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: *id006
 - name: Semtech
   platform: workday
   slug: semtech
   priority: low
   source_of_record: openjobs
-  last_verified: *id004
+  last_verified: *id002
   workday_tenant: semtech
   workday_site: SemtechCareers
   workday_dc: wd1
@@ -2030,31 +2452,37 @@
   slug: shyftlabs
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: SideFX
   platform: bamboohr
   slug: sidefx
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Sierra
   platform: ashby
   slug: sierra
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Signal Space Lab
   platform: smartrecruiters
   slug: signalspacelab
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: Sika Group
   platform: smartrecruiters
   slug: sikaag
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Silicon Labs
   platform: workday
   slug: silabs
@@ -2064,6 +2492,9 @@
   workday_site: SiliconlabsCareers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Simcorp
   platform: workday
   slug: simcorp
@@ -2073,42 +2504,46 @@
   workday_site: SimCorp_Jobs
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: sitetracker
   platform: lever
   slug: sitetracker
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: skybox labs
   platform: lever
   slug: skyboxlabs
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Smoking Gun Interactive
   platform: workable
   slug: smoking-gun-interactive-1
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Snowed In Studios
   platform: workable
   slug: snowed-in-studios-3
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Snyk
   platform: greenhouse
   slug: snyk
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: sofar sounds
   platform: lever
   slug: sofarsounds
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Sony Pictures Entertainment
   platform: workday
   slug: spe
@@ -2118,6 +2553,9 @@
   workday_site: SonyPicturesEntertainment
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Spaulding Ridge
   platform: greenhouse
   slug: spauldingridge
@@ -2133,60 +2571,72 @@
   workday_site: careers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Square Enix
   platform: workable
   slug: square-enix
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Squeeze Studio
   platform: recruitee
   slug: squeezestudio
   priority: low
   source_of_record: openjobs
-  last_verified: 2026-08-05
+  last_verified: *id007
 - name: SS8
-  platform: jobvite
-  slug: ss8-inc
+  platform: greenhouse
+  slug: ss8
   priority: low
   source_of_record: openjobs
-  enabled: false
+  last_verified: *id006
 - name: storytq
   platform: workable
   slug: jobs
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Substack
   platform: ashby
   slug: substack
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Super.com
   platform: lever
   slug: super-com
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Supercell
   platform: ashby
   slug: supercell
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Survay Monkey
   platform: greenhouse
   slug: surveymonkey
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: Sword Health
   platform: lever
   slug: swordhealth
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Synechron
   platform: workday
   slug: synechron
@@ -2196,12 +2646,15 @@
   workday_site: SynechronCareers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Syngenta Group
   platform: smartrecruiters
   slug: syngentagroup
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: TAG
   platform: workday
   slug: tag
@@ -2211,6 +2664,9 @@
   workday_site: Tag_Careers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Tekion Corp
   platform: greenhouse
   slug: tekion
@@ -2232,6 +2688,9 @@
   workday_site: Tencent_Careers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Thales
   platform: workday
   slug: thales
@@ -2241,6 +2700,9 @@
   workday_site: Careers
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: The E.W. Scripps Company
   platform: workday
   slug: scripps
@@ -2250,6 +2712,9 @@
   workday_site: Scripps_Careers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: The Orchard
   platform: greenhouse
   slug: theorchard
@@ -2265,24 +2730,30 @@
   workday_site: disneycareer
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Thumbtack
   platform: greenhouse
   slug: thumbtack
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Tier 9 Game Studios
   platform: breezy
   slug: tier-9-game-studios-ltd
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Tonic DNA
   platform: smartrecruiters
   slug: tonicdna1
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Toppan MErril
   platform: workday
   slug: toppanmerrill
@@ -2292,24 +2763,30 @@
   workday_site: Toppan_Merrill
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Torn banner studios
   platform: greenhouse
   slug: tornbannerstudios
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Track VFX
   platform: lever
   slug: trackvfx
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: TransPerfect
   platform: recruitee
   slug: tgs
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: recruitee publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: TransUnion
   platform: workday
   slug: transunion
@@ -2319,6 +2796,9 @@
   workday_site: TransUnion
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Trek
   platform: workday
   slug: trekbikes
@@ -2328,6 +2808,9 @@
   workday_site: TREK
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Trellix
   platform: workday
   slug: trellix
@@ -2337,6 +2820,9 @@
   workday_site: EnterpriseCareers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Trend Micro
   platform: workday
   slug: trendmicro
@@ -2346,6 +2832,9 @@
   workday_site: External
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Triple dot studios
   platform: greenhouse
   slug: tripledotstudios
@@ -2364,6 +2853,8 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: TVH
   platform: workday
   slug: tvh
@@ -2373,12 +2864,15 @@
   workday_site: JobsatTVH
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Two Circles
   platform: workable
   slug: twocircles
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Udemy
   platform: greenhouse
   slug: udemy
@@ -2391,6 +2885,8 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
 - name: Unilever
   platform: workday
   slug: unilever
@@ -2400,6 +2896,9 @@
   workday_site: Unilever_Experienced_Professionals
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Unisys
   platform: workday
   slug: unisys
@@ -2409,6 +2908,9 @@
   workday_site: External
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Upgrade
   platform: greenhouse
   slug: upgrade
@@ -2427,12 +2929,19 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Varonis
   platform: jobvite
   slug: varonis-internal
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Veeam Software
   platform: greenhouse
   slug: veeamsoftware
@@ -2444,7 +2953,7 @@
   slug: velanstudios
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: Vertx Inc.
   platform: workday
   slug: vertexinc
@@ -2454,6 +2963,9 @@
   workday_site: VertexInc
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: VGW
   platform: greenhouse
   slug: vgw
@@ -2465,13 +2977,15 @@
   slug: vidsy
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Voldex
   platform: ashby
   slug: voldex
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Walmart
   platform: workday
   slug: walmart
@@ -2481,24 +2995,27 @@
   workday_site: WalmartExternal
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: WaveApps
   platform: lever
   slug: waveapps
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: We are social
   platform: workable
   slug: we-are-social-1
   priority: low
   source_of_record: openjobs
-  last_verified: *id002
+  last_verified: *id001
 - name: WebFX
   platform: lever
   slug: webfx
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: WebTech Corporation
   platform: workday
   slug: wabtec
@@ -2508,30 +3025,41 @@
   workday_site: wabtec_careers
   workday_dc: wd1
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Wicked Workshop
   platform: smartrecruiters
   slug: keywordsaustralia
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches'
 - name: WildBrain
   platform: smartrecruiters
   slug: wildbrain
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id001
 - name: Wind River
   platform: jobvite
   slug: windriver
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Wizards of the Coast
   platform: greenhouse
   slug: wizardsofthecoast
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url'
 - name: Wolters Kluwer
   platform: workday
   slug: wk
@@ -2541,6 +3069,9 @@
   workday_site: External
   workday_dc: wd3
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: WongDoody
   platform: greenhouse
   slug: wongdoody
@@ -2558,7 +3089,7 @@
   slug: xsolla
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Yahoo
   platform: workday
   slug: ouryahoo
@@ -2568,24 +3099,34 @@
   workday_site: careers
   workday_dc: wd5
   enabled: false
+  notes: '2026-08-08: unverified — Workday has no offline probe, so verifying means
+    fetching an Akamai-fronted board at ~25 requests against a 120 ceiling; enable
+    deliberately, in October when student programmes open'
 - name: Yield Guild Games
   platform: breezy
   slug: yield-guild-games
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
 - name: Zeeco, Inc.
   platform: lever
   slug: zeeco
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id003
 - name: Ziff Davis
   platform: jobvite
   slug: ziffdavis
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-09: still on Jobvite. Slug-probing every supported platform found
+    nothing, and Jobvite''s JSON API is keyed on an internal companyId the registry
+    does not hold. To make this row work: open the careers page, DevTools > Fetch/XHR,
+    copy the request that returns the job list (its URL carries the companyId), then
+    rewrite this row as custom_json'
 - name: Zinnia
   platform: greenhouse
   slug: zinnia
@@ -2598,3 +3139,5 @@
   priority: low
   source_of_record: openjobs
   enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
