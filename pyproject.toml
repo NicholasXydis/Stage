@@ -2,9 +2,11 @@
 name = "stage-cli"
 version = "0.1.0"
 description = "Aggregates CS internship postings (Canada/US, EN + FR) into a local SQLite database"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.15"
 license = { text = "MIT" }
+readme = "README.md"
 dependencies = [
+    "fpdf2>=2.8.4",
     "httpx>=0.28.1",
     "platformdirs>=4.3.6",
     "pydantic>=2.10.0",
@@ -21,7 +23,9 @@ stage = "stage.cli.app:main"
 dev = [
     "mypy>=1.14.0",
     "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
     "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
     "respx>=0.22.0",
     "ruff>=0.8.4",
     "types-pyyaml>=6.0.12",
@@ -75,3 +79,16 @@ enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["src/stage"]
+branch = true
+parallel = false
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

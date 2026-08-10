@@ -13,6 +13,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  COVERAGE_FLOOR: "83"
+
 jobs:
   quality:
     runs-on: ubuntu-24.04
@@ -36,10 +39,20 @@ jobs:
         id: mypy
         continue-on-error: true
         run: uv run mypy
-      - name: Tests
+      - name: Tests with branch coverage
         id: pytest
         continue-on-error: true
-        run: uv run pytest -q
+        run: |
+          uv run pytest -q --cov --cov-branch \
+            --cov-report=xml:coverage.xml --cov-report=term-missing:skip-covered \
+            --cov-fail-under="$COVERAGE_FLOOR"
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: warn
       - name: Audit locked dependencies
         id: pip_audit
         continue-on-error: true
@@ -67,7 +80,7 @@ jobs:
             echo "| --- | --- |"
             echo "| Ruff | $(result "${{ steps.ruff.outcome }}") |"
             echo "| Mypy strict (src + tests) | $(result "${{ steps.mypy.outcome }}") |"
-            echo "| Tests | $(result "${{ steps.pytest.outcome }}") |"
+            echo "| Tests, branch coverage >= ${COVERAGE_FLOOR}% | $(result "${{ steps.pytest.outcome }}") |"
             echo "| Dependency audit | $(result "${{ steps.pip_audit.outcome }}") |"
             echo "| Workflow lint | $(result "${{ steps.actionlint.outcome }}") |"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -81,4 +94,87 @@ jobs:
             "${{ steps.pip_audit.outcome }}" \
             "${{ steps.actionlint.outcome }}"; do
             if [ "$outcome" != "success" ]; then exit 1; fi
+          done
+
+  supported-pythons:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.13", "3.14"]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install locked dependencies
+        run: |
+          python -m pip install uv==0.11.28
+          uv sync --frozen --python ${{ matrix.python }}
+      - name: Tests
+        run: uv run --python ${{ matrix.python }} pytest -q
+
+  wheel:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-14]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Build the wheel
+        run: |
+          python -m pip install uv==0.11.28
+          uv build --wheel -o dist
+      - name: Install it outside the checkout
+        run: |
+          cd "$RUNNER_TEMP"
+          python -m venv smoke
+          if [ -d smoke/Scripts ]; then bin=smoke/Scripts; else bin=smoke/bin; fi
+          echo "SMOKE_BIN=$RUNNER_TEMP/$bin" >> "$GITHUB_ENV"
+          "$bin/python" -m pip install --quiet "$GITHUB_WORKSPACE"/dist/*.whl
+      - name: Packaged data must resolve inside the package
+        run: |
+          cd "$RUNNER_TEMP"
+          "$SMOKE_BIN/python" - <<'PY'
+          from pathlib import Path
+          import stage
+          from stage.companies import load_companies
+          from stage.paths import font_path, lexicon_dir, registry_path
+          package = Path(stage.__file__).resolve().parent
+          for path in (registry_path(), lexicon_dir(), font_path()):
+              assert path.exists(), f"{path} is missing from the wheel"
+              assert package in path.parents, f"{path} resolves outside {package}"
+          rows = load_companies()
+          assert len(rows) > 300, f"registry shipped with only {len(rows)} rows"
+          print(f"registry {len(rows)} rows, font {font_path().stat().st_size} bytes")
+          PY
+      - name: Every read command must run from the installed wheel
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          cd "$RUNNER_TEMP"
+          export STAGE_DB="$RUNNER_TEMP/smoke.db"
+          "$SMOKE_BIN/stage" help
+          "$SMOKE_BIN/stage" list
+          "$SMOKE_BIN/stage" search montreal
+          "$SMOKE_BIN/stage" doctor
+          "$SMOKE_BIN/stage" coverage
+          "$SMOKE_BIN/stage" stats
+          for format in csv json md pdf; do
+            "$SMOKE_BIN/stage" export --format "$format" --all --force \
+              --out "$RUNNER_TEMP/smoke.$format"
+            test -s "$RUNNER_TEMP/smoke.$format"
           done
