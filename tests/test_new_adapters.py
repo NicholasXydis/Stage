@@ -185,16 +185,42 @@ async def test_ashby_hides_an_unlisted_posting() -> None:
 
 def test_every_adapter_declares_a_budget_matching_whether_it_carries_bodies() -> None:
     carries_bodies = {"ashby", "workable", "recruitee", "breezy"}
-    for name in CASES:
+    assert carries_bodies < set(CASES), "the split must name a real subset to mean anything"
+
+    for name in carries_bodies:
         adapter = get_adapter(name)
-        if name in carries_bodies:
-            assert adapter.detail_budget == 0, (
-                f"{name} returns descriptions inline, so a detail fetch would re-request them"
-            )
-        else:
-            assert adapter.detail_budget == 0, (
-                "bamboohr has no recorded detail fixture yet"
-            )
+        assert adapter.detail_budget == 0, (
+            f"{name} returns descriptions inline, so a detail fetch would re-request them"
+        )
+        company = _company(CASES[name][0])
+        assert adapter.plan(company), f"{name} reaches its bodies through the listing request"
+
+    for name in set(CASES) - carries_bodies:
+        adapter = get_adapter(name)
+        assert adapter.detail_budget == 0, (
+            f"{name} has no recorded detail fixture, so a budget above zero would send "
+            "requests against a shape nobody has seen"
+        )
+
+
+def test_every_registry_slug_adapter_refuses_a_slug_that_could_rewrite_its_target() -> None:
+    from stage.sources.platforms import SlugRejectedError
+
+    hostile = ("evil.com/../x", "../../etc", "acme?x=1", "ACME/../y")
+    checked: list[str] = []
+    for adapter in get_adapters().values():
+        if adapter.name in {"simplify", "vanshb03", "workday", "custom_json"}:
+            continue
+        checked.append(adapter.name)
+        for slug in hostile:
+            company = Company(name="Evil", platform=adapter.platform, slug=slug)
+            with pytest.raises(SlugRejectedError):
+                adapter.plan(company)
+
+    assert {"greenhouse", "lever", "smartrecruiters"} <= set(checked), (
+        "these interpolate the registry slug into a URL path rather than a hostname, and a "
+        "path is still a request target: 'acme?x=1' injects a query parameter"
+    )
 
 
 def test_an_adapter_whose_host_embeds_the_slug_shares_one_bucket() -> None:
@@ -350,12 +376,60 @@ async def test_a_non_iso_timestamp_does_not_drop_a_recruitee_row() -> None:
         )
     )
     async with _client("recruitee") as client:
-        result = await get_adapter("recruitee").fetch(
-            _company(Platform.RECRUITEE), client, NOW
-        )
+        result = await get_adapter("recruitee").fetch(_company(Platform.RECRUITEE), client, NOW)
 
     assert len(result.jobs) == 1
     posted = result.jobs[0].source_posted_at
     assert posted is not None and posted.year == 2021, (
         "an unparseable date must cost the field, never the posting"
     )
+
+
+STRUCTURED_CASES = {
+    "ashby": ("employmentType", "Intern"),
+    "workable": ("employment_type", "Internship"),
+    "recruitee": ("employment_type_code", "internship"),
+}
+
+
+@pytest.mark.parametrize("name", sorted(STRUCTURED_CASES))
+@respx.mock
+async def test_the_ats_employment_type_reaches_source_signals(name: str) -> None:
+    platform, url, payload = CASES[name]
+    field, value = STRUCTURED_CASES[name]
+    assert isinstance(payload, dict)
+    rows = payload.get("jobs") or payload["offers"]
+    assert isinstance(rows, list)
+    rows[0][field] = value
+
+    respx.get(url).mock(return_value=httpx.Response(200, json=payload))
+    adapter = get_adapter(name)
+    result = await adapter.fetch(_company(platform), _client(name), NOW)
+
+    assert result.jobs, name
+    assert result.jobs[0].signals.employment_type == value, (
+        f"{name} discards {field}, so a generic title loses its only internship evidence"
+    )
+
+
+@respx.mock
+async def test_lever_carries_its_commitment_into_source_signals() -> None:
+    from stage.sources import get_adapter
+
+    payload = [
+        {
+            "id": "abc",
+            "text": "Backend Engineer",
+            "hostedUrl": "https://jobs.lever.co/acme/abc",
+            "categories": {"location": "Montréal, QC", "commitment": "Intern"},
+        }
+    ]
+    respx.get("https://api.lever.co/v0/postings/acme?mode=json").mock(
+        return_value=httpx.Response(200, json=payload)
+    )
+    adapter = get_adapter("lever")
+    client = HttpClient(allowed_hosts=frozenset({"api.lever.co"}), posture=UNPACED, jitter=False)
+    result = await adapter.fetch(
+        Company(name="Acme", platform=Platform.LEVER, slug="acme"), client, NOW
+    )
+    assert result.jobs[0].signals.employment_type == "Intern"

@@ -1,4 +1,3 @@
-
 import json
 from datetime import UTC, datetime
 from typing import cast
@@ -117,7 +116,7 @@ def test_a_french_facet_value_resolves_too() -> None:
                     "facetParameter": "timeType",
                     "values": [{"id": "f-st", "descriptor": "Stagiaire"}],
                 }
-            ]
+            ],
         }
     )
     facet = resolve_facet(page, "cae", "career", NOW)
@@ -133,7 +132,7 @@ def test_student_resolves_because_canadian_employers_use_it_for_intern() -> None
                     "facetParameter": "workerSubType",
                     "values": [{"id": "f-s", "descriptor": "Student"}],
                 }
-            ]
+            ],
         }
     )
     facet = resolve_facet(page, "cae", "career", NOW)
@@ -149,7 +148,7 @@ def test_a_tenant_with_no_internship_facet_resolves_to_nothing() -> None:
                     "facetParameter": "timeType",
                     "values": [{"id": "f-full", "descriptor": "Full time"}],
                 }
-            ]
+            ],
         }
     )
     assert resolve_facet(page, "cae", "career", NOW) is None
@@ -168,7 +167,7 @@ def test_time_type_outranks_a_job_family_that_merely_mentions_internship() -> No
                     "facetParameter": "timeType",
                     "values": [{"id": "f-tt", "descriptor": "Intern"}],
                 },
-            ]
+            ],
         }
     )
     facet = resolve_facet(page, "cae", "career", NOW)
@@ -240,9 +239,7 @@ async def test_pagination_walks_offsets_and_stops_on_the_reported_total() -> Non
         {"total": 25, "jobPostings": [_posting(i) for i in range(PAGE_SIZE)], "facets": _facets()},
         {"total": 25, "jobPostings": [_posting(100 + i) for i in range(5)], "facets": _facets()},
     ]
-    route = respx.post(CXS).mock(
-        side_effect=[httpx.Response(200, json=page) for page in pages]
-    )
+    route = respx.post(CXS).mock(side_effect=[httpx.Response(200, json=page) for page in pages])
     async with _client() as client:
         company = _company(workday_facet="timeType:f-intern")
         result = await WorkdayAdapter().fetch(company, client, NOW)
@@ -344,9 +341,7 @@ async def test_a_pinned_facet_is_sent_and_never_overwritten_by_resolution() -> N
 
 @respx.mock
 async def test_a_shape_change_fails_loudly_at_a_named_field() -> None:
-    respx.post(CXS).mock(
-        return_value=httpx.Response(200, json={"jobPostings": "not-a-list"})
-    )
+    respx.post(CXS).mock(return_value=httpx.Response(200, json={"jobPostings": "not-a-list"}))
     async with _client() as client:
         with pytest.raises(PayloadValidationError, match="jobPostings"):
             company = _company(workday_facet="timeType:f-intern")
@@ -413,10 +408,7 @@ async def test_one_unplannable_row_fails_alone_and_never_kills_the_source(
     rows = [_company(), _company(name="Incomplete", slug="broken", workday_site="")]
 
     async with open_repository(Path(str(db_path))) as repository:
-        events = [
-            event
-            async for event in sync_module.sync(repository, rows, now_fn=lambda: NOW)
-        ]
+        events = [event async for event in sync_module.sync(repository, rows, now_fn=lambda: NOW)]
 
     failed = [event for event in events if isinstance(event, CompanyFailed)]
     finished = [event for event in events if isinstance(event, CompanyFinished)]
@@ -465,9 +457,7 @@ def test_the_dry_run_bound_is_reported_per_bucket_against_that_buckets_ceiling()
     assert plan.planned == 40
     assert plan.worst_case == 40 * MAX_PAGES
     assert plan.ceiling == 120
-    assert plan.exceeds_ceiling, (
-        "Workday legitimately exceeds it, and showing both is the point"
-    )
+    assert plan.exceeds_ceiling, "Workday legitimately exceeds it, and showing both is the point"
 
 
 def test_sources_sharing_a_bucket_have_their_bounds_summed_not_reported_separately() -> None:
@@ -500,10 +490,26 @@ def test_two_boards_of_one_tenant_do_not_collide_on_job_id() -> None:
     from stage.sources.workday import WorkdayPosting, _to_job
 
     posting = WorkdayPosting.model_validate(_posting(7))
-    one = _to_job(_company(name="Mastercard", workday_tenant="mastercard",
-                           workday_site="CUOReqSite", workday_dc="wd1"), posting, NOW)
-    two = _to_job(_company(name="Mastercard", workday_tenant="mastercard",
-                           workday_site="CorporateCareers", workday_dc="wd1"), posting, NOW)
+    one = _to_job(
+        _company(
+            name="Mastercard",
+            workday_tenant="mastercard",
+            workday_site="CUOReqSite",
+            workday_dc="wd1",
+        ),
+        posting,
+        NOW,
+    )
+    two = _to_job(
+        _company(
+            name="Mastercard",
+            workday_tenant="mastercard",
+            workday_site="CorporateCareers",
+            workday_dc="wd1",
+        ),
+        posting,
+        NOW,
+    )
 
     assert one.id != two.id
     assert "cuoreqsite" in one.id and "corporatecareers" in two.id
@@ -591,9 +597,7 @@ async def test_a_cached_facet_is_applied_without_re_resolving() -> None:
         tenant="cae", site="career", parameter="timeType", facet_ids=("cached-id",)
     )
     async with _client() as client:
-        await WorkdayAdapter().fetch(
-            _company(), client, NOW, {("cae", "career"): cached}
-        )
+        await WorkdayAdapter().fetch(_company(), client, NOW, {("cae", "career"): cached})
 
     assert captured[0]["appliedFacets"] == {"timeType": ["cached-id"]}
 
@@ -796,9 +800,7 @@ async def test_a_tenants_own_total_is_evidence_not_truth() -> None:
         {"total": 0, "jobPostings": [_posting(i) for i in range(PAGE_SIZE)], "facets": []},
         {"total": 0, "jobPostings": [_posting(100 + i) for i in range(3)], "facets": []},
     ]
-    respx.post(CXS).mock(
-        side_effect=[httpx.Response(200, json=page) for page in pages]
-    )
+    respx.post(CXS).mock(side_effect=[httpx.Response(200, json=page) for page in pages])
     async with _client(UNPACED) as client:
         result = await WorkdayAdapter().fetch(
             _company(workday_facet="timeType:f-intern"), client, NOW
@@ -990,13 +992,9 @@ async def test_a_vanished_facet_is_re_resolved_in_the_same_run() -> None:
         )
 
     respx.post(CXS).mock(side_effect=record)
-    cached = WorkdayFacet(
-        tenant="cae", site="career", parameter="timeType", facet_ids=("f-gone",)
-    )
+    cached = WorkdayFacet(tenant="cae", site="career", parameter="timeType", facet_ids=("f-gone",))
     async with _client(UNPACED) as client:
-        result = await WorkdayAdapter().fetch(
-            _company(), client, NOW, {("cae", "career"): cached}
-        )
+        result = await WorkdayAdapter().fetch(_company(), client, NOW, {("cae", "career"): cached})
 
     assert bodies[0]["appliedFacets"] == {"timeType": ["f-gone"]}
     assert bodies[1]["appliedFacets"] == {}, "the walk restarts unfaceted to re-resolve"
@@ -1028,13 +1026,9 @@ async def test_a_facet_that_cannot_be_re_resolved_is_forgotten() -> None:
             },
         )
     )
-    cached = WorkdayFacet(
-        tenant="cae", site="career", parameter="timeType", facet_ids=("f-gone",)
-    )
+    cached = WorkdayFacet(tenant="cae", site="career", parameter="timeType", facet_ids=("f-gone",))
     async with _client(UNPACED) as client:
-        result = await WorkdayAdapter().fetch(
-            _company(), client, NOW, {("cae", "career"): cached}
-        )
+        result = await WorkdayAdapter().fetch(_company(), client, NOW, {("cae", "career"): cached})
 
     assert [cast(WorkdayFacet, f).facet_ids for f in result.forgotten_facets] == [("f-gone",)]
     assert result.facets == ()
@@ -1071,17 +1065,13 @@ async def test_a_cached_facet_with_no_facet_list_is_drift_not_a_clean_run() -> N
     from stage.paths import capture_dir
 
     respx.post(CXS).mock(
-        return_value=httpx.Response(
-            200, json={"total": 1, "jobPostings": [_posting(1)]}
-        )
+        return_value=httpx.Response(200, json={"total": 1, "jobPostings": [_posting(1)]})
     )
     cached = WorkdayFacet(
         tenant="cae", site="career", parameter="timeType", facet_ids=("f-intern",)
     )
     async with _client(UNPACED) as client:
-        result = await WorkdayAdapter().fetch(
-            _company(), client, NOW, {("cae", "career"): cached}
-        )
+        result = await WorkdayAdapter().fetch(_company(), client, NOW, {("cae", "career"): cached})
 
     assert result.jobs, "the postings that did arrive are still kept"
     assert not result.authoritative, (
@@ -1113,3 +1103,60 @@ async def test_a_pinned_facet_with_no_facet_list_is_also_drift() -> None:
     assert "no facet list at all" in result.degraded
     for path in capture_dir().glob("workday-nofacets-*.json"):
         path.unlink()
+
+
+@respx.mock
+async def test_a_faceted_walk_marks_its_postings_as_structurally_internships() -> None:
+    respx.post(CXS).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Analyste de données",
+                        "externalPath": "/job/Montreal/Analyste_R1",
+                        "bulletFields": ["R1"],
+                        "locationsText": "Montreal, QC",
+                    }
+                ],
+                "facets": _facets(),
+            },
+        )
+    )
+    cached = WorkdayFacet(
+        tenant="cae", site="career", parameter="timeType", facet_ids=("cached-id",)
+    )
+    async with _client() as client:
+        result = await WorkdayAdapter().fetch(_company(), client, NOW, {("cae", "career"): cached})
+
+    assert result.jobs[0].signals.employment_type == "internship", (
+        "a walk filtered to the tenant's internship facet is positive structured evidence"
+    )
+
+
+@respx.mock
+async def test_an_unfaceted_fallback_walk_claims_no_structured_evidence() -> None:
+    respx.post(CXS).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Analyste de données",
+                        "externalPath": "/job/Montreal/Analyste_R1",
+                        "bulletFields": ["R1"],
+                        "locationsText": "Montreal, QC",
+                    }
+                ],
+                "facets": [],
+            },
+        )
+    )
+    async with _client() as client:
+        result = await WorkdayAdapter().fetch(_company(), client, NOW)
+
+    assert result.jobs[0].signals.employment_type == "", (
+        "a whole-board walk says nothing about whether a posting is an internship"
+    )

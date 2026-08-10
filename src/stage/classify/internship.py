@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 
 from stage.lexicon import fold, internship_lexicon
@@ -24,7 +23,12 @@ def _blocked_positions(folded: str, blocked: frozenset[str]) -> str:
     return ""
 
 
-def screen_internship(title: str) -> InternshipVerdict:
+def _structured_hit(employment_type: str, values: frozenset[str]) -> str:
+    hits = _phrase_hits(fold(employment_type), values)
+    return max(hits, key=len) if hits else ""
+
+
+def screen_internship(title: str, employment_type: str = "") -> InternshipVerdict:
     folded_title = fold(title)
     lexicon = internship_lexicon()
 
@@ -34,9 +38,9 @@ def screen_internship(title: str) -> InternshipVerdict:
 
     blocked = _blocked_positions(folded_title, lexicon.blocked_bigrams)
     matched = _phrase_hits(folded_title, lexicon.markers)
-    if blocked and not [
-        phrase for phrase in matched if f" {phrase} " not in f" {blocked} "
-    ]:
+    if blocked and not [phrase for phrase in matched if f" {phrase} " not in f" {blocked} "]:
         return InternshipVerdict(is_internship=False, disqualified_by=blocked)
 
-    return InternshipVerdict(is_internship=bool(matched), matched=tuple(matched))
+    structured = _structured_hit(employment_type, lexicon.structured_internship)
+    evidence = tuple(matched) + ((structured,) if structured else ())
+    return InternshipVerdict(is_internship=bool(evidence), matched=evidence)

@@ -48,6 +48,33 @@ markers:
   - étudiant
   - étudiante
 
+structured_internship:
+  - intern
+  - interns
+  - internship
+  - internships
+  - intern co op
+  - co op
+  - coop
+  - co op student
+  - cooperative education
+  - student
+  - student placement
+  - working student
+  - apprentice
+  - apprenticeship
+  - trainee
+  - stage
+  - stagiaire
+  - stage coop
+  - alternance
+  - alternant
+  - apprenti
+  - etudiant
+  - contrat d apprentissage
+  - contrat de stage
+  - temporaire etudiant
+
 blocked_bigrams:
   - internal auditor
   - internal audit
@@ -72,6 +99,14 @@ blocked_bigrams:
   - series stage
   - seed stage
   - trainee manager
+  - manager trainee
+  - banker trainee
+  - banking associate trainee
+  - banking advisor trainee
+  - teller trainee
+  - customer experience trainee
+  - sales trainee
+  - management trainee
   - student barista
   - students welcome
   - students and second
