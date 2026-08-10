@@ -1,17 +1,19 @@
 import json
-import re
-import unicodedata
 from collections.abc import AsyncIterator, Callable, Sequence
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, TextIO
 
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 from rich.text import Text
 
 if TYPE_CHECKING:
     from stage.services.canary import CanaryReport
+    from stage.services.coverage import CoverageReport
+    from stage.services.export import ExportResult
     from stage.services.health import DoctorReport, SourceHealth, StatsReport
+    from stage.services.query import JobListing, PostingDetail
 
 from stage.domain import (
     BucketPlan,
@@ -19,11 +21,13 @@ from stage.domain import (
     CompanyFailed,
     CompanyFinished,
     CompanyUnchanged,
+    CoverageState,
     DiscoveryEvent,
     DiscoveryFinished,
     DiscoveryStarted,
     Job,
     PlannedRequest,
+    PlatformCandidate,
     PlatformProbed,
     ProbeVerdict,
     QuarantinedJob,
@@ -42,51 +46,50 @@ from stage.domain import (
     UrlUnrecognized,
     VisitState,
     VolumeVerdict,
+    web_url,
 )
-
-_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+from stage.domain.text import first_line as _first_line
+from stage.domain.text import sanitize as _sanitize
+from stage.domain.text import summary as _summary
+from stage.domain.text import truncate as _truncate
 
 
 def sanitize(value: str) -> str:
-    return _CONTROL.sub("", value)
-
-
-def _json_default(value: object) -> object:
-    if isinstance(value, datetime):
-        return value.astimezone(UTC).isoformat()
-    raise TypeError(f"unserializable value of type {type(value).__name__}")
-
-
-def _json_safe(value: object) -> object:
-    if isinstance(value, str):
-        return sanitize(value)
-    if isinstance(value, dict):
-        return {str(key): _json_safe(item) for key, item in value.items()}
-    if isinstance(value, list | tuple):
-        return [_json_safe(item) for item in value]
-    return value
-
-
-def _dump(payload: object) -> str:
-    return json.dumps(_json_safe(payload), indent=2, ensure_ascii=False, default=_json_default)
-
-
-def first_line(value: str) -> str:
-    lines = [line.strip() for line in sanitize(value).splitlines() if line.strip()]
-    return lines[0] if lines else ""
+    return escape(_sanitize(value))
 
 
 def truncate(value: str, width: int) -> str:
-    clean = sanitize(value)
-    graphemes: list[str] = []
-    for char in clean:
-        if unicodedata.combining(char) and graphemes:
-            graphemes[-1] += char
-        else:
-            graphemes.append(char)
-    if len(graphemes) <= width:
-        return clean
-    return "".join(graphemes[: max(width - 1, 0)]) + "…"
+    return escape(_truncate(value, width))
+
+
+def first_line(value: str) -> str:
+    return escape(_first_line(value))
+
+
+def summary(value: str, width: int) -> str:
+    return escape(_summary(value, width))
+
+
+def plain(value: str, style: str = "") -> Text:
+    return Text(_sanitize(value), style=style)
+
+
+def clipped(value: str, width: int, style: str = "") -> Text:
+    return Text(_truncate(value, width), style=style)
+
+
+def failure(exc: BaseException) -> Text:
+    return Text(_sanitize(str(exc)), style="red")
+
+
+def quoted(value: str, width: int) -> str:
+    return f"'{truncate(value, width)}'"
+
+
+def _link(text: Text, raw: str) -> None:
+    url = web_url(raw)
+    if url is not None:
+        text.stylize(f"link {url}")
 
 
 def _duration(seconds: float) -> str:
@@ -133,7 +136,7 @@ def render_rate_state(console: Console, states: Sequence[RateState], now: dateti
             override,
             str(state.consecutive_failures),
             truncate(state.rotation_cursor, 24) or "[dim]—[/dim]",
-            truncate(first_line(state.reason), 40) or "[dim]—[/dim]",
+            summary(state.reason, 40) or "[dim]—[/dim]",
         )
 
     console.print(table)
@@ -141,12 +144,6 @@ def render_rate_state(console: Console, states: Sequence[RateState], now: dateti
         "[dim]Tightening decays on each clean run. "
         "[bold]stage sources --clear <bucket>[/bold] drops a block now.[/dim]"
     )
-
-
-def jobs_to_json(jobs: Sequence[Job]) -> str:
-    from dataclasses import asdict
-
-    return _dump([asdict(job) for job in jobs])
 
 
 def _age_style(first_seen: datetime, now: datetime) -> tuple[str, str]:
@@ -186,9 +183,8 @@ def render_jobs(
 
     for job in jobs:
         style, label = _age_style(job.first_seen, moment)
-        title = Text(truncate(job.title_raw, title_width), style=style)
-        if job.apply_url_raw:
-            title.stylize(f"link {job.apply_url_raw}")
+        title = clipped(job.title_raw, title_width, style=style)
+        _link(title, job.apply_url_raw)
         table.add_row(
             Text(label, style=style),
             job.first_seen.astimezone().strftime("%Y-%m-%d"),
@@ -203,10 +199,199 @@ def render_jobs(
     console.print(f"\n[dim]{shown} posting(s){suffix}.[/dim]")
 
 
-def quarantine_to_json(entries: Sequence[QuarantinedJob]) -> str:
-    from dataclasses import asdict
+def render_search(console: Console, listing: "JobListing", *, now: datetime | None = None) -> None:
+    if not listing.terms:
+        console.print(
+            f"[yellow]Nothing searchable in {quoted(listing.query, 40)}.[/yellow] "
+            "Search matches words — letters and digits, accents optional."
+        )
+        return
+    if not listing.jobs:
+        matched = " ".join(listing.terms)
+        console.print(
+            f"[yellow]No posting matches {matched!r}.[/yellow] Terms are combined with AND and "
+            "matched as prefixes, so drop a word to widen it, or relax a filter."
+        )
+        return
+    render_jobs(
+        console,
+        listing.jobs,
+        total_matching=listing.total_matching,
+        window_days=listing.window_days,
+        last_sync_at=listing.last_sync_at,
+        now=now,
+    )
+    console.print(f"[dim]Matched {' '.join(listing.terms)} as prefixes, ranked by relevance.[/dim]")
 
-    return _dump([asdict(entry) for entry in entries])
+
+def _field(label: str, value: str) -> Text:
+    return Text.assemble((f"{label:<14}", "bold"), value)
+
+
+def render_posting(console: Console, detail: "PostingDetail", now: datetime | None = None) -> None:
+    job = detail.job
+    moment = now or datetime.now(UTC)
+    style, age = _age_style(job.first_seen, moment)
+
+    title = plain(job.title_raw, style=f"bold {style}")
+    _link(title, job.apply_url_raw)
+    console.print(title)
+    console.print(plain(job.company, style="cyan"))
+    console.print()
+
+    remote = f" ({job.remote_scope.value})" if job.remote_scope else ""
+    where = f"{_sanitize(job.location_raw) or '—'} [{job.location.value}]{remote}"
+    console.print(_field("id", job.id))
+    console.print(_field("status", job.status.value))
+    console.print(_field("location", where))
+    console.print(_field("term", job.term))
+    console.print(_field("role", job.role.value))
+    console.print(_field("language", job.language.value))
+    console.print(_field("degree", job.degree_requirement.value))
+    if job.work_auth_flag:
+        console.print(_field("work auth", "restricted — the posting states an eligibility limit"))
+    if job.compensation:
+        console.print(_field("compensation", _sanitize(job.compensation)))
+    console.print(_field("first seen", f"{job.first_seen.astimezone():%Y-%m-%d} ({age})"))
+    console.print(_field("last seen", f"{job.last_seen.astimezone():%Y-%m-%d}"))
+    if job.source_posted_at:
+        console.print(_field("source date", f"{job.source_posted_at.astimezone():%Y-%m-%d}"))
+    console.print(_field("source", f"{job.source} / {job.board_key}"))
+    console.print(_field("apply", _sanitize(job.apply_url_raw) or "—"))
+
+    if detail.canonical is not None:
+        console.print()
+        console.print(
+            f"[yellow]Linked as a duplicate of[/yellow] {detail.canonical.id} "
+            f"({detail.canonical.source}) — that row is the one [bold]stage list[/bold] shows."
+        )
+    if detail.duplicates:
+        console.print()
+        console.print(f"[bold]Also published as[/bold] ({len(detail.duplicates)})")
+        for other in detail.duplicates:
+            console.print(f"  {other.source:<16} {truncate(other.title_raw, 48):<48} {other.id}")
+
+    console.print()
+    if job.description.strip():
+        console.print("[bold]Description[/bold]")
+        console.print(plain(job.description.strip()))
+    else:
+        console.print(
+            "[dim]No description stored. Feeds publish none, and some boards carry bodies "
+            "only on a detail fetch.[/dim]"
+        )
+
+
+def render_export(console: Console, result: "ExportResult") -> None:
+    console.print(export_summary(result))
+    for note in result.notes:
+        console.print(f"  [yellow]{sanitize(note)}[/yellow]")
+    if result.notes:
+        console.print(
+            "  [dim]Those characters are absent from the embedded font and were dropped from "
+            "the PDF only. Export json or csv to keep them.[/dim]"
+        )
+
+
+def export_summary(result: "ExportResult") -> str:
+    truncated = (
+        f" [yellow]{result.total_matching - result.count} more match the filters — raise "
+        "--limit to include them.[/yellow]"
+        if result.total_matching > result.count
+        else ""
+    )
+    return (
+        f"Exported {result.count} posting(s) as {result.fmt.value} to "
+        f"[bold]{sanitize(str(result.path))}[/bold].{truncated}"
+    )
+
+
+_COVERAGE_STYLE = {
+    CoverageState.PRODUCING: "green",
+    CoverageState.EMPTY: "yellow",
+    CoverageState.FAILING: "red",
+    CoverageState.STALE: "yellow",
+    CoverageState.NEVER_REACHED: "dim",
+    CoverageState.UNROUTABLE: "red",
+}
+
+
+def render_coverage(console: Console, report: "CoverageReport", now: datetime) -> None:
+    counts: dict[CoverageState, int] = {}
+    for row in report.rows:
+        counts[row.state] = counts.get(row.state, 0) + 1
+    breakdown = ", ".join(
+        f"[{_COVERAGE_STYLE[state]}]{counts[state]} {state.value}[/{_COVERAGE_STYLE[state]}]"
+        for state in CoverageState
+        if state in counts
+    )
+    console.print(f"[bold]{report.enabled}[/bold] enabled row(s): {breakdown or 'none'}")
+    console.print(f"[dim]{report.disabled} disabled row(s) are not expected to produce.[/dim]")
+
+    gaps = report.gaps
+    if gaps:
+        console.print()
+        console.print("[bold yellow]Producing nothing, though the board answered[/bold yellow]")
+        table = Table(box=None, pad_edge=False, header_style="bold")
+        table.add_column("company")
+        table.add_column("board")
+        table.add_column("last success", justify="right")
+        for row in gaps:
+            table.add_row(
+                truncate(row.company, 28), truncate(row.board, 38), _ago(row.last_success_at, now)
+            )
+        console.print(table)
+        console.print(
+            "[dim]An answering board with no internships is a real state in August — "
+            "compare it against [bold]stage stats[/bold] before switching a row off.[/dim]"
+        )
+
+    notes = (
+        (CoverageState.NEVER_REACHED, "rotation has not reached yet", "no evidence either way"),
+        (CoverageState.FAILING, "have never succeeded", "a fetch problem; see stage doctor"),
+        (CoverageState.STALE, "have not succeeded lately", "stale rather than empty"),
+        (CoverageState.UNROUTABLE, "have no adapter", "enabled rows nothing will ever fetch"),
+    )
+    for state, label, note in notes:
+        _render_coverage_note(console, report, state, label, note)
+
+    if report.unregistered:
+        console.print()
+        console.print(
+            f"[bold]Seen in a feed, absent from the registry[/bold] ({len(report.unregistered)})"
+        )
+        table = Table(box=None, pad_edge=False, header_style="bold")
+        table.add_column("company")
+        table.add_column("postings", justify="right")
+        table.add_column("sources")
+        for unknown in report.unregistered[:30]:
+            table.add_row(
+                truncate(unknown.company, 34),
+                str(unknown.postings),
+                ", ".join(unknown.sources),
+            )
+        console.print(table)
+        if len(report.unregistered) > 30:
+            console.print(f"  [dim]… and {len(report.unregistered) - 30} more[/dim]")
+        console.print(
+            "[dim]Most of the top of this list is the custom-career-site tier the feeds exist "
+            "to cover, which no adapter can poll — it is not a registry gap. Matching is on "
+            "the display name, so one employer under two captions appears twice and a rebrand "
+            "lands here wrongly. Resolve one with [bold]stage discover --url[/bold].[/dim]"
+        )
+
+
+def _render_coverage_note(
+    console: Console, report: "CoverageReport", state: CoverageState, label: str, note: str
+) -> None:
+    rows = [row for row in report.rows if row.state is state]
+    if not rows:
+        return
+    names = ", ".join(truncate(row.company, 24) for row in rows[:8])
+    more = f" and {len(rows) - 8} more" if len(rows) > 8 else ""
+    console.print()
+    console.print(f"[bold]{len(rows)} row(s) {label}[/bold] — {note}")
+    console.print(f"  [dim]{names}{more}[/dim]")
 
 
 def _ago(when: datetime | None, now: datetime) -> str:
@@ -287,9 +472,7 @@ def render_source_health(
     )
 
 
-def render_board_health(
-    console: Console, sources: Sequence["SourceHealth"], now: datetime
-) -> None:
+def render_board_health(console: Console, sources: Sequence["SourceHealth"], now: datetime) -> None:
     rows = [
         board
         for source in sources
@@ -316,7 +499,7 @@ def render_board_health(
             f"[{colour}]{board.state.value}[/{colour}]",
             _ago(board.last_success_at, now),
             str(board.consecutive_failures),
-            truncate(first_line(board.last_error), 40) or "[dim]—[/dim]",
+            summary(board.last_error, 40) or "[dim]—[/dim]",
         )
 
     console.print(table)
@@ -324,59 +507,6 @@ def render_board_health(
         "[dim]A board with no row has not been reached by rotation yet, and is not "
         "listed here.[/dim]"
     )
-
-
-def health_to_json(report: "DoctorReport") -> str:
-    from dataclasses import asdict
-
-    payload = {
-        "schema_version": report.schema_version,
-        "last_sync_at": report.last_sync_at,
-        "never_synced": report.never_synced,
-        "healthy": report.is_healthy,
-        "warnings": report.warnings,
-        "integrity": [asdict(finding) for finding in report.integrity],
-        "blocks": [asdict(state) for state in report.blocks],
-        "sources": [
-            {
-                **asdict(source),
-                "cache_hit_ratio": source.cache_hit_ratio,
-                "success_rate": source.success_rate,
-            }
-            for source in report.sources
-        ],
-    }
-    return _dump(payload)
-
-
-def stats_to_json(report: "StatsReport") -> str:
-    from dataclasses import asdict
-
-    payload = {
-        "schema_version": report.schema_version,
-        "total_jobs": report.total_jobs,
-        "duplicates": report.duplicates,
-        "tombstones": report.tombstones,
-        "cached_urls": report.cached_urls,
-        "quarantined": report.quarantined,
-        "composition": report.composition,
-        "runs": [asdict(run) for run in report.runs],
-    }
-    return _dump(payload)
-
-
-def canary_to_json(report: "CanaryReport") -> str:
-    from dataclasses import asdict
-
-    payload = {
-        "passed": report.passed,
-        "skipped_platforms": list(report.skipped_platforms),
-        "probes": [
-            {**asdict(probe), "failure": probe.is_failure, "empty": probe.is_empty}
-            for probe in report.probes
-        ],
-    }
-    return _dump(payload)
 
 
 def render_canary(console: Console, report: "CanaryReport") -> None:
@@ -402,7 +532,7 @@ def render_canary(console: Console, report: "CanaryReport") -> None:
             truncate(probe.company, 28),
             result,
             "[dim]—[/dim]" if probe.unchanged else str(probe.fetched),
-            truncate(first_line(note), 44) or "[dim]—[/dim]",
+            summary(note, 44) or "[dim]—[/dim]",
         )
 
     console.print(table)
@@ -474,7 +604,7 @@ def render_doctor(console: Console, report: "DoctorReport", now: datetime) -> No
             console.print(
                 f"  [yellow]{truncate(board.label, 32)}[/yellow] "
                 f"({board.source}) {board.consecutive_failures} consecutive failure(s) — "
-                f"{truncate(first_line(board.last_error), 48) or 'no error recorded'}"
+                f"{summary(board.last_error, 48) or 'no error recorded'}"
             )
         if len(failing) > 10:
             console.print(f"  [dim]… and {len(failing) - 10} more[/dim]")
@@ -541,7 +671,6 @@ def render_stats(console: Console, report: "StatsReport", now: datetime) -> None
 
 
 def render_quarantine(
-
     console: Console,
     entries: Sequence[QuarantinedJob],
     *,
@@ -566,9 +695,8 @@ def render_quarantine(
     table.add_column("Rejected for", width=fixed[3], no_wrap=True, overflow="ellipsis")
 
     for entry in entries:
-        title = Text(truncate(entry.title_raw, title_width), style="dim")
-        if entry.apply_url_raw:
-            title.stylize(f"link {entry.apply_url_raw}")
+        title = clipped(entry.title_raw, title_width, style="dim")
+        _link(title, entry.apply_url_raw)
         matched = f"{entry.reason.value}"
         if entry.matched_phrase:
             matched += f" ({truncate(entry.matched_phrase, 24)})"
@@ -626,7 +754,7 @@ async def render_sync(
                 console.print(
                     f"\n[bold red]No adapter for {', '.join(platforms)}[/bold red] — "
                     f"{len(stranded)} enabled row(s) will never be fetched: "
-                    f"{truncate(', '.join(sanitize(name) for name in stranded), 70)}"
+                    f"{truncate(', '.join(stranded), 70)}"
                 )
                 console.print(
                     "  [dim]Set [bold]enabled: false[/bold] on those rows to record the gap "
@@ -649,7 +777,7 @@ async def render_sync(
                     f"{_duration(blocked.remaining_s)} "
                     f"(clears {blocked.blocked_until:%Y-%m-%d %H:%M UTC})"
                 )
-                reason = truncate(first_line(blocked.reason), 70) if blocked.reason else "unknown"
+                reason = summary(blocked.reason, 70) if blocked.reason else "unknown"
                 console.print(
                     f"  [dim]{blocked.consecutive_failures} consecutive failure(s): "
                     f"{reason}. Not fetched this run — clear it with "
@@ -673,9 +801,7 @@ async def render_sync(
                 validated += int(cached)
                 cache_marker = "[cyan]cached[/cyan]" if cached else "[yellow]cold  [/yellow]"
                 room = max(20, console.width - 34)
-                console.print(
-                    f"  {cache_marker} {truncate(company, 22):<22} {truncate(url, room)}"
-                )
+                console.print(f"  {cache_marker} {truncate(company, 22):<22} {truncate(url, room)}")
             case RequestLogged() as record:
                 _write_request_log(request_log, record)
             case CompanyFinished(
@@ -687,7 +813,7 @@ async def render_sync(
                     f"{fetched:>4} posting(s)  {elapsed:>7.0f}ms"
                 )
                 if degraded:
-                    console.print(f"         [yellow]{truncate(sanitize(degraded), 88)}[/yellow]")
+                    console.print(f"         [yellow]{truncate(degraded, 88)}[/yellow]")
             case CompanyUnchanged(company=company, elapsed_ms=elapsed):
                 console.print(
                     f"  [cyan]304[/cyan]  {sanitize(company):<28} "
@@ -697,7 +823,7 @@ async def render_sync(
                 failures.append((source, company, error))
                 console.print(
                     f"  [red]fail[/red] {sanitize(company):<28} "
-                    f"{truncate(first_line(error), 60)}  {elapsed:>7.0f}ms"
+                    f"{summary(error, 60)}  {elapsed:>7.0f}ms"
                 )
             case SourceFinished() as finished:
                 _render_source_summary(console, finished)
@@ -721,14 +847,10 @@ async def render_sync(
                     cache_note = (
                         f", {finished.not_modified}/{finished.requests} cached ({ratio:.0%})"
                     )
-                purge_note = (
-                    f", {finished.purged} purged" if finished.purged else ""
-                )
+                purge_note = f", {finished.purged} purged" if finished.purged else ""
                 quarantine_note = ""
                 if finished.quarantined:
-                    quarantine_note = (
-                        f", [yellow]{finished.quarantined} quarantined[/yellow]"
-                    )
+                    quarantine_note = f", [yellow]{finished.quarantined} quarantined[/yellow]"
                 console.print(
                     f"\n[bold]{finished.outcome.value}[/bold] — {finished.added} added, "
                     f"{finished.updated} updated, {finished.closed} closed"
@@ -778,17 +900,14 @@ async def render_discovery(
     resolved = False
     outcome: DiscoveryFinished | None = None
 
-    def show_entry(name: str, candidate: object, note: str) -> None:
-        from stage.domain import PlatformCandidate
-
-        assert isinstance(candidate, PlatformCandidate)
+    def show_entry(name: str, candidate: PlatformCandidate, note: str) -> None:
         console.print(f"\n[bold green]{sanitize(name)}[/bold green] -> {candidate.label}")
         if note:
-            console.print(f"  [dim]{note}[/dim]")
+            console.print(f"  [dim]{sanitize(note)}[/dim]")
         console.print("\n[dim]Paste into data/companies.yaml:[/dim]")
         entry = registry_entry_yaml(to_company(name, candidate, verified_on=verified_on))
         for line in entry.splitlines():
-            console.print(f"  {line}", highlight=False)
+            console.print(plain(f"  {line}"), highlight=False)
 
     async for event in events:
         match event:
@@ -806,7 +925,7 @@ async def render_discovery(
                 _write_request_log(request_log, record)
             case CandidateSkipped(company=company, slug=slug, reason=reason):
                 console.print(
-                    f"  [dim]skip[/dim]   {truncate(sanitize(company), 22):<22} "
+                    f"  [dim]skip[/dim]   {truncate(company, 22):<22} "
                     f"[dim]{sanitize(slug)} — {sanitize(reason)}[/dim]"
                 )
             case UrlResolved(candidate=candidate, detail=detail):
@@ -819,17 +938,18 @@ async def render_discovery(
                     )
                 show_entry(display_name or candidate.slug, candidate, note)
             case UrlUnrecognized(url=url, detail=detail):
-                console.print(f"\n[yellow]Unrecognized[/yellow] {truncate(sanitize(url), 70)}")
+                console.print(f"\n[yellow]Unrecognized[/yellow] {truncate(url, 70)}")
                 console.print(f"  {sanitize(detail)}")
+                _show_custom_skeleton(console, url, display_name)
             case PlatformProbed(result=result) if result.verdict is not ProbeVerdict.MISS:
                 style, label = _VERDICT_STYLE[result.verdict]
                 count = "" if result.job_count is None else f"{result.job_count:>5} job(s)"
                 console.print(
-                    f"  [{style}]{label:<6}[/{style}] {truncate(sanitize(result.company), 22):<22} "
+                    f"  [{style}]{label:<6}[/{style}] {truncate(result.company, 22):<22} "
                     f"{result.candidate.label:<34} {count}"
                 )
                 if result.detail:
-                    console.print(f"         [dim]{truncate(sanitize(result.detail), 88)}[/dim]")
+                    console.print(f"         [dim]{truncate(result.detail, 88)}[/dim]")
             case DiscoveryFinished() as finished:
                 outcome = finished
                 resolved = resolved or bool(finished.matched)
@@ -839,10 +959,43 @@ async def render_discovery(
     return outcome if collect and outcome is not None else resolved
 
 
+def _show_custom_skeleton(console: Console, url: str, display_name: str | None) -> None:
+    target = web_url(url)
+    if target is None:
+        return
+    console.print(
+        "\n[dim]If that page fills itself in from a JSON request, this is "
+        "[bold]custom_json[/bold]. Open DevTools, filter Fetch/XHR, reload the page, and copy "
+        "the request that returns the job list. Then paste this into data/companies.yaml, with "
+        "the field names taken from that response:[/dim]"
+    )
+    for line in (
+        f"- name: {display_name or 'REPLACE ME'}",
+        "  platform: custom_json",
+        f"  slug: {registry_slug(display_name or target)}",
+        "  enabled: false",
+        "  custom:",
+        "    url: PASTE_THE_JSON_REQUEST_URL_HERE",
+        "    jobs_path: data.jobs",
+        "    fields:",
+        "      id: id",
+        "      title: title",
+        "      location: location",
+        "      url: absoluteUrl",
+    ):
+        console.print(plain(f"  {line}"), highlight=False)
+
+
+def registry_slug(value: str) -> str:
+    from stage.lexicon import fold
+
+    return "-".join(fold(value).split())[:40] or "replace-me"
+
+
 def _render_discovery_summary(
     console: Console,
     event: DiscoveryFinished,
-    show_entry: Callable[[str, object, str], None],
+    show_entry: Callable[[str, PlatformCandidate, str], None],
     quiet: bool = False,
 ) -> None:
     for warning in event.ceiling_hit:
@@ -869,7 +1022,7 @@ def _render_discovery_summary(
             "and a 200 with jobs is not evidence of the right company."
         )
         for result in event.unverified:
-            console.print(f"  {sanitize(result.company)} -> {result.candidate.label} {result.url}")
+            console.print(plain(f"  {result.company} -> {result.candidate.label} {result.url}"))
     if not event.matched and not event.unverified:
         console.print(
             "\n[dim]Nothing resolved. Re-run with "

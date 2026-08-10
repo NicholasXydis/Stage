@@ -46,6 +46,28 @@ swe:
   - développement mobile
   - assurance qualité
   - testeur
+  - qa analyst
+  - qa tester
+  - quality assurance analyst
+  - test automation
+  - test automation engineer
+  - compiler engineer
+  - compiler developer
+  - compilateur
+  - graphics engineer
+  - graphics programmer
+  - rendering engineer
+  - gameplay engineer
+  - gameplay programmer
+  - algorithm engineer
+  - algorithms engineer
+  - algorithmique
+  - software architect
+  - architecte logiciel
+  - programmeur graphique
+  - automatisation des tests
+  - analyste qualité
+  - analyste en assurance qualité
 
 security:
   - security engineer
@@ -76,6 +98,21 @@ security:
   - sécurité de l'information
   - analyste en sécurité
   - cryptographie
+  - privacy engineer
+  - privacy engineering
+  - soc analyst
+  - security operations
+  - security operations center
+  - digital forensics
+  - computer forensics
+  - forensic analyst
+  - devsecops
+  - protection de la vie privée
+  - protection des renseignements
+  - opérations de sécurité
+  - centre des opérations de sécurité
+  - informatique judiciaire
+  - criminalistique numérique
 
 data:
   - data science
@@ -103,6 +140,13 @@ data:
   - donnees
   - intelligence d'affaires
   - entrepôt de données
+  - data developer
+  - data development
+  - développement de données
+  - développeur de données
+  - développeuse de données
+  - développeure de données
+  - programmeur de données
 
 ml-ai:
   - machine learning
@@ -170,6 +214,19 @@ infra:
   - fiabilité des sites
   - administrateur systèmes
   - réseautique
+  - systems administrator
+  - system administrator
+  - network administrator
+  - database administrator
+  - high performance computing
+  - hpc
+  - build operations
+  - buildops
+  - mlops
+  - administrateur réseau
+  - administrateur de bases de données
+  - calcul haute performance
+  - automatisation des builds
 
 hardware:
   - hardware engineer
@@ -191,6 +248,9 @@ hardware:
   - ingénieur matériel
   - conception de circuits
   - microélectronique
+  - electrical engineer
+  - electrical engineering
+  - ingénieur électrique
 
 embedded:
   - embedded engineer
@@ -216,6 +276,23 @@ embedded:
   - micrologiciel
   - microcontrôleur
   - robotique
+  - robotics engineer
+  - robotics engineering
+  - controls engineer
+  - control engineer
+  - systèmes de contrôle
+  - ingénieur en robotique
+
+general-cs:
+  - computer science
+  - computer engineering
+  - information technology
+  - computing science
+  - informatique
+  - génie informatique
+  - genie informatique
+  - sciences informatiques
+  - technologies de l'information
 
 source_categories:
   swe:

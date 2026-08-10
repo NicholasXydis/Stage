@@ -31,11 +31,15 @@ from stage.domain import (
     SyncRun,
     VolumePoint,
     WorkdayFacet,
+    board_of,
     source_rank,
 )
 from stage.paths import restrict_permissions
 from stage.storage.migrations import migrate
 from stage.storage.repository import SourceBatch, SourceBatchResult
+from stage.storage.search import FTS_COLUMN_WEIGHTS, match_expression, search_terms
+
+_BM25_WEIGHTS = ", ".join(f"{weight:.1f}" for weight in FTS_COLUMN_WEIGHTS)
 
 _COMPOSITION_COLUMNS = frozenset(
     {"source", "location", "role", "term", "language", "status", "degree_requirement"}
@@ -215,6 +219,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         first_seen=_require_datetime(row["first_seen"], "first_seen"),
         last_seen=_require_datetime(row["last_seen"], "last_seen"),
         source_posted_at=_from_text(row["source_posted_at"]),
+        duplicate_of=row["duplicate_of"],
     )
 
 
@@ -242,7 +247,7 @@ def _job_to_params(job: Job) -> tuple[Any, ...]:
         _to_text(job.first_seen),
         _to_text(job.last_seen),
         _to_text(job.source_posted_at) if job.source_posted_at else None,
-        None,
+        job.duplicate_of,
     )
 
 
@@ -427,30 +432,43 @@ class SqliteRepository:
         return len(duplicates)
 
     def _promote_orphaned_duplicates(self, purged: Sequence[str]) -> int:
-        promoted = 0
+        doomed = set(purged)
+        clusters: dict[str, list[tuple[int, str]]] = {}
         for chunk in self._chunked(purged):
             placeholders = ", ".join("?" * len(chunk))
             rows = self._conn.execute(
-                f"SELECT id, source, duplicate_of FROM jobs "
-                f"WHERE duplicate_of IN ({placeholders})",
+                f"SELECT id, source, duplicate_of FROM jobs WHERE duplicate_of IN ({placeholders})",
                 tuple(chunk),
             ).fetchall()
-            clusters: dict[str, list[tuple[int, str]]] = {}
             for row in rows:
+                if str(row["id"]) in doomed:
+                    continue
                 clusters.setdefault(str(row["duplicate_of"]), []).append(
                     source_rank(str(row["source"]), str(row["id"]))
                 )
-            for members in clusters.values():
-                members.sort()
-                winner = members[0][1]
+        for row in self._conn.execute(
+            "SELECT a.id, a.source, a.duplicate_of FROM jobs a "
+            "LEFT JOIN jobs b ON a.duplicate_of = b.id "
+            "WHERE a.duplicate_of IS NOT NULL AND b.id IS NULL"
+        ).fetchall():
+            if str(row["id"]) in doomed:
+                continue
+            clusters.setdefault(str(row["duplicate_of"]), []).append(
+                source_rank(str(row["source"]), str(row["id"]))
+            )
+
+        promoted = 0
+        for members in clusters.values():
+            unique = sorted(set(members))
+            if not unique:
+                continue
+            winner = unique[0][1]
+            self._conn.execute("UPDATE jobs SET duplicate_of = NULL WHERE id = ?", (winner,))
+            for _, member in unique[1:]:
                 self._conn.execute(
-                    "UPDATE jobs SET duplicate_of = NULL WHERE id = ?", (winner,)
+                    "UPDATE jobs SET duplicate_of = ? WHERE id = ?", (winner, member)
                 )
-                for _, member in members[1:]:
-                    self._conn.execute(
-                        "UPDATE jobs SET duplicate_of = ? WHERE id = ?", (winner, member)
-                    )
-                promoted += 1
+            promoted += 1
         return promoted
 
     def purge(
@@ -468,9 +486,10 @@ class SqliteRepository:
                 "(status = ? AND first_seen < ?) OR (status = ? AND first_seen < ?)",
                 (JobStatus.OPEN.value, open_cutoff, JobStatus.CLOSED.value, closed_cutoff),
             ).fetchall()
-            if not rows:
-                return PurgeResult()
             ids = [str(row["id"]) for row in rows]
+            promoted = self._promote_orphaned_duplicates(ids)
+            if not ids:
+                return PurgeResult(promoted=promoted)
             conn.executemany(
                 "INSERT INTO tombstones (id, source, first_seen, purged_at) "
                 "VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET "
@@ -485,7 +504,6 @@ class SqliteRepository:
                     for row in rows
                 ],
             )
-            promoted = self._promote_orphaned_duplicates(ids)
             for chunk in self._chunked(ids):
                 placeholders = ", ".join("?" * len(chunk))
                 conn.execute(f"DELETE FROM jobs WHERE id IN ({placeholders})", tuple(chunk))
@@ -506,9 +524,7 @@ class SqliteRepository:
         quarantined_ids = [entry.id for entry in batch.quarantined]
 
         with self._transaction() as conn:
-            known = self._preserved_first_seen(
-                [job.id for job in batch.jobs] + quarantined_ids
-            )
+            known = self._preserved_first_seen([job.id for job in batch.jobs] + quarantined_ids)
             jobs = tuple(
                 replace(job, first_seen=known[job.id]) if job.id in known else job
                 for job in batch.jobs
@@ -528,9 +544,7 @@ class SqliteRepository:
                 self._promote_orphaned_duplicates(quarantined_ids)
                 for chunk in self._chunked(quarantined_ids):
                     placeholders = ", ".join("?" * len(chunk))
-                    conn.execute(
-                        f"DELETE FROM jobs WHERE id IN ({placeholders})", tuple(chunk)
-                    )
+                    conn.execute(f"DELETE FROM jobs WHERE id IN ({placeholders})", tuple(chunk))
             released = {job.id for job in jobs} & set(known)
             if released:
                 for chunk in self._chunked(sorted(released)):
@@ -542,8 +556,7 @@ class SqliteRepository:
             touched = 0
             for board in batch.unchanged_boards:
                 cursor = conn.execute(
-                    "UPDATE jobs SET last_seen = ? WHERE source = ? AND id GLOB ? "
-                    "AND status = ?",
+                    "UPDATE jobs SET last_seen = ? WHERE source = ? AND id GLOB ? AND status = ?",
                     (stamp, batch.source, _board_glob(board), JobStatus.OPEN.value),
                 )
                 touched += cursor.rowcount
@@ -685,6 +698,14 @@ class SqliteRepository:
             for row in rows
         }
 
+    def clear_validators(self, source: str | None = None) -> int:
+        with self._transaction() as conn:
+            if source is None:
+                cursor = conn.execute("DELETE FROM http_cache")
+            else:
+                cursor = conn.execute("DELETE FROM http_cache WHERE source = ?", (source,))
+        return cursor.rowcount if cursor.rowcount > 0 else 0
+
     def cached_url_count(self) -> int:
         row = self._conn.execute("SELECT COUNT(*) AS total FROM http_cache").fetchone()
         return int(row["total"])
@@ -752,8 +773,7 @@ class SqliteRepository:
 
     def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
         rows = self._conn.execute(
-            "SELECT tenant, site, parameter, facet_id, descriptor, resolved_at "
-            "FROM workday_facets"
+            "SELECT tenant, site, parameter, facet_id, descriptor, resolved_at FROM workday_facets"
         ).fetchall()
         return {
             (str(row["tenant"]), str(row["site"])): WorkdayFacet(
@@ -766,7 +786,6 @@ class SqliteRepository:
             )
             for row in rows
         }
-
 
     def _quarantine_where(self, filters: QuarantineFilters) -> tuple[str, list[Any]]:
         clauses: list[str] = []
@@ -805,37 +824,44 @@ class SqliteRepository:
         return {str(row["reason"]): int(row["total"]) for row in rows}
 
     def _where(self, filters: JobFilters) -> tuple[str, list[Any]]:
-        clauses: list[str] = ["duplicate_of IS NULL"]
+        clauses, params = self._clauses(filters)
+        return f" WHERE {' AND '.join(clauses)}", params
+
+    def _clauses(self, filters: JobFilters) -> tuple[list[str], list[Any]]:
+        clauses: list[str] = ["jobs.duplicate_of IS NULL"]
         params: list[Any] = []
         if filters.status is not None:
-            clauses.append("status = ?")
+            clauses.append("jobs.status = ?")
             params.append(filters.status.value)
         if filters.location is not None:
-            clauses.append("location = ?")
+            clauses.append("jobs.location = ?")
             params.append(filters.location.value)
         if filters.term is not None:
-            clauses.append("term = ?")
+            clauses.append("jobs.term = ?")
             params.append(filters.term)
         if filters.degree is not None:
-            clauses.append("degree_requirement = ?")
+            clauses.append("jobs.degree_requirement = ?")
             params.append(filters.degree.value)
         if filters.role is not None:
-            clauses.append("role = ?")
+            clauses.append("jobs.role = ?")
             params.append(filters.role.value)
         if filters.language is not None:
-            clauses.append("language = ?")
-            params.append(filters.language.value)
+            if filters.language in (Language.EN, Language.FR):
+                clauses.append("jobs.language IN (?, ?)")
+                params.extend((filters.language.value, Language.BILINGUAL.value))
+            else:
+                clauses.append("jobs.language = ?")
+                params.append(filters.language.value)
         if filters.source is not None:
-            clauses.append("source = ?")
+            clauses.append("jobs.source = ?")
             params.append(filters.source)
         if filters.company is not None:
-            clauses.append("company = ?")
+            clauses.append("jobs.company = ?")
             params.append(filters.company)
         if filters.first_seen_after is not None:
-            clauses.append("first_seen >= ?")
+            clauses.append("jobs.first_seen >= ?")
             params.append(_to_text(filters.first_seen_after))
-        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
-        return where, params
+        return clauses, params
 
     def list_jobs(self, filters: JobFilters) -> list[Job]:
         where, params = self._where(filters)
@@ -855,6 +881,43 @@ class SqliteRepository:
     def get_job(self, job_id: str) -> Job | None:
         row = self._conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return _row_to_job(row) if row else None
+
+    def duplicates_of(self, job_id: str) -> list[Job]:
+        rows = self._conn.execute(
+            "SELECT * FROM jobs WHERE duplicate_of = ? ORDER BY source, id",
+            (job_id,),
+        ).fetchall()
+        return [_row_to_job(row) for row in rows]
+
+    def _match(self, query: str, filters: JobFilters) -> tuple[str, str, list[Any]]:
+        clauses, params = self._clauses(filters)
+        clauses.insert(0, "jobs_fts MATCH ?")
+        return (
+            match_expression(search_terms(query)),
+            f"FROM jobs JOIN jobs_fts ON jobs_fts.rowid = jobs.rowid WHERE {' AND '.join(clauses)}",
+            params,
+        )
+
+    def search_jobs(self, query: str, filters: JobFilters) -> list[Job]:
+        expression, source, params = self._match(query, filters)
+        if not expression:
+            return []
+        rows = self._conn.execute(
+            f"SELECT jobs.* {source} "
+            f"ORDER BY bm25(jobs_fts, {_BM25_WEIGHTS}), jobs.first_seen DESC, jobs.id ASC "
+            "LIMIT ?",
+            (expression, *params, filters.limit),
+        ).fetchall()
+        return [_row_to_job(row) for row in rows]
+
+    def count_search(self, query: str, filters: JobFilters) -> int:
+        expression, source, params = self._match(query, filters)
+        if not expression:
+            return 0
+        row = self._conn.execute(
+            f"SELECT COUNT(*) AS total {source}", (expression, *params)
+        ).fetchone()
+        return int(row["total"])
 
     def record_sync_run(self, run: SyncRun) -> None:
         with self._transaction() as conn:
@@ -901,9 +964,7 @@ class SqliteRepository:
         return _from_text(row["finished_at"]) if row else None
 
     def schema_version(self) -> int:
-        row = self._conn.execute(
-            "SELECT MAX(version) AS version FROM schema_migrations"
-        ).fetchone()
+        row = self._conn.execute("SELECT MAX(version) AS version FROM schema_migrations").fetchone()
         return int(row["version"]) if row and row["version"] is not None else 0
 
     def stored_counts(self) -> dict[str, int]:
@@ -912,6 +973,29 @@ class SqliteRepository:
             (JobStatus.OPEN.value,),
         ).fetchall()
         return {str(row["source"]): int(row["total"]) for row in rows}
+
+    def board_counts(self) -> dict[str, int]:
+        rows = self._conn.execute(
+            "SELECT id, source FROM jobs WHERE status = ?",
+            (JobStatus.OPEN.value,),
+        ).fetchall()
+        counts: dict[str, int] = {}
+        for row in rows:
+            key = board_of(str(row["id"]), str(row["source"]))
+            counts[key] = counts.get(key, 0) + 1
+        return counts
+
+    def company_counts(self) -> dict[str, dict[str, int]]:
+        rows = self._conn.execute(
+            "SELECT company, source, COUNT(*) AS total FROM jobs "
+            "WHERE duplicate_of IS NULL AND status = ? "
+            "GROUP BY company, source",
+            (JobStatus.OPEN.value,),
+        ).fetchall()
+        counts: dict[str, dict[str, int]] = {}
+        for row in rows:
+            counts.setdefault(str(row["company"]), {})[str(row["source"])] = int(row["total"])
+        return counts
 
     def composition(self, column: str) -> dict[str, int]:
         if column not in _COMPOSITION_COLUMNS:
@@ -945,8 +1029,7 @@ class SqliteRepository:
 
     def run_history(self, limit: int) -> list[SyncRun]:
         runs = self._conn.execute(
-            "SELECT id, started_at, finished_at, outcome FROM sync_runs "
-            "ORDER BY id DESC LIMIT ?",
+            "SELECT id, started_at, finished_at, outcome FROM sync_runs ORDER BY id DESC LIMIT ?",
             (limit,),
         ).fetchall()
         if not runs:
@@ -1049,7 +1132,5 @@ class SqliteRepository:
         findings: list[IntegrityFinding] = []
         for check, sql, detail in checks:
             row = self._conn.execute(sql).fetchone()
-            findings.append(
-                IntegrityFinding(check=check, count=int(row["total"]), detail=detail)
-            )
+            findings.append(IntegrityFinding(check=check, count=int(row["total"]), detail=detail))
         return findings

@@ -1,9 +1,10 @@
-
 from dataclasses import dataclass
 from functools import lru_cache
 
 from stage.domain import RoleCategory
 from stage.lexicon import fold, role_lexicon, source_role_categories
+
+GENERAL_CS = RoleCategory.GENERAL_CS.value
 
 
 @lru_cache(maxsize=1)
@@ -37,9 +38,10 @@ def classify_role(title: str, description: str = "", source_category: str = "") 
                     hits.setdefault(category, []).append(phrase)
         if not hits:
             continue
+        if len(hits) > 1:
+            hits.pop(GENERAL_CS, None)
         hits = {
-            category: sorted(set(found), key=len, reverse=True)
-            for category, found in hits.items()
+            category: sorted(set(found), key=len, reverse=True) for category, found in hits.items()
         }
 
         best = max(len(phrases[0]) for phrases in hits.values())

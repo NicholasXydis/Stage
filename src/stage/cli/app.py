@@ -1,15 +1,17 @@
-import asyncio
 from collections.abc import AsyncIterator, Coroutine
 from enum import StrEnum
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 
-from stage.domain import STALE_AFTER_DAYS
+if TYPE_CHECKING:
+    from stage.domain import JobFilters
 
 
 def run_async[T](coroutine: Coroutine[Any, Any, T]) -> T:
+    import asyncio
+
     return asyncio.run(coroutine)
 
 
@@ -45,6 +47,27 @@ DatabaseOption = Annotated[
     Path | None,
     typer.Option("--db", help="Database path"),
 ]
+JsonOption = Annotated[bool, typer.Option("--json", help="JSON output")]
+LocationOption = Annotated[str | None, typer.Option("--location")]
+TermOption = Annotated[str | None, typer.Option("--term")]
+RoleOption = Annotated[str | None, typer.Option("--role")]
+DegreeOption = Annotated[
+    str | None,
+    typer.Option("--degree", help="none, bachelors, masters, phd, unknown, any"),
+]
+LanguageOption = Annotated[str | None, typer.Option("--lang")]
+SourceOption = Annotated[str | None, typer.Option("--source")]
+CompanyOption = Annotated[str | None, typer.Option("--company")]
+WindowOption = Annotated[bool, typer.Option("--all", help="Ignore the date window")]
+StaleDaysOption = Annotated[
+    int | None,
+    typer.Option(
+        "--stale-days",
+        min=1,
+        max=3650,
+        help="Days without a success before a board is stale",
+    ),
+]
 
 
 def _database(explicit: Path | None) -> Path:
@@ -53,10 +76,29 @@ def _database(explicit: Path | None) -> Path:
     return explicit.expanduser() if explicit else database_path()
 
 
-@app.command()
+def _print_failure(exc: BaseException) -> None:
+    from rich.console import Console
+
+    from stage.cli.render import failure
+
+    Console().print(failure(exc))
+
+
+def _print_missing(posting: str) -> None:
+    from rich.console import Console
+
+    Console().print(_no_such_posting(posting))
+
+
+@app.command(help="Fetch every enabled source into the local database")
 def sync(
     source: Annotated[
-        str | None, typer.Option("--source", help="One source only")
+        list[str] | None,
+        typer.Option("--source", help="Only these sources, repeatable"),
+    ] = None,
+    exclude: Annotated[
+        list[str] | None,
+        typer.Option("--exclude", help="Every source but these, repeatable"),
     ] = None,
     dry_run: Annotated[
         bool,
@@ -77,7 +119,7 @@ def sync(
     from rich.console import Console
 
     from stage.cli.logfile import open_request_log
-    from stage.cli.render import render_sync
+    from stage.cli.render import failure, render_sync
     from stage.companies import RegistryError, load_companies
     from stage.domain import SyncOutcome
     from stage.services.sync import NoSourcesSelectedError
@@ -85,6 +127,10 @@ def sync(
     from stage.storage import open_repository
 
     console = Console()
+
+    if source and exclude:
+        console.print("[red]Pass either --source or --exclude, not both.[/red]")
+        raise typer.Exit(code=2)
 
     async def run() -> SyncOutcome:
         companies = load_companies(registry)
@@ -98,7 +144,8 @@ def sync(
                 events = sync_service(
                     repository,
                     companies,
-                    sources=[source] if source is not None else None,
+                    sources=source or None,
+                    excluded=exclude or None,
                     dry_run=dry_run,
                 )
                 return await render_sync(console, events, request_log=stream)
@@ -106,62 +153,44 @@ def sync(
     try:
         outcome = run_async(run())
     except (RegistryError, NoSourcesSelectedError) as exc:
-        console.print(f"[red]{exc}[/red]")
+        console.print(failure(exc))
         raise typer.Exit(code=2) from exc
 
     raise typer.Exit(code=0 if outcome is SyncOutcome.SUCCESS else 1)
 
 
-@app.command("list")
+@app.command("list", help="Recent postings, newest first")
 def list_postings(
-    location: Annotated[str | None, typer.Option("--location")] = None,
-    term: Annotated[str | None, typer.Option("--term")] = None,
-    role: Annotated[str | None, typer.Option("--role")] = None,
-    degree: Annotated[
-        str | None,
-        typer.Option("--degree", help="none, bachelors, masters, phd, unknown, any"),
-    ] = None,
-    language: Annotated[str | None, typer.Option("--lang")] = None,
-    source: Annotated[str | None, typer.Option("--source")] = None,
-    company: Annotated[str | None, typer.Option("--company")] = None,
-    show_all: Annotated[bool, typer.Option("--all", help="Ignore the date window")] = False,
+    location: LocationOption = None,
+    term: TermOption = None,
+    role: RoleOption = None,
+    degree: DegreeOption = None,
+    language: LanguageOption = None,
+    source: SourceOption = None,
+    company: CompanyOption = None,
+    show_all: WindowOption = False,
     limit: Annotated[int, typer.Option("--limit", min=1, max=1000)] = 50,
-    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
-    from rich.console import Console
-
-    from stage.cli.render import jobs_to_json, render_jobs
-    from stage.domain import (
-        DEFAULT_WINDOW_DAYS,
-        DegreeRequirement,
-        JobFilters,
-        Language,
-        LocationBucket,
-        RoleCategory,
-    )
+    from stage.cli.serialize import emit, jobs_to_json
+    from stage.domain import DEFAULT_WINDOW_DAYS
     from stage.services.query import JobListing, list_jobs
     from stage.storage import open_repository
 
-    console = Console()
-
     try:
-        filters = JobFilters(
-            location=_parse_enum(location, LocationBucket, "--location"),
+        filters = _filters(
+            location=location,
             term=term,
-            role=_parse_enum(role, RoleCategory, "--role"),
-            degree=(
-                None
-                if degree is None or degree.lower() == "any"
-                else _parse_enum(degree, DegreeRequirement, "--degree")
-            ),
-            language=_parse_enum(language, Language, "--lang"),
+            role=role,
+            degree=degree,
+            language=language,
             source=source,
             company=company,
             limit=limit,
         )
     except InvalidOptionError as exc:
-        console.print(f"[red]{exc}[/red]")
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
 
     async def run() -> JobListing:
@@ -175,11 +204,15 @@ def list_postings(
     listing = run_async(run())
 
     if as_json:
-        console.print_json(jobs_to_json(listing.jobs))
+        emit(jobs_to_json(listing.jobs))
         return
 
+    from rich.console import Console
+
+    from stage.cli.render import render_jobs
+
     render_jobs(
-        console,
+        Console(),
         listing.jobs,
         total_matching=listing.total_matching,
         window_days=listing.window_days,
@@ -187,7 +220,314 @@ def list_postings(
     )
 
 
-@app.command()
+def _filters(
+    *,
+    location: str | None,
+    term: str | None,
+    role: str | None,
+    degree: str | None,
+    language: str | None,
+    source: str | None,
+    company: str | None,
+    limit: int,
+) -> "JobFilters":
+    from stage.domain import (
+        DegreeRequirement,
+        JobFilters,
+        Language,
+        LocationBucket,
+        RoleCategory,
+    )
+
+    return JobFilters(
+        location=_parse_enum(location, LocationBucket, "--location"),
+        term=term,
+        role=_parse_enum(role, RoleCategory, "--role"),
+        degree=(
+            None
+            if degree is None or degree.lower() == "any"
+            else _parse_enum(degree, DegreeRequirement, "--degree")
+        ),
+        language=_parse_enum(language, Language, "--lang"),
+        source=source,
+        company=company,
+        limit=limit,
+    )
+
+
+@app.command(help="Full-text search over titles, employers and bodies")
+def search(
+    query: Annotated[str, typer.Argument(help="Words to match, accents optional")],
+    location: LocationOption = None,
+    term: TermOption = None,
+    role: RoleOption = None,
+    degree: DegreeOption = None,
+    language: LanguageOption = None,
+    source: SourceOption = None,
+    company: CompanyOption = None,
+    window: Annotated[
+        int | None,
+        typer.Option(
+            "--window",
+            min=1,
+            max=3650,
+            help="Limit to the last N days; the default searches every row",
+        ),
+    ] = None,
+    limit: Annotated[int, typer.Option("--limit", min=1, max=1000)] = 50,
+    as_json: JsonOption = False,
+    db: DatabaseOption = None,
+) -> None:
+    from stage.cli.serialize import emit, jobs_to_json
+    from stage.services.query import JobListing
+    from stage.services.query import search_jobs as search_service
+    from stage.storage import open_repository
+
+    try:
+        filters = _filters(
+            location=location,
+            term=term,
+            role=role,
+            degree=degree,
+            language=language,
+            source=source,
+            company=company,
+            limit=limit,
+        )
+    except InvalidOptionError as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
+
+    async def run() -> JobListing:
+        async with open_repository(_database(db)) as repository:
+            return await search_service(repository, query, filters, window_days=window)
+
+    listing = run_async(run())
+
+    if as_json:
+        emit(jobs_to_json(listing.jobs))
+        return
+
+    from rich.console import Console
+
+    from stage.cli.render import render_search
+
+    render_search(Console(), listing)
+
+
+@app.command(help="Everything stored about one posting")
+def show(
+    posting: Annotated[str, typer.Argument(help="Posting id, as printed by stage list --json")],
+    as_json: JsonOption = False,
+    db: DatabaseOption = None,
+) -> None:
+    from stage.cli.serialize import emit, posting_to_json
+    from stage.services.query import PostingDetail, get_posting
+    from stage.storage import open_repository
+
+    async def run() -> PostingDetail | None:
+        async with open_repository(_database(db)) as repository:
+            return await get_posting(repository, posting)
+
+    detail = run_async(run())
+    if detail is None:
+        _print_missing(posting)
+        raise typer.Exit(code=1)
+
+    if as_json:
+        emit(posting_to_json(detail))
+        return
+
+    from rich.console import Console
+
+    from stage.cli.render import render_posting
+
+    render_posting(Console(), detail)
+
+
+@app.command("open", help="Launch a posting's apply URL in the browser")
+def open_posting(
+    posting: Annotated[str, typer.Argument(help="Posting id, as printed by stage list --json")],
+    print_only: Annotated[
+        bool, typer.Option("--print", help="Print the apply URL instead of launching it")
+    ] = False,
+    db: DatabaseOption = None,
+) -> None:
+    from rich.console import Console
+
+    from stage.cli.render import plain, quoted
+    from stage.domain import Job, web_url
+    from stage.services.query import get_posting
+    from stage.storage import open_repository
+
+    console = Console()
+
+    async def run() -> Job | None:
+        async with open_repository(_database(db)) as repository:
+            detail = await get_posting(repository, posting)
+            return None if detail is None else detail.job
+
+    job = run_async(run())
+    if job is None:
+        console.print(_no_such_posting(posting))
+        raise typer.Exit(code=1)
+
+    url = web_url(job.apply_url_raw)
+    if url is None:
+        console.print(
+            f"[red]Refusing to open {quoted(job.apply_url_raw, 60)}[/red] — a posting's apply "
+            "URL is untrusted input, and only a plain http or https address is launched."
+        )
+        raise typer.Exit(code=2)
+
+    if print_only:
+        console.print(plain(url))
+        return
+
+    import webbrowser
+
+    if not webbrowser.open(url):
+        console.print(plain(f"No browser available. The apply URL is {url}"), style="yellow")
+        raise typer.Exit(code=1)
+    console.print(plain(f"Opened {job.company} — {url}"))
+
+
+def _no_such_posting(posting: str) -> str:
+    from stage.cli.render import quoted
+
+    return (
+        f"[red]No posting with id {quoted(posting, 80)}.[/red] Ids look like "
+        "[bold]greenhouse:acme:1234[/bold] — find one with [bold]stage list --json[/bold] "
+        "or [bold]stage search[/bold]."
+    )
+
+
+@app.command(help="Write the current filters out as csv, json, md or pdf")
+def export(
+    fmt: Annotated[str, typer.Option("--format", help="csv, json, md, pdf")] = "csv",
+    out: Annotated[Path | None, typer.Option("--out", help="Destination file or directory")] = None,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file")] = False,
+    location: LocationOption = None,
+    term: TermOption = None,
+    role: RoleOption = None,
+    degree: DegreeOption = None,
+    language: LanguageOption = None,
+    source: SourceOption = None,
+    company: CompanyOption = None,
+    show_all: WindowOption = False,
+    limit: Annotated[int, typer.Option("--limit", min=1, max=5000)] = 1000,
+    db: DatabaseOption = None,
+) -> None:
+    from rich.console import Console
+
+    from stage.cli.render import failure, render_export
+    from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat
+    from stage.services.export import ExportError, ExportResult, export_jobs
+    from stage.storage import open_repository
+
+    console = Console()
+
+    try:
+        export_format = _require_enum(fmt, ExportFormat, "--format")
+        filters = _filters(
+            location=location,
+            term=term,
+            role=role,
+            degree=degree,
+            language=language,
+            source=source,
+            company=company,
+            limit=limit,
+        )
+    except InvalidOptionError as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
+
+    async def run() -> ExportResult:
+        async with open_repository(_database(db)) as repository:
+            return await export_jobs(
+                repository,
+                filters,
+                fmt=export_format,
+                destination=out,
+                window_days=None if show_all else DEFAULT_WINDOW_DAYS,
+                force=force,
+            )
+
+    try:
+        result = run_async(run())
+    except ExportError as exc:
+        console.print(failure(exc))
+        raise typer.Exit(code=2) from exc
+
+    if not result.count:
+        widen = (
+            "Relax a filter."
+            if show_all
+            else "Relax a filter, or pass [bold]--all[/bold] to ignore the 14-day window."
+        )
+        console.print(
+            f"[yellow]Nothing matched, so {result.path.name} holds headers only.[/yellow] {widen}"
+        )
+        return
+    render_export(console, result)
+
+
+@app.command(help="Registry rows producing nothing, and employers absent from it")
+def coverage(
+    unregistered: Annotated[
+        bool,
+        typer.Option(
+            "--unregistered", help="Companies seen in a feed but absent from the registry"
+        ),
+    ] = False,
+    stale_days: StaleDaysOption = None,
+    as_json: JsonOption = False,
+    registry: RegistryOption = None,
+    db: DatabaseOption = None,
+) -> None:
+    from datetime import UTC, datetime
+
+    from rich.console import Console
+
+    from stage.cli.render import render_coverage
+    from stage.cli.serialize import coverage_to_json, emit
+    from stage.companies import RegistryError, load_companies
+    from stage.services.coverage import CoverageReport
+    from stage.services.coverage import coverage as coverage_service
+    from stage.storage import open_repository
+
+    console = Console()
+    now = datetime.now(UTC)
+
+    async def run() -> CoverageReport:
+        companies = load_companies(registry)
+        async with open_repository(_database(db)) as repository:
+            if stale_days is None:
+                return await coverage_service(
+                    repository, companies, now=now, unregistered=unregistered
+                )
+            return await coverage_service(
+                repository,
+                companies,
+                now=now,
+                unregistered=unregistered,
+                stale_after_days=stale_days,
+            )
+
+    try:
+        report = run_async(run())
+    except RegistryError as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
+
+    if as_json:
+        emit(coverage_to_json(report))
+        return
+    render_coverage(console, report, now)
+
+
+@app.command(help="Apply the retention policy now")
 def purge(db: DatabaseOption = None) -> None:
     from datetime import UTC, datetime
 
@@ -205,14 +545,17 @@ def purge(db: DatabaseOption = None) -> None:
 
     result = run_async(run())
     if not result.purged:
+        if result.promoted:
+            console.print(
+                f"Nothing outside the retention window, and {result.promoted} orphaned "
+                "duplicate(s) were promoted back into view."
+            )
+            return
         console.print("[dim]Nothing outside the retention window.[/dim]")
         return
-    promoted = (
-        f", {result.promoted} duplicate(s) promoted" if result.promoted else ""
-    )
+    promoted = f", {result.promoted} duplicate(s) promoted" if result.promoted else ""
     console.print(
-        f"Purged {result.purged} posting(s), {result.tombstoned} tombstone(s) kept"
-        f"{promoted}."
+        f"Purged {result.purged} posting(s), {result.tombstoned} tombstone(s) kept{promoted}."
     )
     console.print(
         "[dim]Tombstones keep the original first_seen so a still-open posting is not "
@@ -220,20 +563,53 @@ def purge(db: DatabaseOption = None) -> None:
     )
 
 
-@app.command()
+@app.command(help="Re-run classification over stored postings after a lexicon change")
+def rescreen(db: DatabaseOption = None) -> None:
+    from datetime import UTC, datetime
+
+    from rich.console import Console
+
+    from stage.services.maintenance import RescreenResult
+    from stage.services.maintenance import rescreen as rescreen_service
+    from stage.storage import open_repository
+
+    console = Console()
+
+    async def run() -> RescreenResult:
+        async with open_repository(_database(db)) as repository:
+            return await rescreen_service(repository, now=datetime.now(UTC))
+
+    result = run_async(run())
+    if not result.examined:
+        console.print("[dim]Nothing stored yet — run stage sync.[/dim]")
+        return
+    if not result.changed:
+        console.print(
+            f"Re-screened {result.examined} posting(s); the lexicon agrees with every one."
+        )
+        return
+    console.print(
+        f"Re-screened {result.examined} posting(s) — "
+        f"[yellow]{result.quarantined} moved to quarantine[/yellow]."
+    )
+    console.print(
+        "[dim]Screening only. A posting the lexicon should now keep comes back on the next "
+        "sync, which is what re-fetches the fields classification needs.[/dim]"
+    )
+
+
+@app.command(help="Integrity, source health and staleness in one check")
 def doctor(
-    stale_days: Annotated[
-        int,
-        typer.Option("--stale-days", help="Days without a success before a board is stale"),
-    ] = STALE_AFTER_DAYS,
-    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    stale_days: StaleDaysOption = None,
+    as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
     from datetime import UTC, datetime
 
     from rich.console import Console
 
-    from stage.cli.render import health_to_json, render_doctor
+    from stage.cli.render import render_doctor
+    from stage.cli.serialize import emit, health_to_json
     from stage.services.health import DoctorReport
     from stage.services.health import doctor as run_doctor
     from stage.storage import open_repository
@@ -243,31 +619,34 @@ def doctor(
 
     async def run() -> DoctorReport:
         async with open_repository(_database(db)) as repository:
+            if stale_days is None:
+                return await run_doctor(repository, now=now)
             return await run_doctor(repository, now=now, stale_after_days=stale_days)
 
     report = run_async(run())
     if as_json:
-        console.print_json(health_to_json(report))
+        emit(health_to_json(report))
     else:
         render_doctor(console, report, now)
     if not report.is_healthy:
         raise typer.Exit(code=1)
 
 
-@app.command()
+@app.command(help="Sync history and database composition")
 def stats(
     runs: Annotated[
         int,
-        typer.Option("--runs", help="How many recent syncs to show"),
+        typer.Option("--runs", min=1, max=200, help="How many recent syncs to show"),
     ] = 10,
-    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
     from datetime import UTC, datetime
 
     from rich.console import Console
 
-    from stage.cli.render import render_stats, stats_to_json
+    from stage.cli.render import render_stats
+    from stage.cli.serialize import emit, stats_to_json
     from stage.services.health import StatsReport, statistics
     from stage.storage import open_repository
 
@@ -279,20 +658,21 @@ def stats(
 
     report = run_async(run())
     if as_json:
-        console.print_json(stats_to_json(report))
+        emit(stats_to_json(report))
     else:
         render_stats(console, report, datetime.now(UTC))
 
 
-@app.command()
+@app.command(help="Probe one live board per platform against the shape we parse")
 def canary(
-    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    as_json: JsonOption = False,
     registry: RegistryOption = None,
     db: DatabaseOption = None,
 ) -> None:
     from rich.console import Console
 
-    from stage.cli.render import canary_to_json, render_canary
+    from stage.cli.render import render_canary
+    from stage.cli.serialize import canary_to_json, emit
     from stage.companies import RegistryError, load_companies
     from stage.services.canary import CanaryReport
     from stage.services.canary import canary as run_canary
@@ -308,18 +688,18 @@ def canary(
     try:
         report = run_async(run())
     except RegistryError as exc:
-        console.print(f"[red]{exc}[/red]")
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
 
     if as_json:
-        console.print_json(canary_to_json(report))
+        emit(canary_to_json(report))
     else:
         render_canary(console, report)
     if not report.passed:
         raise typer.Exit(code=1)
 
 
-@app.command()
+@app.command(help="Per-source health, latency, cache ratio and rate state")
 def sources(
     clear: Annotated[
         str | None,
@@ -333,11 +713,18 @@ def sources(
         bool,
         typer.Option("--boards", help="List every board that is failing or stale"),
     ] = False,
-    stale_days: Annotated[
-        int,
-        typer.Option("--stale-days", help="Days without a success before a board is stale"),
-    ] = STALE_AFTER_DAYS,
-    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    clear_cache: Annotated[
+        str | None,
+        typer.Option(
+            "--clear-cache", help="Drop one source's cached validators to force a refetch"
+        ),
+    ] = None,
+    clear_cache_all: Annotated[
+        bool,
+        typer.Option("--clear-cache-all", help="Drop every cached validator"),
+    ] = False,
+    stale_days: StaleDaysOption = None,
+    as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
     from datetime import UTC, datetime
@@ -345,11 +732,11 @@ def sources(
     from rich.console import Console
 
     from stage.cli.render import (
-        health_to_json,
         render_board_health,
         render_rate_state,
         render_source_health,
     )
+    from stage.cli.serialize import emit, health_to_json
     from stage.services.health import DoctorReport
     from stage.services.health import doctor as run_doctor
     from stage.services.maintenance import RateStateView, rate_state
@@ -364,12 +751,29 @@ def sources(
 
     async def run() -> tuple[RateStateView, DoctorReport]:
         async with open_repository(_database(db)) as repository:
-            view = await rate_state(repository, bucket=clear, clear_all=clear_all)
-            report = await run_doctor(repository, now=now, stale_after_days=stale_days)
+            view = await rate_state(
+                repository,
+                bucket=clear,
+                clear_all=clear_all,
+                clear_cache=clear_cache,
+                clear_cache_all=clear_cache_all,
+            )
+            report = (
+                await run_doctor(repository, now=now)
+                if stale_days is None
+                else await run_doctor(repository, now=now, stale_after_days=stale_days)
+            )
             return view, report
 
     view, report = run_async(run())
     cleared, states = view.cleared, view.states
+
+    if view.validators_cleared or clear_cache is not None or clear_cache_all:
+        target = "every source" if clear_cache_all else f"source {clear_cache!r}"
+        console.print(
+            f"Dropped {view.validators_cleared} cached validator(s) for {target} — "
+            "the next sync refetches in full instead of asking for a 304."
+        )
 
     if clear is not None or clear_all:
         target = "every bucket" if clear_all else f"bucket {clear!r}"
@@ -379,7 +783,7 @@ def sources(
             console.print(f"[yellow]No stored rate state for {target}.[/yellow]")
 
     if as_json:
-        console.print_json(health_to_json(report))
+        emit(health_to_json(report))
         return
 
     render_source_health(console, report.sources, report.stale_after_days)
@@ -390,18 +794,19 @@ def sources(
         render_board_health(console, report.sources, now)
 
 
-@app.command()
+@app.command(help="Audit rejected postings and the reasons they were rejected")
 def quarantine(
     reason: Annotated[str | None, typer.Option("--reason")] = None,
     source: Annotated[str | None, typer.Option("--source")] = None,
     company: Annotated[str | None, typer.Option("--company")] = None,
     limit: Annotated[int, typer.Option("--limit", min=1, max=1000)] = 50,
-    as_json: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
     from rich.console import Console
 
-    from stage.cli.render import quarantine_to_json, render_quarantine
+    from stage.cli.render import render_quarantine
+    from stage.cli.serialize import emit, quarantine_to_json
     from stage.domain import QuarantineFilters, RejectionReason
     from stage.services.quarantine import QuarantineListing, list_quarantined
     from stage.storage import open_repository
@@ -416,7 +821,7 @@ def quarantine(
             limit=limit,
         )
     except InvalidOptionError as exc:
-        console.print(f"[red]{exc}[/red]")
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
 
     async def run() -> QuarantineListing:
@@ -426,7 +831,7 @@ def quarantine(
     listing = run_async(run())
 
     if as_json:
-        console.print_json(quarantine_to_json(listing.entries))
+        emit(quarantine_to_json(listing.entries))
         return
 
     render_quarantine(
@@ -437,7 +842,7 @@ def quarantine(
     )
 
 
-@app.command()
+@app.command(help="Resolve which board a company publishes on")
 def discover(
     companies: Annotated[
         list[str] | None,
@@ -457,6 +862,10 @@ def discover(
     platform: Annotated[
         list[str] | None,
         typer.Option("--platform", help="Limit to these platforms"),
+    ] = None,
+    only: Annotated[
+        list[str] | None,
+        typer.Option("--company", help="With --verify, probe only these registry rows"),
     ] = None,
     expect_size: Annotated[
         str | None,
@@ -493,8 +902,10 @@ def discover(
     from rich.console import Console
 
     from stage.cli.logfile import open_request_log
-    from stage.cli.render import render_discovery
+    from stage.cli.render import failure, plain, render_discovery
+    from stage.companies import RegistryError
     from stage.domain import DiscoveryEvent, DiscoveryFinished, EmployerSize, Platform
+    from stage.services.discover import NoMatchingCompanyError
 
     console = Console()
 
@@ -519,7 +930,7 @@ def discover(
             else None
         )
     except InvalidOptionError as exc:
-        console.print(f"[red]{exc}[/red]")
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
 
     async def run() -> object:
@@ -541,7 +952,7 @@ def discover(
                 rows = load_companies(registry)
                 outcome = await render_discovery(
                     console,
-                    verify_registry(rows, platforms=platforms),
+                    verify_registry(rows, platforms=platforms, only=only),
                     verified_on=today,
                     request_log=stream,
                     collect=True,
@@ -550,8 +961,9 @@ def discover(
                     updated, ok, off = apply_verification(rows, outcome, today)
                     target = write_registry(updated, registry)
                     console.print(
-                        f"\n[bold]applied[/bold] — {ok} row(s) verified, {off} disabled, "
-                        f"written to {target}"
+                        plain(
+                            f"\napplied — {ok} row(s) verified, {off} disabled, written to {target}"
+                        )
                     )
                 return isinstance(outcome, DiscoveryFinished) and bool(outcome.matched)
             if url is not None:
@@ -559,17 +971,23 @@ def discover(
                 async def once() -> AsyncIterator[DiscoveryEvent]:
                     yield resolve_careers_url(url)
 
-                return await render_discovery(
-                    console, once(), verified_on=today, display_name=name
-                )
+                return await render_discovery(console, once(), display_name=name)
 
             events = probe_companies(companies or [], platforms=platforms, size=size)
-            return await render_discovery(
-                console, events, verified_on=today, request_log=stream
-            )
+            return await render_discovery(console, events, verified_on=today, request_log=stream)
 
-    resolved = run_async(run())
+    try:
+        resolved = run_async(run())
+    except (RegistryError, NoMatchingCompanyError) as exc:
+        console.print(failure(exc))
+        raise typer.Exit(code=2) from exc
     raise typer.Exit(code=0 if resolved else 1)
+
+
+@app.command("help", help="Show this command list")
+def show_help(context: typer.Context) -> None:
+    root = context.parent or context
+    typer.echo(root.get_help())
 
 
 def main() -> None:

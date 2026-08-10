@@ -39,6 +39,7 @@ class RoleCategory(StrEnum):
     INFRA = "infra"
     HARDWARE = "hardware"
     EMBEDDED = "embedded"
+    GENERAL_CS = "general-cs"
     UNKNOWN = "unknown"
 
 
@@ -87,7 +88,6 @@ class SourceOfRecord(StrEnum):
 
 
 class ProbeVerdict(StrEnum):
-
     MATCH = "match"
     UNVERIFIED = "unverified"
     EMPTY = "empty"
@@ -106,6 +106,13 @@ class SyncOutcome(StrEnum):
     SUCCESS = "success"
     PARTIAL = "partial"
     FAILURE = "failure"
+
+
+class ExportFormat(StrEnum):
+    CSV = "csv"
+    JSON = "json"
+    MD = "md"
+    PDF = "pdf"
 
 
 UNKNOWN_TERM = "unknown"
