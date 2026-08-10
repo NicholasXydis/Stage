@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "Aggregates CS internship postings (Canada/US, EN + FR) into a local SQLite database"
 requires-python = ">=3.12,<3.15"
 license = { text = "MIT" }
-readme = "README.md"
 dependencies = [
     "fpdf2>=2.8.4",
     "httpx>=0.28.1",
