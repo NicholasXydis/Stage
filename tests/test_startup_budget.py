@@ -6,17 +6,28 @@ from pathlib import Path
 
 import pytest
 
-FAST_PATH_BUDGET_MS = 100.0
+LEAN_BUDGET_MS = 100.0
+LEXICON_BUDGET_MS = 140.0
 RUNS = 5
 
 DEPENDENCY_FLOOR = "import asyncio, sqlite3, typer, rich.console, yaml"
 RUNNER = "from stage.cli.app import app; app()"
 
 FAST_PATH_COMMANDS = (
-    ("list",),
-    ("search", "montreal"),
-    ("show", "greenhouse:absent:1"),
-    ("export", "--format", "csv", "--force"),
+    (LEAN_BUDGET_MS, ("list",)),
+    (LEXICON_BUDGET_MS, ("search", "montreal")),
+    (LEAN_BUDGET_MS, ("show", "greenhouse:absent:1")),
+    (LEAN_BUDGET_MS, ("export", "--format", "csv", "--force")),
+)
+
+LEXICON_PROBE = (
+    "import sys\n"
+    "from stage.cli.app import app\n"
+    "try:\n"
+    "    app(['search', 'montreal'])\n"
+    "except SystemExit:\n"
+    "    pass\n"
+    "print('LEXICON:' + str('stage.lexicon' in sys.modules), file=sys.stderr)\n"
 )
 
 
@@ -47,16 +58,30 @@ def test_the_fast_path_stays_inside_its_budget_over_the_dependency_floor(
     over_budget: list[str] = []
     measured: list[str] = []
 
-    for command in FAST_PATH_COMMANDS:
+    for budget, command in FAST_PATH_COMMANDS:
         arguments = ["-c", RUNNER, *command]
         if command[0] == "export":
             arguments += ["--out", str(tmp_path / f"{command[0]}.csv")]
         elapsed = _best(arguments, budget_env)
         cost = elapsed - floor
-        measured.append(f"{command[0]} {elapsed:.0f}ms (floor + {cost:.0f}ms)")
-        if cost > FAST_PATH_BUDGET_MS:
+        measured.append(f"{command[0]} {elapsed:.0f}ms (floor + {cost:.0f}ms of {budget:.0f})")
+        if cost > budget:
             over_budget.append(f"{command[0]} costs {cost:.0f}ms over the floor")
 
-    assert not over_budget, (
-        f"{FAST_PATH_BUDGET_MS:.0f}ms over a {floor:.0f}ms floor: {', '.join(measured)}"
+    assert not over_budget, f"floor {floor:.0f}ms: {', '.join(measured)}"
+
+
+@pytest.mark.serial
+def test_only_search_pays_the_lexicon_so_its_wider_budget_is_earned(
+    budget_env: dict[str, str],
+) -> None:
+    result = subprocess.run(
+        [sys.executable, "-c", LEXICON_PROBE],
+        capture_output=True,
+        text=True,
+        env=budget_env,
+        check=False,
+    )
+    assert result.stderr.strip().splitlines()[-1] == "LEXICON:True", (
+        "search folds its query, so a budget above the lean one must reflect a real load"
     )
