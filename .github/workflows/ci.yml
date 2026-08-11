@@ -15,6 +15,8 @@ concurrency:
 
 env:
   COVERAGE_FLOOR: "83"
+  UV_VERSION: "0.11.28"
+  UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
 
 jobs:
   quality:
@@ -27,23 +29,38 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
+      - name: Restore the uv cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-3.12-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-3.12-
       - name: Install locked dependencies
         run: |
-          python -m pip install uv==0.11.28
+          python -m pip install "uv==$UV_VERSION"
           uv sync --frozen
       - name: Ruff
         id: ruff
         continue-on-error: true
         run: uv run ruff check src/ tests/
+      - name: Ruff format
+        id: ruff_format
+        continue-on-error: true
+        run: uv run ruff format --check src/ tests/
       - name: Mypy strict
         id: mypy
         continue-on-error: true
         run: uv run mypy
-      - name: Tests with branch coverage
+      - name: Tests in parallel with branch coverage
         id: pytest
         continue-on-error: true
         run: |
-          uv run pytest -q --cov --cov-branch \
+          uv run pytest -q -n auto --cov --cov-branch --cov-report=
+      - name: Wall-clock tests, serial, and the coverage floor
+        id: pytest_serial
+        continue-on-error: true
+        run: |
+          uv run pytest -q -m serial --cov --cov-append --cov-branch \
             --cov-report=xml:coverage.xml --cov-report=term-missing:skip-covered \
             --cov-fail-under="$COVERAGE_FLOOR"
       - name: Upload coverage
@@ -79,18 +96,25 @@ jobs:
             echo "| Check | Result |"
             echo "| --- | --- |"
             echo "| Ruff | $(result "${{ steps.ruff.outcome }}") |"
+            echo "| Ruff format | $(result "${{ steps.ruff_format.outcome }}") |"
             echo "| Mypy strict (src + tests) | $(result "${{ steps.mypy.outcome }}") |"
-            echo "| Tests, branch coverage >= ${COVERAGE_FLOOR}% | $(result "${{ steps.pytest.outcome }}") |"
+            echo "| Tests (parallel) | $(result "${{ steps.pytest.outcome }}") |"
+            echo "| Wall-clock tests, coverage >= ${COVERAGE_FLOOR}% | $(result "${{ steps.pytest_serial.outcome }}") |"
             echo "| Dependency audit | $(result "${{ steps.pip_audit.outcome }}") |"
             echo "| Workflow lint | $(result "${{ steps.actionlint.outcome }}") |"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Trim the cache before it is saved
+        if: always()
+        run: uv cache prune --ci
       - name: Fail if any check failed
         if: always()
         run: |
           for outcome in \
             "${{ steps.ruff.outcome }}" \
+            "${{ steps.ruff_format.outcome }}" \
             "${{ steps.mypy.outcome }}" \
             "${{ steps.pytest.outcome }}" \
+            "${{ steps.pytest_serial.outcome }}" \
             "${{ steps.pip_audit.outcome }}" \
             "${{ steps.actionlint.outcome }}"; do
             if [ "$outcome" != "success" ]; then exit 1; fi
@@ -110,12 +134,22 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: ${{ matrix.python }}
-      - name: Install locked dependencies
+      - name: Restore the uv cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-${{ matrix.python }}-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-${{ matrix.python }}-
+      - name: Install the test group only
         run: |
-          python -m pip install uv==0.11.28
-          uv sync --frozen --python ${{ matrix.python }}
-      - name: Tests
-        run: uv run --python ${{ matrix.python }} pytest -q
+          python -m pip install "uv==$UV_VERSION"
+          uv sync --frozen --python ${{ matrix.python }} --no-group dev --group test
+      - name: Tests in parallel
+        run: uv run --no-sync --python ${{ matrix.python }} pytest -q -n auto
+      - name: Wall-clock tests, serial
+        run: uv run --no-sync --python ${{ matrix.python }} pytest -q -m serial
+      - name: Trim the cache before it is saved
+        run: uv cache prune --ci
 
   wheel:
     strategy:
@@ -173,6 +207,7 @@ jobs:
           "$SMOKE_BIN/stage" doctor
           "$SMOKE_BIN/stage" coverage
           "$SMOKE_BIN/stage" stats
+          "$SMOKE_BIN/stage" sync --dry-run
           for format in csv json md pdf; do
             "$SMOKE_BIN/stage" export --format "$format" --all --force \
               --out "$RUNNER_TEMP/smoke.$format"
