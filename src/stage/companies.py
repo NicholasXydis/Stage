@@ -153,6 +153,7 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
         enabled=enabled,
         rate_profile=_optional_str(row, "rate_profile"),
         last_verified=_parse_date(row, "last_verified", index),
+        recheck_after=_parse_date(row, "recheck_after", index),
         source_of_record=source_of_record,
         workday_tenant=_optional_str(row, "workday_tenant"),
         workday_site=_optional_str(row, "workday_site"),
@@ -184,6 +185,8 @@ def _registry_row(company: Company) -> dict[str, Any]:
     }
     if company.last_verified is not None:
         row["last_verified"] = company.last_verified
+    if company.recheck_after is not None:
+        row["recheck_after"] = company.recheck_after
     for key in ("workday_tenant", "workday_site", "workday_dc", "workday_facet"):
         value = getattr(company, key)
         if value is not None:

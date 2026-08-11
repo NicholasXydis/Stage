@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from stage.domain import (
     STALE_AFTER_DAYS,
+    Company,
     IntegrityFinding,
     JobFilters,
     RateState,
@@ -77,6 +79,7 @@ class DoctorReport:
     blocks: tuple[RateState, ...]
     never_synced: bool
     stale_after_days: int = STALE_AFTER_DAYS
+    due_for_recheck: tuple[str, ...] = ()
 
     @property
     def integrity_problems(self) -> tuple[IntegrityFinding, ...]:
@@ -96,7 +99,7 @@ class DoctorReport:
 
     @property
     def warnings(self) -> int:
-        return len(self.failing_boards) + len(self.stale_boards)
+        return len(self.failing_boards) + len(self.stale_boards) + len(self.due_for_recheck)
 
     @property
     def is_healthy(self) -> bool:
@@ -143,6 +146,7 @@ async def doctor(
     now: datetime | None = None,
     stale_after_days: int = STALE_AFTER_DAYS,
     history: int = RUN_HISTORY,
+    companies: Sequence[Company] = (),
 ) -> DoctorReport:
     moment = now or datetime.now(UTC)
     runs = await repository.run_history(history)
@@ -183,6 +187,13 @@ async def doctor(
         blocks=tuple(state for state in rate_state.values() if state.is_blocked(moment)),
         never_synced=not runs,
         stale_after_days=stale_after_days,
+        due_for_recheck=tuple(
+            sorted(
+                f"{company.name} ({company.recheck_after})"
+                for company in companies
+                if company.due_for_recheck(moment.date())
+            )
+        ),
     )
 
 

@@ -21,7 +21,11 @@ class Company:
     workday_facet: str | None = None
     name_gate_exempt: bool = False
     notes: str | None = None
+    recheck_after: date | None = None
     custom: CustomBoard | None = None
+
+    def due_for_recheck(self, today: date) -> bool:
+        return self.recheck_after is not None and self.recheck_after <= today
 
     @property
     def registry_key(self) -> str:

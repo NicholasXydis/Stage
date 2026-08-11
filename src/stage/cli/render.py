@@ -610,6 +610,16 @@ def render_doctor(console: Console, report: "DoctorReport", now: datetime) -> No
             console.print(f"  [dim]… and {len(failing) - 10} more[/dim]")
         console.print("[dim]These are registry rows to fix or switch off.[/dim]")
 
+    due = report.due_for_recheck
+    if due:
+        console.print()
+        console.print(f"[bold yellow]Registry rows due for re-check[/bold yellow] ({len(due)})")
+        for entry in due[:10]:
+            console.print(f"  [yellow]{truncate(entry, 60)}[/yellow]")
+        if len(due) > 10:
+            console.print(f"  [dim]… and {len(due) - 10} more[/dim]")
+        console.print("[dim]A disable reason expires; read the note and re-measure.[/dim]")
+
     console.print()
     if not report.is_healthy:
         console.print("[red]Problems above need attention.[/red]")

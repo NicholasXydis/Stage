@@ -61,6 +61,7 @@ def health_to_json(report: "DoctorReport") -> str:
             "never_synced": report.never_synced,
             "healthy": report.is_healthy,
             "warnings": report.warnings,
+            "due_for_recheck": list(report.due_for_recheck),
             "integrity": [asdict(finding) for finding in report.integrity],
             "blocks": [asdict(state) for state in report.blocks],
             "sources": [
