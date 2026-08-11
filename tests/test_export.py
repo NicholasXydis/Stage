@@ -261,7 +261,7 @@ def test_an_unbounded_field_cannot_break_the_pdf_renderer(tmp_path: Path) -> Non
 def test_a_pdf_the_renderer_refuses_becomes_an_actionable_export_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import stage.services.export as export_module
+    from stage.services import export as export_module
 
     def explode(*_: object, **__: object) -> None:
         raise ValueError("The row with index 1 is too high")
@@ -290,7 +290,7 @@ def test_a_latin_export_reports_nothing(tmp_path: Path) -> None:
 def test_a_failed_write_is_reported_and_leaves_no_partial_file(
     db_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import stage.services.export as export_module
+    from stage.services import export as export_module
 
     repository = SqliteRepository.connect(db_path)
     repository.apply_source_batch(
