@@ -37,7 +37,12 @@ def _board_key(company: Company) -> str | None:
     from stage.sources import adapter_for_platform
 
     adapter = adapter_for_platform(company.platform)
-    return None if adapter is None else adapter.board_key(company)
+    if adapter is None:
+        return None
+    try:
+        return adapter.board_key(company)
+    except Exception:
+        return None
 
 
 def _registry_rows(

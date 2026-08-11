@@ -104,6 +104,18 @@ async def test_a_board_that_has_not_answered_lately_is_stale_not_empty(seeded: P
 
 
 @pytest.mark.asyncio
+async def test_a_row_whose_board_key_cannot_be_built_reports_unroutable(seeded: Path) -> None:
+    unaddressable = Company(name="No Board Key", platform=Platform.WORKDAY, slug="---")
+    async with open_repository(seeded) as repository:
+        report = await coverage(repository, (*COMPANIES, unaddressable), now=NOW)
+
+    assert _states(report.rows)["No Board Key"] is CoverageState.UNROUTABLE, (
+        "one unaddressable row must cost itself, not the command"
+    )
+    assert _states(report.rows)["Producing"] is CoverageState.PRODUCING
+
+
+@pytest.mark.asyncio
 async def test_a_disabled_row_is_never_reported_as_a_gap(seeded: Path) -> None:
     async with open_repository(seeded) as repository:
         report = await coverage(repository, COMPANIES, now=NOW)
