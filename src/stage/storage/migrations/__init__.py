@@ -53,6 +53,22 @@ def applied_versions(conn: sqlite3.Connection) -> tuple[int, ...]:
     return tuple(int(row[0]) for row in rows)
 
 
+BASELINE_COLUMNS = frozenset({"company_fold"})
+
+
+def _refuse_a_pre_baseline_database(conn: sqlite3.Connection, db_path: Path) -> None:
+    rows = conn.execute("PRAGMA table_info(jobs)").fetchall()
+    if not rows:
+        return
+    missing = sorted(BASELINE_COLUMNS - {str(row[1]) for row in rows})
+    if missing:
+        raise SchemaVersionError(
+            f"database at {db_path} records the current schema version but is missing "
+            f"{', '.join(missing)} — it was built before the baseline was reset. Delete it "
+            "and run stage sync; the corpus is reproducible in under a minute"
+        )
+
+
 def snapshot_path(db_path: Path, when: datetime) -> Path:
     return db_path.with_name(f"{db_path.name}.bak-{when.strftime('%Y%m%dT%H%M%S')}")
 
@@ -81,6 +97,7 @@ def migrate(conn: sqlite3.Connection, db_path: Path) -> tuple[int, ...]:
 
     pending = [migration for migration in migrations if migration.version not in applied]
     if not pending:
+        _refuse_a_pre_baseline_database(conn, db_path)
         return ()
 
     if applied:
@@ -102,6 +119,7 @@ def migrate(conn: sqlite3.Connection, db_path: Path) -> tuple[int, ...]:
 
 
 __all__ = [
+    "BASELINE_COLUMNS",
     "Migration",
     "SchemaVersionError",
     "applied_versions",

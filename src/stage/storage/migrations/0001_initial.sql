@@ -2,6 +2,7 @@ CREATE TABLE jobs (
     id                  TEXT PRIMARY KEY,
     source              TEXT NOT NULL,
     company             TEXT NOT NULL,
+    company_fold        TEXT NOT NULL DEFAULT '',
     title_raw           TEXT NOT NULL,
     title_normalized    TEXT NOT NULL,
     title_canonical     TEXT NOT NULL DEFAULT '',
@@ -30,6 +31,7 @@ CREATE INDEX idx_jobs_source_company ON jobs (source, company);
 CREATE INDEX idx_jobs_duplicate_of ON jobs (duplicate_of);
 CREATE INDEX idx_jobs_degree ON jobs (degree_requirement);
 CREATE INDEX idx_jobs_company_canonical ON jobs (company) WHERE duplicate_of IS NULL;
+CREATE INDEX idx_jobs_company_fold ON jobs (company_fold);
 
 CREATE VIRTUAL TABLE jobs_fts USING fts5 (
     company,

@@ -27,8 +27,7 @@ TRIGGERS = frozenset({"jobs_fts_after_insert", "jobs_fts_after_update", "jobs_ft
 def test_one_migration_ships_and_it_is_the_baseline() -> None:
     migrations = discover()
     assert [migration.version for migration in migrations] == [BASELINE], (
-        "the 14 historical migrations were collapsed into one baseline; the next schema "
-        "change starts at 0002"
+        "the schema ships as one declared baseline; a second file is a history to replay"
     )
     assert latest_version() == BASELINE
 
@@ -36,10 +35,7 @@ def test_one_migration_ships_and_it_is_the_baseline() -> None:
 def test_the_baseline_declares_the_schema_directly_and_never_alters_it() -> None:
     body = discover()[0].read().upper()
     for statement in ("ALTER TABLE", "DROP TABLE", "DROP INDEX", "RENAME TO"):
-        assert statement not in body, (
-            f"the baseline still carries {statement!r}; a consolidated schema is declared, "
-            "not rebuilt through its own history"
-        )
+        assert statement not in body, f"the baseline still carries {statement!r}"
 
 
 def test_a_fresh_database_is_at_the_baseline_with_every_object_present(

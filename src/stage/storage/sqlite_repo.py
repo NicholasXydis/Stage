@@ -45,10 +45,18 @@ _COMPOSITION_COLUMNS = frozenset(
     {"source", "location", "role", "term", "language", "status", "degree_requirement"}
 )
 
+
+def fold_company(value: str) -> str:
+    from stage.lexicon import fold
+
+    return fold(value)
+
+
 _JOB_COLUMNS = (
     "id",
     "source",
     "company",
+    "company_fold",
     "title_raw",
     "title_normalized",
     "title_canonical",
@@ -74,6 +82,7 @@ _JOB_COLUMNS = (
 _UPDATE_ON_CONFLICT = (
     "source = excluded.source",
     "company = excluded.company",
+    "company_fold = excluded.company_fold",
     "title_raw = excluded.title_raw",
     "title_normalized = excluded.title_normalized",
     "title_canonical = excluded.title_canonical",
@@ -228,6 +237,7 @@ def _job_to_params(job: Job) -> tuple[Any, ...]:
         job.id,
         job.source,
         job.company,
+        fold_company(job.company),
         job.title_raw,
         job.title_normalized,
         job.title_canonical,
@@ -325,12 +335,16 @@ class SqliteRepository:
         is_new = not db_path.exists()
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(db_path, isolation_level=None)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA synchronous = NORMAL")
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA busy_timeout = 5000")
-        migrate(conn, db_path)
+        try:
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA synchronous = NORMAL")
+            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA busy_timeout = 5000")
+            migrate(conn, db_path)
+        except Exception:
+            conn.close()
+            raise
         if is_new:
             restrict_permissions(db_path)
         return cls(conn)
@@ -381,10 +395,10 @@ class SqliteRepository:
         return found
 
     def _duplicate_candidates(self, jobs: Sequence[Job]) -> list[Job]:
-        companies = sorted({job.company for job in jobs})
+        companies = sorted({folded for job in jobs if (folded := fold_company(job.company))})
         urls = sorted({job.apply_url_canonical for job in jobs if job.apply_url_canonical})
         found: dict[str, Job] = {}
-        for column, values in (("company", companies), ("apply_url_canonical", urls)):
+        for column, values in (("company_fold", companies), ("apply_url_canonical", urls)):
             for start in range(0, len(values), 400):
                 chunk = values[start : start + 400]
                 if not chunk:
