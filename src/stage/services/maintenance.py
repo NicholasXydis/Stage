@@ -48,10 +48,15 @@ async def rate_state(
 class RescreenResult:
     examined: int
     quarantined: int
+    total: int = 0
 
     @property
     def changed(self) -> bool:
         return bool(self.quarantined)
+
+    @property
+    def skipped(self) -> int:
+        return max(0, self.total - self.examined)
 
 
 async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) -> RescreenResult:
@@ -60,6 +65,7 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
     moment = now or datetime.now(UTC)
     examined = 0
     quarantined = 0
+    total = await repository.count_jobs(JobFilters(status=None, limit=RESCREEN_LIMIT))
 
     for pass_number in range(RESCREEN_PASSES):
         stored = await repository.list_jobs(JobFilters(status=None, limit=RESCREEN_LIMIT))
@@ -77,7 +83,7 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
                 )
             )
         quarantined += len(rejected)
-    return RescreenResult(examined=examined, quarantined=quarantined)
+    return RescreenResult(examined=examined, quarantined=quarantined, total=total)
 
 
 def _rejections(jobs: Sequence[Job]) -> tuple[QuarantinedJob, ...]:

@@ -569,7 +569,7 @@ def rescreen(db: DatabaseOption = None) -> None:
 
     from rich.console import Console
 
-    from stage.services.maintenance import RescreenResult
+    from stage.services.maintenance import RESCREEN_LIMIT, RescreenResult
     from stage.services.maintenance import rescreen as rescreen_service
     from stage.storage import open_repository
 
@@ -583,6 +583,11 @@ def rescreen(db: DatabaseOption = None) -> None:
     if not result.examined:
         console.print("[dim]Nothing stored yet — run stage sync.[/dim]")
         return
+    if result.skipped:
+        console.print(
+            f"[yellow]{result.skipped} posting(s) were not examined[/yellow] — this pass reads "
+            f"at most {RESCREEN_LIMIT} rows. Run stage purge, then rescreen again."
+        )
     if not result.changed:
         console.print(
             f"Re-screened {result.examined} posting(s); the lexicon agrees with every one."

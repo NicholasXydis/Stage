@@ -233,3 +233,30 @@ async def test_rescreen_converges_when_quarantining_a_canonical_promotes_a_follo
     assert not [finding for finding in findings if finding.count], (
         "the move must leave no dangling duplicate link behind"
     )
+
+
+@pytest.mark.asyncio
+async def test_a_pass_that_cannot_read_every_row_says_so(
+    seeded: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import JobFilters
+
+    monkeypatch.setattr("stage.services.maintenance.RESCREEN_LIMIT", 1)
+    async with open_repository(seeded) as repository:
+        stored = len(await repository.list_jobs(JobFilters(status=None)))
+        result = await rescreen(repository, now=NOW)
+
+    assert stored > 1, "the fixture has to hold more rows than the cap, or nothing is skipped"
+    assert result.total == stored
+    assert result.examined == 1
+    assert result.skipped == stored - 1, (
+        "a capped pass reporting the full count is a silent truncation"
+    )
+
+
+@pytest.mark.asyncio
+async def test_an_uncapped_pass_reports_nothing_skipped(seeded: Path) -> None:
+    async with open_repository(seeded) as repository:
+        result = await rescreen(repository, now=NOW)
+    assert result.skipped == 0
+    assert result.total == result.examined
