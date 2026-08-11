@@ -300,7 +300,7 @@ async def _merge(streams: Sequence[AsyncIterator[SyncEvent]]) -> AsyncIterator[S
                 await queue.put(event)
         except asyncio.CancelledError:
             raise
-        except Exception as exc:  # noqa: BLE001 - re-raised on the consumer side
+        except Exception as exc:
             await queue.put(exc)
         finally:
             queue.put_nowait(None)

@@ -163,8 +163,8 @@ class BoardAdapter:
         company: Company,
         client: HttpClient,
         now: datetime,
-        facets: object = None,  # noqa: ARG002
-        details: Sequence[str] = (),  # noqa: ARG002
+        facets: object = None,
+        details: Sequence[str] = (),
     ) -> FetchResult:
         response = await client.get_json(self.url_for(company), params=self.params())
         if response.not_modified:
@@ -180,7 +180,7 @@ class BoardAdapter:
             authoritative=not dropped,
         )
 
-    def keep(self, row: Any) -> bool:  # noqa: ARG002
+    def keep(self, row: Any) -> bool:
         return True
 
     def validate(self, company: Company, payload: Any) -> tuple[list[Any], int]:

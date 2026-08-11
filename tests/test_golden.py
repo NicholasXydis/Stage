@@ -79,8 +79,7 @@ def test_the_goldens_cover_every_rule_category_in_both_languages() -> None:
     for language in ("en", "fr"):
         covered = {entry["role"] for entry in kept if entry["language"] == language}
         assert covered >= RULE_CATEGORIES, (
-            f"{sorted(RULE_CATEGORIES - covered)} have no {language} golden; asserting the "
-            "role and language unions separately let one language carry every category"
+            f"{sorted(RULE_CATEGORIES - covered)} have no {language} golden"
         )
 
     reasons = {case["expected"]["reason"] for case in cases if not case["expected"]["kept"]}

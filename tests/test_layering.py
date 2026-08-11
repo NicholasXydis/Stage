@@ -83,6 +83,25 @@ def test_the_export_path_loads_the_pdf_stack_only_when_a_pdf_is_written() -> Non
     assert _heavy_after("from stage.services.export import export_jobs, render_csv") == ""
 
 
+def test_the_read_path_does_not_load_the_lexicon_or_yaml() -> None:
+    probe = (
+        "import sys\n"
+        "from stage.cli.app import app\n"
+        "try:\n"
+        "    app(['list'])\n"
+        "except SystemExit:\n"
+        "    pass\n"
+        "loaded = [name for name in ('yaml', 'stage.lexicon') if name in sys.modules]\n"
+        "print('LOADED:' + ','.join(loaded), file=sys.stderr)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+    )
+    assert result.stderr.strip().splitlines()[-1] == "LOADED:", (
+        "list reads only SQLite; the lexicon pulls yaml in behind it"
+    )
+
+
 def test_lexicon_depends_on_nothing_in_the_chain() -> None:
     body = (SRC / "lexicon.py").read_text(encoding="utf-8")
     for line in body.splitlines():
@@ -140,10 +159,28 @@ def test_no_hash_comments_outside_tooling_directives() -> None:
                 if token.type != tokenize.COMMENT:
                     continue
                 text = token.string.lstrip("#").strip()
-                if text.startswith(("noqa", "type:")):
+                if text.startswith("type:"):
                     continue
                 offenders.append(f"{path.name}:{token.start[0]} {token.string[:40]}")
     assert not offenders, f"{len(offenders)} comment(s) reappeared: {offenders[:10]}"
+
+
+def test_every_assertion_message_fits_on_one_line() -> None:
+    import ast
+
+    root = Path(__file__).resolve().parents[1]
+    offenders: list[str] = []
+    for base in (root / "src", root / "tests"):
+        for path in sorted(base.rglob("*.py")):
+            if "__pycache__" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Assert) or node.msg is None:
+                    continue
+                if node.msg.end_lineno != node.msg.lineno:
+                    offenders.append(f"{path.name}:{node.lineno}")
+    assert not offenders, f"{len(offenders)} message(s) span lines: {offenders[:10]}"
 
 
 def test_packaged_data_resolves_inside_the_package_not_the_repo() -> None:
@@ -195,6 +232,5 @@ def test_the_json_path_never_loads_the_renderer() -> None:
         [sys.executable, "-c", probe], capture_output=True, text=True, check=True
     )
     assert result.stdout.strip().endswith("False"), (
-        "--json is the scripting path; console.print_json re-parses the string only to "
-        "colour it, so loading the renderer there is pure cost"
+        "--json is the scripting path; the renderer is pure cost there"
     )

@@ -137,11 +137,9 @@ def test_parked_canadian_employers_are_a_larger_gap_than_vocabulary() -> None:
     rows = load_companies()
     disabled = [company for company in rows if not company.enabled]
     assert len(disabled) > 150, (
-        f"{len(disabled)} of {len(rows)} registry rows are disabled; coverage is bounded by "
-        "which employers are enabled, not by internship vocabulary"
+        f"{len(disabled)} of {len(rows)} rows disabled; the registry bounds recall"
     )
     workday_off = [c for c in disabled if c.platform.value == "workday"]
     assert len(workday_off) > 50, (
-        f"{len(workday_off)} Workday rows are off, and Workday is where the Montreal "
-        "bank, insurer and telecom employers publish"
+        f"{len(workday_off)} Workday rows off, and Montreal publishes there"
     )

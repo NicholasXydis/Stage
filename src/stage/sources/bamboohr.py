@@ -27,12 +27,12 @@ class BambooPosting(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: int
-    jobOpeningName: str  # noqa: N815
-    departmentLabel: NullableStr = ""  # noqa: N815
-    employmentStatusLabel: NullableStr = ""  # noqa: N815
+    jobOpeningName: str
+    departmentLabel: NullableStr = ""
+    employmentStatusLabel: NullableStr = ""
     location: BambooLocation | None = None
-    atsLocation: BambooLocation | None = None  # noqa: N815
-    isRemote: NullableBool = False  # noqa: N815
+    atsLocation: BambooLocation | None = None
+    isRemote: NullableBool = False
 
     def where(self) -> str:
         for candidate in (self.location, self.atsLocation):

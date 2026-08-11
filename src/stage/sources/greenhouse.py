@@ -57,8 +57,8 @@ class GreenhouseAdapter(BoardAdapter):
         company: Company,
         client: HttpClient,
         now: datetime,
-        facets: object = None,  # noqa: ARG002
-        details: Sequence[str] = (),  # noqa: ARG002
+        facets: object = None,
+        details: Sequence[str] = (),
     ) -> FetchResult:
         url = self.url_for(company)
         try:

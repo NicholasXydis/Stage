@@ -104,7 +104,4 @@ def test_the_full_bilingual_title_beats_either_half() -> None:
     bilingual = [
         pair for pair in pairs if detect_language(pair["title_raw"]).language is Language.BILINGUAL
     ]
-    assert len(bilingual) >= 4, (
-        f"only {len(bilingual)} of {len(pairs)} single titles resolve bilingual; a floor of 2 "
-        "passed on a fixture where the path was barely exercised"
-    )
+    assert len(bilingual) >= 4, f"only {len(bilingual)} of {len(pairs)} titles resolve bilingual"

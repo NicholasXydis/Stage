@@ -16,7 +16,7 @@ class LeverCategories(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     location: str = ""
-    allLocations: list[str] = Field(default_factory=list)  # noqa: N815 - the API's field name
+    allLocations: list[str] = Field(default_factory=list)
     commitment: str = ""
     team: str = ""
     department: str = ""
@@ -32,12 +32,12 @@ class LeverPosting(BaseModel):
 
     id: str
     text: str
-    hostedUrl: str = ""  # noqa: N815 - the API's field name
-    applyUrl: str = ""  # noqa: N815 - the API's field name
-    createdAt: int | None = None  # noqa: N815 - the API's field name
+    hostedUrl: str = ""
+    applyUrl: str = ""
+    createdAt: int | None = None
     categories: LeverCategories | None = None
-    descriptionPlain: str = ""  # noqa: N815 - the API's field name
-    additionalPlain: str = ""  # noqa: N815 - the API's field name
+    descriptionPlain: str = ""
+    additionalPlain: str = ""
 
 
 @register

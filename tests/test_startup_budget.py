@@ -57,6 +57,5 @@ def test_the_fast_path_stays_inside_its_budget_over_the_dependency_floor(
             over_budget.append(f"{command[0]} costs {cost:.0f}ms over the floor")
 
     assert not over_budget, (
-        f"budget {FAST_PATH_BUDGET_MS:.0f}ms over a {floor:.0f}ms floor: "
-        f"{'; '.join(over_budget)}. Measured {', '.join(measured)}"
+        f"{FAST_PATH_BUDGET_MS:.0f}ms over a {floor:.0f}ms floor: {', '.join(measured)}"
     )

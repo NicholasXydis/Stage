@@ -101,8 +101,8 @@ class CustomJsonAdapter:
         company: Company,
         client: HttpClient,
         now: datetime,
-        facets: object = None,  # noqa: ARG002
-        details: Sequence[str] = (),  # noqa: ARG002
+        facets: object = None,
+        details: Sequence[str] = (),
     ) -> FetchResult:
         board = self._board(company)
         response = await client.get_json(board.url)

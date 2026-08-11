@@ -89,10 +89,7 @@ def test_the_internship_screen_never_reads_a_description() -> None:
     assert set(inspect.signature(screen_internship).parameters) == {
         "title",
         "employment_type",
-    }, (
-        "only 17 of 8,944 described rows carry a body-only internship phrase, so a "
-        "description parameter would advertise a capability that does not exist"
-    )
+    }, "screen_internship must take no description; 17 of 8,944 rows justify it"
 
 
 @pytest.mark.parametrize(
@@ -267,10 +264,7 @@ def test_employer_written_french_titles_classify_as_their_english_pair() -> None
             continue
         assert french is english, pair
         checked += 1
-    assert checked >= 15, (
-        f"only {checked} of {len(pairs)} pairs exercised the cross-language path; the floor "
-        "was 3 while the lexicon resolved 3, which let a parity gap read as coverage"
-    )
+    assert checked >= 15, f"only {checked} of {len(pairs)} pairs resolve a role on both sides"
 
 
 def test_a_retail_trainee_role_is_not_an_internship() -> None:
@@ -435,6 +429,5 @@ def test_real_ats_employment_types_are_read_as_the_vendor_writes_them(
     employment_type: str, expected: bool
 ) -> None:
     assert screen_internship("Backend Engineer", employment_type).is_internship is expected, (
-        f"{employment_type!r} is a value observed on a live board; an exact-match rule read "
-        "Lever's bilingual free text as no evidence at all"
+        f"{employment_type!r} is live vendor text, not an enum member"
     )

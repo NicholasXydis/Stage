@@ -198,8 +198,7 @@ def test_every_adapter_declares_a_budget_matching_whether_it_carries_bodies() ->
     for name in set(CASES) - carries_bodies:
         adapter = get_adapter(name)
         assert adapter.detail_budget == 0, (
-            f"{name} has no recorded detail fixture, so a budget above zero would send "
-            "requests against a shape nobody has seen"
+            f"{name} has no detail fixture, so any budget above zero is blind"
         )
 
 
@@ -218,8 +217,7 @@ def test_every_registry_slug_adapter_refuses_a_slug_that_could_rewrite_its_targe
                 adapter.plan(company)
 
     assert {"greenhouse", "lever", "smartrecruiters"} <= set(checked), (
-        "these interpolate the registry slug into a URL path rather than a hostname, and a "
-        "path is still a request target: 'acme?x=1' injects a query parameter"
+        "a slug in a URL path is still a request target"
     )
 
 

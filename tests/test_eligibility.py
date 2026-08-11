@@ -311,8 +311,7 @@ def test_the_recorded_evidence_is_deterministic_and_the_most_specific_match() ->
     first = screen_degree_scope(job)
     assert first is not None
     assert first.matched_phrase == "phd candidates only", (
-        "the longest match is the most informative evidence, and a set iteration order "
-        "would make the audit trail differ between processes"
+        "the longest match wins, and set order would vary between processes"
     )
     assert all(screen_degree_scope(_job(job.title_raw, job.description)) == first for _ in range(5))
 
@@ -320,8 +319,7 @@ def test_the_recorded_evidence_is_deterministic_and_the_most_specific_match() ->
 def test_a_degree_list_near_the_requirement_keeps_the_posting() -> None:
     body = "Open to bachelors, masters or PhD students. Applicants must be enrolled in a PhD."
     assert screen_degree_scope(_job("Software Engineer Intern", body)) is None, (
-        "a lower degree beside the requirement suppresses the rejection; losing a genuine "
-        "internship is worse than showing one the reader cannot apply to"
+        "a degree list beside the requirement suppresses the rejection"
     )
 
 
@@ -330,7 +328,6 @@ def test_a_distant_unguarded_requirement_is_not_masked_by_an_earlier_list() -> N
     body = f"Open to bachelors, masters or PhD students. {filler} PhD candidates only."
     rejection = screen_degree_scope(_job("Software Engineer Intern", body))
     assert rejection is not None, (
-        "scanning only the first occurrence would stop at the guarded list and never reach "
-        "the unguarded requirement further down"
+        "the scan must reach past the guarded list to the bare requirement"
     )
     assert rejection.matched_phrase == "phd candidates only"

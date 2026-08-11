@@ -37,10 +37,10 @@ class WorkdayPosting(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     title: str
-    externalPath: str = ""  # noqa: N815 - the API's own field name
-    locationsText: str = ""  # noqa: N815 - the API's own field name
-    postedOn: str = ""  # noqa: N815 - the API's own field name
-    bulletFields: list[str] = Field(default_factory=list)  # noqa: N815 - the API's own name
+    externalPath: str = ""
+    locationsText: str = ""
+    postedOn: str = ""
+    bulletFields: list[str] = Field(default_factory=list)
 
     def requisition(self) -> str:
         for field in self.bulletFields:
@@ -62,7 +62,7 @@ class WorkdayFacetValue(BaseModel):
 class WorkdayFacetGroup(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    facetParameter: str = ""  # noqa: N815 - the API's own field name
+    facetParameter: str = ""
     descriptor: str = ""
     values: list[WorkdayFacetValue] = Field(default_factory=list)
 
@@ -71,7 +71,7 @@ class WorkdayPage(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     total: int = 0
-    jobPostings: list[WorkdayPosting]  # noqa: N815
+    jobPostings: list[WorkdayPosting]
     facets: list[WorkdayFacetGroup] | None = None
 
 
@@ -79,7 +79,7 @@ class WorkdayRawPage(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     total: int = 0
-    jobPostings: list[dict[str, Any]]  # noqa: N815
+    jobPostings: list[dict[str, Any]]
     facets: list[WorkdayFacetGroup] | None = None
 
 

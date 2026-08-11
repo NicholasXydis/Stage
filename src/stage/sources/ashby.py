@@ -15,7 +15,7 @@ HOST = "api.ashbyhq.com"
 class AshbyLocation(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    locationName: NullableStr = ""  # noqa: N815
+    locationName: NullableStr = ""
 
 
 class AshbyPosting(BaseModel):
@@ -24,17 +24,17 @@ class AshbyPosting(BaseModel):
     id: str
     title: str
     location: NullableStr = ""
-    secondaryLocations: list[AshbyLocation] = Field(default_factory=list)  # noqa: N815
+    secondaryLocations: list[AshbyLocation] = Field(default_factory=list)
     department: NullableStr = ""
     team: NullableStr = ""
-    employmentType: NullableStr = ""  # noqa: N815
-    isListed: NullableBool = True  # noqa: N815
-    isRemote: NullableBool = False  # noqa: N815
-    publishedAt: datetime | None = None  # noqa: N815
-    jobUrl: NullableStr = ""  # noqa: N815
-    applyUrl: NullableStr = ""  # noqa: N815
-    descriptionPlain: NullableStr = ""  # noqa: N815
-    descriptionHtml: NullableStr = ""  # noqa: N815
+    employmentType: NullableStr = ""
+    isListed: NullableBool = True
+    isRemote: NullableBool = False
+    publishedAt: datetime | None = None
+    jobUrl: NullableStr = ""
+    applyUrl: NullableStr = ""
+    descriptionPlain: NullableStr = ""
+    descriptionHtml: NullableStr = ""
 
     def where(self) -> str:
         names = [self.location] if self.location else []

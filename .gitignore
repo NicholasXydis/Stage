@@ -36,7 +36,6 @@ htmlcov/
 *.db.bak-*
 *.sqlite
 *.sqlite3
-!src/stage/data/demo.db
 
 tests/captured/
 *.log

@@ -32,7 +32,7 @@ class SmartRecruitersLocation(BaseModel):
     region: str = ""
     country: str = ""
     remote: bool = False
-    fullLocation: str = ""  # noqa: N815 - the API's own field name
+    fullLocation: str = ""
 
     def label(self) -> str:
         if self.fullLocation:
@@ -46,14 +46,14 @@ class SmartRecruitersPosting(BaseModel):
 
     id: str
     name: str
-    releasedDate: datetime | None = None  # noqa: N815 - the API's own field name
+    releasedDate: datetime | None = None
     location: SmartRecruitersLocation | None = None
 
 
 class SmartRecruitersPage(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    totalFound: int  # noqa: N815 - the API's own field name
+    totalFound: int
     content: list[Any]
 
 
@@ -69,7 +69,7 @@ class SmartRecruitersAdapter:
 
     max_requests_per_company: ClassVar[int] = MAX_PAGES
 
-    def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:  # noqa: ARG002
+    def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:
         return self.hosts
 
     def board_key(self, company: Company) -> str:
@@ -83,7 +83,7 @@ class SmartRecruitersAdapter:
         company: Company,
         client: HttpClient,
         now: datetime,
-        facets: object = None,  # noqa: ARG002
+        facets: object = None,
         details: Sequence[str] = (),
     ) -> FetchResult:
         url = BASE_URL.format(slug=safe_slug(company.slug))
