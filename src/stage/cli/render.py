@@ -34,6 +34,7 @@ from stage.domain import (
     RateState,
     RequestLogged,
     SourceBlocked,
+    SourceFailed,
     SourceFinished,
     SourceRotated,
     SourceStarted,
@@ -835,6 +836,9 @@ async def render_sync(
                     f"  [red]fail[/red] {sanitize(company):<28} "
                     f"{summary(error, 60)}  {elapsed:>7.0f}ms"
                 )
+            case SourceFailed(source=source, error=error):
+                failures.append((source, source, error))
+                console.print(f"  [red]fail[/red] {sanitize(source)}: {summary(error, 60)}")
             case SourceFinished() as finished:
                 _render_source_summary(console, finished)
             case SyncFinished(dry_run=True) as finished:

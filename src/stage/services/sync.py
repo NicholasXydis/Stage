@@ -34,6 +34,7 @@ from stage.domain import (
     Rotation,
     RotationMember,
     SourceBlocked,
+    SourceFailed,
     SourceFinished,
     SourceRotated,
     SourceRunStats,
@@ -286,34 +287,51 @@ def _drain(client: HttpClient, source: str) -> list[RequestLogged]:
     ]
 
 
-async def _merge(streams: Sequence[AsyncIterator[SyncEvent]]) -> AsyncIterator[SyncEvent]:
+async def _merge(
+    streams: Sequence[tuple[str, AsyncIterator[SyncEvent]]],
+    failed_sources: list[str],
+    stats: list[SourceRunStats],
+) -> AsyncIterator[SyncEvent]:
     if len(streams) == 1:
-        async for event in streams[0]:
-            yield event
+        source, stream = streams[0]
+        try:
+            async for event in stream:
+                yield event
+        except asyncio.CancelledError:
+            raise
+        except Exception as stream_exc:
+            error = f"{type(stream_exc).__name__}: {stream_exc}"
+            failed_sources.append(source)
+            stats.append(SourceRunStats(source=source, errors=1))
+            yield SourceFailed(source=source, error=error)
         return
 
-    queue: asyncio.Queue[SyncEvent | Exception | None] = asyncio.Queue()
+    queue: asyncio.Queue[SyncEvent | tuple[str, Exception] | None] = asyncio.Queue()
 
-    async def pump(stream: AsyncIterator[SyncEvent]) -> None:
+    async def pump(source: str, stream: AsyncIterator[SyncEvent]) -> None:
         try:
             async for event in stream:
                 await queue.put(event)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            await queue.put(exc)
+            await queue.put((source, exc))
         finally:
             queue.put_nowait(None)
 
-    tasks = [asyncio.create_task(pump(stream)) for stream in streams]
+    tasks = [asyncio.create_task(pump(source, stream)) for source, stream in streams]
     try:
         done = 0
         while done < len(tasks):
             item = await queue.get()
             if item is None:
                 done += 1
-            elif isinstance(item, Exception):
-                raise item
+            elif isinstance(item, tuple):
+                source, queued_exc = item
+                error = f"{type(queued_exc).__name__}: {queued_exc}"
+                failed_sources.append(source)
+                stats.append(SourceRunStats(source=source, errors=1))
+                yield SourceFailed(source=source, error=error)
             else:
                 yield item
     finally:
@@ -778,56 +796,66 @@ async def sync(
     plan_bounds: list[tuple[str, str, int, int]] = []
     postures = _bucket_postures(grouped, feeds)
 
-    streams: list[AsyncIterator[SyncEvent]] = [
-        _run_company_source(
-            repository,
-            grouped[name][0],
-            grouped[name][1],
-            run_started_at,
-            shuffler,
-            dry_run,
-            stats,
-            failed_sources,
-            succeeded_any,
-            rate_state,
-            blocked_sources,
-            budgets,
-            postures,
-            plan_bounds,
+    streams: list[tuple[str, AsyncIterator[SyncEvent]]] = [
+        (
+            name,
+            _run_company_source(
+                repository,
+                grouped[name][0],
+                grouped[name][1],
+                run_started_at,
+                shuffler,
+                dry_run,
+                stats,
+                failed_sources,
+                succeeded_any,
+                rate_state,
+                blocked_sources,
+                budgets,
+                postures,
+                plan_bounds,
+            ),
         )
         for name in sorted(grouped)
     ]
     streams.extend(
-        _run_feed_source(
-            repository,
-            feeds[name],
-            run_started_at,
-            shuffler,
-            dry_run,
-            stats,
-            failed_sources,
-            succeeded_any,
-            rate_state,
-            blocked_sources,
-            budgets,
-            postures,
-            plan_bounds,
+        (
+            name,
+            _run_feed_source(
+                repository,
+                feeds[name],
+                run_started_at,
+                shuffler,
+                dry_run,
+                stats,
+                failed_sources,
+                succeeded_any,
+                rate_state,
+                blocked_sources,
+                budgets,
+                postures,
+                plan_bounds,
+            ),
         )
         for name in sorted(feeds)
     )
 
-    async for event in _merge(streams):
+    async for event in _merge(streams, failed_sources, stats):
         yield event
 
     if dry_run:
         for event in _bucket_plans(plan_bounds, postures):
             yield event
         yield SyncFinished(
-            outcome=(SyncOutcome.PARTIAL if unroutable or blocked_sources else SyncOutcome.SUCCESS),
+            outcome=(
+                SyncOutcome.PARTIAL
+                if failed_sources or unroutable or blocked_sources
+                else SyncOutcome.SUCCESS
+            ),
             added=0,
             updated=0,
             closed=0,
-            failed_sources=(),
+            failed_sources=tuple(failed_sources),
             elapsed_ms=(time.perf_counter() - run_clock) * 1000,
             dry_run=True,
         )

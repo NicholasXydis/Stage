@@ -64,6 +64,12 @@ class SourceBlocked:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceFailed:
+    source: str
+    error: str
+
+
+@dataclass(frozen=True, slots=True)
 class SourceRotated:
     source: str
     bucket: str
@@ -152,6 +158,7 @@ SyncEvent = (
     | PlannedRequest
     | BucketPlan
     | RequestLogged
+    | SourceFailed
     | SourceFinished
     | SyncFinished
 )

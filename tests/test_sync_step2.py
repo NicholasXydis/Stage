@@ -1,6 +1,6 @@
 import json
 import random
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
@@ -17,7 +17,10 @@ from stage.domain import (
     PlannedRequest,
     Platform,
     RequestLogged,
+    SourceFailed,
     SourceFinished,
+    SourceRunStats,
+    SourceStarted,
     SyncEvent,
     SyncFinished,
     SyncOutcome,
@@ -278,7 +281,39 @@ async def test_dry_run_fails_on_a_fault_that_needs_no_network_to_see(
     finished = events[-1]
     assert isinstance(finished, SyncFinished)
     assert finished.dry_run is True
+
     assert finished.outcome is SyncOutcome.PARTIAL
+
+async def test_a_source_stream_failure_does_not_stop_other_sources() -> None:
+    async def broken() -> AsyncIterator[SyncEvent]:
+        yield SourceStarted(source="broken", companies=0)
+        raise RuntimeError("source setup failed")
+
+    async def healthy() -> AsyncIterator[SyncEvent]:
+        yield SourceStarted(source="healthy", companies=0)
+        yield SourceFinished(
+            source="healthy",
+            fetched=0,
+            added=0,
+            updated=0,
+            closed=0,
+            failed_companies=0,
+            elapsed_ms=0.0,
+        )
+
+    failed: list[str] = []
+    stats: list[SourceRunStats] = []
+    events = [
+        event
+        async for event in sync_module._merge(
+            [("broken", broken()), ("healthy", healthy())], failed, stats
+        )
+    ]
+
+    assert any(isinstance(event, SourceFailed) for event in events)
+    assert any(isinstance(event, SourceFinished) for event in events)
+    assert failed == ["broken"]
+    assert stats == [SourceRunStats(source="broken", errors=1)]
 
 
 async def test_dry_run_stays_green_when_every_enabled_row_is_routable(
