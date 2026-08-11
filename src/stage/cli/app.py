@@ -6,6 +6,10 @@ from typing import TYPE_CHECKING, Annotated, Any
 import typer
 
 if TYPE_CHECKING:
+    from datetime import date
+
+    from rich.console import Console
+
     from stage.domain import JobFilters
 
 
@@ -608,25 +612,34 @@ def doctor(
     stale_days: StaleDaysOption = None,
     as_json: JsonOption = False,
     db: DatabaseOption = None,
+    registry: RegistryOption = None,
 ) -> None:
     from datetime import UTC, datetime
 
     from rich.console import Console
 
-    from stage.cli.render import render_doctor
+    from stage.cli.render import failure, render_doctor
     from stage.cli.serialize import emit, health_to_json
+    from stage.companies import RegistryError, load_companies
     from stage.services.health import DoctorReport
     from stage.services.health import doctor as run_doctor
     from stage.storage import open_repository
 
     console = Console()
     now = datetime.now(UTC)
+    try:
+        rows = load_companies(registry)
+    except RegistryError as exc:
+        console.print(failure(exc))
+        raise typer.Exit(code=2) from exc
 
     async def run() -> DoctorReport:
         async with open_repository(_database(db)) as repository:
             if stale_days is None:
-                return await run_doctor(repository, now=now)
-            return await run_doctor(repository, now=now, stale_after_days=stale_days)
+                return await run_doctor(repository, now=now, companies=rows)
+            return await run_doctor(
+                repository, now=now, stale_after_days=stale_days, companies=rows
+            )
 
     report = run_async(run())
     if as_json:
@@ -893,6 +906,18 @@ def discover(
             help="Re-probe existing registry rows",
         ),
     ] = False,
+    unregistered: Annotated[
+        bool,
+        typer.Option(
+            "--unregistered",
+            help="Probe employers seen in feeds but absent from the registry",
+        ),
+    ] = False,
+    limit: Annotated[
+        int,
+        typer.Option("--limit", min=1, max=2000, help="How many unregistered names to probe"),
+    ] = 40,
+    db: DatabaseOption = None,
     apply: Annotated[
         bool,
         typer.Option(
@@ -917,10 +942,13 @@ def discover(
     if url is not None and companies:
         console.print("[red]Pass either company names or --url, not both.[/red]")
         raise typer.Exit(code=2)
-    if apply and not verify:
-        console.print("[red]--apply only means something with --verify.[/red]")
+    if verify and unregistered:
+        console.print("[red]Pass either --verify or --unregistered, not both.[/red]")
         raise typer.Exit(code=2)
-    if not verify and url is None and not companies:
+    if apply and not (verify or unregistered):
+        console.print("[red]--apply only means something with --verify or --unregistered.[/red]")
+        raise typer.Exit(code=2)
+    if not verify and not unregistered and url is None and not companies:
         console.print(
             "[red]Nothing to discover.[/red] Pass a company name, a careers page with "
             "[bold]--url[/bold], or [bold]--verify[/bold] to re-probe the registry."
@@ -978,6 +1006,19 @@ def discover(
 
                 return await render_discovery(console, once(), display_name=name)
 
+            if unregistered:
+                return await _adopt_unregistered(
+                    console,
+                    registry=registry,
+                    db=db,
+                    platforms=platforms,
+                    size=size,
+                    limit=limit,
+                    apply_rows=apply,
+                    today=today,
+                    stream=stream,
+                )
+
             events = probe_companies(companies or [], platforms=platforms, size=size)
             return await render_discovery(console, events, verified_on=today, request_log=stream)
 
@@ -987,6 +1028,64 @@ def discover(
         console.print(failure(exc))
         raise typer.Exit(code=2) from exc
     raise typer.Exit(code=0 if resolved else 1)
+
+
+async def _adopt_unregistered(
+    console: "Console",
+    *,
+    registry: Path | None,
+    db: Path | None,
+    platforms: list[Any] | None,
+    size: Any,
+    limit: int,
+    apply_rows: bool,
+    today: "date",
+    stream: Any,
+) -> bool:
+    from stage.cli.render import plain
+    from stage.companies import load_companies, write_registry
+    from stage.domain import PlatformProbed
+    from stage.services.coverage import coverage
+    from stage.services.discover import adopt_unregistered, probe_companies
+    from stage.storage import open_repository
+
+    rows = load_companies(registry)
+    async with open_repository(_database(db)) as repository:
+        report = await coverage(repository, rows, unregistered=True)
+    names = [entry.company for entry in report.unregistered][:limit]
+    if not names:
+        console.print(plain("No unregistered employers to probe. Run stage sync first."))
+        return False
+
+    console.print(plain(f"Probing {len(names)} unregistered employer(s)…"))
+    results: list[tuple[str, Any]] = []
+    async for event in probe_companies(names, platforms=platforms, size=size):
+        if stream is not None:
+            stream(event)
+        if isinstance(event, PlatformProbed):
+            results.append((event.result.company, event.result))
+
+    outcome = adopt_unregistered(rows, results, today=today)
+    console.print(
+        plain(
+            f"{outcome.probed} probed — {len(outcome.adopted)} adoptable "
+            f"({outcome.postings} posting(s)), {len(outcome.refused)} refused, "
+            f"{outcome.already_known} already known"
+        )
+    )
+    for row in outcome.adopted[:20]:
+        console.print(plain(f"  + {row.company.name} — {row.job_count} job(s)"))
+    for company, board, reason in outcome.refused[:10]:
+        console.print(plain(f"  - {company} ({board}): {reason}"))
+
+    if not outcome.adopted:
+        return False
+    if not apply_rows:
+        console.print(plain("Nothing written. Re-run with --apply to add these rows."))
+        return True
+    target = write_registry([*rows, *(row.company for row in outcome.adopted)], registry)
+    console.print(plain(f"applied — {len(outcome.adopted)} row(s) added, written to {target}"))
+    return True
 
 
 @app.command("help", help="Show this command list")

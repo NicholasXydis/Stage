@@ -563,3 +563,94 @@ def apply_verification(
         else:
             updated.append(company)
     return tuple(updated), verified, disabled
+
+
+GENERIC_SLUG_MAX = 6
+IMPLAUSIBLE_BOARD_JOBS = 10
+
+
+@dataclass(frozen=True, slots=True)
+class AdoptedRow:
+    company: Company
+    job_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class AdoptionReport:
+    adopted: tuple[AdoptedRow, ...]
+    refused: tuple[tuple[str, str, str], ...]
+    already_known: int
+    probed: int
+    applied: bool
+
+    @property
+    def postings(self) -> int:
+        return sum(row.job_count for row in self.adopted)
+
+
+def slug_is_distinctive(company: str, slug: str) -> bool:
+    bare = slug.replace("-", "").replace("_", "")
+    return len(bare) > GENERIC_SLUG_MAX and name_matches(company, slug)
+
+
+def adoption_refusal(result: ProbeResult) -> str:
+    if result.verdict is not ProbeVerdict.MATCH:
+        return f"verdict {result.verdict.value}, only a self-naming board is adopted"
+    if (result.job_count or 0) < 1:
+        return "board answered with no postings"
+    return ""
+
+
+def _adopted_note(today: date, result: ProbeResult) -> str:
+    return (
+        f"{today}: seen in feed postings but absent from the registry; discover matched "
+        f"{result.candidate.platform.value}/{result.candidate.slug} with {result.job_count} "
+        "job(s) and the board named itself, so it is polled directly instead of secondhand"
+    )
+
+
+def adopt_unregistered(
+    existing: Sequence[Company],
+    results: Sequence[tuple[str, ProbeResult]],
+    *,
+    today: date,
+) -> AdoptionReport:
+    keys = {(row.platform, row.slug.lower()) for row in existing}
+    captions = {row.name.casefold() for row in existing}
+    adopted: list[AdoptedRow] = []
+    refused: list[tuple[str, str, str]] = []
+    known = 0
+
+    for company, result in results:
+        reason = adoption_refusal(result)
+        if reason:
+            if result.verdict is ProbeVerdict.MATCH:
+                refused.append((company, result.candidate.label, reason))
+            continue
+        key = (result.candidate.platform, result.candidate.slug.lower())
+        if key in keys or company.casefold() in captions:
+            known += 1
+            continue
+        keys.add(key)
+        captions.add(company.casefold())
+        adopted.append(
+            AdoptedRow(
+                company=Company(
+                    name=company,
+                    platform=result.candidate.platform,
+                    slug=result.candidate.slug,
+                    enabled=True,
+                    last_verified=today,
+                    source_of_record=SourceOfRecord.DISCOVER,
+                    notes=_adopted_note(today, result),
+                ),
+                job_count=result.job_count or 0,
+            )
+        )
+    return AdoptionReport(
+        adopted=tuple(adopted),
+        refused=tuple(refused),
+        already_known=known,
+        probed=len({company for company, _ in results}),
+        applied=False,
+    )
