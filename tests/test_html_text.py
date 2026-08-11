@@ -37,6 +37,7 @@ PATHOLOGICAL = {
 
 
 @pytest.mark.parametrize("label", list(PATHOLOGICAL))
+@pytest.mark.serial
 def test_no_shape_of_hostile_markup_stalls_extraction(label: str) -> None:
     payload = PATHOLOGICAL[label]
     started = time.perf_counter()

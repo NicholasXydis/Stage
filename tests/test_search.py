@@ -237,6 +237,7 @@ def test_search_is_reachable_from_the_command_line(db_path: Path) -> None:
     assert "Nothing searchable" in unsearchable.stdout
 
 
+@pytest.mark.serial
 def test_a_pathological_query_is_bounded_rather_than_slow(repository: SqliteRepository) -> None:
     import time
 

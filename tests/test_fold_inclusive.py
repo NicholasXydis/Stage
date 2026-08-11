@@ -185,6 +185,7 @@ def test_the_fixture_is_real_employer_text() -> None:
         assert pair["en"] in pair["title_raw"]
 
 
+@pytest.mark.serial
 def test_a_long_unbroken_run_of_letters_does_not_stall_the_fold() -> None:
     import time
 

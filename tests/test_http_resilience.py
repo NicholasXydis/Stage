@@ -87,6 +87,7 @@ async def test_a_429_tightens_the_host_rate() -> None:
 
 
 @respx.mock
+@pytest.mark.serial
 async def test_retry_after_is_honored_over_backoff() -> None:
     respx.get(ENDPOINT).mock(
         side_effect=[

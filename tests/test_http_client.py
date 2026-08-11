@@ -78,6 +78,7 @@ async def test_user_agent_is_honest() -> None:
 
 
 @respx.mock
+@pytest.mark.serial
 async def test_min_interval_is_enforced_per_host() -> None:
     respx.get(ENDPOINT).mock(return_value=httpx.Response(200, json={"jobs": []}))
     posture = RatePosture(concurrency=1, min_interval_s=0.05, max_requests_per_run=10)
@@ -119,6 +120,7 @@ async def test_concurrency_is_enforced_not_merely_declared() -> None:
     assert peak == 3
 
 
+@pytest.mark.serial
 async def test_the_stride_divides_the_interval_by_concurrency() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:

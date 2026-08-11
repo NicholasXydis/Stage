@@ -2,6 +2,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 SRC = Path(__file__).resolve().parents[1] / "src" / "stage"
 
 
@@ -183,6 +185,37 @@ def test_every_assertion_message_fits_on_one_line() -> None:
     assert not offenders, f"{len(offenders)} message(s) span lines: {offenders[:10]}"
 
 
+def test_every_wall_clock_upper_bound_is_marked_serial() -> None:
+    import ast
+
+    root = Path(__file__).resolve().parents[1] / "tests"
+    offenders: list[str] = []
+    for path in sorted(root.rglob("test_*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+            if not node.name.startswith("test_"):
+                continue
+            marked = any(
+                isinstance(item, ast.Attribute) and item.attr == "serial"
+                for decorator in node.decorator_list
+                for item in ast.walk(decorator)
+            )
+            bounded = any(
+                isinstance(item, ast.Compare)
+                and any(operator.__class__.__name__ in ("Lt", "LtE") for operator in item.ops)
+                and any(
+                    isinstance(side, ast.Name) and side.id in ("elapsed", "cost")
+                    for side in [item.left, *item.comparators]
+                )
+                for item in ast.walk(node)
+            )
+            if bounded and not marked:
+                offenders.append(f"{path.name}:{node.lineno} {node.name}")
+    assert not offenders, f"unmarked wall-clock bounds: {offenders[:6]}"
+
+
 def test_packaged_data_resolves_inside_the_package_not_the_repo() -> None:
     import stage
     from stage.paths import lexicon_dir, registry_path
@@ -208,9 +241,10 @@ def test_no_module_reaches_above_the_package_for_data() -> None:
     )
 
 
-def test_captures_do_not_write_into_the_source_tree() -> None:
+def test_captures_do_not_write_into_the_source_tree(monkeypatch: pytest.MonkeyPatch) -> None:
     from stage.paths import capture_dir
 
+    monkeypatch.delenv("STAGE_CAPTURE_DIR", raising=False)
     root = Path(__file__).resolve().parents[1]
     target = capture_dir().resolve()
     assert root not in target.parents and target != root, (

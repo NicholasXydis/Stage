@@ -19,14 +19,18 @@ dependencies = [
 stage = "stage.cli.app:main"
 
 [dependency-groups]
+test = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
+    "pytest-xdist>=3.6.1",
+    "respx>=0.22.0",
+]
 dev = [
     "mypy>=1.14.0",
-    "pytest>=8.3.4",
-    "pytest-cov>=6.0.0",
-    "pytest-asyncio>=0.25.0",
-    "respx>=0.22.0",
     "ruff>=0.8.4",
     "types-pyyaml>=6.0.12",
+    {include-group = "test"},
 ]
 
 [build-system]
@@ -80,6 +84,9 @@ enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = ["error"]
+markers = [
+    "serial: asserts an upper bound on wall clock and must not run under parallel load",
+]
 
 [tool.coverage.run]
 source = ["src/stage"]

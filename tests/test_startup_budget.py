@@ -39,6 +39,7 @@ def budget_env(tmp_path: Path) -> dict[str, str]:
     return dict(os.environ, STAGE_DB=str(tmp_path / "startup.db"))
 
 
+@pytest.mark.serial
 def test_the_fast_path_stays_inside_its_budget_over_the_dependency_floor(
     budget_env: dict[str, str], tmp_path: Path
 ) -> None:
