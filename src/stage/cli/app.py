@@ -45,31 +45,64 @@ app = typer.Typer(
 
 RegistryOption = Annotated[
     Path | None,
-    typer.Option("--registry", help="Registry path"),
+    typer.Option("--registry", help="Use this company registry instead of the default"),
 ]
 DatabaseOption = Annotated[
     Path | None,
-    typer.Option("--db", help="Database path"),
+    typer.Option("--db", help="Use this SQLite database instead of the default"),
 ]
-JsonOption = Annotated[bool, typer.Option("--json", help="JSON output")]
-LocationOption = Annotated[str | None, typer.Option("--location")]
-TermOption = Annotated[str | None, typer.Option("--term")]
-RoleOption = Annotated[str | None, typer.Option("--role")]
+JsonOption = Annotated[bool, typer.Option("--json", help="Print machine-readable JSON")]
+LocationOption = Annotated[
+    str | None,
+    typer.Option(
+        "--location",
+        help="Filter by location: montreal, canada, usa, remote, other, unknown",
+    ),
+]
+TermOption = Annotated[
+    str | None,
+    typer.Option("--term", help="Filter by term, such as summer-2027"),
+]
+RoleOption = Annotated[
+    str | None,
+    typer.Option(
+        "--role",
+        help=(
+            "Filter by role: swe, security, data, ml-ai, quant, infra, hardware, embedded, "
+            "general-cs, unknown"
+        ),
+    ),
+]
 DegreeOption = Annotated[
     str | None,
-    typer.Option("--degree", help="none, bachelors, masters, phd, unknown, any"),
+    typer.Option(
+        "--degree",
+        help="Filter by degree requirement: none, bachelors, masters, phd, unknown, any",
+    ),
 ]
-LanguageOption = Annotated[str | None, typer.Option("--lang")]
-SourceOption = Annotated[str | None, typer.Option("--source")]
-CompanyOption = Annotated[str | None, typer.Option("--company")]
-WindowOption = Annotated[bool, typer.Option("--all", help="Ignore the date window")]
+LanguageOption = Annotated[
+    str | None,
+    typer.Option("--lang", help="Filter by language: en, fr, bilingual, unknown"),
+]
+SourceOption = Annotated[
+    str | None,
+    typer.Option("--source", help="Filter by source adapter, such as greenhouse or lever"),
+]
+CompanyOption = Annotated[
+    str | None,
+    typer.Option("--company", help="Filter by exact employer name"),
+]
+WindowOption = Annotated[
+    bool,
+    typer.Option("--all", help="Include postings older than the default 14-day window"),
+]
 StaleDaysOption = Annotated[
     int | None,
     typer.Option(
         "--stale-days",
         min=1,
         max=3650,
-        help="Days without a success before a board is stale",
+        help="Treat a board as stale after this many days without a successful fetch",
     ),
 ]
 
@@ -94,25 +127,28 @@ def _print_missing(posting: str) -> None:
     Console().print(_no_such_posting(posting))
 
 
-@app.command(help="Fetch every enabled source into the local database")
+@app.command(help="Fetch enabled sources and store matching postings")
 def sync(
     source: Annotated[
         list[str] | None,
-        typer.Option("--source", help="Only these sources, repeatable"),
+        typer.Option("--source", help="Sync only these source adapters; repeatable"),
     ] = None,
     exclude: Annotated[
         list[str] | None,
-        typer.Option("--exclude", help="Every source but these, repeatable"),
+        typer.Option("--exclude", help="Skip these source adapters; repeatable"),
     ] = None,
     dry_run: Annotated[
         bool,
-        typer.Option("--dry-run", help="Plan, do not fetch"),
+        typer.Option(
+            "--dry-run",
+            help="Show the sync plan without fetching or changing the database",
+        ),
     ] = False,
     request_log: Annotated[
         Path | None,
         typer.Option(
             "--request-log",
-            help="JSONL request log",
+            help="Write outbound HTTP requests to this JSON Lines file",
         ),
     ] = None,
     registry: RegistryOption = None,
@@ -163,7 +199,7 @@ def sync(
     raise typer.Exit(code=0 if outcome is SyncOutcome.SUCCESS else 1)
 
 
-@app.command("list", help="Recent postings, newest first")
+@app.command("list", help="Browse recent open postings, newest first")
 def list_postings(
     location: LocationOption = None,
     term: TermOption = None,
@@ -173,7 +209,10 @@ def list_postings(
     source: SourceOption = None,
     company: CompanyOption = None,
     show_all: WindowOption = False,
-    limit: Annotated[int, typer.Option("--limit", min=1, max=1000)] = 50,
+    limit: Annotated[
+        int,
+        typer.Option("--limit", min=1, max=1000, help="Maximum number of postings to show"),
+    ] = 50,
     as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
@@ -259,9 +298,9 @@ def _filters(
     )
 
 
-@app.command(help="Full-text search over titles, employers and bodies")
+@app.command(help="Search titles, employers, and descriptions")
 def search(
-    query: Annotated[str, typer.Argument(help="Words to match, accents optional")],
+    query: Annotated[str, typer.Argument(help="Words or phrases to find; accents optional")],
     location: LocationOption = None,
     term: TermOption = None,
     role: RoleOption = None,
@@ -275,10 +314,13 @@ def search(
             "--window",
             min=1,
             max=3650,
-            help="Limit to the last N days; the default searches every row",
+            help="Search only postings from the last N days; by default, search every row",
         ),
     ] = None,
-    limit: Annotated[int, typer.Option("--limit", min=1, max=1000)] = 50,
+    limit: Annotated[
+        int,
+        typer.Option("--limit", min=1, max=1000, help="Maximum number of postings to show"),
+    ] = 50,
     as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
@@ -319,9 +361,9 @@ def search(
     render_search(Console(), listing)
 
 
-@app.command(help="Everything stored about one posting")
+@app.command(help="Show every stored detail for one posting")
 def show(
-    posting: Annotated[str, typer.Argument(help="Posting id, as printed by stage list --json")],
+    posting: Annotated[str, typer.Argument(help="Posting ID from stage list or stage search")],
     as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
@@ -349,11 +391,11 @@ def show(
     render_posting(Console(), detail)
 
 
-@app.command("open", help="Launch a posting's apply URL in the browser")
+@app.command("open", help="Open a posting's application page in the browser")
 def open_posting(
-    posting: Annotated[str, typer.Argument(help="Posting id, as printed by stage list --json")],
+    posting: Annotated[str, typer.Argument(help="Posting ID from stage list or stage search")],
     print_only: Annotated[
-        bool, typer.Option("--print", help="Print the apply URL instead of launching it")
+        bool, typer.Option("--print", help="Print the application URL instead of opening a browser")
     ] = False,
     db: DatabaseOption = None,
 ) -> None:
@@ -406,11 +448,11 @@ def _no_such_posting(posting: str) -> str:
     )
 
 
-@app.command(help="Write the current filters out as csv, json, md or pdf")
+@app.command(help="Export matching postings as CSV, JSON, Markdown, or PDF")
 def export(
-    fmt: Annotated[str, typer.Option("--format", help="csv, json, md, pdf")] = "csv",
-    out: Annotated[Path | None, typer.Option("--out", help="Destination file or directory")] = None,
-    force: Annotated[bool, typer.Option("--force", help="Overwrite an existing file")] = False,
+    fmt: Annotated[str, typer.Option("--format", help="Output format: csv, json, md, pdf")] = "csv",
+    out: Annotated[Path | None, typer.Option("--out", help="Output file or directory")] = None,
+    force: Annotated[bool, typer.Option("--force", help="Replace an existing output file")] = False,
     location: LocationOption = None,
     term: TermOption = None,
     role: RoleOption = None,
@@ -419,7 +461,10 @@ def export(
     source: SourceOption = None,
     company: CompanyOption = None,
     show_all: WindowOption = False,
-    limit: Annotated[int, typer.Option("--limit", min=1, max=5000)] = 1000,
+    limit: Annotated[
+        int,
+        typer.Option("--limit", min=1, max=5000, help="Maximum number of postings to export"),
+    ] = 1000,
     db: DatabaseOption = None,
 ) -> None:
     from rich.console import Console
@@ -477,12 +522,12 @@ def export(
     render_export(console, result)
 
 
-@app.command(help="Registry rows producing nothing, and employers absent from it")
+@app.command(help="Find registry gaps and companies missing from the registry")
 def coverage(
     unregistered: Annotated[
         bool,
         typer.Option(
-            "--unregistered", help="Companies seen in a feed but absent from the registry"
+            "--unregistered", help="Show companies found in feeds but missing from the registry"
         ),
     ] = False,
     stale_days: StaleDaysOption = None,
@@ -531,23 +576,41 @@ def coverage(
     render_coverage(console, report, now)
 
 
-@app.command(help="Apply the retention policy now")
-def purge(db: DatabaseOption = None) -> None:
+@app.command(help="Remove postings outside the retention window")
+def purge(
+    dry_run: Annotated[
+        bool,
+        typer.Option("--dry-run", help="Preview retention cleanup without removing postings"),
+    ] = False,
+    db: DatabaseOption = None,
+) -> None:
     from datetime import UTC, datetime
 
     from rich.console import Console
 
     from stage.domain import PurgeResult
-    from stage.services.maintenance import purge_expired
+    from stage.services.maintenance import preview_purge, purge_expired
     from stage.storage import open_repository
 
     console = Console()
 
     async def run() -> PurgeResult:
         async with open_repository(_database(db)) as repository:
-            return await purge_expired(repository, now=datetime.now(UTC))
+            now = datetime.now(UTC)
+            if dry_run:
+                return await preview_purge(repository, now=now)
+            return await purge_expired(repository, now=now)
 
     result = run_async(run())
+    if dry_run:
+        if result.purged:
+            console.print(
+                f"Would purge {result.purged} posting(s) and create or refresh "
+                f"{result.tombstoned} tombstone(s). No postings removed."
+            )
+        else:
+            console.print("[dim]Nothing would be removed. No postings removed.[/dim]")
+        return
     if not result.purged:
         if result.promoted:
             console.print(
@@ -567,7 +630,7 @@ def purge(db: DatabaseOption = None) -> None:
     )
 
 
-@app.command(help="Re-run classification over stored postings after a lexicon change")
+@app.command(help="Reclassify stored postings after a lexicon change")
 def rescreen(db: DatabaseOption = None) -> None:
     from datetime import UTC, datetime
 
@@ -607,7 +670,7 @@ def rescreen(db: DatabaseOption = None) -> None:
     )
 
 
-@app.command(help="Integrity, source health and staleness in one check")
+@app.command(help="Check database integrity, source health, and staleness")
 def doctor(
     stale_days: StaleDaysOption = None,
     as_json: JsonOption = False,
@@ -650,7 +713,7 @@ def doctor(
         raise typer.Exit(code=1)
 
 
-@app.command(help="Sync history and database composition")
+@app.command(help="Show sync history and database totals")
 def stats(
     runs: Annotated[
         int,
@@ -681,7 +744,7 @@ def stats(
         render_stats(console, report, datetime.now(UTC))
 
 
-@app.command(help="Probe one live board per platform against the shape we parse")
+@app.command(help="Check one live board per platform against each parser")
 def canary(
     as_json: JsonOption = False,
     registry: RegistryOption = None,
@@ -717,29 +780,35 @@ def canary(
         raise typer.Exit(code=1)
 
 
-@app.command(help="Per-source health, latency, cache ratio and rate state")
+@app.command(help="Inspect source health, rate limits, and HTTP caches")
 def sources(
-    clear: Annotated[
+    reset_rate_limit: Annotated[
         str | None,
-        typer.Option("--clear", help="Clear one bucket"),
+        typer.Option(
+            "--reset-rate-limit",
+            help="Reset stored rate-limit state for one host bucket",
+        ),
     ] = None,
-    clear_all: Annotated[
+    reset_all_rate_limits: Annotated[
         bool,
-        typer.Option("--clear-all", help="Clear every bucket"),
+        typer.Option(
+            "--reset-all",
+            help="Reset stored rate-limit state for every host bucket",
+        ),
     ] = False,
     boards: Annotated[
         bool,
-        typer.Option("--boards", help="List every board that is failing or stale"),
+        typer.Option("--boards", help="Include every failing or stale board"),
     ] = False,
     clear_cache: Annotated[
         str | None,
         typer.Option(
-            "--clear-cache", help="Drop one source's cached validators to force a refetch"
+            "--clear-cache", help="Clear saved HTTP validators for one source to force a refetch"
         ),
     ] = None,
     clear_cache_all: Annotated[
         bool,
-        typer.Option("--clear-cache-all", help="Drop every cached validator"),
+        typer.Option("--clear-cache-all", help="Clear saved HTTP validators for every source"),
     ] = False,
     stale_days: StaleDaysOption = None,
     as_json: JsonOption = False,
@@ -754,7 +823,7 @@ def sources(
         render_rate_state,
         render_source_health,
     )
-    from stage.cli.serialize import emit, health_to_json
+    from stage.cli.serialize import emit, sources_to_json
     from stage.services.health import DoctorReport
     from stage.services.health import doctor as run_doctor
     from stage.services.maintenance import RateStateView, rate_state
@@ -763,16 +832,23 @@ def sources(
     console = Console()
     now = datetime.now(UTC)
 
-    if clear is not None and clear_all:
-        console.print("[red]Pass either --clear <bucket> or --clear-all, not both.[/red]")
+    if reset_rate_limit is not None and reset_all_rate_limits:
+        console.print(
+            "[red]Pass either --reset-rate-limit <bucket> or --reset-all, not both.[/red]"
+        )
+        raise typer.Exit(code=2)
+    if clear_cache is not None and clear_cache_all:
+        console.print(
+            "[red]Pass either --clear-cache <source> or --clear-cache-all, not both.[/red]"
+        )
         raise typer.Exit(code=2)
 
     async def run() -> tuple[RateStateView, DoctorReport]:
         async with open_repository(_database(db)) as repository:
             view = await rate_state(
                 repository,
-                bucket=clear,
-                clear_all=clear_all,
+                bucket=reset_rate_limit,
+                clear_all=reset_all_rate_limits,
                 clear_cache=clear_cache,
                 clear_cache_all=clear_cache_all,
             )
@@ -788,20 +864,30 @@ def sources(
 
     if view.validators_cleared or clear_cache is not None or clear_cache_all:
         target = "every source" if clear_cache_all else f"source {clear_cache!r}"
-        console.print(
-            f"Dropped {view.validators_cleared} cached validator(s) for {target} — "
-            "the next sync refetches in full instead of asking for a 304."
-        )
+        console.print(f"Cleared {view.validators_cleared} saved HTTP validator(s) for {target}.")
+        console.print("[dim]The next sync will fully refetch those sources.[/dim]")
 
-    if clear is not None or clear_all:
-        target = "every bucket" if clear_all else f"bucket {clear!r}"
+    if reset_rate_limit is not None or reset_all_rate_limits:
+        target = (
+            "every host bucket"
+            if reset_all_rate_limits
+            else f"host bucket {reset_rate_limit!r}"
+        )
         if cleared:
-            console.print(f"Cleared rate state for {target} ({cleared} row(s)).")
+            console.print(f"Reset rate-limit state for {target} ({cleared} row(s)).")
         else:
             console.print(f"[yellow]No stored rate state for {target}.[/yellow]")
 
     if as_json:
-        emit(health_to_json(report))
+        emit(
+            sources_to_json(
+                report,
+                states,
+                include_boards=boards,
+                rate_states_cleared=cleared,
+                cache_validators_cleared=view.validators_cleared,
+            )
+        )
         return
 
     render_source_health(console, report.sources, report.stale_after_days)
@@ -812,12 +898,35 @@ def sources(
         render_board_health(console, report.sources, now)
 
 
-@app.command(help="Audit rejected postings and the reasons they were rejected")
+@app.command(help="Inspect rejected postings and why they were rejected")
 def quarantine(
-    reason: Annotated[str | None, typer.Option("--reason")] = None,
-    source: Annotated[str | None, typer.Option("--source")] = None,
-    company: Annotated[str | None, typer.Option("--company")] = None,
-    limit: Annotated[int, typer.Option("--limit", min=1, max=1000)] = 50,
+    reason: Annotated[
+        str | None,
+        typer.Option(
+            "--reason",
+            help=(
+                "Filter by rejection reason: out-of-scope-location, not-an-internship, "
+                "out-of-scope-degree, not-a-cs-role"
+            ),
+        ),
+    ] = None,
+    source: Annotated[
+        str | None,
+        typer.Option("--source", help="Filter by source adapter name"),
+    ] = None,
+    company: Annotated[
+        str | None,
+        typer.Option("--company", help="Filter by exact employer name"),
+    ] = None,
+    limit: Annotated[
+        int,
+        typer.Option(
+            "--limit",
+            min=1,
+            max=1000,
+            help="Maximum number of rejected postings to show",
+        ),
+    ] = 50,
     as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
@@ -860,69 +969,77 @@ def quarantine(
     )
 
 
-@app.command(help="Resolve which board a company publishes on")
+@app.command(help="Find the job-board platform a company uses")
 def discover(
     companies: Annotated[
         list[str] | None,
-        typer.Argument(help="Names to slug-probe"),
+        typer.Argument(help="Company names to probe"),
     ] = None,
     url: Annotated[
         str | None,
         typer.Option(
             "--url",
-            help="Resolve a careers URL, parsed never fetched",
+            help="Extract the platform from a careers URL without fetching that URL",
         ),
     ] = None,
     name: Annotated[
         str | None,
-        typer.Option("--name", help="Display name for --url"),
+        typer.Option("--name", help="Company name to show with --url"),
     ] = None,
     platform: Annotated[
         list[str] | None,
-        typer.Option("--platform", help="Limit to these platforms"),
+        typer.Option("--platform", help="Probe only these platform adapters; repeatable"),
     ] = None,
     only: Annotated[
         list[str] | None,
-        typer.Option("--company", help="With --verify, probe only these registry rows"),
+        typer.Option(
+            "--company",
+            help="With --verify, recheck only these registry companies; repeatable",
+        ),
     ] = None,
     expect_size: Annotated[
         str | None,
         typer.Option(
             "--expect-size",
-            help="Size hint: startup, mid, large",
+            help="Optional employer-size hint: startup, mid, large",
         ),
     ] = None,
     request_log: Annotated[
         Path | None,
         typer.Option(
             "--request-log",
-            help="JSONL request log",
+            help="Write outbound HTTP requests to this JSON Lines file",
         ),
     ] = None,
     verify: Annotated[
         bool,
         typer.Option(
             "--verify",
-            help="Re-probe existing registry rows",
+            help="Recheck existing registry companies",
         ),
     ] = False,
     unregistered: Annotated[
         bool,
         typer.Option(
             "--unregistered",
-            help="Probe employers seen in feeds but absent from the registry",
+            help="Probe companies found in feeds but missing from the registry",
         ),
     ] = False,
     limit: Annotated[
         int,
-        typer.Option("--limit", min=1, max=2000, help="How many unregistered names to probe"),
+        typer.Option(
+            "--limit",
+            min=1,
+            max=2000,
+            help="Maximum unregistered company names to probe",
+        ),
     ] = 40,
     db: DatabaseOption = None,
     apply: Annotated[
         bool,
         typer.Option(
             "--apply",
-            help="Write results back to the registry",
+            help="Write results to the registry; requires --verify or --unregistered",
         ),
     ] = False,
     registry: RegistryOption = None,
@@ -1088,10 +1205,59 @@ async def _adopt_unregistered(
     return True
 
 
-@app.command("help", help="Show this command list")
-def show_help(context: typer.Context) -> None:
+_HELP_GUIDE = (
+    "\nStart here:\n"
+    "  stage sync                         Fetch and save current postings\n"
+    "  stage list                         Browse recent open postings\n"
+    "  stage search \"python\"              Search titles, employers, and descriptions\n"
+    "  stage show ID                      Inspect a posting from list or search\n"
+    "  stage open ID                      Open its application page\n"
+    "  stage export --format csv          Save matching postings to a file\n"
+    "\nCommon filters:\n"
+    "  stage list --role swe --location montreal\n"
+    "  stage search \"python\" --term summer-2027\n"
+    "  stage export --format csv --all\n"
+    "\nHealth and maintenance:\n"
+    "  stage doctor                       Check database and source health\n"
+    "  stage sources                      Inspect source health, limits, and caches\n"
+    "  stage canary                       Check live parser compatibility\n"
+    "  stage coverage                     Find registry gaps\n"
+    "  stage quarantine                   Review rejected postings\n"
+    "  stage stats                        Review sync history and totals\n"
+    "  stage rescreen                     Reclassify after a lexicon change\n"
+    "  stage purge --dry-run              Preview retention cleanup\n"
+    "\nDiscovery:\n"
+    "  stage discover COMPANY             Find a company career board\n"
+    "\nLearn any command:\n"
+    "  stage help COMMAND                 Explain one command and its options\n"
+    "  stage COMMAND --help               Show the same detailed help"
+)
+
+
+@app.command("help", help="Show commands, workflows, or one command options")
+def show_help(
+    context: typer.Context,
+    topic: Annotated[str | None, typer.Argument(help="Command name to explain")] = None,
+) -> None:
     root = context.parent or context
+    if topic is not None:
+        from typer.core import TyperGroup
+
+        group = root.command
+        if not isinstance(group, TyperGroup):
+            raise typer.BadParameter(f"Unknown command {topic!r}", param_hint="topic")
+        command = group.commands.get(topic)
+        if command is None:
+            choices = ", ".join(group.commands)
+            raise typer.BadParameter(
+                f"Unknown command {topic!r}. Choose from: {choices}",
+                param_hint="topic",
+            )
+        with command.make_context(topic, [], parent=root) as command_context:
+            typer.echo(command.get_help(command_context))
+        return
     typer.echo(root.get_help())
+    typer.echo(_HELP_GUIDE)
 
 
 def main() -> None:
