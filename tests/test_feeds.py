@@ -132,6 +132,14 @@ def test_locale_segments_collapse_to_one_canonical_url() -> None:
     french = canonical_apply_url("https://acme.com/fr-CA/jobs/12345?src=x#top")
     english = canonical_apply_url("https://acme.com/en-CA/jobs/12345")
     assert french == english == "https://acme.com/jobs/12345"
+    assert canonical_apply_url("https://acme.com/fr/jobs/12345") == "https://acme.com/jobs/12345"
+
+
+@pytest.mark.parametrize("segment", ["it", "hr", "id", "us", "ca", "uk", "co", "no"])
+def test_a_two_letter_segment_that_is_not_a_language_is_kept(segment: str) -> None:
+    assert canonical_apply_url(f"https://acme.com/{segment}/jobs/12345") == (
+        f"https://acme.com/{segment}/jobs/12345"
+    ), f"/{segment}/ is a department or country, not a locale"
 
 
 def test_a_real_ats_url_survives_canonicalization() -> None:

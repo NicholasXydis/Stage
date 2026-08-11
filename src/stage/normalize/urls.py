@@ -16,7 +16,39 @@ TRACKER_DOMAINS: frozenset[str] = frozenset(
     }
 )
 
-_LOCALE_SEGMENT = re.compile(r"^[a-z]{2}([-_][a-zA-Z]{2})?$")
+LOCALE_LANGUAGES: frozenset[str] = frozenset(
+    {
+        "ar",
+        "cs",
+        "da",
+        "de",
+        "el",
+        "en",
+        "es",
+        "fi",
+        "fr",
+        "he",
+        "hu",
+        "ja",
+        "ko",
+        "nl",
+        "pl",
+        "pt",
+        "ro",
+        "ru",
+        "sv",
+        "th",
+        "tr",
+        "vi",
+        "zh",
+    }
+)
+
+_LOCALE_REGION = re.compile(r"^[a-z]{2}[-_][a-zA-Z]{2}$")
+
+
+def _is_locale_segment(segment: str) -> bool:
+    return bool(_LOCALE_REGION.match(segment)) or segment.lower() in LOCALE_LANGUAGES
 
 
 def _split(url: str) -> SplitResult | None:
@@ -48,6 +80,6 @@ def canonical_apply_url(raw: str) -> str:
     if not host or is_tracker_url(raw):
         return ""
     segments = [segment for segment in parts.path.split("/") if segment]
-    kept = [segment for segment in segments if not _LOCALE_SEGMENT.match(segment)]
+    kept = [segment for segment in segments if not _is_locale_segment(segment)]
     path = "/" + "/".join(kept)
     return urlunsplit(("https", host, path.rstrip("/") or "/", "", ""))
