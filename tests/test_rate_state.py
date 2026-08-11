@@ -390,9 +390,9 @@ def test_the_clear_is_reachable_from_the_command_line(db_path: Path) -> None:
     assert "workday" in listed.stdout
     assert "blocked" in listed.stdout
 
-    cleared = runner.invoke(app, ["sources", "--clear", "workday", "--db", str(db_path)])
+    cleared = runner.invoke(app, ["sources", "--reset-rate-limit", "workday", "--db", str(db_path)])
     assert cleared.exit_code == 0, cleared.stdout
-    assert "Cleared rate state" in cleared.stdout
+    assert "Reset rate-limit state" in cleared.stdout
 
     repository = SqliteRepository.connect(db_path)
     state = repository.load_rate_state()["workday"]

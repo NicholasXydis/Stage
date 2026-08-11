@@ -87,6 +87,9 @@ class Repository(Protocol):
     def purge(self, now: datetime) -> PurgeResult:
         pass
 
+    def preview_purge(self, now: datetime) -> PurgeResult:
+        pass
+
     def tombstone_count(self) -> int:
         pass
 

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from stage.services.health import DoctorReport, StatsReport
     from stage.services.query import PostingDetail
 
-from stage.domain import Job, QuarantinedJob
+from stage.domain import Job, QuarantinedJob, RateState, VisitState
 from stage.domain.text import dump
 
 
@@ -72,6 +72,44 @@ def health_to_json(report: "DoctorReport") -> str:
                 }
                 for source in report.sources
             ],
+        }
+    )
+
+
+def sources_to_json(
+    report: "DoctorReport",
+    states: Sequence[RateState],
+    *,
+    include_boards: bool,
+    rate_states_cleared: int,
+    cache_validators_cleared: int,
+) -> str:
+    sources = []
+    for source in report.sources:
+        payload = asdict(source)
+        payload.pop("boards")
+        payload["cache_hit_ratio"] = source.cache_hit_ratio
+        payload["success_rate"] = source.success_rate
+        sources.append(payload)
+    boards = (
+        [
+            asdict(board)
+            for source in report.sources
+            for board in source.boards
+            if board.state is not VisitState.HEALTHY
+        ]
+        if include_boards
+        else []
+    )
+    return dump(
+        {
+            "healthy": report.is_healthy,
+            "stale_after_days": report.stale_after_days,
+            "sources": sources,
+            "rate_states": [asdict(state) for state in states],
+            "boards": boards,
+            "rate_states_cleared": rate_states_cleared,
+            "cache_validators_cleared": cache_validators_cleared,
         }
     )
 

@@ -133,6 +133,9 @@ class AsyncRepository:
     async def purge(self, now: datetime) -> PurgeResult:
         return await self._writer.run(lambda repository: repository.purge(now))
 
+    async def preview_purge(self, now: datetime) -> PurgeResult:
+        return await self._writer.run(lambda repository: repository.preview_purge(now))
+
     async def tombstone_count(self) -> int:
         return await self._writer.run(lambda repository: repository.tombstone_count())
 

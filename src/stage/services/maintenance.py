@@ -20,6 +20,10 @@ async def purge_expired(repository: AsyncRepository, *, now: datetime | None = N
     return await repository.purge(now or datetime.now(UTC))
 
 
+async def preview_purge(repository: AsyncRepository, *, now: datetime | None = None) -> PurgeResult:
+    return await repository.preview_purge(now or datetime.now(UTC))
+
+
 async def rate_state(
     repository: AsyncRepository,
     *,

@@ -523,6 +523,23 @@ class SqliteRepository:
                 conn.execute(f"DELETE FROM jobs WHERE id IN ({placeholders})", tuple(chunk))
         return PurgeResult(purged=len(ids), tombstoned=len(ids), promoted=promoted)
 
+    def preview_purge(
+        self,
+        now: datetime,
+        *,
+        open_days: int = OPEN_RETENTION_DAYS,
+        closed_days: int = CLOSED_RETENTION_DAYS,
+    ) -> PurgeResult:
+        open_cutoff = _to_text(now - timedelta(days=open_days))
+        closed_cutoff = _to_text(now - timedelta(days=closed_days))
+        row = self._conn.execute(
+            "SELECT COUNT(*) AS total FROM jobs WHERE "
+            "(status = ? AND first_seen < ?) OR (status = ? AND first_seen < ?)",
+            (JobStatus.OPEN.value, open_cutoff, JobStatus.CLOSED.value, closed_cutoff),
+        ).fetchone()
+        count = int(row["total"])
+        return PurgeResult(purged=count, tombstoned=count)
+
     def tombstone_count(self) -> int:
         row = self._conn.execute("SELECT COUNT(*) AS total FROM tombstones").fetchone()
         return int(row["total"])

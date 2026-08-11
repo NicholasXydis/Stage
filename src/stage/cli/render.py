@@ -143,7 +143,7 @@ def render_rate_state(console: Console, states: Sequence[RateState], now: dateti
     console.print(table)
     console.print(
         "[dim]Tightening decays on each clean run. "
-        "[bold]stage sources --clear <bucket>[/bold] drops a block now.[/dim]"
+        "[bold]stage sources --reset-rate-limit <bucket>[/bold] resets a block now.[/dim]"
     )
 
 
