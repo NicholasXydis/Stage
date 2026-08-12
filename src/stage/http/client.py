@@ -126,10 +126,6 @@ class HostBudget:
     requests: int = 0
     min_interval_s: float = 0.0
     next_allowed_at: float = 0.0
-    fast_latency: float = 0.0
-    slow_latency: float = 0.0
-    samples: int = 0
-    last_tightened_at: int = 0
     rejections: int = 0
     seeded_interval_s: float = 0.0
     last_error: str = ""
@@ -160,23 +156,8 @@ class HostBudget:
     def tighten(self, factor: float, *, rejected: bool = False) -> None:
         self.min_interval_s = min(MAX_INTERVAL_S, self.min_interval_s * factor)
         self.metrics.tightenings += 1
-        self.last_tightened_at = self.requests
         if rejected:
             self.rejections += 1
-
-    def observe_latency(self, time_to_headers_s: float) -> None:
-        sample = time_to_headers_s
-        self.samples += 1
-        self.fast_latency = sample if self.samples == 1 else 0.6 * sample + 0.4 * self.fast_latency
-        self.slow_latency = (
-            sample if self.samples == 1 else 0.15 * sample + 0.85 * self.slow_latency
-        )
-        if (
-            self.samples >= 8
-            and self.requests - self.last_tightened_at >= 5
-            and self.fast_latency > self.slow_latency * 1.75
-        ):
-            self.tighten(1.5)
 
     def settle(self, bucket: str, now: datetime) -> RateState:
         baseline = self.posture.min_interval_s
@@ -471,14 +452,12 @@ class HttpClient:
         target = request_url(url, params)
         key = str(target)
         headers = self._cache.conditional_headers(key) if method == "GET" and not revalidate else {}
-        headers_at = 0.0
         try:
             async with budget.semaphore:
                 await self._reserve(bucket, budget)
                 self._own.requests += 1
                 started = time.perf_counter()
                 response = await self._send(target, headers, method, body)
-                headers_at = time.perf_counter()
                 try:
                     content = await self._read_capped(bucket, response)
                 finally:
@@ -513,7 +492,6 @@ class HttpClient:
             raise
 
         elapsed_s = time.perf_counter() - started
-        time_to_headers_s = headers_at - started
         budget.metrics.latencies.append(elapsed_s * 1000)
         self._own.latencies.append(elapsed_s * 1000)
         self._log.append(
@@ -552,7 +530,6 @@ class HttpClient:
 
         if response.status_code == 304:
             budget.breaker.record_success()
-            budget.observe_latency(time_to_headers_s)
             budget.metrics.not_modified += 1
             self._own.not_modified += 1
             return JsonResponse(status=304, payload=None, not_modified=True)
@@ -562,7 +539,6 @@ class HttpClient:
             budget.last_error = f"HTTP {response.status_code}"
             raise HttpStatusError(bucket, response)
         budget.breaker.record_success()
-        budget.observe_latency(time_to_headers_s)
 
         payload = json.loads(content)
         if method == "GET":
