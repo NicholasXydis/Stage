@@ -1,6 +1,10 @@
+import re
+
 from typer.testing import CliRunner
 
 from stage.cli.app import app
+
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 COMMANDS = (
     "sync",
@@ -53,10 +57,11 @@ def test_help_shows_common_workflows() -> None:
 
 def test_help_shows_one_command() -> None:
     result = CliRunner().invoke(app, ["help", "sync"])
+    output = ANSI_ESCAPE.sub("", result.stdout)
 
     assert result.exit_code == 0
-    assert "Usage:" in result.stdout
-    assert "--dry-run" in result.stdout
+    assert "Usage:" in output
+    assert "--dry-run" in output
 
 
 def test_help_rejects_unknown_command() -> None:
