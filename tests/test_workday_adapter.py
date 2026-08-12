@@ -935,9 +935,10 @@ async def test_a_queued_workday_posting_gets_its_body_on_the_shared_bucket() -> 
 
 
 @respx.mock
-async def test_a_workday_detail_failure_leaves_the_listing_authoritative() -> None:
+@pytest.mark.parametrize("status", (404, 500))
+async def test_a_workday_detail_failure_leaves_the_listing_authoritative(status: int) -> None:
     detail = "https://cae.wd3.myworkdayjobs.com/wday/cxs/cae/career/job/Montreal/x_R00001"
-    respx.get(detail).mock(return_value=httpx.Response(500))
+    respx.get(detail).mock(return_value=httpx.Response(status))
     respx.post(CXS).mock(
         return_value=httpx.Response(
             200,
@@ -964,7 +965,7 @@ async def test_a_workday_detail_failure_leaves_the_listing_authoritative() -> No
 
     assert result.authoritative, "a detail failure is not a listing failure"
     assert result.detail_fetches == (DetailFetch(id=ident, resolved=False, failed=True),), (
-        "a 500 is no answer, so the row stays retryable"
+        f"a {status} is no answer, so the row stays retryable"
     )
 
 

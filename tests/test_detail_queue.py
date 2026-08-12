@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
+import pytest
 import respx
 
 from stage.domain import (
@@ -186,13 +187,16 @@ async def test_a_queued_posting_gets_its_body_merged_before_it_leaves_the_adapte
 
 
 @respx.mock
-async def test_a_failed_detail_fetch_never_touches_listing_authority(db_path: Path) -> None:
+@pytest.mark.parametrize("status", (404, 500))
+async def test_a_failed_detail_fetch_never_touches_listing_authority(
+    db_path: Path, status: int
+) -> None:
     from stage.http import HttpClient, RatePosture
     from stage.sources.smartrecruiters import SmartRecruitersAdapter
 
     unpaced = RatePosture(concurrency=1, min_interval_s=0.0, max_requests_per_run=50)
     listing = "https://api.smartrecruiters.com/v1/companies/acme/postings"
-    respx.get(f"{listing}/P1").mock(return_value=httpx.Response(500))
+    respx.get(f"{listing}/P1").mock(return_value=httpx.Response(status))
     respx.get(url__startswith=listing).mock(
         return_value=httpx.Response(
             200,

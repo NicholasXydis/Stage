@@ -41,6 +41,13 @@ class HttpError(Exception):
     pass
 
 
+class HttpStatusError(HttpError):
+    def __init__(self, bucket: str, response: httpx.Response) -> None:
+        super().__init__(f"{bucket} returned {response.status_code}")
+        self.response = response
+        self.status = response.status_code
+
+
 class HostNotAllowedError(HttpError):
     pass
 
@@ -550,7 +557,10 @@ class HttpClient:
             self._own.not_modified += 1
             return JsonResponse(status=304, payload=None, not_modified=True)
 
-        response.raise_for_status()
+        if response.is_error:
+            budget.metrics.failures += 1
+            budget.last_error = f"HTTP {response.status_code}"
+            raise HttpStatusError(bucket, response)
         budget.breaker.record_success()
         budget.observe_latency(time_to_headers_s)
 

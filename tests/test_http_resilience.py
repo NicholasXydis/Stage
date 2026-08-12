@@ -4,8 +4,15 @@ import httpx
 import pytest
 import respx
 
-from stage.http import BreakerOpenError, BreakerState, CircuitBreaker, HttpClient, RatePosture
-from stage.http.client import RetryableStatusError
+from stage.http import (
+    BreakerOpenError,
+    BreakerState,
+    CircuitBreaker,
+    HttpClient,
+    HttpStatusError,
+    RatePosture,
+    RetryableStatusError,
+)
 
 ENDPOINT = "https://boards-api.greenhouse.io/v1/boards/acme/jobs"
 HOSTS = frozenset({"boards-api.greenhouse.io"})
@@ -40,8 +47,9 @@ async def test_a_client_error_is_not_retried() -> None:
     route = respx.get(ENDPOINT).mock(return_value=httpx.Response(404))
 
     async with _client() as client:
-        with pytest.raises(httpx.HTTPStatusError):
+        with pytest.raises(HttpStatusError) as raised:
             await client.get_json(ENDPOINT)
+        assert raised.value.status == 404
         assert client.retry_count == 0
 
     assert route.call_count == 1
