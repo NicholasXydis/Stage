@@ -342,11 +342,11 @@ class SqliteRepository:
             conn.execute("PRAGMA foreign_keys = ON")
             conn.execute("PRAGMA busy_timeout = 5000")
             migrate(conn, db_path)
+            if is_new:
+                restrict_permissions(db_path)
         except Exception:
             conn.close()
             raise
-        if is_new:
-            restrict_permissions(db_path)
         return cls(conn)
 
     def close(self) -> None:

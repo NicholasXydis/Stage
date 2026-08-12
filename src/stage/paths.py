@@ -1,5 +1,7 @@
+import getpass
 import os
 import stat
+import subprocess
 from pathlib import Path
 
 from platformdirs import PlatformDirs
@@ -63,5 +65,16 @@ def capture_dir() -> Path:
 
 def restrict_permissions(path: Path) -> None:
     if os.name == "nt":
+        executable = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32" / "icacls.exe"
+        principal = f"{os.environ.get('USERDOMAIN', '.')}\\{getpass.getuser()}"
+        result = subprocess.run(
+            (str(executable), str(path), "/inheritance:r", "/grant:r", f"{principal}:(F)"),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout).strip()
+            raise PermissionError(f"could not restrict permissions on {path}: {detail}")
         return
     path.chmod(stat.S_IRUSR | stat.S_IWUSR)

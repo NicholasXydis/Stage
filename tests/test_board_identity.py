@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
-from stage.domain import Company, Job, JobStatus, Platform, board_key
+from stage.domain import Company, Job, JobStatus, Platform, board_key, job_id
 from stage.sources import get_adapter
 from stage.sources.base import Adapter
 from stage.storage import SourceBatch, open_repository
@@ -42,6 +42,11 @@ def test_the_board_key_agrees_with_the_ids_the_adapter_produces() -> None:
     company = Company(name="Acme", platform=Platform.GREENHOUSE, slug="Acme_Corp")
     job = _job(f"{board_key('greenhouse', company.slug)}:12345", NOW)
     assert get_adapter("greenhouse").board_key(company) == job.board_key
+
+
+def test_noncanonical_identifier_components_do_not_collapse_together() -> None:
+    assert job_id("custom_json", "acme", "role/a") != job_id("custom_json", "acme", "role-a")
+    assert job_id("simplify", "Coveo Solutions Inc.", "123") == "simplify:coveo-solutions-inc.:123"
 
 
 async def test_one_board_failing_never_closes_its_twins_postings(db_path: Path) -> None:

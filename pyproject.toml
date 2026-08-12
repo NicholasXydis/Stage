@@ -71,6 +71,7 @@ ignore = ["S101", "S311"]
 "src/stage/sources/*.py" = ["ARG002", "N815"]
 "src/stage/services/coverage.py" = ["BLE001"]
 "src/stage/services/sync.py" = ["BLE001"]
+"src/stage/paths.py" = ["S603"]
 "src/stage/storage/sqlite_repo.py" = ["S608"]
 
 [tool.mypy]
