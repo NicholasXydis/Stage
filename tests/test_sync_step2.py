@@ -287,6 +287,7 @@ async def test_dry_run_fails_on_a_fault_that_needs_no_network_to_see(
 
     assert finished.outcome is SyncOutcome.PARTIAL
 
+
 async def test_a_source_stream_failure_does_not_stop_other_sources() -> None:
     async def broken() -> AsyncIterator[SyncEvent]:
         yield SourceStarted(source="broken", companies=0)

@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator, Coroutine
+from datetime import date
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
@@ -6,8 +7,6 @@ from typing import TYPE_CHECKING, Annotated, Any
 import typer
 
 if TYPE_CHECKING:
-    from datetime import date
-
     from rich.console import Console
 
     from stage.domain import JobFilters
@@ -869,9 +868,7 @@ def sources(
 
     if reset_rate_limit is not None or reset_all_rate_limits:
         target = (
-            "every host bucket"
-            if reset_all_rate_limits
-            else f"host bucket {reset_rate_limit!r}"
+            "every host bucket" if reset_all_rate_limits else f"host bucket {reset_rate_limit!r}"
         )
         if cleared:
             console.print(f"Reset rate-limit state for {target} ({cleared} row(s)).")
@@ -1156,7 +1153,7 @@ async def _adopt_unregistered(
     size: Any,
     limit: int,
     apply_rows: bool,
-    today: "date",
+    today: date,
     stream: Any,
 ) -> bool:
     from stage.cli.render import plain
@@ -1209,13 +1206,13 @@ _HELP_GUIDE = (
     "\nStart here:\n"
     "  stage sync                         Fetch and save current postings\n"
     "  stage list                         Browse recent open postings\n"
-    "  stage search \"python\"              Search titles, employers, and descriptions\n"
+    '  stage search "python"              Search titles, employers, and descriptions\n'
     "  stage show ID                      Inspect a posting from list or search\n"
     "  stage open ID                      Open its application page\n"
     "  stage export --format csv          Save matching postings to a file\n"
     "\nCommon filters:\n"
     "  stage list --role swe --location montreal\n"
-    "  stage search \"python\" --term summer-2027\n"
+    '  stage search "python" --term summer-2027\n'
     "  stage export --format csv --all\n"
     "\nHealth and maintenance:\n"
     "  stage doctor                       Check database and source health\n"

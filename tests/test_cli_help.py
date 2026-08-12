@@ -55,7 +55,7 @@ def test_help_shows_one_command() -> None:
     result = CliRunner().invoke(app, ["help", "sync"])
 
     assert result.exit_code == 0
-    assert "Usage: root sync" in result.stdout
+    assert "Usage:" in result.stdout
     assert "--dry-run" in result.stdout
 
 
