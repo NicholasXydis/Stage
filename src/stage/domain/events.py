@@ -121,6 +121,9 @@ class SourceFinished:
     closed: int
     failed_companies: int
     elapsed_ms: float
+    fetch_ms: float = 0.0
+    normalize_ms: float = 0.0
+    write_ms: float = 0.0
     quarantined: int = 0
     requests: int = 0
     not_modified: int = 0

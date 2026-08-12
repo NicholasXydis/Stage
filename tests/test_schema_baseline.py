@@ -65,7 +65,8 @@ def test_a_fresh_database_is_at_the_baseline_with_every_object_present(
 
 
 def test_search_works_on_a_fresh_database_with_no_backfill_step(db_path: Path) -> None:
-    from datetime import UTC, datetime
+    from dataclasses import replace
+    from datetime import UTC, datetime, timedelta
 
     from stage.domain import Job
     from stage.storage.repository import SourceBatch
@@ -89,7 +90,27 @@ def test_search_works_on_a_fresh_database_with_no_backfill_step(db_path: Path) -
             SourceBatch(source="greenhouse", run_started_at=when, jobs=(job,))
         )
         assert [row.id for row in repository.search_jobs("developpement", JobFilters())] == [job.id]
-        assert repository.count_search("montreal", JobFilters()) == 1
+
+        refreshed = replace(job, last_seen=when + timedelta(seconds=1))
+        before = repository._conn.total_changes
+        repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=refreshed.last_seen, jobs=(refreshed,))
+        )
+        assert repository._conn.total_changes - before == 1
+
+        revised = replace(
+            refreshed,
+            title_raw="Stagiaire en donnees",
+            title_normalized="stagiaire en donnees",
+            last_seen=when + timedelta(seconds=2),
+        )
+        before = repository._conn.total_changes
+        repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=revised.last_seen, jobs=(revised,))
+        )
+        assert repository._conn.total_changes - before > 1
+        assert [row.id for row in repository.search_jobs("developpement", JobFilters())] == []
+        assert [row.id for row in repository.search_jobs("donnees", JobFilters())] == [job.id]
         repository._conn.execute("INSERT INTO jobs_fts (jobs_fts) VALUES ('integrity-check')")
     finally:
         repository.close()

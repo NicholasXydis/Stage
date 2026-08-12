@@ -67,7 +67,14 @@ CREATE TRIGGER jobs_fts_after_delete AFTER DELETE ON jobs BEGIN
     );
 END;
 
-CREATE TRIGGER jobs_fts_after_update AFTER UPDATE ON jobs BEGIN
+CREATE TRIGGER jobs_fts_after_update AFTER UPDATE ON jobs
+WHEN new.company IS NOT old.company
+    OR new.title_raw IS NOT old.title_raw
+    OR new.title_normalized IS NOT old.title_normalized
+    OR new.title_canonical IS NOT old.title_canonical
+    OR new.location_raw IS NOT old.location_raw
+    OR new.description IS NOT old.description
+BEGIN
     INSERT INTO jobs_fts (
         jobs_fts, rowid, company, title_raw, title_normalized, title_canonical,
         location_raw, description

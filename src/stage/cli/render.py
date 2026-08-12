@@ -1057,6 +1057,14 @@ def _render_source_summary(console: Console, event: SourceFinished) -> None:
         parts.append(f"{event.not_modified}/{event.requests} cached")
         parts.append(f"p50 {event.latency_p50_ms:.0f}ms")
         parts.append(f"p95 {event.latency_p95_ms:.0f}ms")
+    if event.fetch_ms or event.normalize_ms or event.write_ms:
+        parts.extend(
+            (
+                f"fetch {event.fetch_ms / 1000:.1f}s",
+                f"process {event.normalize_ms / 1000:.1f}s",
+                f"write {event.write_ms / 1000:.1f}s",
+            )
+        )
     if event.retries:
         parts.append(f"{event.retries} retried")
     if event.tightenings:

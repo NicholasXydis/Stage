@@ -260,6 +260,9 @@ async def test_metrics_reach_the_source_summary(
     assert summary.not_modified == 0
     assert summary.latency_p50_ms >= 0.0
     assert summary.latency_p95_ms >= summary.latency_p50_ms
+    assert summary.fetch_ms > 0.0
+    assert summary.normalize_ms >= 0.0
+    assert summary.write_ms > 0.0
 
 
 async def test_dry_run_fails_on_a_fault_that_needs_no_network_to_see(

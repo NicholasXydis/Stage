@@ -420,6 +420,7 @@ async def _run_company_source(
             wrapped=rotation.wrapped,
         )
 
+    fetch_clock = time.perf_counter()
     seed = dict(await repository.load_validators(source_name))
     facets = await repository.load_workday_facets()
     detail_queue = await repository.detail_queue(source_name, adapter.detail_budget)
@@ -519,7 +520,11 @@ async def _run_company_source(
             client.rate_state(run_started_at), rotation, rotation_bucket, run_started_at
         )
 
+    fetch_ms = (time.perf_counter() - fetch_clock) * 1000
+    normalize_clock = time.perf_counter()
     kept, rejected = await asyncio.to_thread(normalize_batch, collected)
+    normalize_ms = (time.perf_counter() - normalize_clock) * 1000
+    write_clock = time.perf_counter()
     counts = await repository.apply_source_batch(
         SourceBatch(
             source=source_name,
@@ -537,6 +542,7 @@ async def _run_company_source(
             resolve_duplicates=resolve_duplicates,
         )
     )
+    write_ms = (time.perf_counter() - write_clock) * 1000
     if closable or unchanged:
         succeeded_any.append(True)
     if errors:
@@ -549,7 +555,16 @@ async def _run_company_source(
             deferred=len(rotation.deferred),
         )
     )
-    yield _finished(source_name, counts, errors, metrics, elapsed_ms)
+    yield _finished(
+        source_name,
+        counts,
+        errors,
+        metrics,
+        elapsed_ms,
+        fetch_ms=fetch_ms,
+        normalize_ms=normalize_ms,
+        write_ms=write_ms,
+    )
 
 
 async def _run_feed_source(
@@ -586,6 +601,7 @@ async def _run_feed_source(
     source_clock = time.perf_counter()
     yield SourceStarted(source=source_name, companies=0)
 
+    fetch_clock = time.perf_counter()
     seed = dict(await repository.load_validators(source_name))
 
     if dry_run:
@@ -672,7 +688,11 @@ async def _run_feed_source(
         validators = _keepable_validators(cache, skip_urls)
         settled = client.rate_state(run_started_at)
 
+    fetch_ms = (time.perf_counter() - fetch_clock) * 1000
+    normalize_clock = time.perf_counter()
     kept, rejected = await asyncio.to_thread(normalize_batch, collected)
+    normalize_ms = (time.perf_counter() - normalize_clock) * 1000
+    write_clock = time.perf_counter()
     counts = await repository.apply_source_batch(
         SourceBatch(
             source=source_name,
@@ -685,6 +705,7 @@ async def _run_feed_source(
             closes_whole_source=authoritative and not incomplete and not unchanged,
         )
     )
+    write_ms = (time.perf_counter() - write_clock) * 1000
     if not errors:
         succeeded_any.append(True)
     else:
@@ -692,7 +713,16 @@ async def _run_feed_source(
 
     elapsed_ms = (time.perf_counter() - source_clock) * 1000
     stats.append(_stats(source_name, counts, errors, metrics, elapsed_ms))
-    yield _finished(source_name, counts, errors, metrics, elapsed_ms)
+    yield _finished(
+        source_name,
+        counts,
+        errors,
+        metrics,
+        elapsed_ms,
+        fetch_ms=fetch_ms,
+        normalize_ms=normalize_ms,
+        write_ms=write_ms,
+    )
 
 
 def _client_metrics(client: HttpClient) -> tuple[int, int, int, int, float, float]:
@@ -740,6 +770,9 @@ def _finished(
     errors: int,
     metrics: tuple[int, int, int, int, float, float],
     elapsed_ms: float,
+    fetch_ms: float = 0.0,
+    normalize_ms: float = 0.0,
+    write_ms: float = 0.0,
 ) -> SourceFinished:
     requests, not_modified, retries, tightenings, p50, p95 = metrics
     return SourceFinished(
@@ -751,6 +784,9 @@ def _finished(
         quarantined=counts.quarantined,
         failed_companies=errors,
         elapsed_ms=elapsed_ms,
+        fetch_ms=fetch_ms,
+        normalize_ms=normalize_ms,
+        write_ms=write_ms,
         requests=requests,
         not_modified=not_modified,
         retries=retries,
