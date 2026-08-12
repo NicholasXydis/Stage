@@ -1093,7 +1093,7 @@ def discover(
                 else None
             )
             if verify:
-                from stage.companies import load_companies, write_registry
+                from stage.companies import load_companies, update_registry
                 from stage.services.discover import apply_verification, verify_registry
 
                 rows = load_companies(registry)
@@ -1105,8 +1105,14 @@ def discover(
                     collect=True,
                 )
                 if apply and isinstance(outcome, DiscoveryFinished):
-                    updated, ok, off = apply_verification(rows, outcome, today)
-                    target = write_registry(updated, registry)
+
+                    def update(
+                        existing: tuple[Any, ...],
+                    ) -> tuple[tuple[Any, ...], tuple[int, int]]:
+                        updated, ok, off = apply_verification(existing, outcome, today)
+                        return updated, (ok, off)
+
+                    target, (ok, off) = update_registry(update, registry)
                     console.print(
                         plain(
                             f"\napplied — {ok} row(s) verified, {off} disabled, written to {target}"
@@ -1157,7 +1163,7 @@ async def _adopt_unregistered(
     stream: Any,
 ) -> bool:
     from stage.cli.render import plain
-    from stage.companies import load_companies, write_registry
+    from stage.companies import load_companies, update_registry
     from stage.domain import PlatformProbed
     from stage.services.coverage import coverage
     from stage.services.discover import adopt_unregistered, probe_companies
@@ -1197,8 +1203,13 @@ async def _adopt_unregistered(
     if not apply_rows:
         console.print(plain("Nothing written. Re-run with --apply to add these rows."))
         return True
-    target = write_registry([*rows, *(row.company for row in outcome.adopted)], registry)
-    console.print(plain(f"applied — {len(outcome.adopted)} row(s) added, written to {target}"))
+
+    def update(existing: tuple[Any, ...]) -> tuple[list[Any], Any]:
+        latest = adopt_unregistered(existing, results, today=today)
+        return [*existing, *(row.company for row in latest.adopted)], latest
+
+    target, applied = update_registry(update, registry)
+    console.print(plain(f"applied — {len(applied.adopted)} row(s) added, written to {target}"))
     return True
 
 

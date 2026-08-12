@@ -1,7 +1,9 @@
 import json
 import re
+import socket
 import unicodedata
 from datetime import UTC, datetime
+from ipaddress import ip_address
 from urllib.parse import urlsplit
 
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
@@ -24,6 +26,26 @@ def web_url(raw: str) -> str | None:
     if parts.scheme not in WEB_SCHEMES or not parts.netloc:
         return None
     return candidate
+
+
+def public_https_url(raw: str) -> str | None:
+    candidate = web_url(raw)
+    if candidate is None:
+        return None
+    parts = urlsplit(candidate)
+    if parts.scheme != "https" or parts.username or parts.password:
+        return None
+    host = (parts.hostname or "").rstrip(".").lower()
+    if not host or host == "localhost" or host.endswith(".localhost"):
+        return None
+    try:
+        address = ip_address(host)
+    except ValueError:
+        try:
+            address = ip_address(socket.inet_aton(host))
+        except OSError:
+            return candidate
+    return candidate if address.is_global else None
 
 
 def first_line(value: str) -> str:
@@ -79,6 +101,7 @@ __all__ = [
     "graphemes",
     "json_default",
     "json_safe",
+    "public_https_url",
     "sanitize",
     "summary",
     "truncate",

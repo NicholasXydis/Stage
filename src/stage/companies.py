@@ -1,7 +1,11 @@
-from collections.abc import Sequence
+import importlib
+import os
+import tempfile
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -13,7 +17,7 @@ from stage.domain import (
     Platform,
     Priority,
     SourceOfRecord,
-    web_url,
+    public_https_url,
 )
 from stage.paths import registry_path
 
@@ -85,10 +89,11 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
     if not isinstance(raw, dict):
         raise RegistryError(f"companies.yaml entry {index}: 'custom' must be a mapping")
 
-    url = web_url(str(raw.get("url", "")))
+    url = public_https_url(str(raw.get("url", "")))
     if url is None:
         raise RegistryError(
-            f"companies.yaml entry {index}: custom.url must be a plain http or https address"
+            f"companies.yaml entry {index}: custom.url must be a public https address "
+            "without credentials"
         )
     mapping = raw.get("fields", {})
     if not isinstance(mapping, dict):
@@ -217,24 +222,71 @@ def registry_entry_yaml(company: Company) -> str:
     return dumped.rstrip("\n")
 
 
-def write_registry(companies: Sequence[Company], path: Path | None = None) -> Path:
-    target = path or registry_path()
+def _registry_payload(companies: Sequence[Company]) -> str:
     order = {Priority.HIGH: 0, Priority.NORMAL: 1, Priority.LOW: 2}
     ordered = sorted(companies, key=lambda item: (order[item.priority], item.name.lower()))
-    payload = yaml.safe_dump(
+    return yaml.safe_dump(
         [_registry_row(item) for item in ordered],
         sort_keys=False,
         allow_unicode=True,
         default_flow_style=False,
     )
-    staged = target.with_name(f"{target.name}.partial")
+
+
+@contextmanager
+def _registry_lock(target: Path) -> Iterator[None]:
+    lock_path = target.with_name(f".{target.name}.lock")
     try:
-        staged.write_text(payload, encoding="utf-8")
+        lock = lock_path.open("a+b")
+    except OSError as exc:
+        raise RegistryError(f"{target} could not be locked: {exc.strerror or exc}") from exc
+    with lock:
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                lock.seek(0, os.SEEK_END)
+                if lock.tell() == 0:
+                    lock.write(b"0")
+                    lock.flush()
+                lock.seek(0)
+                msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+            else:
+                fcntl = cast(Any, importlib.import_module("fcntl"))
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        except OSError as exc:
+            raise RegistryError(f"{target} could not be locked: {exc.strerror or exc}") from exc
+        yield
+
+
+def _write_registry(companies: Sequence[Company], target: Path) -> Path:
+    payload = _registry_payload(companies)
+    staged: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target.parent,
+            prefix=f".{target.name}.",
+            suffix=".partial",
+            delete=False,
+        ) as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+            staged = Path(stream.name)
         staged.replace(target)
     except OSError as exc:
-        staged.unlink(missing_ok=True)
+        if staged is not None:
+            staged.unlink(missing_ok=True)
         raise RegistryError(f"{target} could not be written: {exc.strerror or exc}") from exc
     return target
+
+
+def write_registry(companies: Sequence[Company], path: Path | None = None) -> Path:
+    target = path or registry_path()
+    with _registry_lock(target):
+        return _write_registry(companies, target)
 
 
 def load_companies(path: Path | None = None) -> tuple[Company, ...]:
@@ -267,3 +319,13 @@ def load_companies(path: Path | None = None) -> tuple[Company, ...]:
         seen.add(key)
         companies.append(company)
     return tuple(companies)
+
+
+def update_registry[T](
+    update: Callable[[tuple[Company, ...]], tuple[Sequence[Company], T]],
+    path: Path | None = None,
+) -> tuple[Path, T]:
+    target = path or registry_path()
+    with _registry_lock(target):
+        companies, result = update(load_companies(target))
+        return _write_registry(companies, target), result

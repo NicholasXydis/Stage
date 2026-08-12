@@ -1,9 +1,12 @@
+import multiprocessing
+import time
 from datetime import UTC, date, datetime
+from multiprocessing.synchronize import Event
 from pathlib import Path
 
 import pytest
 
-from stage.companies import load_companies, write_registry
+from stage.companies import load_companies, update_registry, write_registry
 from stage.domain import Company, Platform
 from stage.services.health import doctor
 from stage.storage import open_repository
@@ -21,6 +24,18 @@ def _company(name: str, recheck: date | None) -> Company:
         notes="parked pending a re-measure",
         recheck_after=recheck,
     )
+
+
+def _concurrent_registry_update(
+    target: str, name: str, delay_s: float, entered: Event | None
+) -> None:
+    def add_latest(rows: tuple[Company, ...]) -> tuple[list[Company], None]:
+        if entered is not None:
+            entered.set()
+        time.sleep(delay_s)
+        return [*rows, _company(name, None)], None
+
+    update_registry(add_latest, Path(target))
 
 
 def test_a_row_is_due_only_once_its_date_has_arrived() -> None:
@@ -44,6 +59,58 @@ def test_the_date_round_trips_through_the_registry(tmp_path: Path) -> None:
     assert rows["Parked"].recheck_after == date(2026, 10, 1)
     assert rows["Plain"].recheck_after is None
     assert rows["Parked"].notes, "the prose reason survives beside the structured date"
+
+
+def test_a_registry_update_reads_the_latest_rows_while_holding_the_write_lock(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_company("Existing", None)], target)
+
+    def add_latest(rows: tuple[Company, ...]) -> tuple[list[Company], str]:
+        return [*rows, _company("Added", None)], "updated"
+
+    written, result = update_registry(add_latest, target)
+
+    assert written == target
+    assert result == "updated"
+    assert {row.name for row in load_companies(target)} == {"Existing", "Added"}
+
+
+def test_concurrent_registry_updates_preserve_both_changes(tmp_path: Path) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_company("Existing", None)], target)
+    context = multiprocessing.get_context("spawn")
+    entered = context.Event()
+    first = context.Process(
+        target=_concurrent_registry_update,
+        args=(str(target), "First", 1.0, entered),
+    )
+    second = context.Process(
+        target=_concurrent_registry_update,
+        args=(str(target), "Second", 0.0, None),
+    )
+
+    first.start()
+    assert entered.wait(10)
+    second.start()
+    first.join(10)
+    second.join(10)
+
+    assert first.exitcode == 0
+    assert second.exitcode == 0
+    assert {row.name for row in load_companies(target)} == {"Existing", "First", "Second"}
+
+
+def test_a_registry_update_preserves_its_callback_error(tmp_path: Path) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_company("Existing", None)], target)
+
+    def fail(_: tuple[Company, ...]) -> tuple[list[Company], None]:
+        raise OSError("callback failed")
+
+    with pytest.raises(OSError, match="callback failed"):
+        update_registry(fail, target)
 
 
 @pytest.mark.asyncio

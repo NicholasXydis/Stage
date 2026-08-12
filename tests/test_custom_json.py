@@ -176,6 +176,26 @@ def test_a_custom_row_round_trips_through_the_registry(tmp_path: Path) -> None:
     assert again.custom == loaded.custom
 
 
+@pytest.mark.parametrize(
+    "url",
+    (
+        "http://jobs.example.test/api/openings",
+        "https://localhost/api/openings",
+        "https://localhost./api/openings",
+        "https://127.0.0.1/api/openings",
+        "https://2130706433/api/openings",
+        "https://[::1]/api/openings",
+        "https://user:password@jobs.example.test/api/openings",
+    ),
+)
+def test_a_custom_row_cannot_target_an_internal_or_insecure_endpoint(
+    tmp_path: Path, url: str
+) -> None:
+    row = dict(BASE_ROW, custom={"url": url, "fields": {"title": "name"}})
+    with pytest.raises(RegistryError, match="public https"):
+        load_companies(_registry(tmp_path, row))
+
+
 BAD_ROWS = {
     "no custom block at all": BASE_ROW,
     "a url that is not a web address": dict(
