@@ -1,8 +1,8 @@
 param(
     [switch]$Uninstall,
-    [string]$SyncTime     = "07:30",
-    [string]$DiscoverDay  = "SUN",
-    [string]$DiscoverTime = "08:30",
+    [string]$SyncTime     = "09:00",
+    [string]$DiscoverDay  = "MON",
+    [string]$DiscoverTime = "09:00",
     [int]$DiscoverLimit   = 40
 )
 $ErrorActionPreference = "Stop"
