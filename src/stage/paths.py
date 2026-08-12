@@ -65,10 +65,11 @@ def capture_dir() -> Path:
 
 def restrict_permissions(path: Path) -> None:
     if os.name == "nt":
-        executable = Path(os.environ.get("SYSTEMROOT", r"C:\Windows")) / "System32" / "icacls.exe"
+        root = os.environ.get("SYSTEMROOT", r"C:\Windows").rstrip("\\/")
+        executable = f"{root}\\System32\\icacls.exe"
         principal = f"{os.environ.get('USERDOMAIN', '.')}\\{getpass.getuser()}"
         result = subprocess.run(
-            (str(executable), str(path), "/inheritance:r", "/grant:r", f"{principal}:(F)"),
+            (executable, str(path), "/inheritance:r", "/grant:r", f"{principal}:(F)"),
             check=False,
             capture_output=True,
             text=True,
