@@ -1096,6 +1096,9 @@
   priority: low
   source_of_record: openjobs
   last_verified: 2026-08-04
+  enabled: false
+  notes: '2026-08-12: disabled — configured Greenhouse board returned 404; official
+    careers page now points to an unsupported Rippling board'
 - name: Aerovect
   platform: ashby
   slug: aerovect
@@ -3014,6 +3017,9 @@
   priority: low
   source_of_record: openjobs
   last_verified: 2026-08-01
+  enabled: false
+  notes: '2026-08-12: disabled — configured Greenhouse board returned 404; official
+    job-openings page no longer exposes a working supported board'
 - name: Temporal Technologies
   platform: greenhouse
   slug: temporaltechnologies
