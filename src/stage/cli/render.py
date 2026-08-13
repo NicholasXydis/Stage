@@ -9,6 +9,7 @@ from rich.table import Table
 from rich.text import Text
 
 if TYPE_CHECKING:
+    from stage.domain import WorkdayCrawl
     from stage.services.canary import CanaryReport
     from stage.services.coverage import CoverageReport
     from stage.services.export import ExportResult
@@ -317,7 +318,9 @@ _COVERAGE_STYLE = {
 }
 
 
-def render_coverage(console: Console, report: "CoverageReport", now: datetime) -> None:
+def render_coverage(
+    console: Console, report: "CoverageReport", now: datetime, *, include_classified: bool = False
+) -> None:
     counts: dict[CoverageState, int] = {}
     for row in report.rows:
         counts[row.state] = counts.get(row.state, 0) + 1
@@ -375,11 +378,30 @@ def render_coverage(console: Console, report: "CoverageReport", now: datetime) -
         if len(report.unregistered) > 30:
             console.print(f"  [dim]… and {len(report.unregistered) - 30} more[/dim]")
         console.print(
-            "[dim]Most of the top of this list is the custom-career-site tier the feeds exist "
-            "to cover, which no adapter can poll — it is not a registry gap. Matching is on "
-            "the display name, so one employer under two captions appears twice and a rebrand "
-            "lands here wrongly. Resolve one with [bold]stage discover --url[/bold].[/dim]"
+            '[dim]After researching an employer, record it with [bold]stage classify "Company" '
+            '--status feed-only --note "why"[/bold]. To identify a career-board URL without '
+            "fetching it, use [bold]stage discover --url URL[/bold].[/dim]"
         )
+
+    if include_classified:
+        console.print()
+        if report.classifications:
+            console.print(f"[bold]Reviewed feed employers[/bold] ({len(report.classifications)})")
+            table = Table(box=None, pad_edge=False, header_style="bold")
+            table.add_column("company")
+            table.add_column("status")
+            table.add_column("checked", justify="right")
+            table.add_column("note")
+            for entry in report.classifications:
+                table.add_row(
+                    truncate(entry.company, 26),
+                    entry.disposition.value,
+                    entry.checked_on.date().isoformat(),
+                    truncate(entry.note, 56),
+                )
+            console.print(table)
+        else:
+            console.print("[dim]No feed employers have been reviewed yet.[/dim]")
 
 
 def _render_coverage_note(
@@ -470,6 +492,30 @@ def render_source_health(
     console.print(
         f"[dim]stored is open postings held. A board is stale after {stale_after_days} "
         "days without a success, failing when it has never succeeded.[/dim]"
+    )
+
+
+def render_workday_crawl_progress(console: Console, crawls: Sequence["WorkdayCrawl"]) -> None:
+    console.print("[bold]Workday crawl progress[/bold]")
+    if not crawls:
+        console.print("[dim]No incomplete Workday crawl is retained.[/dim]")
+        return
+
+    table = Table(box=None, pad_edge=False, header_style="bold")
+    table.add_column("board")
+    table.add_column("next offset", justify="right")
+    table.add_column("reported total", justify="right")
+    for crawl in crawls:
+        table.add_row(
+            truncate(crawl.board, 48),
+            str(crawl.next_offset),
+            str(crawl.total) if crawl.total is not None else "[dim]unknown[/dim]",
+        )
+    console.print(table)
+    console.print(
+        "[dim]Listed boards are still completing a safe reconciliation cycle; their "
+        "postings cannot close until a safe terminal pass succeeds. Boards not listed "
+        "have no retained partial cursor.[/dim]"
     )
 
 
@@ -578,6 +624,8 @@ def render_doctor(console: Console, report: "DoctorReport", now: datetime) -> No
 
     console.print("[bold]Sources[/bold]")
     render_source_health(console, report.sources, report.stale_after_days)
+    console.print()
+    render_workday_crawl_progress(console, report.workday_crawls)
 
     alerts = report.volume_alerts
     if alerts:

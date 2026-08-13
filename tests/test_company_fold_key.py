@@ -132,3 +132,16 @@ def test_a_database_built_before_the_baseline_is_refused_by_name(db_path: Path) 
     assert "stage sync" in message, (
         "a missing column must be refused by name, not crash the next write"
     )
+
+
+def test_a_database_missing_a_baseline_table_is_refused_by_name(db_path: Path) -> None:
+    SqliteRepository.connect(db_path).close()
+    rewound = sqlite3.connect(db_path)
+    try:
+        rewound.execute("DROP TABLE coverage_classifications")
+        rewound.commit()
+    finally:
+        rewound.close()
+
+    with pytest.raises(SchemaVersionError, match="coverage_classifications"):
+        SqliteRepository.connect(db_path)

@@ -8,6 +8,7 @@ from types import TracebackType
 from typing import Self, TypeVar
 
 from stage.domain import (
+    CoverageClassification,
     HttpValidator,
     IntegrityFinding,
     Job,
@@ -19,6 +20,7 @@ from stage.domain import (
     SourceVisit,
     SyncRun,
     VolumePoint,
+    WorkdayCrawl,
     WorkdayFacet,
 )
 from stage.storage.repository import Repository, SourceBatch, SourceBatchResult
@@ -112,6 +114,9 @@ class AsyncRepository:
     async def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
         return await self._writer.run(lambda repository: repository.load_workday_facets())
 
+    async def load_workday_crawls(self) -> Mapping[str, WorkdayCrawl]:
+        return await self._writer.run(lambda repository: repository.load_workday_crawls())
+
     async def clear_validators(self, source: str | None = None) -> int:
         return await self._writer.run(lambda repository: repository.clear_validators(source))
 
@@ -162,6 +167,19 @@ class AsyncRepository:
 
     async def company_counts(self) -> dict[str, dict[str, int]]:
         return await self._writer.run(lambda repository: repository.company_counts())
+
+    async def coverage_classifications(self) -> list[CoverageClassification]:
+        return await self._writer.run(lambda repository: repository.coverage_classifications())
+
+    async def record_coverage_classification(self, entry: CoverageClassification) -> bool:
+        return await self._writer.run(
+            lambda repository: repository.record_coverage_classification(entry)
+        )
+
+    async def clear_coverage_classification(self, company: str) -> bool:
+        return await self._writer.run(
+            lambda repository: repository.clear_coverage_classification(company)
+        )
 
     async def record_sync_run(self, run: SyncRun) -> None:
         await self._writer.run(lambda repository: repository.record_sync_run(run))

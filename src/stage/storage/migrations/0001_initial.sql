@@ -155,6 +155,17 @@ CREATE TABLE source_visits (
 
 CREATE INDEX idx_source_visits_success ON source_visits (source, last_success_at);
 
+CREATE TABLE coverage_classifications (
+    company      TEXT NOT NULL CHECK (length(trim(company)) > 0),
+    company_fold TEXT PRIMARY KEY,
+    disposition  TEXT NOT NULL CHECK (disposition IN (
+        'feed-only', 'unavailable', 'custom-json-candidate', 'adapter-candidate', 'deferred'
+    )),
+    note         TEXT NOT NULL CHECK (length(trim(note)) > 0),
+    checked_on   TEXT NOT NULL,
+    url          TEXT
+);
+
 CREATE TABLE workday_facets (
     tenant       TEXT NOT NULL,
     site         TEXT NOT NULL,
@@ -164,6 +175,22 @@ CREATE TABLE workday_facets (
     resolved_at  TEXT NOT NULL,
     PRIMARY KEY (tenant, site)
 );
+
+CREATE TABLE workday_crawls (
+    board           TEXT PRIMARY KEY,
+    next_offset     INTEGER NOT NULL CHECK (next_offset >= 0),
+    total           INTEGER,
+    facet_parameter TEXT NOT NULL DEFAULT '',
+    facet_ids       TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE workday_crawl_seen (
+    board TEXT NOT NULL REFERENCES workday_crawls (board) ON DELETE CASCADE,
+    id    TEXT NOT NULL,
+    PRIMARY KEY (board, id)
+);
+
+CREATE INDEX idx_workday_crawl_seen_id ON workday_crawl_seen (id);
 
 CREATE TABLE detail_fetches (
     id         TEXT PRIMARY KEY,

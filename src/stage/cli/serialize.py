@@ -49,6 +49,7 @@ def coverage_to_json(report: "CoverageReport") -> str:
             "stale_after_days": report.stale_after_days,
             "rows": [asdict(row) for row in report.rows],
             "unregistered": [asdict(row) for row in report.unregistered],
+            "classifications": [asdict(entry) for entry in report.classifications],
         }
     )
 
@@ -62,6 +63,7 @@ def health_to_json(report: "DoctorReport") -> str:
             "healthy": report.is_healthy,
             "warnings": report.warnings,
             "due_for_recheck": list(report.due_for_recheck),
+            "workday_crawls": [asdict(crawl) for crawl in report.workday_crawls],
             "integrity": [asdict(finding) for finding in report.integrity],
             "blocks": [asdict(state) for state in report.blocks],
             "sources": [
@@ -108,6 +110,7 @@ def sources_to_json(
             "sources": sources,
             "rate_states": [asdict(state) for state in states],
             "boards": boards,
+            "workday_crawls": [asdict(crawl) for crawl in report.workday_crawls],
             "rate_states_cleared": rate_states_cleared,
             "cache_validators_cleared": cache_validators_cleared,
         }

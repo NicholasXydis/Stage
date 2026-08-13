@@ -41,6 +41,12 @@ app = typer.Typer(
     no_args_is_help=True,
     help="Aggregates CS internship postings into a local SQLite database.",
 )
+schedule_app = typer.Typer(
+    add_completion=False,
+    no_args_is_help=True,
+    help="Manage opt-in automatic syncs for this user account",
+)
+app.add_typer(schedule_app, name="schedule")
 
 RegistryOption = Annotated[
     Path | None,
@@ -521,13 +527,18 @@ def export(
     render_export(console, result)
 
 
-@app.command(help="Find registry gaps and companies missing from the registry")
+@app.command(help="Find registry gaps and unclassified companies seen in feeds")
 def coverage(
     unregistered: Annotated[
         bool,
         typer.Option(
-            "--unregistered", help="Show companies found in feeds but missing from the registry"
+            "--unregistered",
+            help="Show feed companies not in the registry and not already reviewed",
         ),
+    ] = False,
+    classified: Annotated[
+        bool,
+        typer.Option("--classified", help="Show researched feed-company classifications"),
     ] = False,
     stale_days: StaleDaysOption = None,
     as_json: JsonOption = False,
@@ -553,7 +564,10 @@ def coverage(
         async with open_repository(_database(db)) as repository:
             if stale_days is None:
                 return await coverage_service(
-                    repository, companies, now=now, unregistered=unregistered
+                    repository,
+                    companies,
+                    now=now,
+                    unregistered=unregistered,
                 )
             return await coverage_service(
                 repository,
@@ -572,7 +586,122 @@ def coverage(
     if as_json:
         emit(coverage_to_json(report))
         return
-    render_coverage(console, report, now)
+    render_coverage(console, report, now, include_classified=classified)
+
+
+@app.command(help="Record why a feed-seen employer is not directly synced")
+def classify(
+    company: Annotated[
+        str, typer.Argument(help="Employer name from stage coverage --unregistered")
+    ],
+    disposition: Annotated[
+        str | None,
+        typer.Option(
+            "--status",
+            help="Required unless --clear: feed-only, unavailable, custom-json-candidate, "
+            "adapter-candidate, or deferred",
+        ),
+    ] = None,
+    note: Annotated[
+        str | None,
+        typer.Option("--note", help="Required unless --clear: evidence for this decision"),
+    ] = None,
+    url: Annotated[
+        str | None, typer.Option("--url", help="Public careers or jobs endpoint")
+    ] = None,
+    clear: Annotated[bool, typer.Option("--clear", help="Remove this classification")] = False,
+    db: DatabaseOption = None,
+) -> None:
+    from datetime import UTC, datetime
+
+    from rich.console import Console
+
+    from stage.domain import CoverageClassification, CoverageDisposition
+    from stage.storage import open_repository
+
+    console = Console()
+    if clear:
+        if disposition is not None or note is not None or url is not None:
+            console.print("[red]--clear cannot be combined with --status, --note, or --url.[/red]")
+            raise typer.Exit(code=2)
+        try:
+
+            async def clear_entry() -> bool:
+                async with open_repository(_database(db)) as repository:
+                    return await repository.clear_coverage_classification(company)
+
+            removed = run_async(clear_entry())
+        except ValueError as exc:
+            _print_failure(exc)
+            raise typer.Exit(code=2) from exc
+        if not removed:
+            console.print("[yellow]No matching classification was recorded.[/yellow]")
+            raise typer.Exit(code=1)
+        console.print("Classification removed.")
+        return
+    if disposition is None or note is None:
+        console.print("[red]Pass both --status and --note, or pass --clear.[/red]")
+        raise typer.Exit(code=2)
+    try:
+        entry = CoverageClassification(
+            company=company,
+            disposition=_require_enum(disposition, CoverageDisposition, "--status"),
+            note=note,
+            checked_on=datetime.now(UTC),
+            url=url,
+        )
+
+        async def record_entry() -> bool:
+            async with open_repository(_database(db)) as repository:
+                return await repository.record_coverage_classification(entry)
+
+        replaced = run_async(record_entry())
+    except (InvalidOptionError, ValueError) as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
+    console.print("Classification updated." if replaced else "Classification recorded.")
+
+
+@schedule_app.command("enable", help="Create this user's daily sync and weekly discovery schedule")
+def schedule_enable() -> None:
+    from rich.console import Console
+
+    from stage.cli.schedule import ScheduleError, enable
+
+    try:
+        report = enable()
+    except ScheduleError as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
+    _render_schedule(Console(), report)
+
+
+@schedule_app.command("status", help="Show whether this user's automatic schedule is enabled")
+def schedule_status() -> None:
+    from rich.console import Console
+
+    from stage.cli.schedule import ScheduleError, status
+
+    try:
+        report = status()
+    except ScheduleError as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
+    _render_schedule(Console(), report)
+
+
+@schedule_app.command("disable", help="Remove this user's automatic schedule")
+def schedule_disable() -> None:
+    from rich.console import Console
+
+    from stage.cli.schedule import ScheduleError, disable
+
+    try:
+        report = disable()
+    except ScheduleError as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
+    _render_schedule(Console(), report)
 
 
 @app.command(help="Remove postings outside the retention window")
@@ -821,6 +950,7 @@ def sources(
         render_board_health,
         render_rate_state,
         render_source_health,
+        render_workday_crawl_progress,
     )
     from stage.cli.serialize import emit, sources_to_json
     from stage.services.health import DoctorReport
@@ -888,6 +1018,8 @@ def sources(
         return
 
     render_source_health(console, report.sources, report.stale_after_days)
+    console.print()
+    render_workday_crawl_progress(console, report.workday_crawls)
     console.print()
     render_rate_state(console, states, now)
     if boards:
@@ -1147,7 +1279,7 @@ def discover(
     except (RegistryError, NoMatchingCompanyError) as exc:
         console.print(failure(exc))
         raise typer.Exit(code=2) from exc
-    raise typer.Exit(code=0 if resolved else 1)
+    raise typer.Exit(code=0 if resolved or unregistered else 1)
 
 
 async def _adopt_unregistered(
@@ -1227,9 +1359,14 @@ _HELP_GUIDE = (
     "  stage export --format csv --all\n"
     "\nHealth and maintenance:\n"
     "  stage doctor                       Check database and source health\n"
+    "  stage schedule enable              Enable daily syncs at 10:00 local time\n"
+    "  stage schedule status              Check automatic scheduling\n"
     "  stage sources                      Inspect source health, limits, and caches\n"
     "  stage canary                       Check live parser compatibility\n"
     "  stage coverage                     Find registry gaps\n"
+    "  stage coverage --unregistered      Review feed employers missing from the registry\n"
+    '  stage classify COMPANY --status feed-only --note "why"\n'
+    "                                     Record a reviewed feed employer\n"
     "  stage quarantine                   Review rejected postings\n"
     "  stage stats                        Review sync history and totals\n"
     "  stage rescreen                     Reclassify after a lexicon change\n"
@@ -1240,6 +1377,14 @@ _HELP_GUIDE = (
     "  stage help COMMAND                 Explain one command and its options\n"
     "  stage COMMAND --help               Show the same detailed help"
 )
+
+
+def _render_schedule(console: Any, report: Any) -> None:
+    console.print(f"Scheduler: {report.backend} (per user)")
+    for action, enabled in report.actions:
+        state = "enabled" if enabled else "disabled"
+        console.print(f"  {action.label}: {state} — {action.cadence} at {action.time} local time")
+    console.print(f"Logs: {report.log_dir}")
 
 
 @app.command("help", help="Show commands, workflows, or one command options")
@@ -1269,4 +1414,10 @@ def show_help(
 
 
 def main() -> None:
-    app()
+    from stage.storage.migrations import SchemaVersionError
+
+    try:
+        app()
+    except SchemaVersionError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from None

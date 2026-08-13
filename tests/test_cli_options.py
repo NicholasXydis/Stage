@@ -37,6 +37,7 @@ def test_sources_json_contains_every_report_section(tmp_path: Path) -> None:
     assert "sources" in payload
     assert "rate_states" in payload
     assert "boards" in payload
+    assert payload["workday_crawls"] == []
 
 
 def test_purge_dry_run_reports_no_removal(tmp_path: Path) -> None:

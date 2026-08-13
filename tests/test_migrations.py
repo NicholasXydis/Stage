@@ -1,4 +1,7 @@
+import os
 import sqlite3
+import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -85,3 +88,36 @@ def test_database_newer_than_this_build_is_refused(db_path: Path) -> None:
 def test_snapshot_path_is_derived_from_the_database_name(db_path: Path) -> None:
     when = datetime(2026, 7, 31, 12, 0, tzinfo=UTC)
     assert snapshot_path(db_path, when).name == f"{db_path.name}.bak-20260731T120000"
+
+
+@pytest.mark.parametrize(
+    ("table", "drop"),
+    (
+        ("coverage_classifications", "DROP TABLE coverage_classifications"),
+        ("workday_crawls", "DROP TABLE workday_crawls"),
+        ("workday_crawl_seen", "DROP TABLE workday_crawl_seen"),
+    ),
+)
+def test_the_console_reports_a_prebaseline_database_without_a_traceback(
+    db_path: Path, table: str, drop: str
+) -> None:
+    SqliteRepository.connect(db_path).close()
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(drop)
+        conn.commit()
+    finally:
+        conn.close()
+
+    code = "import sys\nfrom stage.cli.app import main\nsys.argv = ['stage', 'coverage']\nmain()\n"
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "STAGE_DB": str(db_path)},
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert table in result.stderr
+    assert "Traceback" not in result.stderr

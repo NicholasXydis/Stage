@@ -6,6 +6,7 @@ from stage.companies import board_label
 from stage.domain import (
     STALE_AFTER_DAYS,
     Company,
+    CoverageClassification,
     CoverageRow,
     CoverageState,
     SourceVisit,
@@ -20,6 +21,7 @@ from stage.storage import AsyncRepository
 class CoverageReport:
     rows: tuple[CoverageRow, ...]
     unregistered: tuple[UnregisteredCompany, ...]
+    classifications: tuple[CoverageClassification, ...]
     enabled: int
     disabled: int
     stale_after_days: int
@@ -95,7 +97,9 @@ def _registry_rows(
 
 
 def _unregistered(
-    companies: Sequence[Company], seen: dict[str, dict[str, int]]
+    companies: Sequence[Company],
+    seen: dict[str, dict[str, int]],
+    classifications: Sequence[CoverageClassification],
 ) -> tuple[UnregisteredCompany, ...]:
     index: dict[str, list[str]] = {}
     for company in companies:
@@ -109,6 +113,8 @@ def _unregistered(
             candidate for token in tokens - GENERIC_TOKENS for candidate in index.get(token, ())
         }
         if any(name_matches(candidate, name) for candidate in nearby):
+            continue
+        if any(name_matches(entry.company, name) for entry in classifications):
             continue
         unknown.append(
             UnregisteredCompany(
@@ -134,9 +140,11 @@ async def coverage(
     visits = {(visit.source, visit.board): visit for visit in await repository.all_visits()}
 
     seen = await repository.company_counts() if unregistered else {}
+    classifications = await repository.coverage_classifications()
     return CoverageReport(
         rows=_registry_rows(enabled, postings, visits, moment, stale_after_days),
-        unregistered=_unregistered(companies, seen) if unregistered else (),
+        unregistered=_unregistered(companies, seen, classifications) if unregistered else (),
+        classifications=tuple(classifications),
         enabled=len(enabled),
         disabled=len(companies) - len(enabled),
         stale_after_days=stale_after_days,

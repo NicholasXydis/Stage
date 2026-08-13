@@ -54,19 +54,23 @@ def applied_versions(conn: sqlite3.Connection) -> tuple[int, ...]:
 
 
 BASELINE_COLUMNS = frozenset({"company_fold"})
+BASELINE_TABLES = frozenset({"coverage_classifications", "workday_crawls", "workday_crawl_seen"})
 
 
 def _refuse_a_pre_baseline_database(conn: sqlite3.Connection, db_path: Path) -> None:
-    rows = conn.execute("PRAGMA table_info(jobs)").fetchall()
-    if not rows:
+    columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(jobs)").fetchall()}
+    tables = {
+        str(row[0])
+        for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
+    }
+    missing = sorted(BASELINE_COLUMNS - columns) + sorted(BASELINE_TABLES - tables)
+    if not missing:
         return
-    missing = sorted(BASELINE_COLUMNS - {str(row[1]) for row in rows})
-    if missing:
-        raise SchemaVersionError(
-            f"database at {db_path} records the current schema version but is missing "
-            f"{', '.join(missing)} — it was built before the baseline was reset. Delete it "
-            "and run stage sync; the corpus is reproducible in under a minute"
-        )
+    raise SchemaVersionError(
+        f"database at {db_path} records the current schema version but is missing "
+        f"{', '.join(missing)} — it predates this baseline. Back it up or delete it, then run "
+        "stage sync; the corpus is reproducible in under a minute"
+    )
 
 
 def snapshot_path(db_path: Path, when: datetime) -> Path:
@@ -120,6 +124,7 @@ def migrate(conn: sqlite3.Connection, db_path: Path) -> tuple[int, ...]:
 
 __all__ = [
     "BASELINE_COLUMNS",
+    "BASELINE_TABLES",
     "Migration",
     "SchemaVersionError",
     "applied_versions",

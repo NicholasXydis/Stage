@@ -1,5 +1,7 @@
 from stage.domain.company import Company
 from stage.domain.coverage import (
+    CoverageClassification,
+    CoverageDisposition,
     CoverageRow,
     CoverageState,
     UnregisteredCompany,
@@ -110,7 +112,7 @@ from stage.domain.text import (
 )
 from stage.domain.validator import HttpValidator
 from stage.domain.visits import CompanyVisit, DetailFetch, SourceVisit
-from stage.domain.workday import WorkdayFacet
+from stage.domain.workday import WorkdayCrawl, WorkdayCrawlStep, WorkdayFacet
 
 __all__ = [
     "DegreeRequirement",
@@ -183,6 +185,8 @@ __all__ = [
     "UrlResolved",
     "UrlUnrecognized",
     "WorkdayFacet",
+    "WorkdayCrawl",
+    "WorkdayCrawlStep",
     "block_duration",
     "blocked",
     "decay",
@@ -201,6 +205,8 @@ __all__ = [
     "board_of",
     "classify_visit",
     "CoverageRow",
+    "CoverageClassification",
+    "CoverageDisposition",
     "CoverageState",
     "UnregisteredCompany",
     "coverage_state",

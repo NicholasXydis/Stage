@@ -13,6 +13,7 @@ from stage.domain import (
     SyncRun,
     VisitState,
     VolumeSignal,
+    WorkdayCrawl,
     assess_volume,
     classify_visit,
 )
@@ -80,6 +81,7 @@ class DoctorReport:
     never_synced: bool
     stale_after_days: int = STALE_AFTER_DAYS
     due_for_recheck: tuple[str, ...] = ()
+    workday_crawls: tuple[WorkdayCrawl, ...] = ()
 
     @property
     def integrity_problems(self) -> tuple[IntegrityFinding, ...]:
@@ -154,6 +156,7 @@ async def doctor(
     stored = await repository.stored_counts()
     boards = await _board_health(repository, moment, stale_after_days)
     rate_state = await repository.load_rate_state()
+    workday_crawls = await repository.load_workday_crawls()
 
     latest: dict[str, SourceRunStats] = {}
     for run in runs:
@@ -194,6 +197,7 @@ async def doctor(
                 if company.due_for_recheck(moment.date())
             )
         ),
+        workday_crawls=tuple(crawl for _, crawl in sorted(workday_crawls.items())),
     )
 
 

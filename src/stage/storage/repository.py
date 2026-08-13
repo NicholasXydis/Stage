@@ -5,6 +5,7 @@ from typing import Protocol
 
 from stage.domain import (
     CompanyVisit,
+    CoverageClassification,
     DetailFetch,
     HttpValidator,
     IntegrityFinding,
@@ -17,6 +18,8 @@ from stage.domain import (
     SourceVisit,
     SyncRun,
     VolumePoint,
+    WorkdayCrawl,
+    WorkdayCrawlStep,
     WorkdayFacet,
 )
 
@@ -32,6 +35,7 @@ class SourceBatch:
     rate_state: tuple[RateState, ...] = field(default_factory=tuple)
     workday_facets: tuple[WorkdayFacet, ...] = field(default_factory=tuple)
     forgotten_facets: tuple[WorkdayFacet, ...] = field(default_factory=tuple)
+    workday_crawls: tuple[WorkdayCrawlStep, ...] = field(default_factory=tuple)
     detail_fetches: tuple[DetailFetch, ...] = field(default_factory=tuple)
     visits: tuple[CompanyVisit, ...] = field(default_factory=tuple)
     quarantined: tuple[QuarantinedJob, ...] = field(default_factory=tuple)
@@ -78,6 +82,9 @@ class Repository(Protocol):
     def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
         pass
 
+    def load_workday_crawls(self) -> Mapping[str, WorkdayCrawl]:
+        pass
+
     def list_quarantined(self, filters: QuarantineFilters) -> list[QuarantinedJob]:
         pass
 
@@ -121,6 +128,15 @@ class Repository(Protocol):
         pass
 
     def company_counts(self) -> dict[str, dict[str, int]]:
+        pass
+
+    def coverage_classifications(self) -> list[CoverageClassification]:
+        pass
+
+    def record_coverage_classification(self, entry: CoverageClassification) -> bool:
+        pass
+
+    def clear_coverage_classification(self, company: str) -> bool:
         pass
 
     def record_sync_run(self, run: SyncRun) -> None:

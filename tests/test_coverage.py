@@ -7,6 +7,8 @@ from stage.domain import (
     STALE_AFTER_DAYS,
     Company,
     CompanyVisit,
+    CoverageClassification,
+    CoverageDisposition,
     CoverageState,
     Job,
     LocationBucket,
@@ -151,6 +153,63 @@ async def test_unregistered_rows_carry_their_sources_and_volume(seeded: Path) ->
     assert (tesla.sources, tesla.postings) == (("simplify",), 1)
 
 
+@pytest.mark.asyncio
+async def test_a_classified_feed_employer_leaves_the_unregistered_queue(seeded: Path) -> None:
+    classification = CoverageClassification(
+        company="Tesla",
+        disposition=CoverageDisposition.FEED_ONLY,
+        note="public careers page has no stable unauthenticated jobs endpoint",
+        checked_on=NOW,
+    )
+    async with open_repository(seeded) as repository:
+        await repository.record_coverage_classification(classification)
+        report = await coverage(repository, COMPANIES, now=NOW, unregistered=True)
+
+    assert "Tesla" not in {row.company for row in report.unregistered}
+    assert report.classifications == (classification,)
+
+
+@pytest.mark.asyncio
+async def test_a_classification_is_normalized_replaced_and_validated(seeded: Path) -> None:
+    first = CoverageClassification(
+        company="  Tesla ",
+        disposition=CoverageDisposition.CUSTOM_JSON_CANDIDATE,
+        note="a stable public endpoint needs field mapping",
+        checked_on=NOW,
+        url="https://jobs.example.test/openings",
+    )
+    replacement = CoverageClassification(
+        company="tesla",
+        disposition=CoverageDisposition.ADAPTER_CANDIDATE,
+        note="several employers share this public API",
+        checked_on=NOW,
+    )
+    invalid = CoverageClassification(
+        company="Tesla",
+        disposition=CoverageDisposition.FEED_ONLY,
+        note="checked",
+        checked_on=NOW,
+        url="http://jobs.example.test",
+    )
+    async with open_repository(seeded) as repository:
+        assert not await repository.record_coverage_classification(first)
+        assert await repository.record_coverage_classification(replacement)
+        with pytest.raises(ValueError, match="public https"):
+            await repository.record_coverage_classification(invalid)
+        entries = await repository.coverage_classifications()
+        assert await repository.clear_coverage_classification("TESLA")
+        assert not await repository.clear_coverage_classification("Tesla")
+
+    assert entries == [
+        CoverageClassification(
+            company="tesla",
+            disposition=CoverageDisposition.ADAPTER_CANDIDATE,
+            note="several employers share this public API",
+            checked_on=NOW,
+        )
+    ]
+
+
 def test_coverage_is_reachable_from_the_command_line(seeded: Path, tmp_path: Path) -> None:
     from typer.testing import CliRunner
 
@@ -164,6 +223,7 @@ def test_coverage_is_reachable_from_the_command_line(seeded: Path, tmp_path: Pat
     )
     assert result.exit_code == 0, result.stdout
     assert '"state": "never-reached"' in result.stdout
+    assert '"classifications": []' in result.stdout
 
     rendered = runner.invoke(
         app,
@@ -172,6 +232,104 @@ def test_coverage_is_reachable_from_the_command_line(seeded: Path, tmp_path: Pat
     assert rendered.exit_code == 0, rendered.stdout
     assert "Tesla" in rendered.stdout
     assert "5 enabled row(s)" in rendered.stdout
+
+
+def test_classify_records_and_clears_a_feed_company(seeded: Path, tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from stage.cli.app import app
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "classify",
+            "Tesla",
+            "--status",
+            "feed-only",
+            "--note",
+            "no public jobs API",
+            "--db",
+            str(seeded),
+        ],
+    )
+    assert result.exit_code == 0, result.stdout
+
+    from stage.companies import write_registry
+
+    registry = write_registry(COMPANIES, tmp_path / "companies.yaml")
+    report = runner.invoke(
+        app,
+        [
+            "coverage",
+            "--unregistered",
+            "--db",
+            str(seeded),
+            "--registry",
+            str(registry),
+        ],
+    )
+    assert report.exit_code == 0, report.stdout
+    assert "Tesla" not in report.stdout
+
+    reviewed = runner.invoke(app, ["coverage", "--classified", "--db", str(seeded)])
+    assert reviewed.exit_code == 0, reviewed.stdout
+    assert "Tesla" in reviewed.stdout
+    assert "feed-only" in reviewed.stdout
+
+    cleared = runner.invoke(app, ["classify", "Tesla", "--clear", "--db", str(seeded)])
+    assert cleared.exit_code == 0, cleared.stdout
+
+    restored = runner.invoke(
+        app,
+        [
+            "coverage",
+            "--unregistered",
+            "--db",
+            str(seeded),
+            "--registry",
+            str(registry),
+        ],
+    )
+    assert restored.exit_code == 0, restored.stdout
+    assert "Tesla" in restored.stdout
+
+
+def test_classify_requires_status_and_evidence_except_when_clearing(seeded: Path) -> None:
+    from typer.testing import CliRunner
+
+    from stage.cli.app import app
+
+    runner = CliRunner()
+    missing_note = runner.invoke(
+        app, ["classify", "Tesla", "--status", "feed-only", "--db", str(seeded)]
+    )
+    missing_status = runner.invoke(
+        app, ["classify", "Tesla", "--note", "researched", "--db", str(seeded)]
+    )
+
+    assert missing_note.exit_code == 2
+    assert missing_status.exit_code == 2
+    assert "Pass both --status and --note" in missing_note.stdout
+
+
+def test_unregistered_discovery_without_adoptions_is_a_success(
+    seeded: Path, tmp_path: Path
+) -> None:
+    from typer.testing import CliRunner
+
+    from stage.cli.app import app
+    from stage.companies import write_registry
+
+    runner = CliRunner()
+    registry = write_registry(COMPANIES, tmp_path / "companies.yaml")
+    result = runner.invoke(
+        app,
+        ["discover", "--unregistered", "--db", str(seeded), "--registry", str(registry)],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert "0 adoptable" in result.stdout
 
 
 @pytest.mark.asyncio

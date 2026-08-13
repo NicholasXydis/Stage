@@ -14,6 +14,8 @@ from stage.domain import (
     VisitState,
     VolumePoint,
     VolumeVerdict,
+    WorkdayCrawl,
+    WorkdayCrawlStep,
     assess_volume,
     classify_visit,
 )
@@ -117,6 +119,20 @@ async def test_doctor_reports_a_clean_database_as_clean(db_path: Path) -> None:
     assert report.integrity_problems == ()
     assert report.is_healthy
     assert report.schema_version > 0
+
+
+async def test_doctor_reports_an_incomplete_workday_crawl(db_path: Path) -> None:
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="workday",
+                run_started_at=NOW,
+                workday_crawls=(WorkdayCrawlStep(board="acme/careers", next_offset=40, total=117),),
+            )
+        )
+        report = await doctor(repository, now=NOW)
+
+    assert report.workday_crawls == (WorkdayCrawl(board="acme/careers", next_offset=40, total=117),)
 
 
 async def test_doctor_names_the_source_whose_volume_collapsed(db_path: Path) -> None:

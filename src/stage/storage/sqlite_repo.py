@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -10,6 +11,8 @@ from stage.domain import (
     CLOSED_RETENTION_DAYS,
     OPEN_RETENTION_DAYS,
     UNKNOWN_TERM,
+    CoverageClassification,
+    CoverageDisposition,
     DegreeRequirement,
     HttpValidator,
     IntegrityFinding,
@@ -30,8 +33,10 @@ from stage.domain import (
     SyncOutcome,
     SyncRun,
     VolumePoint,
+    WorkdayCrawl,
     WorkdayFacet,
     board_of,
+    public_https_url,
     source_rank,
 )
 from stage.paths import restrict_permissions
@@ -201,6 +206,38 @@ def _require_datetime(value: str | None, column: str) -> datetime:
     if parsed is None:
         raise ValueError(f"column {column!r} is unexpectedly null")
     return parsed
+
+
+def _classification_from_row(row: sqlite3.Row) -> CoverageClassification:
+    return CoverageClassification(
+        company=str(row["company"]),
+        disposition=CoverageDisposition(str(row["disposition"])),
+        note=str(row["note"]),
+        checked_on=_require_datetime(row["checked_on"], "checked_on"),
+        url=str(row["url"]) if row["url"] is not None else None,
+    )
+
+
+def _classification_params(
+    entry: CoverageClassification,
+) -> tuple[str, str, str, str, str, str | None]:
+    company = entry.company.strip()
+    company_fold = fold_company(company)
+    if not company_fold:
+        raise ValueError("classification company must contain letters or numbers")
+    note = entry.note.strip()
+    if not note:
+        raise ValueError("classification note must be a non-empty string")
+    if not isinstance(entry.disposition, CoverageDisposition):
+        raise ValueError("classification disposition is invalid")
+    url = entry.url
+    if url is not None:
+        url = public_https_url(url)
+        if url is None:
+            raise ValueError(
+                "classification url must be a public https address without credentials"
+            )
+    return company, company_fold, entry.disposition.value, note, _to_text(entry.checked_on), url
 
 
 def _row_to_job(row: sqlite3.Row) -> Job:
@@ -584,6 +621,39 @@ class SqliteRepository:
                         f"DELETE FROM quarantine WHERE id IN ({placeholders})", tuple(chunk)
                     )
 
+            for crawl in batch.workday_crawls:
+                if crawl.reset or crawl.discard:
+                    conn.execute("DELETE FROM workday_crawls WHERE board = ?", (crawl.board,))
+                if crawl.discard:
+                    continue
+                conn.execute(
+                    "INSERT INTO workday_crawls "
+                    "(board, next_offset, total, facet_parameter, facet_ids) "
+                    "VALUES (?, ?, ?, ?, ?) ON CONFLICT(board) DO UPDATE SET "
+                    "next_offset = excluded.next_offset, total = excluded.total, "
+                    "facet_parameter = excluded.facet_parameter, facet_ids = excluded.facet_ids",
+                    (
+                        crawl.board,
+                        crawl.next_offset,
+                        crawl.total,
+                        crawl.facet_parameter,
+                        json.dumps(crawl.facet_ids),
+                    ),
+                )
+                if crawl.seen_ids:
+                    conn.executemany(
+                        "INSERT OR IGNORE INTO workday_crawl_seen (board, id) VALUES (?, ?)",
+                        [(crawl.board, job_id) for job_id in crawl.seen_ids],
+                    )
+                if crawl.complete:
+                    conn.execute(
+                        "UPDATE jobs SET last_seen = ? WHERE source = 'workday' "
+                        "AND status = ? AND id IN ("
+                        "SELECT id FROM workday_crawl_seen WHERE board = ?)",
+                        (stamp, JobStatus.OPEN.value, crawl.board),
+                    )
+                    conn.execute("DELETE FROM workday_crawls WHERE board = ?", (crawl.board,))
+
             touched = 0
             for board in batch.unchanged_boards:
                 cursor = conn.execute(
@@ -818,6 +888,21 @@ class SqliteRepository:
             for row in rows
         }
 
+    def load_workday_crawls(self) -> Mapping[str, WorkdayCrawl]:
+        rows = self._conn.execute(
+            "SELECT board, next_offset, total, facet_parameter, facet_ids FROM workday_crawls"
+        ).fetchall()
+        return {
+            str(row["board"]): WorkdayCrawl(
+                board=str(row["board"]),
+                next_offset=int(row["next_offset"]),
+                total=int(row["total"]) if row["total"] is not None else None,
+                facet_parameter=str(row["facet_parameter"]),
+                facet_ids=tuple(json.loads(str(row["facet_ids"]))),
+            )
+            for row in rows
+        }
+
     def _quarantine_where(self, filters: QuarantineFilters) -> tuple[str, list[Any]]:
         clauses: list[str] = []
         params: list[Any] = []
@@ -1027,6 +1112,40 @@ class SqliteRepository:
         for row in rows:
             counts.setdefault(str(row["company"]), {})[str(row["source"])] = int(row["total"])
         return counts
+
+    def coverage_classifications(self) -> list[CoverageClassification]:
+        rows = self._conn.execute(
+            "SELECT company, disposition, note, checked_on, url FROM coverage_classifications "
+            "ORDER BY company COLLATE NOCASE"
+        ).fetchall()
+        return [_classification_from_row(row) for row in rows]
+
+    def record_coverage_classification(self, entry: CoverageClassification) -> bool:
+        company, company_fold, disposition, note, checked_on, url = _classification_params(entry)
+        with self._transaction() as conn:
+            existing = conn.execute(
+                "SELECT 1 FROM coverage_classifications WHERE company_fold = ?", (company_fold,)
+            ).fetchone()
+            conn.execute(
+                "INSERT INTO coverage_classifications "
+                "(company, company_fold, disposition, note, checked_on, url) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(company_fold) DO UPDATE SET company = excluded.company, "
+                "disposition = excluded.disposition, note = excluded.note, "
+                "checked_on = excluded.checked_on, url = excluded.url",
+                (company, company_fold, disposition, note, checked_on, url),
+            )
+        return existing is not None
+
+    def clear_coverage_classification(self, company: str) -> bool:
+        company_fold = fold_company(company)
+        if not company_fold:
+            raise ValueError("classification company must contain letters or numbers")
+        with self._transaction() as conn:
+            cursor = conn.execute(
+                "DELETE FROM coverage_classifications WHERE company_fold = ?", (company_fold,)
+            )
+        return cursor.rowcount > 0
 
     def composition(self, column: str) -> dict[str, int]:
         if column not in _COMPOSITION_COLUMNS:

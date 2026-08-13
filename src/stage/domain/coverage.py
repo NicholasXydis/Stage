@@ -14,6 +14,14 @@ class CoverageState(StrEnum):
     UNROUTABLE = "unroutable"
 
 
+class CoverageDisposition(StrEnum):
+    FEED_ONLY = "feed-only"
+    UNAVAILABLE = "unavailable"
+    CUSTOM_JSON_CANDIDATE = "custom-json-candidate"
+    ADAPTER_CANDIDATE = "adapter-candidate"
+    DEFERRED = "deferred"
+
+
 @dataclass(frozen=True, slots=True)
 class CoverageRow:
     company: str
@@ -35,6 +43,15 @@ class UnregisteredCompany:
     company: str
     sources: tuple[str, ...]
     postings: int
+
+
+@dataclass(frozen=True, slots=True)
+class CoverageClassification:
+    company: str
+    disposition: CoverageDisposition
+    note: str
+    checked_on: datetime
+    url: str | None = None
 
 
 def coverage_state(
@@ -59,6 +76,8 @@ def coverage_state(
 
 __all__ = [
     "CoverageRow",
+    "CoverageClassification",
+    "CoverageDisposition",
     "CoverageState",
     "UnregisteredCompany",
     "coverage_state",
