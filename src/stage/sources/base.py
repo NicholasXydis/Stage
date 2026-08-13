@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Protocol, runtime_checkable
 
 from pydantic import BaseModel, BeforeValidator, StringConstraints, ValidationError
 
-from stage.domain import Company, Job, Platform, board_key
+from stage.domain import Company, Job, Platform, WorkdayCrawlStep, board_key
 from stage.http import HttpClient
 from stage.paths import capture_dir
 from stage.sources.platforms import SlugRejectedError, safe_slug
@@ -72,6 +72,7 @@ class FetchResult:
     detail_fetches: tuple[object, ...] = field(default_factory=tuple)
     facets: tuple[object, ...] = field(default_factory=tuple)
     forgotten_facets: tuple[object, ...] = field(default_factory=tuple)
+    workday_crawl: WorkdayCrawlStep | None = None
 
 
 @runtime_checkable

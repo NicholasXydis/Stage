@@ -7,16 +7,15 @@
 - name: BMO
   platform: workday
   slug: bmo
-  priority: high
+  priority: normal
   source_of_record: discover
   last_verified: 2026-08-11
   recheck_after: &id001 2026-10-01
   workday_tenant: bmo
   workday_site: External
   workday_dc: wd3
-  notes: '2026-08-11: wave 1 of the Montreal-first Workday rollout. Enabled to cache
-    a facet - first contact costs ~25 requests, a cached facet ~3, so the run is a
-    durable investment even at August yield. Re-measure yield in October'
+  notes: '2026-08-12: enabled for the bounded resumable Workday crawl. It receives at most
+    five listing requests per daily sync and retains progress; re-measure yield in October'
 - name: Bombardier
   platform: successfactors
   slug: bombardier
@@ -28,7 +27,7 @@
 - name: CAE
   platform: workday
   slug: cae
-  priority: high
+  priority: normal
   source_of_record: openjobs
   last_verified: &id003 2026-08-03
   workday_tenant: cae
@@ -37,16 +36,15 @@
 - name: CIBC (campus)
   platform: workday
   slug: cibc
-  priority: high
+  priority: normal
   source_of_record: discover
   last_verified: 2026-08-11
   recheck_after: *id001
   workday_tenant: cibc
   workday_site: campus
   workday_dc: wd3
-  notes: '2026-08-11: wave 1 of the Montreal-first Workday rollout. Enabled to cache
-    a facet - first contact costs ~25 requests, a cached facet ~3, so the run is a
-    durable investment even at August yield. Re-measure yield in October'
+  notes: '2026-08-12: enabled for the bounded resumable Workday crawl. It receives at most
+    five listing requests per daily sync and retains progress; re-measure yield in October'
 - name: Coveo
   platform: greenhouse
   slug: coveoen
@@ -173,7 +171,7 @@
 - name: Pratt & Whitney Canada
   platform: workday
   slug: globalhr
-  priority: high
+  priority: normal
   source_of_record: discover
   last_verified: 2026-08-08
   workday_tenant: globalhr
@@ -183,16 +181,15 @@
 - name: RBC (early talent)
   platform: workday
   slug: rbc
-  priority: high
+  priority: normal
   source_of_record: discover
   last_verified: 2026-08-11
   recheck_after: *id001
   workday_tenant: rbc
   workday_site: RBCEARLYTALENT1
   workday_dc: wd3
-  notes: '2026-08-11: wave 1 of the Montreal-first Workday rollout. Enabled to cache
-    a facet - first contact costs ~25 requests, a cached facet ~3, so the run is a
-    durable investment even at August yield. Re-measure yield in October'
+  notes: '2026-08-12: enabled for the bounded resumable Workday crawl. It receives at most
+    five listing requests per daily sync and retains progress; re-measure yield in October'
 - name: Scotiabank
   platform: successfactors
   slug: scotiabank
@@ -212,16 +209,15 @@
 - name: TD Bank
   platform: workday
   slug: td
-  priority: high
+  priority: normal
   source_of_record: discover
   last_verified: 2026-08-11
   recheck_after: *id001
   workday_tenant: td
   workday_site: TD_Bank_Careers
   workday_dc: wd3
-  notes: '2026-08-11: wave 1 of the Montreal-first Workday rollout. Enabled to cache
-    a facet - first contact costs ~25 requests, a cached facet ~3, so the run is a
-    durable investment even at August yield. Re-measure yield in October'
+  notes: '2026-08-12: enabled for the bounded resumable Workday crawl. It receives at most
+    five listing requests per daily sync and retains progress; re-measure yield in October'
 - name: TELUS Digital
   platform: greenhouse
   slug: telusdigitalbr
@@ -261,7 +257,7 @@
 - name: Warner Bros Games
   platform: workday
   slug: warnerbros
-  priority: high
+  priority: normal
   source_of_record: openjobs
   last_verified: *id003
   workday_tenant: warnerbros

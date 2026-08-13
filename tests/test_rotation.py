@@ -628,16 +628,15 @@ async def test_each_run_gets_fresh_budgets_so_a_second_sync_is_not_pre_spent(
 
 
 def test_high_priority_members_come_out_of_the_slice_never_on_top_of_it() -> None:
-    from stage.sources.workday import WorkdayAdapter
-
     members = _members(82, always={"tenant-00", "tenant-81"})
+    budget = 40
     cursor = ""
     covered: set[str] = set()
     runs = 0
     while runs < 6:
         runs += 1
-        result = rotate(members, cursor=cursor, budget=WorkdayAdapter.rotation_slice)
-        assert len(result.selected) == WorkdayAdapter.rotation_slice, (
+        result = rotate(members, cursor=cursor, budget=budget)
+        assert len(result.selected) == budget, (
             "a run must cost exactly the slice, never the slice plus the always-on rows"
         )
         assert {"tenant-00", "tenant-81"} <= set(result.selected)

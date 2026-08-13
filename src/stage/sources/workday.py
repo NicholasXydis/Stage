@@ -11,6 +11,8 @@ from stage.domain import (
     Job,
     Platform,
     SourceSignals,
+    WorkdayCrawl,
+    WorkdayCrawlStep,
     WorkdayFacet,
     board_key,
     job_id,
@@ -31,6 +33,8 @@ from stage.sources.platforms import SlugRejectedError, workday_target
 PAGE_SIZE = 20
 MAX_PAGES = 25
 RESULT_CAP = 10_000
+CRAWL_PAGE_CAP = 5
+RETRY_RESERVE = 20
 
 
 class WorkdayPosting(BaseModel):
@@ -136,9 +140,21 @@ class WorkdayAdapter:
 
     detail_budget: ClassVar[int] = 60
 
-    rotation_slice: ClassVar[int] = 40
+    rotation_slice: ClassVar[int] = 100
 
     max_requests_per_company: ClassVar[int] = MAX_PAGES
+
+    crawl_page_cap: ClassVar[int] = CRAWL_PAGE_CAP
+    retry_reserve: ClassVar[int] = RETRY_RESERVE
+
+    @classmethod
+    def crawl_budget(cls, companies: int, ceiling: int) -> tuple[int, int]:
+        if companies < 1:
+            raise ValueError("a Workday crawl needs at least one board")
+        available = max(1, ceiling - cls.retry_reserve)
+        pages = min(cls.crawl_page_cap, max(1, available // companies))
+        details = min(cls.detail_budget, max(0, available - companies * pages))
+        return pages, details
 
     def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:
         allowed: set[str] = set()
@@ -172,12 +188,21 @@ class WorkdayAdapter:
         now: datetime,
         facets: Mapping[tuple[str, str], WorkdayFacet] | None = None,
         details: Sequence[str] = (),
+        crawl: WorkdayCrawl | None = None,
+        page_budget: int = MAX_PAGES,
     ) -> FetchResult:
+        if page_budget < 1:
+            raise ValueError("Workday page budget must be positive")
         url = self.plan(company)[0]
         tenant = company.workday_tenant or ""
         site = company.workday_site or ""
         facet = _pinned_facet(company) or (facets or {}).get((tenant, site))
         applied = {facet.parameter: list(facet.facet_ids)} if facet is not None else {}
+        crawl_reset = crawl is not None and (
+            crawl.facet_parameter != (facet.parameter if facet is not None else "")
+            or crawl.facet_ids != (facet.facet_ids if facet is not None else ())
+        )
+        persisted = None if crawl_reset else crawl
         degraded = ""
 
         discovered: WorkdayFacet | None = None
@@ -190,10 +215,15 @@ class WorkdayAdapter:
         postings: list[WorkdayPosting] = []
         reached_end = False
         offset = 0
+        if persisted is not None:
+            offset = persisted.next_offset
+            if page_budget > 1:
+                offset = max(0, offset - PAGE_SIZE)
         pages = 0
-        total: int | None = None
+        total = persisted.total if persisted is not None else None
+        total_changed = False
 
-        while pages < MAX_PAGES:
+        while pages < page_budget:
             body: dict[str, Any] = {
                 "appliedFacets": applied,
                 "limit": PAGE_SIZE,
@@ -233,6 +263,7 @@ class WorkdayAdapter:
                     postings.clear()
                     offset = 0
                     total = None
+                    crawl_reset = True
                     continue
 
             if facet is None and not applied:
@@ -250,11 +281,16 @@ class WorkdayAdapter:
                 postings.clear()
                 offset = 0
                 total = None
+                crawl_reset = True
                 continue
 
             postings.extend(page.jobPostings)
-            if total is None and page.total > 0:
-                total = page.total
+            if page.total > 0:
+                if total is None:
+                    total = page.total
+                elif total != page.total:
+                    total_changed = True
+                    total = page.total
 
             returned = len(page.jobPostings) + dropped
             if returned < PAGE_SIZE:
@@ -265,9 +301,23 @@ class WorkdayAdapter:
                 reached_end = True
                 break
 
-        capped = not reached_end and bool(postings)
+        capped = not reached_end
         if capped:
-            degraded = f"stopped at the {MAX_PAGES}-page cap; the board may be truncated"
+            if page_budget < MAX_PAGES:
+                degraded = (
+                    f"resumable crawl paused after {pages} page(s); resumes from offset {offset} "
+                    "on the next sync and closes nothing yet"
+                )
+            else:
+                degraded = f"stopped at the {MAX_PAGES}-page cap; the board may be truncated"
+        if total_changed:
+            degraded = (
+                "reported total changed before the board ended; progress was retained and "
+                f"resumes from offset {offset} on the next sync"
+                if not reached_end
+                else "reported total changed during the completed crawl; jobs were refreshed, "
+                "but nothing closed and the next sync starts a fresh pass"
+            )
         if malformed:
             degraded = malformed_note(malformed) + (f" ({degraded})" if degraded else "")
 
@@ -278,13 +328,30 @@ class WorkdayAdapter:
         if wanted:
             paired, fetched = await _attach_descriptions(company, client, paired, wanted)
 
+        crawl_step = None
+        crawling = page_budget < MAX_PAGES or crawl is not None
+        safe = not (malformed or fell_back or stale_facet or drifted or total_changed)
+        if crawling:
+            crawl_step = WorkdayCrawlStep(
+                board=self.board_key(company),
+                next_offset=0 if reached_end else offset,
+                total=total,
+                facet_parameter=next(iter(applied), ""),
+                facet_ids=tuple(next(iter(applied.values()), ())),
+                seen_ids=tuple(dict.fromkeys(job.id for _, job in paired)),
+                complete=reached_end and safe,
+                reset=crawl_reset,
+                discard=bool(malformed) or (reached_end and not safe),
+            )
+
         return FetchResult(
             jobs=tuple(job for _, job in paired),
             degraded=degraded,
-            authoritative=not (capped or malformed or fell_back or stale_facet or drifted),
+            authoritative=reached_end and safe,
             facets=(discovered,) if discovered is not None else (),
             forgotten_facets=(forgotten,) if forgotten is not None else (),
             detail_fetches=tuple(fetched),
+            workday_crawl=crawl_step,
         )
 
 

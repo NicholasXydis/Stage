@@ -1,12 +1,20 @@
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import cast
 
 import httpx
 import pytest
 import respx
 
-from stage.domain import Company, DetailFetch, Platform, WorkdayFacet
+from stage.domain import (
+    Company,
+    DetailFetch,
+    Platform,
+    WorkdayCrawl,
+    WorkdayCrawlStep,
+    WorkdayFacet,
+)
 from stage.http import HttpClient, RatePosture, profile
 from stage.sources.base import PayloadValidationError
 from stage.sources.workday import (
@@ -91,11 +99,12 @@ def test_one_malformed_row_does_not_take_the_platform_offline() -> None:
     assert adapter.hosts_for(rows) == frozenset({"cae.wd3.myworkdayjobs.com"})
 
 
-def test_the_rotation_slice_matches_the_stride_it_was_derived_from() -> None:
+def test_the_crawl_budget_reserves_space_for_retries() -> None:
     posture = profile("workday")
-    stride = posture.min_interval_s / posture.concurrency
-    assert stride == pytest.approx(0.75)
-    assert WorkdayAdapter.rotation_slice == pytest.approx(30.0 / stride, abs=1)
+    pages, details = WorkdayAdapter.crawl_budget(14, posture.max_requests_per_run)
+    assert (pages, details) == (5, 30)
+    assert 14 * pages + details + WorkdayAdapter.retry_reserve <= posture.max_requests_per_run
+    assert WorkdayAdapter.crawl_budget(100, posture.max_requests_per_run) == (1, 0)
 
 
 def test_a_facet_is_resolved_from_the_responses_own_facet_list() -> None:
@@ -291,6 +300,143 @@ async def test_a_malformed_total_terminates_rather_than_spinning() -> None:
 
 
 @respx.mock
+async def test_a_changed_total_retains_resumable_crawl_progress() -> None:
+    company = _company(workday_facet="timeType:f-intern")
+    crawl = WorkdayCrawl(
+        board=WorkdayAdapter().board_key(company),
+        next_offset=20,
+        total=40,
+        facet_parameter="timeType",
+        facet_ids=("f-intern",),
+    )
+    offsets: list[int] = []
+
+    def page(request: httpx.Request) -> httpx.Response:
+        offsets.append(int(json.loads(request.content)["offset"]))
+        return httpx.Response(
+            200,
+            json={
+                "total": 41,
+                "jobPostings": [_posting(index) for index in range(PAGE_SIZE)],
+                "facets": _facets(),
+            },
+        )
+
+    respx.post(CXS).mock(side_effect=page)
+
+    async with _client(UNPACED) as client:
+        result = await WorkdayAdapter().fetch(company, client, NOW, crawl=crawl, page_budget=1)
+
+    step = cast(WorkdayCrawlStep, result.workday_crawl)
+    assert not step.discard
+    assert not step.complete
+    assert (step.next_offset, step.total) == (40, 41)
+    assert offsets == [20], (
+        "one-page allocations advance instead of consuming their only page on overlap"
+    )
+    assert not result.authoritative
+    assert "progress was retained" in result.degraded
+
+
+@respx.mock
+async def test_a_changed_total_at_the_end_defers_closures_and_starts_a_fresh_pass() -> None:
+    company = _company(workday_facet="timeType:f-intern")
+    crawl = WorkdayCrawl(
+        board=WorkdayAdapter().board_key(company),
+        next_offset=20,
+        total=40,
+        facet_parameter="timeType",
+        facet_ids=("f-intern",),
+    )
+    respx.post(CXS).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "total": 1,
+                "jobPostings": [_posting(1)],
+                "facets": _facets(),
+            },
+        )
+    )
+
+    async with _client(UNPACED) as client:
+        result = await WorkdayAdapter().fetch(company, client, NOW, crawl=crawl, page_budget=1)
+
+    step = cast(WorkdayCrawlStep, result.workday_crawl)
+    assert step.discard
+    assert not step.complete
+    assert not result.authoritative
+    assert "next sync starts a fresh pass" in result.degraded
+
+
+@respx.mock
+async def test_resumable_crawl_reconciles_only_after_the_terminal_page(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import Job, JobStatus, job_id
+    from stage.services import sync as sync_module
+    from stage.storage import SourceBatch, open_repository
+
+    company = _company(workday_facet="timeType:f-intern")
+    offsets: list[int] = []
+
+    def page(request: httpx.Request) -> httpx.Response:
+        offset = int(json.loads(request.content)["offset"])
+        offsets.append(offset)
+        count = 5 if offset == 100 else PAGE_SIZE
+        return httpx.Response(
+            200,
+            json={
+                "total": 105,
+                "jobPostings": [_posting(offset + index) for index in range(count)],
+                "facets": _facets(),
+            },
+        )
+
+    respx.post(CXS).mock(side_effect=page)
+    monkeypatch.setattr(sync_module, "resolve", lambda *_: UNPACED)
+    old = Job(
+        id=job_id("workday", "cae-career", "R99999"),
+        source="workday",
+        company=company.name,
+        title_raw="Software Engineer Intern",
+        title_normalized="software engineer intern",
+        apply_url_raw="https://example.test/old",
+        description="",
+        first_seen=NOW - timedelta(days=1),
+        last_seen=NOW - timedelta(days=1),
+    )
+    later = NOW + timedelta(days=1)
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="workday", run_started_at=old.last_seen, jobs=(old,))
+        )
+        async for _ in sync_module.sync(
+            repository, [company], sources=("workday",), now_fn=lambda: NOW
+        ):
+            pass
+
+        first_crawl = (await repository.load_workday_crawls())[WorkdayAdapter().board_key(company)]
+        assert first_crawl.next_offset == 100
+        before_completion = await repository.get_job(old.id)
+        assert before_completion is not None and before_completion.status is JobStatus.OPEN
+
+        async for _ in sync_module.sync(
+            repository, [company], sources=("workday",), now_fn=lambda: later
+        ):
+            pass
+
+        first = await repository.get_job(job_id("workday", "cae-career", "R00000"))
+        closed = await repository.get_job(old.id)
+        assert first is not None and first.last_seen == later
+        assert closed is not None and closed.status is JobStatus.CLOSED
+        assert await repository.load_workday_crawls() == {}
+
+    assert offsets == [0, 20, 40, 60, 80, 80, 100]
+
+
+@respx.mock
 async def test_no_facet_falls_back_to_search_text_and_says_so() -> None:
     captured: list[dict[str, object]] = []
 
@@ -449,15 +595,22 @@ def test_the_dry_run_bound_is_reported_per_bucket_against_that_buckets_ceiling()
     from stage.services.sync import _bucket_plans
 
     plans = _bucket_plans(
-        [("workday", "workday", 40, WorkdayAdapter.max_requests_per_company)],
+        [
+            (
+                "workday",
+                "workday",
+                14,
+                100,
+            )
+        ],
         {"workday": profile("workday")},
     )
     assert len(plans) == 1
     plan = plans[0]
-    assert plan.planned == 40
-    assert plan.worst_case == 40 * MAX_PAGES
+    assert plan.planned == 14
+    assert plan.worst_case == 100
     assert plan.ceiling == 120
-    assert plan.exceeds_ceiling, "Workday legitimately exceeds it, and showing both is the point"
+    assert not plan.exceeds_ceiling
 
 
 def test_sources_sharing_a_bucket_have_their_bounds_summed_not_reported_separately() -> None:
@@ -467,7 +620,7 @@ def test_sources_sharing_a_bucket_have_their_bounds_summed_not_reported_separate
     plans = _bucket_plans(
         [
             ("raw.githubusercontent.com", "simplify", 1, 1),
-            ("raw.githubusercontent.com", "vanshb03", 2, 1),
+            ("raw.githubusercontent.com", "vanshb03", 2, 2),
         ],
         {"raw.githubusercontent.com": profile("feeds")},
     )
@@ -482,7 +635,9 @@ def test_a_single_request_adapter_has_a_bound_equal_to_its_planned_count() -> No
     from stage.http import profile
     from stage.services.sync import _bucket_plans
 
-    plans = _bucket_plans([("api.lever.co", "lever", 35, 1)], {"api.lever.co": profile("standard")})
+    plans = _bucket_plans(
+        [("api.lever.co", "lever", 35, 35)], {"api.lever.co": profile("standard")}
+    )
     assert plans[0].planned == plans[0].worst_case == 35
 
 

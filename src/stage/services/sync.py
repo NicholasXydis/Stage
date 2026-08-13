@@ -45,6 +45,8 @@ from stage.domain import (
     SyncRun,
     SyncStarted,
     UnroutableCompanies,
+    WorkdayCrawl,
+    WorkdayCrawlStep,
     WorkdayFacet,
     rotate,
 )
@@ -63,6 +65,7 @@ from stage.sources import (
     get_adapters,
     get_feeds,
 )
+from stage.sources.workday import WorkdayAdapter
 from stage.storage import AsyncRepository, SourceBatch, SourceBatchResult
 
 
@@ -206,10 +209,23 @@ async def _fetch_company(
     now: datetime,
     facets: Mapping[tuple[str, str], WorkdayFacet],
     details: Sequence[str],
+    crawls: Mapping[str, WorkdayCrawl],
+    page_budget: int,
 ) -> tuple[Company, FetchResult | None, str, float]:
     started = time.perf_counter()
     try:
-        result = await adapter.fetch(company, client, now, facets, details)
+        if isinstance(adapter, WorkdayAdapter):
+            result = await adapter.fetch(
+                company,
+                client,
+                now,
+                facets,
+                details,
+                crawl=crawls.get(_safe_board_key(adapter, company)),
+                page_budget=page_budget,
+            )
+        else:
+            result = await adapter.fetch(company, client, now, facets, details)
     except Exception as exc:
         elapsed = (time.perf_counter() - started) * 1000
         return company, None, f"{type(exc).__name__}: {exc}", elapsed
@@ -224,7 +240,12 @@ def _advance_cursor(
     settled: Sequence[RateState], rotation: Rotation, bucket: str, now: datetime
 ) -> tuple[RateState, ...]:
     if not rotation.rotating:
-        return tuple(settled)
+        return tuple(
+            state.with_cursor("", now)
+            if state.bucket == bucket and state.rotation_cursor
+            else state
+            for state in settled
+        )
     updated = [
         state.with_cursor(rotation.cursor, now) if state.bucket == bucket else state
         for state in settled
@@ -240,9 +261,9 @@ def _bucket_plans(
     planned: dict[str, int] = {}
     worst: dict[str, int] = {}
     sources: dict[str, list[str]] = {}
-    for bucket, source, companies, per_company in bounds:
+    for bucket, source, companies, worst_case in bounds:
         planned[bucket] = planned.get(bucket, 0) + companies
-        worst[bucket] = worst.get(bucket, 0) + companies * per_company
+        worst[bucket] = worst.get(bucket, 0) + worst_case
         sources.setdefault(bucket, []).append(source)
     return tuple(
         BucketPlan(
@@ -397,9 +418,14 @@ async def _run_company_source(
 
     rotation_bucket = buckets[0]
     stored = rate_state.get(rotation_bucket)
+    workday_adapter = adapter if isinstance(adapter, WorkdayAdapter) else None
+    is_workday = workday_adapter is not None
     rotation = rotate(
         [
-            RotationMember(key=company.registry_key, always=company.priority is Priority.HIGH)
+            RotationMember(
+                key=company.registry_key,
+                always=company.priority is Priority.HIGH and not is_workday,
+            )
             for company in companies
         ],
         cursor=stored.rotation_cursor if stored is not None else "",
@@ -422,13 +448,23 @@ async def _run_company_source(
 
     fetch_clock = time.perf_counter()
     seed = dict(await repository.load_validators(source_name))
-    facets = await repository.load_workday_facets()
-    detail_queue = await repository.detail_queue(source_name, adapter.detail_budget)
+    posture = resolve(adapter.rate_profile, [company.rate_profile for company in ordered])
+    if workday_adapter is not None:
+        page_budget, detail_budget = workday_adapter.crawl_budget(
+            len(ordered), posture.max_requests_per_run
+        )
+        facets = await repository.load_workday_facets()
+        crawls = await repository.load_workday_crawls()
+    else:
+        page_budget = adapter.max_requests_per_company
+        detail_budget = adapter.detail_budget
+        facets = {}
+        crawls = {}
+    detail_queue = await repository.detail_queue(source_name, detail_budget)
 
     if dry_run:
-        plan_bounds.append(
-            (rotation_bucket, source_name, len(ordered), adapter.max_requests_per_company)
-        )
+        worst_case = len(ordered) * page_budget + (detail_budget if is_workday else 0)
+        plan_bounds.append((rotation_bucket, source_name, len(ordered), worst_case))
         async for event in _plan_company_source(adapter, ordered, seed):
             yield event
         yield SourceFinished(
@@ -442,7 +478,6 @@ async def _run_company_source(
         )
         return
 
-    posture = resolve(adapter.rate_profile, [company.rate_profile for company in ordered])
     cache = ValidatorCache(seed)
     collected: list[Job] = []
     closable: list[str] = []
@@ -451,8 +486,10 @@ async def _run_company_source(
     visits: list[CompanyVisit] = []
     resolved_facets: list[WorkdayFacet] = []
     forgotten_facets: list[WorkdayFacet] = []
+    workday_crawls: list[WorkdayCrawlStep] = []
     detail_outcomes: list[DetailFetch] = []
     errors = 0
+    successful_results = False
 
     async with HttpClient(
         allowed_hosts=adapter.hosts_for(ordered),
@@ -466,7 +503,16 @@ async def _run_company_source(
         postures=postures,
     ) as client:
         pending = [
-            _fetch_company(adapter, company, client, run_started_at, facets, detail_queue)
+            _fetch_company(
+                adapter,
+                company,
+                client,
+                run_started_at,
+                facets,
+                detail_queue,
+                crawls,
+                page_budget,
+            )
             for company in ordered
         ]
         for company in ordered:
@@ -490,6 +536,7 @@ async def _run_company_source(
                 unchanged.append(board)
                 yield CompanyUnchanged(source=source_name, company=company.name, elapsed_ms=elapsed)
             else:
+                successful_results = True
                 visits.append(CompanyVisit(board=board, succeeded=True, label=company.name))
                 collected.extend(result.jobs)
                 resolved_facets.extend(
@@ -501,6 +548,8 @@ async def _run_company_source(
                 detail_outcomes.extend(
                     entry for entry in result.detail_fetches if isinstance(entry, DetailFetch)
                 )
+                if isinstance(result.workday_crawl, WorkdayCrawlStep):
+                    workday_crawls.append(result.workday_crawl)
                 if result.authoritative:
                     closable.append(board)
                 if result.degraded:
@@ -536,6 +585,7 @@ async def _run_company_source(
             rate_state=settled,
             workday_facets=tuple(resolved_facets),
             forgotten_facets=tuple(forgotten_facets),
+            workday_crawls=tuple(workday_crawls),
             detail_fetches=tuple(detail_outcomes),
             visits=tuple(visits),
             quarantined=rejected,
@@ -543,7 +593,7 @@ async def _run_company_source(
         )
     )
     write_ms = (time.perf_counter() - write_clock) * 1000
-    if closable or unchanged:
+    if successful_results or unchanged:
         succeeded_any.append(True)
     if errors:
         failed.append(source_name)
@@ -607,7 +657,7 @@ async def _run_feed_source(
     if dry_run:
         planned_urls = feed.plan(run_started_at)
         for bucket in _bucket_keys(feed.hosts, feed.bucket_key):
-            plan_bounds.append((bucket, source_name, len(planned_urls), 1))
+            plan_bounds.append((bucket, source_name, len(planned_urls), len(planned_urls)))
         for url in planned_urls:
             cached = seed.get(url)
             has_validator = cached is not None and cached.usable
