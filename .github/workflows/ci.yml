@@ -41,24 +41,23 @@ jobs:
           uv sync --frozen
       - name: Ruff
         id: ruff
-        continue-on-error: true
         run: uv run ruff check src/ tests/
       - name: Ruff format
         id: ruff_format
-        continue-on-error: true
+        if: always()
         run: uv run ruff format --check src/ tests/
       - name: Mypy strict
         id: mypy
-        continue-on-error: true
+        if: always()
         run: uv run mypy
       - name: Tests in parallel with branch coverage
         id: pytest
-        continue-on-error: true
+        if: always()
         run: |
           uv run pytest -q -n auto --cov --cov-branch --cov-report=
       - name: Wall-clock tests, serial, and the coverage floor
         id: pytest_serial
-        continue-on-error: true
+        if: always()
         run: |
           uv run pytest -q -m serial --cov --cov-append --cov-branch \
             --cov-report=xml:coverage.xml --cov-report=term-missing:skip-covered \
@@ -72,7 +71,7 @@ jobs:
           if-no-files-found: warn
       - name: Audit locked dependencies
         id: pip_audit
-        continue-on-error: true
+        if: always()
         run: |
           uv export --frozen --format requirements.txt \
             --no-emit-project --all-groups --no-annotate --no-header \
@@ -80,7 +79,7 @@ jobs:
           uvx pip-audit@2.10.1 --disable-pip -r "$RUNNER_TEMP/requirements.txt"
       - name: Lint workflows
         id: actionlint
-        continue-on-error: true
+        if: always()
         run: |
           curl -fsSLo /tmp/actionlint.tar.gz https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tar.gz" | sha256sum --check
@@ -106,19 +105,6 @@ jobs:
       - name: Trim the cache before it is saved
         if: always()
         run: uv cache prune --ci
-      - name: Fail if any check failed
-        if: always()
-        run: |
-          for outcome in \
-            "${{ steps.ruff.outcome }}" \
-            "${{ steps.ruff_format.outcome }}" \
-            "${{ steps.mypy.outcome }}" \
-            "${{ steps.pytest.outcome }}" \
-            "${{ steps.pytest_serial.outcome }}" \
-            "${{ steps.pip_audit.outcome }}" \
-            "${{ steps.actionlint.outcome }}"; do
-            if [ "$outcome" != "success" ]; then exit 1; fi
-          done
 
   supported-pythons:
     strategy:
