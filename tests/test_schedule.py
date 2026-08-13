@@ -1,4 +1,5 @@
 import plistlib
+import re
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
@@ -7,6 +8,8 @@ import pytest
 from typer.testing import CliRunner
 
 import stage.cli.schedule as schedule
+
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def _success(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -169,8 +172,10 @@ def test_schedule_help_is_layered_and_classification_explains_required_evidence(
     runner = CliRunner()
     schedule_help = runner.invoke(app, ["schedule", "--help"])
     classify_help = runner.invoke(app, ["classify", "--help"])
+    schedule_output = ANSI_ESCAPE.sub("", schedule_help.stdout)
+    classify_output = ANSI_ESCAPE.sub("", classify_help.stdout)
 
     assert schedule_help.exit_code == 0
-    assert {"enable", "status", "disable"} <= set(schedule_help.stdout.split())
+    assert {"enable", "status", "disable"} <= set(schedule_output.split())
     assert classify_help.exit_code == 0
-    assert "Required unless --clear" in classify_help.stdout
+    assert "Required unless --clear" in classify_output
