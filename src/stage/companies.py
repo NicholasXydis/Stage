@@ -243,7 +243,7 @@ def _registry_lock(target: Path) -> Iterator[None]:
     with lock:
         try:
             if os.name == "nt":
-                import msvcrt
+                msvcrt = cast(Any, importlib.import_module("msvcrt"))
 
                 lock.seek(0, os.SEEK_END)
                 if lock.tell() == 0:
