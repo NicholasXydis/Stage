@@ -19,13 +19,12 @@ def test_windows_database_permissions_remove_inheritance_and_grant_only_the_user
         calls.append(args)
         return CompletedProcess(args, 0, "", "")
 
-    monkeypatch.setattr("stage.paths.os.name", "nt")
     monkeypatch.setenv("SYSTEMROOT", r"C:\Windows")
     monkeypatch.setenv("USERDOMAIN", "stage-machine")
     monkeypatch.setattr("stage.paths.getpass.getuser", lambda: "stage-user")
     monkeypatch.setattr("stage.paths.subprocess.run", run)
 
-    paths.restrict_permissions(target)
+    paths._restrict_windows_permissions(target)
 
     assert calls == [
         (
@@ -49,10 +48,9 @@ def test_windows_permission_failure_stops_database_initialization(
     ) -> CompletedProcess[str]:
         return CompletedProcess(args, 1, "", "access denied")
 
-    monkeypatch.setattr("stage.paths.os.name", "nt")
     monkeypatch.setenv("SYSTEMROOT", r"C:\Windows")
     monkeypatch.setenv("USERDOMAIN", "stage-machine")
     monkeypatch.setattr("stage.paths.subprocess.run", run)
 
     with pytest.raises(PermissionError, match="access denied"):
-        paths.restrict_permissions(target)
+        paths._restrict_windows_permissions(target)

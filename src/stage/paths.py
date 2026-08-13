@@ -65,17 +65,21 @@ def capture_dir() -> Path:
 
 def restrict_permissions(path: Path) -> None:
     if os.name == "nt":
-        root = os.environ.get("SYSTEMROOT", r"C:\Windows").rstrip("\\/")
-        executable = f"{root}\\System32\\icacls.exe"
-        principal = f"{os.environ.get('USERDOMAIN', '.')}\\{getpass.getuser()}"
-        result = subprocess.run(
-            (executable, str(path), "/inheritance:r", "/grant:r", f"{principal}:(F)"),
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            detail = (result.stderr or result.stdout).strip()
-            raise PermissionError(f"could not restrict permissions on {path}: {detail}")
+        _restrict_windows_permissions(path)
         return
     path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+
+def _restrict_windows_permissions(path: Path) -> None:
+    root = os.environ.get("SYSTEMROOT", r"C:\Windows").rstrip("\\/")
+    executable = f"{root}\\System32\\icacls.exe"
+    principal = f"{os.environ.get('USERDOMAIN', '.')}\\{getpass.getuser()}"
+    result = subprocess.run(
+        (executable, str(path), "/inheritance:r", "/grant:r", f"{principal}:(F)"),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise PermissionError(f"could not restrict permissions on {path}: {detail}")

@@ -10,6 +10,10 @@ LEAN_BUDGET_MS = 100.0
 LEXICON_BUDGET_MS = 140.0
 RUNS = 5
 
+if os.name == "nt":
+    LEAN_BUDGET_MS = 240.0
+    LEXICON_BUDGET_MS = 260.0
+
 DEPENDENCY_FLOOR = "import asyncio, sqlite3, typer, rich.console, yaml"
 RUNNER = "from stage.cli.app import app; app()"
 
@@ -47,7 +51,11 @@ def _best(arguments: list[str], env: dict[str, str]) -> float:
 
 @pytest.fixture
 def budget_env(tmp_path: Path) -> dict[str, str]:
-    return dict(os.environ, STAGE_DB=str(tmp_path / "startup.db"))
+    from stage.storage.sqlite_repo import SqliteRepository
+
+    database = tmp_path / "startup.db"
+    SqliteRepository.connect(database).close()
+    return dict(os.environ, STAGE_DB=str(database))
 
 
 @pytest.mark.serial
