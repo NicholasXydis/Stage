@@ -14,7 +14,12 @@ from stage.domain.text import dump
 
 
 def emit(payload: str) -> None:
-    sys.stdout.write(f"{payload}\n")
+    output = f"{payload}\n"
+    buffer = getattr(sys.stdout, "buffer", None)
+    if buffer is None:
+        sys.stdout.write(output)
+        return
+    buffer.write(output.encode("utf-8"))
 
 
 def fail(message: str) -> None:
