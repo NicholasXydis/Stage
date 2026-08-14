@@ -56,19 +56,28 @@ def test_the_eligibility_lexicon_loads_folded_and_covers_both_languages() -> Non
         for phrase in phrases:
             assert phrase == fold(phrase), f"{phrase!r} is not folded at load"
 
-    for group in (lexicon.work_auth_excluded, lexicon.non_cs, lexicon.non_cs_rescue):
+    for group in (
+        lexicon.work_auth_excluded,
+        lexicon.non_cs,
+        lexicon.excluded_titles,
+        lexicon.technical_title_exceptions,
+    ):
         assert group
         for phrase in group:
             assert phrase == fold(phrase), f"{phrase!r} is not folded at load"
 
     assert fold("doctorat requis") in lexicon.degree_required["phd"]
     assert any("infirmiere" in phrase for phrase in lexicon.non_cs)
-    assert fold("developpeur") in lexicon.non_cs_rescue
+    assert fold("marketing") in lexicon.excluded_titles
+    assert (
+        fold("vehicle software engineer diagnostic user interface")
+        in lexicon.technical_title_exceptions
+    )
 
 
-def test_no_phrase_is_both_non_cs_and_a_rescue() -> None:
+def test_no_phrase_is_both_non_cs_and_an_explicit_exclusion() -> None:
     from stage.lexicon import eligibility_lexicon
 
     lexicon = eligibility_lexicon()
-    overlap = lexicon.non_cs & lexicon.non_cs_rescue
-    assert not overlap, f"{sorted(overlap)} would both reject and rescue the same title"
+    overlap = lexicon.non_cs & lexicon.excluded_titles
+    assert not overlap, f"{sorted(overlap)} appears in both exclusion groups"

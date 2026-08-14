@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
+from stage.classify.role import classify_role
 from stage.classify.scope import Rejection
-from stage.domain import DegreeRequirement, Job, RejectionReason
+from stage.domain import DegreeRequirement, Job, RejectionReason, RoleCategory
 from stage.lexicon import eligibility_lexicon, fold
 
 _ORDER = ("phd", "masters", "bachelors")
@@ -82,10 +83,20 @@ def screen_degree_scope(job: Job) -> Rejection | None:
 def screen_is_cs_role(job: Job) -> Rejection | None:
     lexicon = eligibility_lexicon()
     title = fold(job.title_raw)
+    title_verdict = classify_role(job.title_raw, source_category=job.signals.category)
 
-    if _hit(title, lexicon.non_cs_rescue):
-        return None
+    phrase = _hit(title, lexicon.excluded_titles)
+    exception = _hit(title, lexicon.technical_title_exceptions)
+    if phrase and not (exception and title_verdict.matched):
+        return Rejection(reason=RejectionReason.NOT_A_CS_ROLE, matched_phrase=phrase)
+
     phrase = _hit(title, lexicon.non_cs)
-    if not phrase:
+    if phrase:
+        return Rejection(reason=RejectionReason.NOT_A_CS_ROLE, matched_phrase=phrase)
+
+    if title_verdict.matched or job.role is not RoleCategory.UNKNOWN:
         return None
-    return Rejection(reason=RejectionReason.NOT_A_CS_ROLE, matched_phrase=phrase)
+    return Rejection(
+        reason=RejectionReason.UNKNOWN_CS_ROLE,
+        matched_phrase="no matching CS role or source category",
+    )

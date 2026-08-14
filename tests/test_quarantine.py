@@ -38,7 +38,7 @@ def run_time() -> datetime:
     return datetime(2026, 8, 2, 12, 0, tzinfo=UTC)
 
 
-def test_out_of_scope_locations_are_rejected_not_dropped(run_time: datetime) -> None:
+def test_international_locations_are_kept(run_time: datetime) -> None:
     kept, rejected = normalize_batch(
         [
             _job("1", "Bengaluru, Karnataka, India", run_time),
@@ -47,18 +47,17 @@ def test_out_of_scope_locations_are_rejected_not_dropped(run_time: datetime) -> 
             _job("4", "London, England, United Kingdom", run_time),
         ]
     )
-    assert [job.id for job in kept] == ["2", "3"]
-    assert [entry.id for entry in rejected] == ["1", "4"]
-    assert all(entry.reason is RejectionReason.OUT_OF_SCOPE_LOCATION for entry in rejected)
+    assert [job.id for job in kept] == ["1", "2", "3", "4"]
+    assert rejected == ()
 
 
-def test_the_rejection_carries_the_phrase_it_matched(run_time: datetime) -> None:
-    _, rejected = normalize_batch([_job("1", "Bengaluru, Karnataka, India", run_time)])
-    assert "india" in rejected[0].matched_phrase
-    assert rejected[0].location_raw == "Bengaluru, Karnataka, India"
+def test_unknown_location_rejection_explains_the_missing_evidence(run_time: datetime) -> None:
+    _, rejected = normalize_batch([_job("1", "Hybrid", run_time)])
+    assert rejected[0].matched_phrase == "no recognizable location"
+    assert rejected[0].location_raw == "Hybrid"
 
 
-def test_unknown_is_never_rejected(run_time: datetime) -> None:
+def test_unknown_locations_are_quarantined(run_time: datetime) -> None:
     kept, rejected = normalize_batch(
         [
             _job("1", "Hybrid", run_time),
@@ -66,18 +65,18 @@ def test_unknown_is_never_rejected(run_time: datetime) -> None:
             _job("3", "", run_time),
         ]
     )
-    assert len(kept) == 3
-    assert rejected == ()
-    assert all(job.location is LocationBucket.UNKNOWN for job in kept)
+    assert kept == ()
+    assert len(rejected) == 3
+    assert all(entry.reason is RejectionReason.UNKNOWN_LOCATION for entry in rejected)
 
 
 @pytest.mark.parametrize("bucket", list(LocationBucket))
-def test_screen_location_rejects_other_and_nothing_else(
+def test_screen_location_rejects_unknown_and_nothing_else(
     bucket: LocationBucket, run_time: datetime
 ) -> None:
     job = replace(_job("x", "", run_time), location=bucket)
     rejected = screen_location(job) is not None
-    assert rejected is (bucket is LocationBucket.OTHER), bucket
+    assert rejected is (bucket is LocationBucket.UNKNOWN), bucket
 
 
 async def test_quarantined_postings_leave_the_jobs_table(db_path: Path, run_time: datetime) -> None:
@@ -85,7 +84,7 @@ async def test_quarantined_postings_leave_the_jobs_table(db_path: Path, run_time
         kept, rejected = normalize_batch(
             [
                 _job("keep", "Toronto, ON, Canada", run_time),
-                _job("reject", "Bengaluru, India", run_time),
+                _job("reject", "Hybrid", run_time),
             ]
         )
         result = await repository.apply_source_batch(
@@ -105,14 +104,14 @@ async def test_quarantined_postings_leave_the_jobs_table(db_path: Path, run_time
 
         entries = await repository.list_quarantined(QuarantineFilters())
         assert [entry.id for entry in entries] == ["reject"]
-        assert await repository.quarantine_reason_counts() == {"out-of-scope-location": 1}
+        assert await repository.quarantine_reason_counts() == {"unknown-location": 1}
 
 
 async def test_a_posting_already_stored_is_moved_when_a_rule_starts_rejecting_it(
     db_path: Path, run_time: datetime
 ) -> None:
     async with open_repository(db_path) as repository:
-        stored = _job("row", "Bengaluru, India", run_time)
+        stored = _job("row", "Hybrid", run_time)
         await repository.apply_source_batch(
             SourceBatch(source="greenhouse", run_started_at=run_time, jobs=(stored,))
         )
@@ -137,7 +136,7 @@ async def test_a_released_posting_keeps_its_original_first_seen(
 ) -> None:
     later = run_time + timedelta(days=9)
     async with open_repository(db_path) as repository:
-        _, rejected = normalize_batch([_job("row", "Bengaluru, India", run_time)])
+        _, rejected = normalize_batch([_job("row", "Hybrid", run_time)])
         await repository.apply_source_batch(
             SourceBatch(source="greenhouse", run_started_at=run_time, quarantined=rejected)
         )
@@ -160,8 +159,8 @@ async def test_quarantine_filters(db_path: Path, run_time: datetime) -> None:
     async with open_repository(db_path) as repository:
         _, rejected = normalize_batch(
             [
-                _job("a", "Bengaluru, India", run_time),
-                _job("b", "Tokyo, Japan", run_time),
+                _job("a", "Hybrid", run_time),
+                _job("b", "Multiple Locations", run_time),
             ]
         )
         await repository.apply_source_batch(
@@ -171,7 +170,7 @@ async def test_quarantine_filters(db_path: Path, run_time: datetime) -> None:
         assert await repository.count_quarantined(QuarantineFilters(source="lever")) == 0
         assert (
             await repository.count_quarantined(
-                QuarantineFilters(reason=RejectionReason.OUT_OF_SCOPE_LOCATION)
+                QuarantineFilters(reason=RejectionReason.UNKNOWN_LOCATION)
             )
             == 2
         )
@@ -185,11 +184,11 @@ async def test_quarantine_filters(db_path: Path, run_time: datetime) -> None:
         (LocationBucket.CANADA, LocationBucket.CANADA, True),
         (LocationBucket.CANADA, LocationBucket.MONTREAL, False),
         (LocationBucket.UNKNOWN, LocationBucket.UNKNOWN, False),
-        (LocationBucket.OTHER, LocationBucket.OTHER, False),
-        (LocationBucket.OTHER, LocationBucket.UNKNOWN, False),
+        (LocationBucket.INTERNATIONAL, LocationBucket.INTERNATIONAL, False),
+        (LocationBucket.INTERNATIONAL, LocationBucket.UNKNOWN, False),
     ],
 )
-def test_other_and_unknown_never_satisfy_the_cross_language_guardrail(
+def test_international_and_unknown_never_satisfy_the_cross_language_guardrail(
     left: LocationBucket, right: LocationBucket, agrees: bool
 ) -> None:
     assert location_agrees(left, right) is agrees

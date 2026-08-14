@@ -10,7 +10,6 @@ from stage.domain import (
     JobFilters,
     QuarantineFilters,
     RejectionReason,
-    RoleCategory,
 )
 from stage.services.sync import normalize_batch
 from stage.storage import SourceBatch, open_repository
@@ -106,32 +105,35 @@ def test_a_clearly_non_cs_role_is_quarantined_with_its_phrase() -> None:
         "Data Science Intern",
         "Stagiaire en genie logiciel",
         "Security Analyst Intern",
-        "Summer Intern",
-        "Intern",
     ],
 )
-def test_a_cs_or_unclear_title_is_never_rejected(title: str) -> None:
-    assert screen_is_cs_role(_job(title)) is None, (
-        "a title with no discipline signal must be kept, never rejected"
-    )
+def test_a_known_cs_title_is_never_rejected(title: str) -> None:
+    assert screen_is_cs_role(_job(title)) is None
 
 
-def test_a_technical_word_rescues_an_otherwise_non_cs_title() -> None:
-    assert screen_is_cs_role(_job("Cashier Systems Software Intern")) is None, (
-        "the rescue list runs first, so exclusion fires only on unambiguous evidence"
-    )
+def test_an_ambiguous_title_with_known_cs_signals_is_never_rejected() -> None:
+    assert screen_is_cs_role(_job("Software Engineer Intern - AI Infrastructure")) is None
 
 
-def test_an_unknown_role_is_never_rejected_for_being_unknown() -> None:
+def test_a_vehicle_software_engineer_is_not_rejected_as_a_ui_role() -> None:
+    title = "Vehicle Software Intern - Vehicle Software Engineer-Diagnostic User Interface"
+    assert screen_is_cs_role(_job(title)) is None
+
+
+def test_an_unknown_non_cs_title_is_quarantined_for_review() -> None:
+    rejection = screen_is_cs_role(_job("Cashier Systems Software Intern"))
+    assert rejection is not None
+    assert rejection.reason is RejectionReason.NOT_A_CS_ROLE
+
+
+def test_an_unknown_role_is_quarantined_for_review() -> None:
     job = _job("Summer Intern")
     kept, rejected = normalize_batch([job])
-    assert kept, "an unresolved role is a gap in understanding, not grounds for rejection"
-    assert kept[0].role is RoleCategory.UNKNOWN
-    assert not rejected
+    assert kept == ()
 
 
 async def test_eligibility_round_trips_through_storage_and_filters(db_path: Path) -> None:
-    doctorate = _job("Research Intern", "Master's or PhD required.")
+    doctorate = _job("Software Engineer Research Intern", "Master's or PhD required.")
     open_to_all = _job("Software Engineer Intern", "Build things.")
     kept, _ = normalize_batch([doctorate, open_to_all])
     assert len(kept) == 2
@@ -331,3 +333,38 @@ def test_a_distant_unguarded_requirement_is_not_masked_by_an_earlier_list() -> N
         "the scan must reach past the guarded list to the bare requirement"
     )
     assert rejection.matched_phrase == "phd candidates only"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Information Technology Intern",
+        "Technical Project Manager Intern",
+        "Product Manager Intern",
+        "UX Designer Intern",
+        "Help Desk Intern",
+        "Marketing Intern",
+        "Sales Engineer Intern",
+        "Stagiaire TI",
+        "Chef de produit stagiaire",
+        "Concepteur UX stagiaire",
+        "Ingénieure commerciale stagiaire",
+    ],
+)
+def test_explicitly_excluded_title_families_are_quarantined(title: str) -> None:
+    rejection = screen_is_cs_role(_job(title))
+    assert rejection is not None
+    assert rejection.reason is RejectionReason.NOT_A_CS_ROLE
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Postdoctoral Research Intern",
+        "Stagiaire postdoctorante en informatique",
+    ],
+)
+def test_postdoctoral_titles_are_outside_degree_scope(title: str) -> None:
+    rejection = screen_degree_scope(_job(title))
+    assert rejection is not None
+    assert rejection.reason is RejectionReason.OUT_OF_SCOPE_DEGREE

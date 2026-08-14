@@ -21,8 +21,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / "bilingual_titles.json"
         "Data Science Intern - Summer 2027",
         "Stagiaire en Développement Logiciel",
         "Stagiaire, génie logiciel",
+        "Stage de développement logiciel",
         "Alternance Développeur Full Stack",
-        "Apprentice Software Engineer",
         "Working Student — Backend",
     ],
 )
@@ -40,6 +40,8 @@ def test_internships_are_recognized(title: str) -> None:
         ("Early Stage Investor Relations", "same"),
         ("Senior Engineer, Seed Stage Startup", "same"),
         ("Main Stage Production Assistant", "same"),
+        ("Launch Engineer, Stage 0 Propellant Generation (Starship)", "not French"),
+        ("Stage Software Engineer", "not French"),
     ],
 )
 def test_lookalike_titles_are_not_internships(title: str, why: str) -> None:
@@ -61,8 +63,19 @@ def test_apprentissage_is_machine_learning_not_an_apprenticeship(title: str) -> 
     assert verdict.matched == ()
 
 
-def test_a_genuine_french_apprenticeship_is_still_recognized() -> None:
-    assert screen_internship("Apprenti développeur logiciel").is_internship
+def test_apprenticeships_and_traineeships_are_not_internship_evidence() -> None:
+    for title in (
+        "Apprentice Software Engineer",
+        "Software Developer Trainee",
+        "Software Developer Traineeship",
+        "Apprenti développeur logiciel",
+        "Apprentie développeuse logicielle",
+        "Contrat d'apprentissage — Développeur logiciel",
+    ):
+        assert not screen_internship(title).is_internship
+
+
+def test_french_alternance_is_still_recognized() -> None:
     assert screen_internship("Alternance Développeur Full Stack").is_internship
 
 
@@ -185,11 +198,6 @@ def test_french_role_categorization(title: str, role: RoleCategory) -> None:
             "Stagiaire en génie informatique",
             RoleCategory.GENERAL_CS,
         ),
-        (
-            "Information Technology Intern",
-            "Stagiaire en technologies de l'information",
-            RoleCategory.GENERAL_CS,
-        ),
     ],
 )
 def test_both_languages_resolve_a_role_to_the_same_category(
@@ -234,10 +242,11 @@ def test_specificity_beats_breadth() -> None:
     assert classify_role("Data Science Intern").role is RoleCategory.DATA
 
 
-def test_an_unresolvable_role_is_unknown_and_the_posting_is_kept() -> None:
+def test_an_unresolvable_role_is_unknown_and_quarantined() -> None:
     verdict = classify_role("Summer Analyst")
     assert verdict.role is RoleCategory.UNKNOWN
-    assert screen_internship("Summer Analyst").is_internship, "still carried"
+    assert screen_internship("Summer Analyst").is_internship
+    assert not _screened("Summer Analyst", "Internship")
 
 
 def test_a_structured_category_is_used_only_where_it_maps_cleanly() -> None:
@@ -279,9 +288,9 @@ def test_a_retail_trainee_role_is_not_an_internship() -> None:
         assert not screen_internship(title).is_internship, title
 
 
-def test_a_technical_trainee_role_still_counts() -> None:
+def test_a_technical_trainee_role_is_not_an_internship() -> None:
     for title in ("Engineering Trainee", "Graduate Trainee Engineer", "Software Trainee"):
-        assert screen_internship(title).is_internship, title
+        assert not screen_internship(title).is_internship, title
 
 
 @pytest.mark.parametrize(
@@ -318,7 +327,7 @@ def test_an_ordinary_job_without_internship_evidence_is_rejected(title: str) -> 
 
 @pytest.mark.parametrize(
     "employment_type",
-    ["Internship", "Intern", "Co-op", "co op", "Student", "Apprentice", "Working Student"],
+    ["Internship", "Intern", "Co-op", "co op", "Student", "Working Student"],
 )
 def test_a_trusted_english_employment_type_is_positive_evidence(employment_type: str) -> None:
     verdict = screen_internship("Software Engineer", employment_type)
@@ -326,9 +335,7 @@ def test_a_trusted_english_employment_type_is_positive_evidence(employment_type:
     assert verdict.matched, "structured evidence must name itself"
 
 
-@pytest.mark.parametrize(
-    "employment_type", ["Stage", "Stagiaire", "Alternance", "Apprenti", "Étudiant"]
-)
+@pytest.mark.parametrize("employment_type", ["Stage", "Stagiaire", "Alternance", "Étudiant"])
 def test_a_trusted_french_employment_type_behaves_identically(employment_type: str) -> None:
     assert screen_internship("Développeur logiciel", employment_type).is_internship
 
@@ -431,3 +438,231 @@ def test_real_ats_employment_types_are_read_as_the_vendor_writes_them(
     assert screen_internship("Backend Engineer", employment_type).is_internship is expected, (
         f"{employment_type!r} is live vendor text, not an enum member"
     )
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Kernel Engineer Intern", RoleCategory.SWE),
+        ("Game Networking Engineer Intern", RoleCategory.SWE),
+        ("Shader Developer Intern", RoleCategory.SWE),
+        ("XR Software Engineer Intern", RoleCategory.SWE),
+        ("Endpoint Detection and Response Intern", RoleCategory.SECURITY),
+        ("IAM Engineer Intern", RoleCategory.SECURITY),
+        ("Quantitative Software Engineer Intern", RoleCategory.QUANT),
+        ("Payments Software Engineer Intern", RoleCategory.QUANT),
+        ("Data Ingestion Engineer Intern", RoleCategory.DATA),
+        ("MLOps Engineer Intern", RoleCategory.INFRA),
+        ("Cloud Software Engineer Intern", RoleCategory.INFRA),
+        ("GPU Software Engineer Intern", RoleCategory.HARDWARE),
+        ("FPGA Developer Intern", RoleCategory.HARDWARE),
+        ("Embedded Security Intern", RoleCategory.SECURITY),
+        ("Stagiaire ingénieur système", RoleCategory.INFRA),
+        ("Stagiaire ingénieure plateforme de données", RoleCategory.DATA),
+        ("Stagiaire en cybersécurité automobile", RoleCategory.SECURITY),
+        ("Stagiaire ingénieure logicielle quantitative", RoleCategory.QUANT),
+        ("Stagiaire développeur de jeux", RoleCategory.SWE),
+        ("Stagiaire en rendu temps réel", RoleCategory.SWE),
+        ("Stagiaire développeur AR", RoleCategory.SWE),
+        ("Stagiaire ingénieure robotique", RoleCategory.EMBEDDED),
+        ("Stagiaire en bioinformatique", RoleCategory.DATA),
+        ("Stagiaire en calcul parallèle", RoleCategory.INFRA),
+        ("Stagiaire en sécurité des conteneurs", RoleCategory.SECURITY),
+        ("Stagiaire développeuse de contrats intelligents", RoleCategory.QUANT),
+        ("SDE Intern", RoleCategory.SWE),
+        ("Distributed Storage Intern", RoleCategory.SWE),
+        ("Operations Research Intern", RoleCategory.QUANT),
+        ("Scientific Computing Intern", RoleCategory.INFRA),
+        ("Vulnerability Research Intern", RoleCategory.SECURITY),
+        ("Quant Research Intern", RoleCategory.QUANT),
+        ("Simulation Engineer Intern", RoleCategory.SWE),
+        ("Augmented Reality Intern", RoleCategory.SWE),
+        ("Edge Computing Intern", RoleCategory.INFRA),
+        ("Stagiaire en recherche sur les vulnérabilités", RoleCategory.SECURITY),
+        ("Stagiaire en calcul scientifique", RoleCategory.INFRA),
+        ("Stagiaire en réalité augmentée", RoleCategory.SWE),
+    ],
+)
+def test_expanded_english_and_french_role_families(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title
+
+
+@pytest.mark.parametrize(
+    "employment_type",
+    ["Apprenticeship", "Trainee", "Contrat d'apprentissage"],
+)
+def test_apprenticeship_and_trainee_employment_types_are_not_internships(
+    employment_type: str,
+) -> None:
+    assert not screen_internship("Software Developer", employment_type).is_internship
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["Contrat de professionnalisation — Développeuse logiciel"],
+)
+def test_french_work_study_contracts_are_recognized(title: str) -> None:
+    assert screen_internship(title).is_internship
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Jeune diplômée — Software Engineer Intern",
+        "Diplômée récente — Développeuse logiciel",
+    ],
+)
+def test_french_new_grad_titles_are_not_internships(title: str) -> None:
+    assert not screen_internship(title).is_internship
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Accessibility Engineer Intern", RoleCategory.SWE),
+        ("Search Software Engineer Intern", RoleCategory.SWE),
+        ("Cloud Security Architect Intern", RoleCategory.SECURITY),
+        ("AI Security Engineer Intern", RoleCategory.SECURITY),
+        ("Data Streaming Engineer Intern", RoleCategory.DATA),
+        ("Data Mesh Engineer Intern", RoleCategory.DATA),
+        ("LLM Platform Engineer Intern", RoleCategory.ML_AI),
+        ("AI Evaluation Engineer Intern", RoleCategory.ML_AI),
+        ("Trading Infrastructure Engineer Intern", RoleCategory.QUANT),
+        ("Order Gateway Engineer Intern", RoleCategory.QUANT),
+        ("Software Defined Networking Engineer Intern", RoleCategory.INFRA),
+        ("Kubernetes Platform Engineer Intern", RoleCategory.INFRA),
+        ("Design for Test Engineer Intern", RoleCategory.HARDWARE),
+        ("EDA Engineer Intern", RoleCategory.HARDWARE),
+        ("Robotics Perception Engineer Intern", RoleCategory.EMBEDDED),
+        ("Firmware Validation Engineer Intern", RoleCategory.EMBEDDED),
+        ("Stagiaire ingénieur accessibilité", RoleCategory.SWE),
+        ("Stagiaire architecte sécurité infonuagique", RoleCategory.SECURITY),
+        ("Stagiaire ingénieure diffusion de données", RoleCategory.DATA),
+        ("Stagiaire ingénieure plateforme IA", RoleCategory.ML_AI),
+        ("Stagiaire ingénieure infrastructure de négociation", RoleCategory.QUANT),
+        ("Stagiaire ingénieure réseaux définis par logiciel", RoleCategory.INFRA),
+        ("Stagiaire ingénieure conception logique", RoleCategory.HARDWARE),
+        ("Stagiaire ingénieure perception robotique", RoleCategory.EMBEDDED),
+    ],
+)
+def test_additional_cs_adjacent_specialties_resolve(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Software Engineer Co-op",
+        "Stage coopératif — Développeur logiciel",
+        "Programme coopératif — Ingénieure logiciel",
+    ],
+)
+def test_english_and_french_coop_titles_are_internships(title: str) -> None:
+    assert screen_internship(title).is_internship
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("DFIR Intern", RoleCategory.SECURITY),
+        ("API Gateway Engineer Intern", RoleCategory.INFRA),
+        ("Data Migration Engineer Intern", RoleCategory.DATA),
+        ("RAG Engineer Intern", RoleCategory.ML_AI),
+        ("Trading Infrastructure Intern", RoleCategory.QUANT),
+        ("ML Compiler Intern", RoleCategory.HARDWARE),
+        ("Industrial IoT Engineer Intern", RoleCategory.EMBEDDED),
+        ("Game Server Engineer Intern", RoleCategory.SWE),
+        ("Stagiaire en reponse aux incidents et investigation numerique", RoleCategory.SECURITY),
+        ("Stagiaire ingenieure passerelle API", RoleCategory.INFRA),
+        ("Stagiaire en migration de donnees", RoleCategory.DATA),
+        ("Stagiaire ingenieur RAG", RoleCategory.ML_AI),
+        ("Stagiaire infrastructure de negociation", RoleCategory.QUANT),
+        ("Stagiaire compilateur AA", RoleCategory.HARDWARE),
+        ("Stagiaire ingenieure IoT industriel", RoleCategory.EMBEDDED),
+        ("Stagiaire systemes multijoueurs", RoleCategory.SWE),
+    ],
+)
+def test_new_specialist_role_families_resolve(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Software Engineer Co-operative Education",
+        "Software Developer Co-op Placement",
+        "Poste coop - Developpeur logiciel",
+        "Programme de formation cooperative - Ingenieure logiciel",
+    ],
+)
+def test_additional_english_and_french_coop_markers_are_internships(title: str) -> None:
+    assert screen_internship(title).is_internship
+
+
+def test_fellowship_without_an_internship_or_coop_marker_is_not_an_internship() -> None:
+    assert not screen_internship("Software Engineering Fellowship").is_internship
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Application Development Intern", RoleCategory.SWE),
+        ("Forward Deployed Engineering Intern", RoleCategory.SWE),
+        ("AI Compiler and Library Engineer Intern", RoleCategory.SWE),
+        ("GIS Analyst Intern", RoleCategory.DATA),
+        ("AI Inference Intern", RoleCategory.ML_AI),
+        ("Hunyuan Multimodal Algorithm Researcher Intern", RoleCategory.ML_AI),
+        ("AI Agent Builder Intern", RoleCategory.ML_AI),
+        ("AI R&D Engineer Co-op", RoleCategory.ML_AI),
+        ("AI Solutions Engineer Intern", RoleCategory.ML_AI),
+        ("Supercomputing Intern", RoleCategory.INFRA),
+        ("CDN Platform Engineer Intern", RoleCategory.INFRA),
+        ("AI RAN Telecommunications Engineer Intern", RoleCategory.INFRA),
+        ("Digital IC Design Co-op", RoleCategory.HARDWARE),
+        ("Analog IC Design Co-op", RoleCategory.HARDWARE),
+        ("Flight Software Intern", RoleCategory.EMBEDDED),
+        ("Working Student Interior Sensing ML", RoleCategory.EMBEDDED),
+        ("Stagiaire en développement d applications", RoleCategory.SWE),
+        ("Stagiaire ingénieure solutions IA", RoleCategory.ML_AI),
+        ("Stagiaire en superinformatique", RoleCategory.INFRA),
+        ("Stagiaire en conception de circuits intégrés numériques", RoleCategory.HARDWARE),
+        ("Stagiaire ingénieure logicielle de vol", RoleCategory.EMBEDDED),
+    ],
+)
+def test_reviewed_live_role_gaps_resolve(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Data Analysis Intern", RoleCategory.DATA),
+        ("Data & Analytics Intern", RoleCategory.DATA),
+        ("Data & AI Intern - Analyst", RoleCategory.DATA),
+        ("Data Integration & Reporting Intern", RoleCategory.DATA),
+        ("Development Tools Software Intern", RoleCategory.SWE),
+        ("Energy System Optimization Intern - Energy Optimization Software", RoleCategory.SWE),
+        ("Enterprise AI Intern", RoleCategory.ML_AI),
+        ("Student Researcher Intern - AI Foundation Models Infrastructure", RoleCategory.ML_AI),
+        ("Robot Learning Engineer Intern", RoleCategory.ML_AI),
+        ("Video Algorithms Intern - Video Coding - Gaussian Splatting", RoleCategory.ML_AI),
+        ("Software/ML Engineering Intern", RoleCategory.ML_AI),
+        ("Vehicle Software Intern - Vehicle Controls", RoleCategory.EMBEDDED),
+        ("Stagiaire en analyse de données", RoleCategory.DATA),
+        ("Stagiaire en modèles fondamentaux", RoleCategory.ML_AI),
+        ("Stagiaire ingénieure logicielle de véhicule", RoleCategory.EMBEDDED),
+    ],
+)
+def test_additional_live_data_ai_and_vehicle_titles_resolve(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Software Engineer Intern - AI Infrastructure", RoleCategory.SWE),
+        ("AI Infrastructure Software Engineer Intern", RoleCategory.INFRA),
+    ],
+)
+def test_tied_role_phrases_choose_the_earliest_title_match(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title

@@ -381,12 +381,10 @@
         "signals": {}
       },
       "expected": {
-        "kept": true,
-        "location": "remote",
-        "remote_scope": "remote-unspecified",
-        "term": "unknown",
-        "role": "swe",
-        "language": "en"
+        "kept": false,
+        "reason": "unknown-location",
+        "matched_phrase": "remote",
+        "location": "unknown"
       }
     },
     {
@@ -417,12 +415,10 @@
         "signals": {}
       },
       "expected": {
-        "kept": true,
-        "location": "unknown",
-        "remote_scope": null,
-        "term": "unknown",
-        "role": "swe",
-        "language": "en"
+        "kept": false,
+        "reason": "unknown-location",
+        "matched_phrase": "no recognizable location",
+        "location": "unknown"
       }
     },
     {
@@ -453,10 +449,12 @@
         "signals": {}
       },
       "expected": {
-        "kept": false,
-        "reason": "out-of-scope-location",
-        "matched_phrase": "bengaluru, india",
-        "location": "other"
+        "kept": true,
+        "location": "international",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
       }
     },
     {
@@ -567,12 +565,10 @@
         "signals": {}
       },
       "expected": {
-        "kept": true,
-        "location": "usa",
-        "remote_scope": null,
-        "term": "unknown",
-        "role": "unknown",
-        "language": "en"
+        "kept": false,
+        "reason": "unknown-cs-role",
+        "matched_phrase": "no matching CS role or source category",
+        "location": "usa"
       }
     },
     {

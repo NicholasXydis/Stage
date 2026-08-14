@@ -134,6 +134,27 @@ def test_fts_operators_in_user_input_are_matched_literally(
         assert _ids(repository.search_jobs(hostile, JobFilters())) == expected, hostile
 
 
+def test_legacy_location_values_remain_filterable_and_counted(repository: SqliteRepository) -> None:
+    repository._conn.execute(
+        "UPDATE jobs SET location = CASE id "
+        "WHEN ? THEN 'other' WHEN ? THEN 'remote' END "
+        "WHERE id IN (?, ?)",
+        (
+            "greenhouse:coveo:1",
+            "greenhouse:coveo:2",
+            "greenhouse:coveo:1",
+            "greenhouse:coveo:2",
+        ),
+    )
+    assert _ids(repository.list_jobs(JobFilters(location=LocationBucket.INTERNATIONAL))) == {
+        "greenhouse:coveo:1"
+    }
+    assert _ids(repository.list_jobs(JobFilters(location=LocationBucket.UNKNOWN))) == {
+        "greenhouse:coveo:2"
+    }
+    assert repository.composition("location") == {"international": 1, "unknown": 1}
+
+
 def test_a_query_with_no_searchable_word_returns_nothing(repository: SqliteRepository) -> None:
     assert search_terms("!!! -- ***") == ()
     assert match_expression(()) == ""

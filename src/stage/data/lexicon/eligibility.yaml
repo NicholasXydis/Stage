@@ -2,26 +2,36 @@ degree_required:
   phd:
     - phd required
     - ph.d. required
+    - phd is required
+    - doctoral degree is required
     - phd candidates only
     - doctorate required
     - must be enrolled in a phd
     - currently pursuing a phd
     - doctorat requis
+    - doctorat exige
+    - doctorat obligatoire
     - inscrit au doctorat
   masters:
     - masters required
+    - masters is required
     - master's required
     - msc required
     - graduate students only
     - must be enrolled in a master
     - maitrise requise
+    - maitrise exigee
+    - maitrise obligatoire
     - inscrit a la maitrise
   bachelors:
     - bachelor's degree required
     - bachelors degree required
+    - bachelor's degree is required
     - must be enrolled in a bachelor
     - baccalaureat requis
 
+    - baccalaureat exige
+    - baccalaureat obligatoire
 phd_required:
   - phd candidates only
   - phd students only
@@ -41,8 +51,11 @@ phd_required:
   - doctoral degree required
   - doctorat requis
   - doctorat exige
+  - postdoc
+  - postdoctoral
   - inscrit au doctorat
   - inscrite au doctorat
+  - doctorat obligatoire
   - inscrit e au doctorat
   - etudes doctorales requises
 
@@ -51,10 +64,14 @@ phd_title_tokens:
   - phds
   - ph d
   - doctoral
+  - postdoc
+  - postdoctoral
   - doctorate
   - doctorat
   - doctorant
   - doctorante
+  - postdoctorant
+  - postdoctorante
   - stage doctoral
   - stagiaire doctoral
   - stagiaire doctorale
@@ -132,31 +149,82 @@ non_cs:
   - cuisinier
   - commis de vente
 
-non_cs_rescue:
-  - software
-  - developer
-  - developpeur
-  - developpeuse
-  - engineer
-  - engineering
-  - genie logiciel
-  - informatique
-  - data
-  - donnees
-  - machine learning
-  - analytics
-  - cyber
-  - security
-  - securite
-  - devops
-  - cloud
-  - firmware
-  - hardware
-  - embedded
-  - qa
-  - quality assurance
-  - it
-  - technology
-  - technologie
-  - programmer
-  - programmeur
+excluded_titles:
+  - information technology intern
+  - information technology internship
+  - it intern
+  - it internship
+  - it co op
+  - it coop
+  - it student
+  - it trainee
+  - information technology co op
+  - information technology coop
+  - it support
+  - technical support
+  - desktop support
+  - help desk
+  - service desk
+  - support technician
+  - project manager
+  - project management
+  - technical project manager
+  - program manager
+  - product manager
+  - product management
+  - ux designer
+  - ui designer
+  - ux researcher
+  - ui researcher
+  - user experience
+  - user interface
+  - web designer
+  - marketing
+  - business development
+  - business developer
+  - marketing intern
+  - marketing manager
+  - sales engineer
+  - sales engineering
+  - pre sales engineer
+  - solutions consultant
+  - stagiaire en technologies de l information
+  - stagiaire ti
+  - stage ti
+  - stage en ti
+  - ti co op
+  - ti coop
+  - technologies de l information co op
+  - technologies de l information coop
+  - soutien informatique
+  - support informatique
+  - soutien technique
+  - technicien de soutien
+  - bureau de service
+  - service d assistance
+  - gestionnaire de projet
+  - chef de projet
+  - gestion de projet
+  - gestionnaire de programme
+  - gestionnaire de produit
+  - chef de produit
+  - gestion de produit
+  - concepteur ux
+  - conceptrice ux
+  - concepteur ui
+  - conceptrice ui
+  - experience utilisateur
+  - interface utilisateur
+  - concepteur web
+  - conceptrice web
+  - stagiaire marketing
+  - developpement des affaires
+  - developpeur des affaires
+  - developpeuse des affaires
+  - ingenieur commercial
+  - ingenieure commerciale
+  - avant vente
+  - consultant en solutions
+
+technical_title_exceptions:
+  - vehicle software engineer diagnostic user interface

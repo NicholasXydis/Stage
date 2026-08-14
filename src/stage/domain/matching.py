@@ -1,6 +1,6 @@
 from stage.domain.enums import UNKNOWN_TERM, LocationBucket
 
-_NON_EVIDENCE_BUCKETS = frozenset({LocationBucket.UNKNOWN, LocationBucket.OTHER})
+_NON_EVIDENCE_BUCKETS = frozenset({LocationBucket.UNKNOWN, LocationBucket.INTERNATIONAL})
 
 
 def location_agrees(left: LocationBucket, right: LocationBucket) -> bool:

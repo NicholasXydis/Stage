@@ -18,8 +18,7 @@ class LocationBucket(StrEnum):
     CANADA = "canada"
     USA = "usa"
     MONTREAL = "montreal"
-    REMOTE = "remote"
-    OTHER = "other"
+    INTERNATIONAL = "international"
 
     UNKNOWN = "unknown"
 
@@ -72,6 +71,7 @@ class Platform(StrEnum):
     ICIMS = "icims"
     AVATURE = "avature"
     PHENOM = "phenom"
+    COLLAGE = "collage"
     CUSTOM_JSON = "custom_json"
 
 

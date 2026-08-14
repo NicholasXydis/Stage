@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from stage.domain import Job, PurgeResult, QuarantinedJob, RateState
+from stage.domain import Job, PurgeResult, QuarantinedJob, RateState, RoleCategory
 from stage.storage import AsyncRepository, SourceBatch
 
 RESCREEN_LIMIT = 100_000
@@ -53,10 +53,11 @@ class RescreenResult:
     examined: int
     quarantined: int
     total: int = 0
+    updated: int = 0
 
     @property
     def changed(self) -> bool:
-        return bool(self.quarantined)
+        return bool(self.updated or self.quarantined)
 
     @property
     def skipped(self) -> int:
@@ -69,31 +70,43 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
     moment = now or datetime.now(UTC)
     examined = 0
     quarantined = 0
+    updated = 0
     total = await repository.count_jobs(JobFilters(status=None, limit=RESCREEN_LIMIT))
 
     for pass_number in range(RESCREEN_PASSES):
         stored = await repository.list_jobs(JobFilters(status=None, limit=RESCREEN_LIMIT))
         if not pass_number:
             examined = len(stored)
-        rejected = _rejections(stored) if stored else ()
-        if not rejected:
+        candidates, rejected = _reclassifications(stored) if stored else ((), ())
+        changed = tuple(
+            candidate for job, candidate in zip(stored, candidates, strict=True) if job != candidate
+        )
+        if not changed and not rejected:
             break
-        for source in sorted({entry.source for entry in rejected}):
+        rejected_ids = {entry.id for entry in rejected}
+        updates = tuple(entry for entry in changed if entry.id not in rejected_ids)
+        sources = {entry.source for entry in updates} | {entry.source for entry in rejected}
+        for source in sorted(sources):
             await repository.apply_source_batch(
                 SourceBatch(
                     source=source,
                     run_started_at=moment,
+                    jobs=tuple(entry for entry in updates if entry.source == source),
                     quarantined=tuple(entry for entry in rejected if entry.source == source),
                 )
             )
         quarantined += len(rejected)
-    return RescreenResult(examined=examined, quarantined=quarantined, total=total)
+        updated += len(updates)
+    return RescreenResult(examined=examined, quarantined=quarantined, total=total, updated=updated)
 
 
-def _rejections(jobs: Sequence[Job]) -> tuple[QuarantinedJob, ...]:
+def _reclassifications(
+    jobs: Sequence[Job],
+) -> tuple[tuple[Job, ...], tuple[QuarantinedJob, ...]]:
     from dataclasses import replace
 
     from stage.classify import (
+        classify_role,
         screen_degree_scope,
         screen_is_cs_role,
         screen_is_internship,
@@ -102,10 +115,18 @@ def _rejections(jobs: Sequence[Job]) -> tuple[QuarantinedJob, ...]:
     from stage.classify.scope import to_quarantined
     from stage.normalize import resolve_location
 
+    candidates: list[Job] = []
     rejected: list[QuarantinedJob] = []
     for job in jobs:
         location = resolve_location(job.location_raw)
-        candidate = replace(job, location=location.bucket, remote_scope=location.remote_scope)
+        title_role = classify_role(job.title_raw, job.description).role
+        candidate = replace(
+            job,
+            location=location.bucket,
+            remote_scope=location.remote_scope,
+            role=title_role if title_role is not RoleCategory.UNKNOWN else job.role,
+        )
+        candidates.append(candidate)
         rejection = (
             screen_location(candidate, location.evidence)
             or screen_is_internship(candidate)
@@ -114,4 +135,4 @@ def _rejections(jobs: Sequence[Job]) -> tuple[QuarantinedJob, ...]:
         )
         if rejection is not None:
             rejected.append(to_quarantined(candidate, rejection))
-    return tuple(rejected)
+    return tuple(candidates), tuple(rejected)

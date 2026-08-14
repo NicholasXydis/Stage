@@ -9,9 +9,11 @@ DEFAULT_QUARANTINE_LIMIT = 50
 
 class RejectionReason(StrEnum):
     OUT_OF_SCOPE_LOCATION = "out-of-scope-location"
+    UNKNOWN_LOCATION = "unknown-location"
     NOT_AN_INTERNSHIP = "not-an-internship"
     OUT_OF_SCOPE_DEGREE = "out-of-scope-degree"
     NOT_A_CS_ROLE = "not-a-cs-role"
+    UNKNOWN_CS_ROLE = "unknown-cs-role"
 
 
 @dataclass(frozen=True, slots=True)

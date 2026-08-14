@@ -24,15 +24,22 @@ from stage.normalize import resolve_location
         ("Costa Mesa, California, United States", LocationBucket.USA),
         ("New York, New York, USA", LocationBucket.USA),
         ("NYC", LocationBucket.USA),
+        ("IN - Bangalore, India", LocationBucket.INTERNATIONAL),
+        ("Eindhoven, NB, Netherlands", LocationBucket.INTERNATIONAL),
+        ("Eindhoven, NL, Netherlands", LocationBucket.INTERNATIONAL),
+        ("NL-Amsterdam", LocationBucket.INTERNATIONAL),
+        ("Tbilisi, Georgia", LocationBucket.INTERNATIONAL),
+        ("New Mexico", LocationBucket.USA),
+        ("Fins Only-DE-Munich-MSO", LocationBucket.INTERNATIONAL),
         ("Washington, D.C.", LocationBucket.USA),
         ("United States", LocationBucket.USA),
         ("(Raleigh-Cary, NC, Austin, Dallas, TX, Tampa, FL, Boston, MA )", LocationBucket.USA),
-        ("Bengaluru, Karnataka, India", LocationBucket.OTHER),
-        ("Remote, , India", LocationBucket.OTHER),
-        ("London, England, United Kingdom", LocationBucket.OTHER),
-        ("UK - London", LocationBucket.OTHER),
-        ("Brazil - Rio de Janeiro", LocationBucket.OTHER),
-        ("Home based - EMEA", LocationBucket.OTHER),
+        ("Bengaluru, Karnataka, India", LocationBucket.INTERNATIONAL),
+        ("Remote, , India", LocationBucket.INTERNATIONAL),
+        ("London, England, United Kingdom", LocationBucket.INTERNATIONAL),
+        ("UK - London", LocationBucket.INTERNATIONAL),
+        ("Brazil - Rio de Janeiro", LocationBucket.INTERNATIONAL),
+        ("Home based - EMEA", LocationBucket.INTERNATIONAL),
     ],
 )
 def test_corpus_shapes_resolve(raw: str, bucket: LocationBucket) -> None:
@@ -55,21 +62,21 @@ def test_undecidable_strings_stay_unknown(raw: str, bucket: LocationBucket) -> N
     assert resolve_location(raw).bucket is bucket
 
 
-def test_other_is_separate_from_unknown() -> None:
-    assert resolve_location("Bengaluru, India").bucket is LocationBucket.OTHER
+def test_international_is_separate_from_unknown() -> None:
+    assert resolve_location("Bengaluru, India").bucket is LocationBucket.INTERNATIONAL
     assert resolve_location("Multiple Locations").bucket is LocationBucket.UNKNOWN
 
 
 @pytest.mark.parametrize(
     ("raw", "bucket"),
     [
-        ("London", LocationBucket.OTHER),
-        ("London, UK", LocationBucket.OTHER),
+        ("London", LocationBucket.INTERNATIONAL),
+        ("London, UK", LocationBucket.INTERNATIONAL),
         ("London, ON, Canada", LocationBucket.CANADA),
         ("Waterloo, ON", LocationBucket.CANADA),
         ("Waterloo, IA", LocationBucket.USA),
         ("Victoria, BC, Canada", LocationBucket.CANADA),
-        ("Melbourne, Victoria, Australia", LocationBucket.OTHER),
+        ("Melbourne, Victoria, Australia", LocationBucket.INTERNATIONAL),
         ("Hamilton, Washington, United States", LocationBucket.USA),
         ("Richmond, VA", LocationBucket.USA),
         ("Ontario, California", LocationBucket.USA),
@@ -83,7 +90,7 @@ def test_ambiguous_place_names_need_corroboration(raw: str, bucket: LocationBuck
 def test_a_french_place_name_does_not_become_montreal() -> None:
     assert (
         resolve_location("Saint-Barthélemy-d'Anjou, Pays de la Loire, France").bucket
-        is LocationBucket.OTHER
+        is LocationBucket.INTERNATIONAL
     )
     assert resolve_location("Anjou, QC, Canada").bucket is LocationBucket.MONTREAL
 
@@ -94,7 +101,7 @@ def test_in_office_is_not_indiana() -> None:
 
 
 def test_remote_on_site_is_not_ontario() -> None:
-    assert resolve_location("Remote on-site").bucket is not LocationBucket.CANADA
+    assert resolve_location("Remote on-site").bucket is LocationBucket.UNKNOWN
 
 
 @pytest.mark.parametrize(
@@ -105,7 +112,7 @@ def test_remote_on_site_is_not_ontario() -> None:
         ("Bellevue, Washington; Toronto, Ontario, Canada", LocationBucket.CANADA),
         ("Bangalore, India; Remote, Canada; Remote, United States", LocationBucket.CANADA),
         ("Amsterdam, The Netherlands; Austin, TX", LocationBucket.USA),
-        ("Tokyo, Japan; Singapore", LocationBucket.OTHER),
+        ("Tokyo, Japan; Singapore", LocationBucket.INTERNATIONAL),
     ],
 )
 def test_multi_location_precedence_reads_outward_from_montreal(
@@ -144,9 +151,9 @@ def test_remote_with_a_country_keeps_the_country() -> None:
 @pytest.mark.parametrize(
     ("raw", "bucket", "scope"),
     [
-        ("Remote", LocationBucket.REMOTE, RemoteScope.UNSPECIFIED),
-        ("Distributed", LocationBucket.REMOTE, RemoteScope.UNSPECIFIED),
-        ("Home based - Worldwide", LocationBucket.REMOTE, RemoteScope.UNSPECIFIED),
+        ("Remote", LocationBucket.UNKNOWN, RemoteScope.UNSPECIFIED),
+        ("Distributed", LocationBucket.UNKNOWN, RemoteScope.UNSPECIFIED),
+        ("Home based - Worldwide", LocationBucket.INTERNATIONAL, RemoteScope.UNSPECIFIED),
         ("Remote - Canada", LocationBucket.CANADA, RemoteScope.CANADA),
         ("Remote, , Canada", LocationBucket.CANADA, RemoteScope.CANADA),
         ("United States - Remote", LocationBucket.USA, RemoteScope.US),
@@ -176,7 +183,7 @@ def test_hybrid_is_not_remote() -> None:
     resolved = resolve_location("Hybrid")
     assert resolved.bucket is LocationBucket.UNKNOWN
     assert resolved.remote_scope is None
-    assert resolve_location("Hybrid - London, UK").bucket is LocationBucket.OTHER
+    assert resolve_location("Hybrid - London, UK").bucket is LocationBucket.INTERNATIONAL
 
 
 @pytest.mark.parametrize(
@@ -190,10 +197,10 @@ def test_hybrid_is_not_remote() -> None:
         ("Ville de Québec", LocationBucket.CANADA, None),
         ("Sherbrooke, QC, Canada", LocationBucket.CANADA, None),
         ("Colombie-Britannique, Canada", LocationBucket.CANADA, None),
-        ("Télétravail", LocationBucket.REMOTE, RemoteScope.UNSPECIFIED),
+        ("Télétravail", LocationBucket.UNKNOWN, RemoteScope.UNSPECIFIED),
         ("Télétravail - Canada", LocationBucket.CANADA, RemoteScope.CANADA),
         ("À distance, Canada", LocationBucket.CANADA, RemoteScope.CANADA),
-        ("Travail à distance", LocationBucket.REMOTE, RemoteScope.UNSPECIFIED),
+        ("Travail à distance", LocationBucket.UNKNOWN, RemoteScope.UNSPECIFIED),
         ("Hybride", LocationBucket.UNKNOWN, None),
         ("Montréal, QC / Toronto, ON", LocationBucket.MONTREAL, None),
     ],

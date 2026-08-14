@@ -7,7 +7,6 @@ from stage.classify.eligibility import (
 from stage.classify.internship import InternshipVerdict, screen_internship
 from stage.classify.role import RoleVerdict, classify_role
 from stage.classify.scope import (
-    OUT_OF_SCOPE_BUCKETS,
     Rejection,
     screen_is_internship,
     screen_location,
@@ -19,7 +18,6 @@ __all__ = [
     "resolve_eligibility",
     "screen_degree_scope",
     "screen_is_cs_role",
-    "OUT_OF_SCOPE_BUCKETS",
     "InternshipVerdict",
     "Rejection",
     "RoleVerdict",

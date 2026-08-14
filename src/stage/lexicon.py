@@ -209,7 +209,8 @@ class EligibilityLexicon:
     degree_required: dict[str, frozenset[str]]
     work_auth_excluded: frozenset[str]
     non_cs: frozenset[str]
-    non_cs_rescue: frozenset[str]
+    excluded_titles: frozenset[str]
+    technical_title_exceptions: frozenset[str]
     phd_required: frozenset[str]
     phd_title_tokens: frozenset[str]
     degree_list_tokens: frozenset[str]
@@ -230,7 +231,8 @@ def eligibility_lexicon() -> EligibilityLexicon:
         degree_required=degrees,
         work_auth_excluded=_folded_phrases(payload, "work_auth_excluded", source),
         non_cs=_folded_phrases(payload, "non_cs", source),
-        non_cs_rescue=_folded_phrases(payload, "non_cs_rescue", source),
+        excluded_titles=_folded_phrases(payload, "excluded_titles", source),
+        technical_title_exceptions=_folded_phrases(payload, "technical_title_exceptions", source),
         phd_required=_folded_phrases(payload, "phd_required", source),
         phd_title_tokens=_folded_phrases(payload, "phd_title_tokens", source),
         degree_list_tokens=_folded_phrases(payload, "degree_list_tokens", source),

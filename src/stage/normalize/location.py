@@ -21,7 +21,7 @@ class _Segment:
     montreal: bool
     canada: bool
     usa: bool
-    other: bool
+    international: bool
     remote: bool
     evidence: tuple[str, ...]
 
@@ -89,11 +89,28 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
         return _Segment(False, False, False, False, False, ())
     hits = _index().hits(folded)
     found = {category for category, _ in hits}
+    international_phrases = {
+        phrase for category, phrase in hits if category in {"international", "international_cities"}
+    }
+    domestic_phrases = {
+        phrase
+        for category, phrase in hits
+        if category in {"canada_cities", "canada_regions", "usa_cities", "usa_regions"}
+    }
+    international = any(
+        not any(
+            len(domestic) > len(phrase) and f" {phrase} " in f" {domestic} "
+            for domestic in domestic_phrases
+        )
+        for phrase in international_phrases
+    )
     code_canada, code_usa = _code_hits(segment, lexicon)
 
     overridden = "canada_overrides" in found
     canada_context = (
-        "canada_country" in found or "canada_regions" in found or code_canada
+        "canada_country" in found
+        or "canada_regions" in found
+        or (code_canada and not international)
     ) and not overridden
 
     montreal = ("montreal" in found and not overridden) or (
@@ -102,16 +119,17 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
     canada = (
         montreal
         or canada_context
-        or ("canada_cities" in found and not overridden)
+        or ("canada_cities" in found and not overridden and not international)
         or ("canada_ambiguous" in found and canada_context)
     )
-    usa = "usa_country" in found or "usa_regions" in found or "usa_cities" in found or code_usa
-    other = "international" in found or "international_cities" in found
+    usa = "usa_country" in found or (
+        ("usa_regions" in found or "usa_cities" in found or code_usa) and not international
+    )
     return _Segment(
         montreal=montreal,
         canada=canada,
         usa=usa,
-        other=other,
+        international=international,
         remote="remote" in found,
         evidence=tuple(sorted(phrase for _, phrase in hits)),
     )
@@ -155,10 +173,8 @@ def resolve_location(raw: str) -> ResolvedLocation:
         bucket = LocationBucket.CANADA
     elif any(segment.usa for segment in segments):
         bucket = LocationBucket.USA
-    elif any(segment.other for segment in segments):
-        bucket = LocationBucket.OTHER
-    elif scope is not None:
-        bucket = LocationBucket.REMOTE
+    elif any(segment.international for segment in segments):
+        bucket = LocationBucket.INTERNATIONAL
     else:
         bucket = LocationBucket.UNKNOWN
 

@@ -260,3 +260,28 @@ async def test_an_uncapped_pass_reports_nothing_skipped(seeded: Path) -> None:
         result = await rescreen(repository, now=NOW)
     assert result.skipped == 0
     assert result.total == result.examined
+
+
+@pytest.mark.asyncio
+async def test_rescreen_persists_active_location_corrections(db_path: Path) -> None:
+    from dataclasses import replace
+
+    job = replace(
+        _job("workday:td:1", "Software Engineer Intern"),
+        location_raw="IN - Bangalore, India",
+        location=LocationBucket.USA,
+    )
+    sync_repository = SqliteRepository.connect(db_path)
+    sync_repository.apply_source_batch(
+        SourceBatch(source="workday", run_started_at=NOW, jobs=(job,))
+    )
+    sync_repository.close()
+
+    async with open_repository(db_path) as repository:
+        result = await rescreen(repository, now=NOW)
+        stored = await repository.get_job(job.id)
+
+    assert result.updated == 1
+    assert result.quarantined == 0
+    assert stored is not None
+    assert stored.location is LocationBucket.INTERNATIONAL

@@ -6,6 +6,10 @@ markers:
   - co-op
   - coop
   - co-ops
+  - co operative education
+  - cooperative work term
+  - co op placement
+  - co op internship
   - co op student
   - co-op student
   - co-op term
@@ -18,10 +22,6 @@ markers:
   - summer scholar
   - summer intern program
   - working student
-  - trainee
-  - traineeship
-  - apprentice
-  - apprenticeship
   - undergraduate researcher
   - student researcher
   - student
@@ -37,14 +37,23 @@ markers:
   - étudiant stagiaire
   - programme de stage
   - stage coop
+  - stage cooperatif
+  - stage co op
+  - programme coop
+  - programme cooperatif
+  - programme d enseignement cooperatif
+  - programme de formation cooperative
+  - emploi coop
+  - poste coop
+  - etudiant coop
+  - etudiante coop
   - stage d'été
   - stage d'automne
   - stage d'hiver
+  - contrat de professionnalisation
   - alternance
   - alternant
   - alternante
-  - apprenti
-  - apprentie
   - étudiant
   - étudiante
 
@@ -56,22 +65,31 @@ structured_internship:
   - intern co op
   - co op
   - coop
+  - co operative education
+  - cooperative work term
+  - co op placement
+  - co op internship
   - co op student
   - cooperative education
   - student
   - student placement
   - working student
-  - apprentice
-  - apprenticeship
-  - trainee
   - stage
   - stagiaire
   - stage coop
+  - stage cooperatif
+  - stage co op
+  - programme coop
+  - programme cooperatif
+  - programme d enseignement cooperatif
+  - programme de formation cooperative
+  - emploi coop
+  - poste coop
+  - etudiant coop
+  - etudiante coop
   - alternance
   - alternant
-  - apprenti
   - etudiant
-  - contrat d apprentissage
   - contrat de stage
   - temporaire etudiant
 
@@ -137,4 +155,7 @@ disqualifiers:
   - nouveau diplômé
   - nouvelle diplômée
   - jeune diplômé
+  - jeune diplômée
+  - diplômé récent
+  - diplômée récente
   - poste permanent

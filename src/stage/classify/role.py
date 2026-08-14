@@ -48,7 +48,14 @@ def classify_role(title: str, description: str = "", source_category: str = "") 
         winners = [category for category, phrases in hits.items() if len(phrases[0]) == best]
         matched = tuple(sorted({phrase for phrases in hits.values() for phrase in phrases}))
         if len(winners) != 1:
-            return RoleVerdict(role=RoleCategory.UNKNOWN, matched=matched, ambiguous=True)
+            winner = min(
+                winners,
+                key=lambda category: (
+                    min(folded.find(phrase) for phrase in hits[category] if len(phrase) == best),
+                    category,
+                ),
+            )
+            return RoleVerdict(role=RoleCategory(winner), matched=matched)
         return RoleVerdict(role=RoleCategory(winners[0]), matched=matched)
     if declared is not None:
         return RoleVerdict(role=RoleCategory(declared), matched=(fold(source_category),))

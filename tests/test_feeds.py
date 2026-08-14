@@ -154,10 +154,11 @@ def test_canonicalization_runs_at_ingestion(run_time: datetime) -> None:
         id="x",
         source="simplify",
         company="Acme",
-        title_raw="Intern",
-        title_normalized="Intern",
+        title_raw="Software Engineer Intern",
+        title_normalized="Software Engineer Intern",
         apply_url_raw="https://simplify.jobs/p/a1",
         description="",
+        location_raw="Montreal, QC",
         first_seen=run_time,
         last_seen=run_time,
     )

@@ -10,29 +10,37 @@ swe:
   - programming
   - full stack
   - fullstack
-  - full-stack
   - backend
   - back end
-  - back-end
   - frontend
   - front end
-  - front-end
   - web developer
   - mobile developer
   - ios developer
   - android developer
   - application developer
+  - application development
+  - forward deployed engineer
+  - development tools software
+  - energy optimization software
+  - logiciel d outils de développement
+  - logiciel d optimisation énergétique
+  - forward deployed engineering
+  - ai compiler
+  - developpement d applications
+  - développement d'applications
+  - ingénieur en déploiement chez le client
+  - ingénieure en déploiement chez le client
+  - ingénieur compilateur ia
+  - ingénieure compilateur ia
   - platform engineer
   - api engineer
   - qa engineer
   - test engineer
   - quality assurance
   - sdet
-  - génie logiciel
   - genie logiciel
-  - développement logiciel
   - developpement logiciel
-  - développeur
   - developpeur
   - développeuse
   - développeure
@@ -40,7 +48,6 @@ swe:
   - programmeuse
   - programmation
   - analyste programmeur
-  - ingénieur logiciel
   - ingenieur logiciel
   - développement web
   - développement mobile
@@ -68,7 +75,351 @@ swe:
   - automatisation des tests
   - analyste qualité
   - analyste en assurance qualité
+  - operating systems programmer
+  - operating systems engineer
+  - operating systems
+  - mainframe systems programmer
+  - systems programmer
+  - scientific programmer
+  - kernel engineer
+  - kernel developer
+  - kernel optimization
+  - performance engineer
+  - distributed systems engineer
+  - game engine engineer
+  - tools engineer
+  - blockchain engineer
+  - smart contract engineer
+  - augmented reality engineer
+  - virtual reality engineer
+  - xr engineer
+  - acceleration kernel developer
+  - ai compiler software
+  - software compiler
+  - application integration engineer
+  - application engineer
+  - software development engineer
+  - software intern
+  - software internship
+  - software undergrad engineering
+  - software testing
+  - software testing development
+  - system and software testing
+  - software integration engineering
+  - android application
+  - generalist software engineer
+  - product software engineer
+  - enterprise software engineer
+  - business application developer
+  - client software engineer
+  - client application developer
+  - server software engineer
+  - server side developer
+  - application software engineer
+  - commercial software developer
+  - web engineer
+  - web application developer
+  - web software engineer
+  - api developer
+  - api integration developer
+  - microservices engineer
+  - web services developer
+  - ecommerce software engineer
+  - cms developer
+  - javascript developer
+  - typescript developer
+  - mobile software engineer
+  - mobile application developer
+  - mobile application engineer
+  - ios engineer
+  - ios software engineer
+  - android engineer
+  - android software engineer
+  - react native developer
+  - react native engineer
+  - flutter developer
+  - flutter engineer
+  - cross platform mobile developer
+  - native mobile developer
+  - desktop application developer
+  - desktop software engineer
+  - windows software developer
+  - macos software developer
+  - linux application developer
+  - browser engineer
+  - browser extension developer
+  - client platform engineer
+  - consumer applications engineer
+  - systems software engineer
+  - systems developer
+  - systems programming
+  - low level software engineer
+  - c software engineer
+  - c software developer
+  - rust software engineer
+  - linux software engineer
+  - linux systems developer
+  - device driver developer
+  - driver software engineer
+  - programming languages
+  - runtime systems engineer
+  - virtualization engineer
+  - virtual machine engineer
+  - storage software engineer
+  - file systems engineer
+  - database engine
+  - distributed systems developer
+  - algorithm developer
+  - algorithmic software engineer
+  - optimization engineer
+  - research software engineer
+  - numerical software engineer
+  - simulation software engineer
+  - cuda developer
+  - quantum software engineer
+  - quantum algorithms
+  - game developer
+  - game programmer
+  - game software engineer
+  - engine programmer
+  - engine software engineer
+  - game tools programmer
+  - game tools engineer
+  - game networking engineer
+  - multiplayer game engineer
+  - online game services
+  - game backend engineer
+  - game client engineer
+  - game physics programmer
+  - game simulation engineer
+  - game scripting
+  - unity developer
+  - unreal engine developer
+  - unreal engine programmer
+  - game build engineer
+  - graphics software engineer
+  - rendering programmer
+  - real time rendering
+  - shader developer
+  - graphics engine
+  - computer graphics
+  - visualization software
+  - image processing engineer
+  - video software engineer
+  - video streaming engineer
+  - media systems engineer
+  - audio software engineer
+  - audio dsp
+  - digital signal processing
+  - signal processing engineer
+  - digital twin engineer
+  - cad software engineer
+  - computer aided engineering
+  - geospatial software engineer
+  - ar developer
+  - ar software engineer
+  - vr developer
+  - vr software engineer
+  - xr developer
+  - xr software engineer
+  - extended reality
+  - mixed reality developer
+  - mixed reality engineer
+  - spatial computing
+  - spatial software engineer
+  - immersive technology
+  - immersive software engineer
+  - 3d software engineer
+  - 3d engine programmer
+  - real time 3d developer
+  - virtual production
+  - motion capture software
+  - slam engineer
+  - mapping and localization
+  - spatial mapping
+  - interactive systems
+  - developpeur de jeux
+  - programmeur de jeux
+  - ingenieur logiciel de jeux
+  - programmeur de moteur de jeux
+  - ingenieur de moteur de jeux
+  - developpeur unity
+  - developpeur unreal engine
+  - developpeur de logiciels
+  - developpeur d applications
+  - developpeur web
+  - developpeur mobile
+  - developpeur backend
+  - developpeur frontend
+  - ingenieur plateforme
+  - programmeur systemes
+  - ingenieur noyau
+  - ingenieur performance
+  - ingenieur systemes distribues
+  - ingenieur rendu
+  - rendu temps reel
+  - moteur graphique
+  - developpeur de shaders
+  - developpeur realite augmentee
+  - developpeur realite virtuelle
+  - developpeur realite mixte
+  - informatique spatiale
+  - developpeur 3d
+  - ingenieur slam
+  - cartographie et localisation
+  - sde
+  - distributed storage
+  - simulation engineer
+  - physics simulation
+  - augmented reality
+  - virtual reality
+  - stockage distribue
+  - ingenieur simulation
+  - simulation physique
+  - realite augmentee
+  - realite virtuelle
+  - software integration engineer
+  - integration developer
+  - api platform engineer
+  - platform software engineer
+  - backend platform engineer
+  - accessibility engineer
+  - localization engineer
+  - internationalization engineer
+  - tooling developer
+  - search engineer
+  - search software engineer
+  - geospatial developer
+  - gis software developer
+  - game services engineer
+  - gameplay systems engineer
+  - multiplayer networking engineer
+  - rendering software engineer
+  - graphics pipeline engineer
+  - compute shader engineer
+  - ray tracing engineer
+  - media pipeline engineer
+  - audio dsp engineer
+  - virtual production engineer
+  - spatial algorithms engineer
+  - ingenieur integration logicielle
+  - developpeur d integration
+  - ingenieur plateforme api
+  - ingenieur logiciel de plateforme
+  - ingenieur accessibilite
+  - ingenieur localisation
+  - ingenieur internationalisation
+  - developpeur d outils
+  - ingenieur recherche logicielle
+  - developpeur geospatial
+  - developpeur sig
+  - ingenieur logiciel geospatial
+  - ingenieur services de jeux
+  - ingenieur systemes de jeu
+  - ingenieur reseautage multijoueur
+  - ingenieur logiciel de rendu
+  - ingenieur pipeline graphique
+  - developpeur shaders de calcul
+  - ingenieur lancer de rayons
+  - ingenieur pipeline media
+  - ingenieur dsp audio
+  - ingenieur production virtuelle
+  - ingenieur algorithmes spatiaux
 
+  - application architect
+  - middleware engineer
+  - service integration engineer
+  - enterprise integration
+  - game server engineer
+  - live operations engineering
+  - matchmaking engineer
+  - game telemetry engineer
+  - game engine tools
+  - multiplayer systems
+  - game physics engineer
+  - procedural generation
+  - technical game research
+  - government digital services
+  - public safety software
+  - intelligence systems software
+  - flight operations software
+  - airport systems software
+  - aerospace simulation
+  - space systems software
+  - ground systems software
+  - legal software engineer
+  - e discovery software
+  - bim software developer
+  - fleet management software
+  - application architecture
+  - architecte applicatif
+  - architecte applicative
+  - intergiciel
+  - integration de services
+  - integration d entreprise
+  - serveur de jeux
+  - operations de jeux en direct
+  - appariement de joueurs
+  - telemetrie de jeux
+  - outils de moteur de jeu
+  - systemes multijoueurs
+  - physique de jeu
+  - generation procedurale
+  - recherche technique sur les jeux
+  - services numeriques gouvernementaux
+  - logiciel de securite publique
+  - logiciel de systemes de renseignement
+  - logiciel des operations de vol
+  - logiciel de systemes aeroportuaires
+  - simulation aerospatiale
+  - logiciel de systemes spatiaux
+  - logiciel de systemes au sol
+  - logiciel juridique
+  - logiciel de decouverte electronique
+  - logiciel bim
+  - logiciel cao
+  - jumeau numerique
+  - logiciel de gestion de flotte
+  - image processing software
+  - video codec engineer
+  - streaming media engineer
+  - formal methods
+  - model checking
+  - static analysis
+  - program analysis
+  - software verification
+  - software validation
+  - building information modeling software
+  - renewable energy software
+  - biotechnology software
+  - drug discovery software
+  - digital health software
+  - medical imaging software
+  - assessment platform
+  - ad serving engineer
+  - advertising systems
+  - claims automation
+  - traitement d images logicielles
+  - ingenieur codec video
+  - ingenieure codec video
+  - ingenierie des medias en continu
+  - methodes formelles
+  - verification de modeles
+  - analyse statique
+  - analyse de programmes
+  - verification logicielle
+  - validation logicielle
+  - logiciel de modelisation des informations du batiment
+  - logiciel d energie renouvelable
+  - logiciel de biotechnologie
+  - logiciel de decouverte de medicaments
+  - logiciel de sante numerique
+  - logiciel d imagerie medicale
+  - plateforme d evaluation
+  - ingenieur de diffusion publicitaire
+  - ingenieure de diffusion publicitaire
+  - systemes publicitaires
+  - automatisation des sinistres
 security:
   - security engineer
   - security engineering
@@ -90,9 +441,7 @@ security:
   - security research
   - security analyst
   - cryptography
-  - sécurité informatique
   - securite informatique
-  - cybersécurité
   - cybersecurite
   - sécurité applicative
   - sécurité de l'information
@@ -113,14 +462,264 @@ security:
   - centre des opérations de sécurité
   - informatique judiciaire
   - criminalistique numérique
+  - information security officer
+  - information security specialist
+  - information systems security analyst
+  - information systems security officer
+  - it security analyst
+  - it security architect
+  - it security consultant
+  - it security specialist
+  - network security analyst
+  - network security engineer
+  - systems security analyst
+  - systems security engineer
+  - systems security planner
+  - cloud security engineer
+  - infrastructure security engineer
+  - identity and access management
+  - identity access management
+  - vulnerability analyst
+  - vulnerability researcher
+  - vulnerability research
+  - recherche sur les vulnerabilites
+  - cyberdefense
+  - analyste soc
+  - analyste en cybersecurite
+  - specialiste en cybersecurite
+  - ingenieur en cybersecurite
+  - ingenieure en cybersecurite
+  - analyste de securite des systemes
+  - ingenieur en securite des systemes
+  - ingenieure en securite des systemes
+  - securite des reseaux
+  - securite des systemes
+  - security software engineer
+  - security developer
+  - defensive security
+  - cyber defense
+  - threat detection engineer
+  - detection engineer
+  - detection and response
+  - security monitoring
+  - siem engineer
+  - soar engineer
+  - cyber incident response
+  - cyber threat intelligence
+  - ethical hacking
+  - ethical hacker
+  - red team operator
+  - application penetration testing
+  - web application penetration testing
+  - network penetration testing
+  - cloud penetration testing
+  - mobile penetration testing
+  - api security testing
+  - security testing
+  - vulnerability assessment
+  - vulnerability management
+  - malware analysis
+  - malware research
+  - reverse engineering
+  - binary analysis
+  - exploit development
+  - exploit research
+  - secure software engineering
+  - secure code review
+  - security code analysis
+  - application threat modeling
+  - security architecture
+  - cloud security
+  - infrastructure security
+  - container security
+  - kubernetes security
+  - platform security
+  - endpoint security
+  - endpoint detection and response
+  - edr engineer
+  - xdr engineer
+  - iam engineer
+  - authentication engineer
+  - authorization engineer
+  - digital identity
+  - cryptographic engineering
+  - pki
+  - key management engineering
+  - secrets management
+  - network defense
+  - email security
+  - web security
+  - mobile security
+  - embedded security
+  - iot security
+  - automotive cybersecurity
+  - industrial control systems security
+  - ot security
+  - security automation
+  - security platform engineer
+  - security tooling
+  - security data engineer
+  - security data science
+  - fraud detection engineer
+  - fraud security
+  - anti abuse engineering
+  - trust and safety engineering
+  - blockchain security
+  - ingenieur logiciel de securite
+  - developpeur securite
+  - ingenieur detection des menaces
+  - detection et reponse
+  - surveillance de securite
+  - ingenieur siem
+  - ingenieur soar
+  - intervention en cas d incident
+  - renseignement sur les menaces
+  - test d intrusion
+  - testeur d intrusion
+  - piratage ethique
+  - evaluation des vulnerabilites
+  - gestion des vulnerabilites
+  - analyse de maliciel
+  - retroingenierie
+  - developpement d exploits
+  - revue de code securise
+  - modelisation des menaces
+  - securite infonuagique
+  - securite des conteneurs
+  - securite kubernetes
+  - securite des terminaux
+  - detection et reponse aux incidents de securite
+  - gestion des identites et des acces
+  - ingenieur authentification
+  - ingenieur autorisation
+  - identite numerique
+  - ingenierie cryptographique
+  - infrastructure a cles publiques
+  - gestion des cles
+  - gestion des secrets
+  - securite embarquee
+  - cybersecurite automobile
+  - securite des systemes de controle industriel
+  - securite ot
+  - automatisation de la securite
+  - outillage de securite
+  - ingenieur donnees de securite
+  - science des donnees de securite
+  - detection de fraude
+  - lutte contre les abus
+  - confiance et securite
+  - securite de la chaine de blocs
+  - security infrastructure engineer
+  - application security engineer
+  - application security architect
+  - cloud security architect
+  - cloud security developer
+  - security operations engineer
+  - security automation engineer
+  - detection content engineer
+  - threat hunting
+  - threat hunter
+  - security data analyst
+  - vulnerability management engineer
+  - supply chain security engineer
+  - software supply chain security
+  - cryptography engineer
+  - ai security engineer
+  - ml security engineer
+  - model security engineer
+  - adversarial machine learning
+  - zero trust security
+  - ingenieur infrastructure de securite
+  - ingenieur securite applicative
+  - architecte securite applicative
+  - architecte securite infonuagique
+  - developpeur securite infonuagique
+  - ingenieur operations de securite
+  - ingenieur automatisation de la securite
+  - ingenieur contenu de detection
+  - chasse aux menaces
+  - chasseur de menaces
+  - analyste donnees de securite
+  - ingenieur gestion des vulnerabilites
+  - ingenieur securite de la chaine logistique logicielle
+  - securite de la chaine d approvisionnement logicielle
+  - ingenieur cryptographie
+  - ingenieur securite ml
+  - ingenieur securite des modeles
+  - apprentissage automatique adversarial
+  - securite zero trust
+  - ingenieur securite ia
+  - ingenieure securite ia
 
+  - cloud native security
+  - runtime security
+  - adversary emulation
+  - purple team
+  - security orchestration
+  - zero trust engineering
+  - ndr engineer
+  - dfir
+  - memory forensics
+  - hardware security
+  - ai security
+  - model security
+  - smart contract security
+  - fraud prevention engineer
+  - payment fraud engineer
+  - identity verification engineer
+  - digital identity engineer
+  - secure communications software
+  - compliance automation
+  - securite infonuagique native
+  - securite d execution
+  - emulation d adversaires
+  - equipe violette
+  - orchestration de securite
+  - ingenierie zero trust
+  - ingenieur ndr
+  - ingenieure ndr
+  - reponse aux incidents et investigation numerique
+  - investigation de la memoire
+  - securite ia
+  - securite des modeles
+  - securite des contrats intelligents
+  - prevention de la fraude
+  - prevention de la fraude de paiement
+  - verification d identite
+  - logiciel de communications securisees
+  - automatisation de la conformite
+  - anti cheat engineer
+  - anti triche
 data:
   - data science
   - data scientist
   - data engineer
+  - data analysis
+  - data and analytics
+  - data and ai
+  - data extraction
+  - data integration
+  - data reporting
+  - data processing
+  - data visualization
+  - data specialist
+  - computational neuroscience
+  - analyse de données
+  - données et analytique
+  - données et ia
+  - extraction de données
+  - intégration de données
+  - rapports de données
+  - traitement de données
+  - visualisation de données
+  - spécialiste des données
+  - neurosciences computationnelles
   - data engineering
   - data analyst
   - data analytics
+  - gis analyst
+  - analyste sig
+  - systèmes d'information géographique
   - analytics engineer
   - business intelligence
   - bi developer
@@ -128,15 +727,11 @@ data:
   - data platform
   - data warehouse
   - database engineer
-  - science des données
   - science des donnees
   - scientifique des données
-  - ingénieur de données
   - ingenieur de donnees
-  - analyste de données
   - analyste de donnees
   - analyse de données
-  - données
   - donnees
   - intelligence d'affaires
   - entrepôt de données
@@ -147,7 +742,163 @@ data:
   - développeuse de données
   - développeure de données
   - programmeur de données
+  - data architect
+  - data modeler
+  - data modeller
+  - data mining analyst
+  - data miner
+  - big data analyst
+  - big data developer
+  - big data engineer
+  - data analytics consultant
+  - data analytics specialist
+  - analytics specialist
+  - data warehousing specialist
+  - data operations
+  - architecte de donnees
+  - analyste en analytique
+  - applied data science
+  - data platform engineer
+  - data infrastructure engineer
+  - data systems engineer
+  - data pipeline engineer
+  - etl engineer
+  - elt engineer
+  - data warehouse engineer
+  - data lake engineer
+  - database developer
+  - sql developer
+  - postgresql developer
+  - nosql database engineer
+  - data integration engineer
+  - bi engineer
+  - data quality engineer
+  - data reliability engineer
+  - data operations engineer
+  - data governance engineering
+  - data governance engineer
+  - ingénieur plateforme de données
+  - ingénieure plateforme de données
+  - ingénieur infrastructure de données
+  - ingénieure infrastructure de données
+  - ingénieur pipeline de données
+  - ingénieure pipeline de données
+  - ingénieur intégration de données
+  - ingénieure intégration de données
+  - ingénieur qualité des données
+  - ingénieure qualité des données
+  - ingénieur fiabilité des données
+  - ingénieure fiabilité des données
+  - ingénieur gouvernance des données
+  - ingénieure gouvernance des données
+  - développeur sql
+  - développeuse sql
+  - développeur de bases de données
+  - développeuse de bases de données
+  - data ingestion engineer
+  - data processing engineer
+  - data product engineer
+  - data visualization engineer
+  - business intelligence developer
+  - decision science
+  - statistical modeling
+  - computational science
+  - bioinformatics
+  - computational biology
+  - analyste en intelligence d affaires
+  - ingenieur des donnees
+  - ingenieure des donnees
+  - ingenieur en donnees
+  - ingenieure en donnees
+  - administratrice de bases de donnees
+  - ingenieur ingestion de donnees
+  - ingenieure ingestion de donnees
+  - ingenieur visualisation de donnees
+  - ingenieure visualisation de donnees
+  - science de la decision
+  - modelisation statistique
+  - bioinformatique
+  - biologie computationnelle
+  - analytics developer
+  - data streaming engineer
+  - real time data engineer
+  - event streaming engineer
+  - data mesh engineer
+  - data fabric engineer
+  - data observability engineer
+  - data lineage engineer
+  - data catalog engineer
+  - data modeling engineer
+  - database systems engineer
+  - data applications engineer
+  - analytics platform engineer
+  - developpeur analytique
+  - ingenieur diffusion de donnees
+  - ingenieure diffusion de donnees
+  - ingenieur donnees temps reel
+  - ingenieure donnees temps reel
+  - ingenieur flux d evenements
+  - ingenieure flux d evenements
+  - ingenieur maillage de donnees
+  - ingenieure maillage de donnees
+  - ingenieur tissu de donnees
+  - ingenieure tissu de donnees
+  - ingenieur observabilite des donnees
+  - ingenieure observabilite des donnees
+  - ingenieur lignage des donnees
+  - ingenieure lignage des donnees
+  - ingenieur catalogue de donnees
+  - ingenieure catalogue de donnees
+  - ingenieur modelisation des donnees
+  - ingenieure modelisation des donnees
+  - ingenieur systemes de bases de donnees
+  - ingenieure systemes de bases de donnees
+  - ingenieur applications de donnees
+  - ingenieure applications de donnees
+  - ingenieur plateforme analytique
+  - ingenieure plateforme analytique
 
+  - stream processing engineer
+  - message queue engineer
+  - kafka engineer
+  - data migration engineer
+  - document intelligence
+  - geospatial engineer
+  - mapping engineer
+  - remote sensing engineer
+  - earth observation data
+  - climate modeling
+  - clinical informatics
+  - health informatics
+  - medical image analysis
+  - bio signal processing
+  - web crawling engineer
+  - laboratory information systems
+  - traitement de flux
+  - file de messages
+  - ingenieur kafka
+  - ingenieure kafka
+  - migration de donnees
+  - intelligence documentaire
+  - ingenierie geospatiale
+  - ingenierie cartographique
+  - teledetection
+  - donnees d observation terrestre
+  - modelisation climatique
+  - informatique clinique
+  - informatique de la sante
+  - analyse d images medicales
+  - traitement de biosignaux
+  - exploration du web
+  - systemes d information de laboratoire
+  - geospatial intelligence
+  - computational chemistry
+  - cheminformatics
+  - attribution engineering
+  - renseignement geospatial
+  - chimie computationnelle
+  - chemoinformatique
+  - ingenierie d attribution
 ml-ai:
   - machine learning
   - deep learning
@@ -156,6 +907,49 @@ ml-ai:
   - ai engineer
   - ml research
   - ai research
+  - ai r d engineer
+  - ai r and d engineer
+  - enterprise ai
+  - ai modeling
+  - foundation models
+  - robot learning
+  - video algorithms
+  - gaussian splatting
+  - protective ai
+  - software ml engineering
+  - ia d entreprise
+  - modeles fondamentaux
+  - apprentissage robotique
+  - algorithmes video
+  - splatting gaussien
+  - ia protectrice
+  - ingénierie logicielle ml
+  - ml researcher
+  - ai inference
+  - ai deployment engineering
+  - ai perception
+  - vision ai
+  - ai agent builder
+  - ai first engineer
+  - ai first engineering
+  - ai automation engineer
+  - ai swe
+  - ai product engineer
+  - ai solutions engineer
+  - multimodal algorithm
+  - algorithme multimodal
+  - ingénieur r d ia
+  - ingénieure r d ia
+  - chercheur ml
+  - chercheuse ml
+  - inférence ia
+  - déploiement ia
+  - perception ia
+  - vision ia
+  - développeur d'agents ia
+  - développeuse d'agents ia
+  - ingénieur solutions ia
+  - ingénieure solutions ia
   - computer vision
   - natural language processing
   - nlp
@@ -172,7 +966,183 @@ ml-ai:
   - traitement du langage
   - modèle de langage
   - chercheur en ia
+  - artificial intelligence engineer
+  - artificial intelligence researcher
+  - ai engineering
+  - ai developer
+  - ai researcher
+  - ai scientist
+  - machine learning scientist
+  - machine learning specialist
+  - nlp engineer
+  - natural language processing engineer
+  - computer vision engineer
+  - research engineer
+  - research and development engineer
+  - ingenieur en intelligence artificielle
+  - ingenieure en intelligence artificielle
+  - ingenieur ia
+  - ingenieure ia
+  - chercheuse en ia
+  - traitement automatique du langage naturel
+  - applied machine learning
+  - ml software engineer
+  - ml platform engineer
+  - machine learning infrastructure
+  - machine learning operations
+  - generative ai engineer
+  - speech recognition
+  - speech technology engineer
+  - recommender systems
+  - machine learning research
+  - ai research engineer
+  - artificial intelligence analyst
+  - artificial intelligence designer
+  - applied ai engineer
+  - ingénieur en apprentissage automatique
+  - ingénieure en apprentissage automatique
+  - ingénieur apprentissage machine
+  - ingénieure apprentissage machine
+  - ingénieur ml
+  - ingénieure ml
+  - ingénieur nlp
+  - ingénieure nlp
+  - ia générative
+  - intelligence artificielle générative
+  - reconnaissance vocale
+  - technologie de la parole
+  - systèmes de recommandation
+  - recherche en intelligence artificielle
+  - recherche en apprentissage automatique
+  - scientifique en apprentissage automatique
+  - scientifique en intelligence artificielle
+  - chercheuse en apprentissage automatique
+  - deep learning engineer
+  - machine learning developer
+  - data science engineer
+  - decision scientist
+  - statistical modeling engineer
+  - computational scientist
+  - quantum computing
+  - ingenieur apprentissage profond
+  - ingenieure apprentissage profond
+  - developpeur apprentissage automatique
+  - developpeuse apprentissage automatique
+  - ingenieur mlops
+  - ingenieure mlops
+  - scientifique des donnees appliquees
+  - scientifique de la decision
+  - ai platform engineer
+  - ai platform developer
+  - ai systems engineer
+  - ml systems engineer
+  - machine learning infrastructure engineer
+  - machine learning serving engineer
+  - model serving engineer
+  - inference engineer
+  - inference optimization engineer
+  - llm engineer
+  - llmops engineer
+  - llm platform engineer
+  - ai evaluation engineer
+  - ml evaluation engineer
+  - model evaluation engineer
+  - ai safety engineer
+  - ml safety engineer
+  - responsible ai engineer
+  - ai reliability engineer
+  - recommendation engineer
+  - recommender systems engineer
+  - ranking engineer
+  - search relevance engineer
+  - speech ai engineer
+  - generative media engineer
+  - ingenieur plateforme ia
+  - ingenieure plateforme ia
+  - developpeur plateforme ia
+  - developpeuse plateforme ia
+  - ingenieur systemes ia
+  - ingenieure systemes ia
+  - ingenieur systemes ml
+  - ingenieure systemes ml
+  - ingenieur infrastructure apprentissage automatique
+  - ingenieure infrastructure apprentissage automatique
+  - ingenieur service de modeles
+  - ingenieure service de modeles
+  - ingenieur inference
+  - ingenieure inference
+  - ingenieur optimisation de l inference
+  - ingenieure optimisation de l inference
+  - ingenieur llm
+  - ingenieure llm
+  - ingenieur llmops
+  - ingenieure llmops
+  - ingenieur evaluation ia
+  - ingenieure evaluation ia
+  - ingenieur evaluation ml
+  - ingenieure evaluation ml
+  - ingenieur ia responsable
+  - ingenieure ia responsable
+  - ingenieur fiabilite ia
+  - ingenieure fiabilite ia
+  - ingenieur recommandations
+  - ingenieure recommandations
+  - ingenieur classement
+  - ingenieure classement
+  - ingenieur pertinence de recherche
+  - ingenieure pertinence de recherche
+  - ingenieur ia vocale
+  - ingenieure ia vocale
+  - ingenieur medias generatifs
+  - ingenieure medias generatifs
 
+  - search quality engineer
+  - recommendation infrastructure
+  - feature store engineer
+  - ai safety engineering
+  - model evaluation
+  - multi agent systems
+  - privacy preserving ml
+  - ai ml
+  - applied ai
+  - retrieval augmented generation
+  - rag engineer
+  - ai agents engineer
+  - agentic ai
+  - ai evaluation
+  - model quality
+  - ai safety
+  - trustworthy ai
+  - responsible ai
+  - model optimization
+  - mle
+  - pertinence de recherche
+  - infrastructure de recommandation
+  - magasin de fonctionnalites
+  - surete de l ia
+  - evaluation de modeles
+  - systemes multi agents
+  - apprentissage automatique respectueux de la vie privee
+  - ia aa
+  - ia appliquee
+  - generation augmentee par recuperation
+  - ingenieur rag
+  - ingenieure rag
+  - agents ia
+  - ia agentique
+  - evaluation ia
+  - qualite des modeles
+  - ia digne de confiance
+  - ia responsable
+  - optimisation de modeles
+  - knowledge graph engineer
+  - drug discovery ml
+  - clinical ai
+  - ai tutoring systems
+  - ingenierie de graphes de connaissances
+  - apprentissage automatique pour la decouverte de medicaments
+  - ia clinique
+  - systemes de tutorat ia
 quant:
   - quantitative
   - quantitative researcher
@@ -191,7 +1161,199 @@ quant:
   - recherche quantitative
   - analyste quantitatif
   - négociation algorithmique
+  - quant engineer
+  - quantitative engineer
+  - quant strategist
+  - quantitative strategist
+  - algorithmic trader
+  - systematic researcher
+  - systematic developer
+  - operations research analyst
+  - market microstructure
+  - ingenieur quantitatif
+  - ingenieure quantitative
+  - ingenieur quant
+  - ingenieure quant
+  - chercheur quantitatif
+  - chercheuse quantitative
+  - developpeur quantitatif
+  - developpeuse quantitative
+  - developpeur quant
+  - developpeuse quant
+  - recherche operationnelle
+  - operations research
+  - quant research
+  - quant trading
+  - quant analyst
+  - analyste quant
+  - quantitative software engineer
+  - quant software engineer
+  - trading systems engineer
+  - trading system engineering
+  - trading software developer
+  - financial software engineer
+  - financial systems developer
+  - financial technology
+  - fintech software engineer
+  - market data engineer
+  - market data developer
+  - portfolio analytics
+  - risk analytics
+  - risk technology
+  - financial data science
+  - financial engineering
+  - capital markets technology
+  - investment technology
+  - blockchain developer
+  - web3 developer
+  - web3 engineer
+  - smart contract developer
+  - distributed ledger technology
+  - digital assets technology
+  - crypto software engineer
+  - defi developer
+  - payments engineer
+  - payments software engineer
+  - payment systems
+  - transaction processing
+  - banking technology
+  - fraud engineering
+  - fraud analytics engineer
+  - financial risk modeling
+  - treasury technology
+  - insurance technology
+  - insurtech software
+  - actuarial technology
+  - credit risk technology
+  - regulatory technology
+  - ingenieur logiciel quantitatif
+  - ingenieure logicielle quantitative
+  - ingenieur systemes de negociation
+  - ingenieure systemes de negociation
+  - developpeur logiciel de negociation
+  - developpeuse logiciel de negociation
+  - ingenieur logiciel financier
+  - ingenieure logiciel financier
+  - developpeur systemes financiers
+  - developpeuse systemes financiers
+  - technologie financiere
+  - technologies financieres
+  - ingenieur donnees de marche
+  - ingenieure donnees de marche
+  - analyse de portefeuille
+  - analytique des risques
+  - technologie des risques
+  - science des donnees financieres
+  - ingenierie financiere
+  - technologie des marches des capitaux
+  - technologie d investissement
+  - developpeur chaine de blocs
+  - developpeuse chaine de blocs
+  - developpeur web3
+  - developpeuse web3
+  - developpeur contrats intelligents
+  - developpeuse contrats intelligents
+  - developpeur de contrats intelligents
+  - developpeuse de contrats intelligents
+  - ingenieur paiements
+  - ingenieure paiements
+  - systemes de paiement
+  - traitement des transactions
+  - technologie bancaire
+  - ingenierie de la fraude
+  - modelisation des risques financiers
+  - technologie de tresorerie
+  - technologie de l assurance
+  - technologie actuarielle
+  - technologie du risque de credit
+  - technologie reglementaire
+  - trading infrastructure engineer
+  - low latency trading engineer
+  - electronic trading engineer
+  - execution engineer
+  - execution algorithms engineer
+  - execution technology engineer
+  - order management systems
+  - order gateway engineer
+  - exchange connectivity engineer
+  - fix engineer
+  - market data infrastructure
+  - trading platform engineer
+  - backtesting engineer
+  - backtest engineer
+  - strategy developer
+  - systematic portfolio engineer
+  - alpha research engineer
+  - statistical arbitrage
+  - systematic credit
+  - engineer trading infrastructure
+  - ingenieur infrastructure de negociation
+  - ingenieure infrastructure de negociation
+  - ingenieur negociation a faible latence
+  - ingenieure negociation a faible latence
+  - ingenieur negociation electronique
+  - ingenieure negociation electronique
+  - ingenieur execution
+  - ingenieure execution
+  - ingenieur algorithmes d execution
+  - ingenieure algorithmes d execution
+  - technologie d execution
+  - systemes de gestion des ordres
+  - ingenieur passerelle d ordres
+  - ingenieure passerelle d ordres
+  - ingenieur connectivite aux bourses
+  - ingenieure connectivite aux bourses
+  - ingenieur fix
+  - ingenieure fix
+  - infrastructure de donnees de marche
+  - ingenieur plateforme de negociation
+  - ingenieure plateforme de negociation
+  - ingenieur backtesting
+  - ingenieure backtesting
+  - developpeur de strategies
+  - developpeuse de strategies
+  - ingenieur portefeuille systematique
+  - ingenieure portefeuille systematique
+  - ingenieur recherche alpha
+  - ingenieure recherche alpha
+  - arbitrage statistique
+  - credit systematique
 
+  - blockchain protocol engineer
+  - consensus systems
+  - decentralized systems
+  - distributed ledger engineer
+  - crypto infrastructure
+  - trading infrastructure
+  - energy trading systems
+  - grid optimization
+  - inventory optimization
+  - insurance pricing systems
+  - actuarial systems
+  - risk modeling software
+  - real time pricing engineer
+  - auction systems engineer
+  - protocole de chaine de blocs
+  - systemes de consensus
+  - systemes decentralises
+  - ingenieur registre distribue
+  - ingenieure registre distribue
+  - infrastructure cryptographique
+  - infrastructure de negociation
+  - systemes de negociation d energie
+  - optimisation de reseau electrique
+  - optimisation des stocks
+  - systemes de tarification d assurance
+  - systemes actuariels
+  - logiciel de modelisation des risques
+  - tarification en temps reel
+  - systemes d encheres
+  - numerical methods
+  - computational mathematics
+  - algorithm research
+  - methodes numeriques
+  - mathematiques computationnelles
+  - recherche algorithmique
 infra:
   - infrastructure engineer
   - site reliability
@@ -209,17 +1371,17 @@ infra:
   - production engineer
   - infonuagique
   - infrastructure infonuagique
-  - ingénieur systèmes
-  - ingenieur systemes
   - fiabilité des sites
   - administrateur systèmes
   - réseautique
   - systems administrator
   - system administrator
-  - network administrator
   - database administrator
+  - network administrator
   - high performance computing
   - hpc
+  - supercomputing
+  - superinformatique
   - build operations
   - buildops
   - mlops
@@ -227,7 +1389,260 @@ infra:
   - administrateur de bases de données
   - calcul haute performance
   - automatisation des builds
+  - cloud platform engineer
+  - cloud architect
+  - systems architect
+  - infrastructure developer
+  - infrastructure software engineer
+  - infrastructure automation
+  - ai infrastructure
+  - cloud operations engineer
+  - cloud operations engineering
+  - ml infra engineer
+  - ml infrastructure engineer
+  - linux engineer
+  - windows engineer
+  - cloud networking
+  - network software engineer
+  - network programmer
+  - network automation engineer
+  - network operations engineer
+  - network systems engineer
+  - network infrastructure engineer
+  - network protocol engineer
+  - network security operations
+  - telecommunications software
+  - telecom software engineer
+  - wireless software engineer
+  - wireless networks
+  - 5g software engineer
+  - edge computing engineer
+  - edge computing
+  - scientific computing
+  - informatique peripherique
+  - calcul scientifique
+  - edge software engineer
+  - cdn engineering
+  - cdn platform engineer
+  - cdn platform
+  - plateforme de réseau de diffusion de contenu
+  - ai ran telecommunications
+  - télécommunications ran ia
+  - traffic engineering
+  - load balancing engineer
+  - messaging systems
+  - streaming systems
+  - devops developer
+  - production systems
+  - reliability engineer
+  - build systems engineer
+  - build and release engineer
+  - ci cd engineer
+  - developer productivity engineer
+  - developer tools engineer
+  - internal tools developer
+  - developer experience engineer
+  - ingenieur systeme
+  - ingenieure systeme
+  - administrateur systeme
+  - administratrice systeme
+  - architecte systeme
+  - architecte infonuagique
+  - ingenieur infonuagique
+  - ingenieure infonuagique
+  - ingenieur reseau
+  - ingenieure reseau
+  - architecte reseau
+  - cloud software engineer
+  - cloud developer
+  - distributed computing
+  - network infrastructure
+  - hpc software engineer
+  - parallel computing
+  - gpu computing
+  - research computing
+  - datacenter engineer
+  - developer infrastructure
+  - cloud native engineer
+  - platform operations engineer
+  - observability engineer
+  - data center networking
+  - ingenieur logiciel infonuagique
+  - ingenieure logicielle infonuagique
+  - developpeur infonuagique
+  - informatique distribuee
+  - infrastructure reseau
+  - ingenieur logiciel hpc
+  - ingenieure logicielle hpc
+  - calcul parallele
+  - calcul gpu
+  - informatique de recherche
+  - ingenieur centre de donnees
+  - ingenieure centre de donnees
+  - ingenieur observabilite
+  - ingenieure observabilite
+  - systems performance engineer
+  - storage engineer
+  - storage systems engineer
+  - database reliability engineer
+  - database platform engineer
+  - cloud reliability engineer
+  - cloud systems engineer
+  - cloud network engineer
+  - sre developer
+  - service mesh engineer
+  - kubernetes platform engineer
+  - container platform engineer
+  - infrastructure as code engineer
+  - platform automation engineer
+  - configuration management engineer
+  - release automation engineer
+  - ci engineer
+  - build tooling engineer
+  - capacity engineer
+  - software defined networking engineer
+  - network operating systems engineer
+  - control plane engineer
+  - data plane engineer
+  - packet processing engineer
+  - routing engineer
+  - switching engineer
+  - transport protocols engineer
+  - network telemetry engineer
+  - telecom protocols engineer
+  - carrier systems engineer
+  - edge networking engineer
+  - ingenieur performance des systemes
+  - ingenieure performance des systemes
+  - ingenieur stockage
+  - ingenieure stockage
+  - ingenieur systemes de stockage
+  - ingenieure systemes de stockage
+  - ingenieur fiabilite des bases de donnees
+  - ingenieure fiabilite des bases de donnees
+  - ingenieur plateforme de bases de donnees
+  - ingenieure plateforme de bases de donnees
+  - ingenieur fiabilite infonuagique
+  - ingenieure fiabilite infonuagique
+  - ingenieur systemes infonuagiques
+  - ingenieure systemes infonuagiques
+  - ingenieur reseau infonuagique
+  - ingenieure reseau infonuagique
+  - developpeur sre
+  - developpeuse sre
+  - ingenieur maillage de services
+  - ingenieure maillage de services
+  - ingenieur plateforme kubernetes
+  - ingenieure plateforme kubernetes
+  - ingenieur plateforme de conteneurs
+  - ingenieure plateforme de conteneurs
+  - ingenieur infrastructure comme code
+  - ingenieure infrastructure comme code
+  - ingenieur automatisation de plateforme
+  - ingenieure automatisation de plateforme
+  - ingenieur gestion de configuration
+  - ingenieure gestion de configuration
+  - ingenieur automatisation des versions
+  - ingenieure automatisation des versions
+  - ingenieur ci
+  - ingenieure ci
+  - ingenieur outillage de build
+  - ingenieure outillage de build
+  - ingenieur capacite
+  - ingenieure capacite
+  - ingenieur reseaux definis par logiciel
+  - ingenieure reseaux definis par logiciel
+  - ingenieur systemes exploitation reseau
+  - ingenieure systemes exploitation reseau
+  - ingenieur plan de controle
+  - ingenieure plan de controle
+  - ingenieur plan de donnees
+  - ingenieure plan de donnees
+  - ingenieur traitement de paquets
+  - ingenieure traitement de paquets
+  - ingenieur routage
+  - ingenieure routage
+  - ingenieur commutation
+  - ingenieure commutation
+  - ingenieur protocoles de transport
+  - ingenieure protocoles de transport
+  - ingenieur telemetrie reseau
+  - ingenieure telemetrie reseau
+  - ingenieur protocoles telecom
+  - ingenieure protocoles telecom
+  - ingenieur systemes operateurs
+  - ingenieure systemes operateurs
+  - ingenieur reseautage peripherique
+  - ingenieure reseautage peripherique
 
+  - api gateway engineer
+  - reverse proxy engineer
+  - cloud finops engineering
+  - capacity planning engineer
+  - chaos engineering
+  - resilience engineering
+  - disaster recovery engineering
+  - backup and recovery engineer
+  - edge platform engineer
+  - search infrastructure engineer
+  - tracing engineer
+  - incident management engineering
+  - production tooling engineer
+  - engineering productivity
+  - software configuration management
+  - wireless systems software
+  - 6g research
+  - radio access network software
+  - cdn engineer
+  - dns engineer
+  - web infrastructure
+  - internet infrastructure
+  - browser engine
+  - protocol engineer
+  - passerelle api
+  - proxy inverse
+  - finops infonuagique
+  - planification de capacite
+  - ingenierie du chaos
+  - ingenierie de resilience
+  - reprise apres sinistre
+  - sauvegarde et recuperation
+  - infrastructure de developpement
+  - plateforme peripherique
+  - infrastructure de moteur de recherche
+  - maille de services
+  - tracage distribue
+  - gestion d incidents d ingenierie
+  - outils de production
+  - productivite de l ingenierie
+  - gestion de configuration logicielle
+  - logiciel de systemes sans fil
+  - recherche 6g
+  - logiciel de reseau d acces radio
+  - reseau de diffusion de contenu
+  - ingenieur dns
+  - ingenieure dns
+  - infrastructure web
+  - infrastructure internet
+  - moteur de navigateur
+  - ingenieur de protocoles
+  - ingenieure de protocoles
+  - routing algorithm
+  - browser performance
+  - power optimization software
+  - energy efficiency software
+  - ml operations engineer
+  - model deployment engineer
+  - cloud engineering
+  - content infrastructure
+  - algorithmes de routage
+  - performance de navigateur
+  - logiciel d optimisation energetique
+  - logiciel d efficacite energetique
+  - operations d apprentissage automatique
+  - deploiement de modeles
+  - ingenierie infonuagique
+  - infrastructure de contenu
 hardware:
   - hardware engineer
   - hardware engineering
@@ -240,10 +1655,13 @@ hardware:
   - vlsi
   - analog design
   - digital design
+  - analog ic design
+  - digital ic design
+  - conception de circuits intégrés analogiques
+  - conception de circuits intégrés numériques
   - pcb
   - signal integrity
   - semiconductor
-  - génie électrique
   - genie electrique
   - ingénieur matériel
   - conception de circuits
@@ -251,8 +1669,130 @@ hardware:
   - electrical engineer
   - electrical engineering
   - ingénieur électrique
+  - computer engineer
+  - computer hardware engineer
+  - computer systems engineer
+  - hardware systems engineer
+  - hardware software integration
+  - hardware validation
+  - hardware verification
+  - design verification
+  - formal verification
+  - physical design
+  - cpu architecture
+  - computer architecture
+  - processor architecture
+  - data movement architecture
+  - silicon engineering
+  - gpu driver engineer
+  - board support package engineer
+  - bsp developer
+  - avionics software
+  - aerospace software engineer
+  - medical device software
+  - electronics engineer
+  - electrical and electronics engineer
+  - network hardware engineer
+  - telecommunications hardware engineer
+  - ingenieur electronique
+  - ingenieure electronique
+  - genie electronique
+  - ingenierie electronique
+  - conception electronique
+  - fpga developer
+  - fpga verification
+  - asic verification
+  - digital verification
+  - semiconductor software
+  - digital signal processor
+  - gpu software engineer
+  - ingenieur logiciel gpu
+  - quantum hardware
+  - photonics engineer
+  - developpeur fpga
+  - verification fpga
+  - verification asic
+  - verification numerique
+  - logiciel de semiconducteurs
+  - processeur de signal numerique
+  - materiel quantique
+  - ingenieur photonique
+  - ingenieure photonique
+  - hardware design engineer
+  - logic design engineer
+  - soc engineer
+  - system on chip
+  - soc verification
+  - soc architecture
+  - design for test
+  - dft engineer
+  - testbench engineer
+  - emulation engineer
+  - chip validation engineer
+  - post silicon validation
+  - silicon validation
+  - analog modeling and testing
+  - chip simulation software
+  - robotic hardware
+  - developpement materiel
+  - static timing analysis
+  - physical verification
+  - synthesis engineer
+  - eda engineer
+  - electronic design automation
+  - ai accelerator engineer
+  - accelerator architecture
+  - gpu architecture
+  - hardware security engineer
+  - rf systems engineer
+  - ingenieur conception materielle
+  - ingenieure conception materielle
+  - ingenieur conception logique
+  - ingenieure conception logique
+  - ingenieur soc
+  - ingenieure soc
+  - systeme sur puce
+  - verification soc
+  - architecture soc
+  - conception pour les tests
+  - ingenieur dft
+  - ingenieure dft
+  - ingenieur banc de test
+  - ingenieure banc de test
+  - ingenieur emulation
+  - ingenieure emulation
+  - ingenieur validation de puce
+  - ingenieure validation de puce
+  - validation post silicium
+  - analyse temporelle statique
+  - verification physique
+  - ingenieur synthese
+  - ingenieure synthese
+  - ingenieur eda
+  - ingenieure eda
+  - automatisation de la conception electronique
+  - ingenieur accelerateur ia
+  - ingenieure accelerateur ia
+  - architecture accelerateur
+  - architecture gpu
+  - ingenieur securite materielle
+  - ingenieure securite materielle
+  - ingenieur systemes rf
+  - ingenieure systemes rf
 
+  - ml compiler
+  - ai accelerator software
+  - computer aided manufacturing
+  - compilateur aa
+  - logiciel d accelerateur ia
+  - fabrication assistee par ordinateur
 embedded:
+  - vehicle software
+  - vehicle controls
+  - logiciel de véhicule
+  - logicielle de véhicule
+  - commandes de véhicule
+  - commandes de véhicules
   - embedded engineer
   - embedded software
   - embedded systems
@@ -268,10 +1808,7 @@ embedded:
   - microcontroller
   - robotics software
   - control systems
-  - avionics software
-  - logiciel embarqué
   - logiciel embarque
-  - systèmes embarqués
   - systemes embarques
   - micrologiciel
   - microcontrôleur
@@ -282,17 +1819,181 @@ embedded:
   - control engineer
   - systèmes de contrôle
   - ingénieur en robotique
+  - embedded developer
+  - embedded systems developer
+  - embedded linux engineer
+  - embedded quality and fielded systems
+  - real time systems engineer
+  - rtos engineer
+  - iot developer
+  - iot software engineer
+  - connected devices engineer
+  - edge ai engineer
+  - robotics software engineer
+  - robotics programmer
+  - autonomous systems
+  - flight software
+  - logiciel de vol
+  - ingénieur logiciel de vol
+  - ingénieure logicielle de vol
+  - interior sensing
+  - détection de l'habitacle
+  - autonomous vehicle software
+  - autonomous driving
+  - adas software
+  - controls software engineer
+  - industrial automation software
+  - automotive software engineer
+  - telematics software
+  - drone software engineer
+  - developpeur embarque
+  - developpeuse embarquee
+  - developpeur de systemes embarques
+  - developpeuse de systemes embarques
+  - ingenieur en systemes embarques
+  - ingenieure en systemes embarques
+  - systeme embarque
+  - systemes temps reel
+  - logiciel temps reel
+  - ingenieur micrologiciel
+  - ingenieure micrologiciel
+  - internet des objets
+  - firmware developer
+  - industrial control systems
+  - autonomous robotics
+  - navigation software engineer
+  - perception software engineer
+  - computer vision robotics
+  - developpeur micrologiciel
+  - ingenieur robotique
+  - ingenieure robotique
+  - ingenierie robotique
+  - securite iot
+  - systemes de controle industriel
+  - robotique autonome
+  - ingenieur logiciel de navigation
+  - ingenieure logicielle de navigation
+  - ingenieur logiciel de perception
+  - ingenieure logicielle de perception
+  - vision par ordinateur robotique
+  - embedded platform engineer
+  - embedded systems architect
+  - embedded application engineer
+  - firmware validation engineer
+  - firmware test engineer
+  - embedded connectivity engineer
+  - wireless embedded engineer
+  - can software engineer
+  - autosar engineer
+  - automotive embedded software
+  - robotics perception engineer
+  - robotics autonomy engineer
+  - robotics controls engineer
+  - motion planning engineer
+  - sensor fusion engineer
+  - autonomous navigation engineer
+  - drone autonomy engineer
+  - robot operating system
+  - embedded ai engineer
+  - edge robotics
+  - ingenieur plateforme embarquee
+  - ingenieure plateforme embarquee
+  - architecte systemes embarques
+  - ingenieur applications embarquees
+  - ingenieure applications embarquees
+  - ingenieur validation micrologiciel
+  - ingenieure validation micrologiciel
+  - ingenieur tests micrologiciel
+  - ingenieure tests micrologiciel
+  - ingenieur connectivite embarquee
+  - ingenieure connectivite embarquee
+  - ingenieur embarque sans fil
+  - ingenieure embarquee sans fil
+  - ingenieur logiciel can
+  - ingenieure logiciel can
+  - ingenieur autosar
+  - ingenieure autosar
+  - logiciel automobile embarque
+  - ingenieur perception robotique
+  - ingenieure perception robotique
+  - ingenieur autonomie robotique
+  - ingenieure autonomie robotique
+  - ingenieur controle robotique
+  - ingenieure controle robotique
+  - ingenieur planification de mouvement
+  - ingenieure planification de mouvement
+  - ingenieur fusion de capteurs
+  - ingenieure fusion de capteurs
+  - ingenieur navigation autonome
+  - ingenieure navigation autonome
+  - ingenieur autonomie de drone
+  - ingenieure autonomie de drone
+  - systeme exploitation robotique
+  - ingenieur ia embarquee
+  - ingenieure ia embarquee
+  - robotique peripherique
 
+  - motion control software
+  - robot simulation
+  - human robot interaction
+  - robotics infrastructure
+  - robotics testing
+  - connected vehicle systems
+  - smart building software
+  - building automation software
+  - battery management systems
+  - precision agriculture software
+  - agricultural robotics
+  - farm automation software
+  - drone mapping software
+  - industrial iot engineer
+  - factory automation software
+  - warehouse automation software
+  - scada software
+  - process control software
+  - industrial digital twin
+  - consumer devices software
+  - wearable software engineer
+  - bluetooth software engineer
+  - sensor software engineer
+  - logiciel de controle de mouvement
+  - simulation robotique
+  - interaction humain robot
+  - infrastructure robotique
+  - essais robotiques
+  - systemes de vehicules connectes
+  - logiciel de batiment intelligent
+  - logiciel d automatisation de batiment
+  - systemes de gestion de batterie
+  - logiciel d agriculture de precision
+  - robotique agricole
+  - logiciel d automatisation agricole
+  - logiciel de cartographie par drone
+  - ingenieur iot industriel
+  - ingenieure iot industriel
+  - logiciel d automatisation d usine
+  - logiciel d automatisation d entrepot
+  - logiciel scada
+  - logiciel de controle des procedes
+  - jumeau numerique industriel
+  - logiciel d appareils grand public
+  - logiciel pour objets portables
+  - logiciel bluetooth
+  - logiciel de capteurs
+  - smart grid software
+  - digital manufacturing
+  - laboratory automation software
+  - logiciel de reseau electrique intelligent
+  - fabrication numerique
+  - logiciel d automatisation de laboratoire
 general-cs:
   - computer science
   - computer engineering
-  - information technology
+  - computer scientist
   - computing science
   - informatique
-  - génie informatique
   - genie informatique
   - sciences informatiques
-  - technologies de l'information
 
 source_categories:
   swe:

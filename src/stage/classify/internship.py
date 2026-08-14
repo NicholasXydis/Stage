@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
+from stage.domain import Language
 from stage.lexicon import fold, internship_lexicon
+from stage.normalize import detect_language
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +40,11 @@ def screen_internship(title: str, employment_type: str = "") -> InternshipVerdic
 
     blocked = _blocked_positions(folded_title, lexicon.blocked_bigrams)
     matched = _phrase_hits(folded_title, lexicon.markers)
+    if {"stage", "stages"}.intersection(matched) and detect_language(title).language not in {
+        Language.FR,
+        Language.BILINGUAL,
+    }:
+        matched = [phrase for phrase in matched if phrase not in {"stage", "stages"}]
     if blocked and not [phrase for phrase in matched if f" {phrase} " not in f" {blocked} "]:
         return InternshipVerdict(is_internship=False, disqualified_by=blocked)
 

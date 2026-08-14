@@ -2,8 +2,6 @@ from dataclasses import dataclass
 
 from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
 
-OUT_OF_SCOPE_BUCKETS: frozenset[LocationBucket] = frozenset({LocationBucket.OTHER})
-
 
 @dataclass(frozen=True, slots=True)
 class Rejection:
@@ -12,11 +10,11 @@ class Rejection:
 
 
 def screen_location(job: Job, evidence: tuple[str, ...] = ()) -> Rejection | None:
-    if job.location not in OUT_OF_SCOPE_BUCKETS:
+    if job.location is not LocationBucket.UNKNOWN:
         return None
     return Rejection(
-        reason=RejectionReason.OUT_OF_SCOPE_LOCATION,
-        matched_phrase=", ".join(evidence),
+        reason=RejectionReason.UNKNOWN_LOCATION,
+        matched_phrase=", ".join(evidence) or "no recognizable location",
     )
 
 
