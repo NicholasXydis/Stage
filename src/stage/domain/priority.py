@@ -6,6 +6,7 @@ SOURCE_PRIORITY: tuple[str, ...] = (
     "workday",
     "simplify",
     "vanshb03",
+    "speedyapply",
 )
 
 

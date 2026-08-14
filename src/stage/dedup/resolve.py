@@ -38,6 +38,7 @@ def resolve_duplicates(
 
     parent: dict[str, str] = {job.id: job.id for job in jobs}
     boards: dict[str, set[str]] = {job.id: {job.board_key} for job in jobs}
+    sources: dict[str, set[str]] = {job.id: {job.source} for job in jobs}
     reason: dict[str, tuple[str, str]] = {}
 
     def find(job_id: str) -> str:
@@ -54,13 +55,14 @@ def resolve_duplicates(
             left_root, right_root = find(left.id), find(right.id)
             if left_root == right_root:
                 continue
-            if boards[left_root] & boards[right_root]:
+            if boards[left_root] & boards[right_root] or sources[left_root] & sources[right_root]:
                 continue
             match = would_merge(left, right)
             if not match or (match.kind is MatchKind.URL and left.apply_url_canonical in ambiguous):
                 continue
             parent[right_root] = left_root
             boards[left_root] |= boards[right_root]
+            sources[left_root] |= sources[right_root]
             reason[right.id] = (match.kind.value, match.evidence)
 
     links: list[DuplicateLink] = []

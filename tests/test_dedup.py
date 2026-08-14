@@ -119,14 +119,16 @@ def test_a_different_employer_never_merges_on_title_alone() -> None:
     assert not would_merge(left, right)
 
 
-def test_remote_does_not_agree_with_a_city() -> None:
-    assert not location_agrees(LocationBucket.REMOTE, LocationBucket.MONTREAL)
-    left = job("a", "greenhouse", "Shopify", "Backend Intern", location=LocationBucket.REMOTE)
+def test_international_does_not_agree_with_a_city() -> None:
+    assert not location_agrees(LocationBucket.INTERNATIONAL, LocationBucket.MONTREAL)
+    left = job(
+        "a", "greenhouse", "Shopify", "Backend Intern", location=LocationBucket.INTERNATIONAL
+    )
     right = job("b", "simplify", "Shopify", "Backend Intern", location=LocationBucket.MONTREAL)
     assert not would_merge(left, right)
 
 
-@pytest.mark.parametrize("bucket", [LocationBucket.UNKNOWN, LocationBucket.OTHER])
+@pytest.mark.parametrize("bucket", [LocationBucket.UNKNOWN, LocationBucket.INTERNATIONAL])
 def test_unresolved_locations_never_satisfy_the_guardrail(bucket: LocationBucket) -> None:
     left = job("a", "greenhouse", "Acme", "Software Engineer Intern", location=bucket)
     right = job("b", "simplify", "Acme", "Software Engineer Intern", location=bucket)
@@ -239,13 +241,13 @@ def test_survivor_selection_is_stable_across_runs() -> None:
 
 
 def test_a_cluster_never_contains_two_rows_from_one_source() -> None:
-    a = job("a", "greenhouse", "Tower Research", "Quantitative Trader Intern")
-    c = job("c", "greenhouse", "Tower Research", "Quantitative Developer Intern")
+    a = job("greenhouse:tower-en:1", "greenhouse", "Tower Research", "Quantitative Trader Intern")
+    c = job("greenhouse:tower-fr:2", "greenhouse", "Tower Research", "Quantitative Trader Intern")
     b = job("b", "simplify", "Tower Research", "Quantitative Trader Intern")
     links = resolve_duplicates([a, b, c], [])
     canonical_for = {link.duplicate_id: link.canonical_id for link in links}
-    assert "c" not in canonical_for or canonical_for["c"] != "a"
-    by_id = {"a": a, "b": b, "c": c}
+    assert c.id not in canonical_for or canonical_for[c.id] != a.id
+    by_id = {a.id: a, b.id: b, c.id: c}
     for duplicate, canonical in canonical_for.items():
         assert by_id[duplicate].source != by_id[canonical].source
 
