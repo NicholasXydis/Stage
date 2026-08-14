@@ -11,6 +11,8 @@ class PlatformCandidate:
     workday_tenant: str | None = None
     workday_site: str | None = None
     workday_dc: str | None = None
+    oracle_host: str | None = None
+    oracle_site: str | None = None
     resolves_board: bool = True
 
     @property
@@ -20,6 +22,8 @@ class PlatformCandidate:
         if self.workday_tenant is not None:
             site = self.workday_site or "?"
             return f"{self.platform.value}/{self.workday_tenant}/{site}@{self.workday_dc or '?'}"
+        if self.oracle_host is not None:
+            return f"{self.platform.value}/{self.oracle_host}/{self.oracle_site or '?'}"
         return f"{self.platform.value}/{self.slug}"
 
 

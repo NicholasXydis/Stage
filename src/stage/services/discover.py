@@ -1,5 +1,5 @@
 import time
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
 
@@ -214,6 +214,27 @@ def resolve_careers_url(url: str) -> DiscoveryEvent:
     return UrlResolved(url=url, candidate=candidate, detail=detail)
 
 
+def direct_companies_from_apply_urls(
+    apply_urls: Mapping[str, Sequence[str]],
+    *,
+    platforms: Sequence[Platform] | None = None,
+) -> tuple[Company, ...]:
+    allowed = {probe.platform for probe in _selected_probes(platforms)}
+    rank = {probe.platform: index for index, probe in enumerate(PROBES)}
+    direct: list[Company] = []
+    for name, urls in apply_urls.items():
+        candidates = [
+            candidate
+            for url in urls
+            if (candidate := identify_url(url)) is not None and candidate.platform in allowed
+        ]
+        if not candidates:
+            continue
+        candidate = min(candidates, key=lambda value: (rank[value.platform], value.slug))
+        direct.append(to_company(name, candidate))
+    return tuple(direct)
+
+
 def is_routable(platform: Platform) -> bool:
     from stage.sources import adapter_for_platform
 
@@ -239,6 +260,8 @@ def to_company(
         workday_tenant=candidate.workday_tenant,
         workday_site=candidate.workday_site,
         workday_dc=candidate.workday_dc,
+        oracle_host=candidate.oracle_host,
+        oracle_site=candidate.oracle_site,
     )
 
 

@@ -61,7 +61,7 @@ LocationOption = Annotated[
     str | None,
     typer.Option(
         "--location",
-        help="Filter by location: montreal, canada, usa, remote, other, unknown",
+        help="Filter by location: montreal, canada, usa, international, unknown",
     ),
 ]
 TermOption = Annotated[
@@ -788,10 +788,12 @@ def rescreen(db: DatabaseOption = None) -> None:
             f"Re-screened {result.examined} posting(s); the lexicon agrees with every one."
         )
         return
-    console.print(
-        f"Re-screened {result.examined} posting(s) — "
-        f"[yellow]{result.quarantined} moved to quarantine[/yellow]."
-    )
+    changes: list[str] = []
+    if result.updated:
+        changes.append(f"[yellow]{result.updated} classification(s) updated[/yellow]")
+    if result.quarantined:
+        changes.append(f"[yellow]{result.quarantined} moved to quarantine[/yellow]")
+    console.print(f"Re-screened {result.examined} posting(s) — {', '.join(changes)}.")
     console.print(
         "[dim]Screening only. A posting the lexicon should now keep comes back on the next "
         "sync, which is what re-fetches the fields classification needs.[/dim]"
@@ -1034,8 +1036,8 @@ def quarantine(
         typer.Option(
             "--reason",
             help=(
-                "Filter by rejection reason: out-of-scope-location, not-an-internship, "
-                "out-of-scope-degree, not-a-cs-role"
+                "Filter by rejection reason: unknown-location, not-an-internship, "
+                "out-of-scope-degree, not-a-cs-role, unknown-cs-role"
             ),
         ),
     ] = None,
@@ -1298,24 +1300,42 @@ async def _adopt_unregistered(
     from stage.companies import load_companies, update_registry
     from stage.domain import PlatformProbed
     from stage.services.coverage import coverage
-    from stage.services.discover import adopt_unregistered, probe_companies
+    from stage.services.discover import (
+        adopt_unregistered,
+        direct_companies_from_apply_urls,
+        probe_companies,
+        verify_registry,
+    )
     from stage.storage import open_repository
 
     rows = load_companies(registry)
     async with open_repository(_database(db)) as repository:
         report = await coverage(repository, rows, unregistered=True)
-    names = [entry.company for entry in report.unregistered][:limit]
-    if not names:
+        names = [entry.company for entry in report.unregistered][:limit]
+        apply_urls = await repository.company_apply_urls(names)
+    direct = direct_companies_from_apply_urls(apply_urls, platforms=platforms)
+    direct_names = {company.name for company in direct}
+    names = [name for name in names if name not in direct_names]
+    if not names and not direct:
         console.print(plain("No unregistered employers to probe. Run stage sync first."))
         return False
 
-    console.print(plain(f"Probing {len(names)} unregistered employer(s)…"))
+    total = len(names) + len(direct)
+    console.print(
+        plain(f"Probing {total} unregistered employer(s); {len(direct)} from direct feed links…")
+    )
     results: list[tuple[str, Any]] = []
-    async for event in probe_companies(names, platforms=platforms, size=size):
-        if stream is not None:
-            stream(event)
-        if isinstance(event, PlatformProbed):
-            results.append((event.result.company, event.result))
+    streams = []
+    if direct:
+        streams.append(verify_registry(direct, platforms=platforms))
+    if names:
+        streams.append(probe_companies(names, platforms=platforms, size=size))
+    for events in streams:
+        async for event in events:
+            if stream is not None:
+                stream(event)
+            if isinstance(event, PlatformProbed):
+                results.append((event.result.company, event.result))
 
     outcome = adopt_unregistered(rows, results, today=today)
     console.print(

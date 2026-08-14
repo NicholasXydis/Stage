@@ -154,6 +154,17 @@ async def test_unregistered_rows_carry_their_sources_and_volume(seeded: Path) ->
 
 
 @pytest.mark.asyncio
+async def test_unregistered_application_urls_keep_canonical_feed_links(seeded: Path) -> None:
+    async with open_repository(seeded) as repository:
+        urls = await repository.company_apply_urls(("Tesla", "Coveo Solutions Inc.", "Missing"))
+
+    assert urls == {
+        "Tesla": ("https://boards.example.test/simplify:feed:1",),
+        "Coveo Solutions Inc.": ("https://boards.example.test/simplify:feed:2",),
+    }
+
+
+@pytest.mark.asyncio
 async def test_a_classified_feed_employer_leaves_the_unregistered_queue(seeded: Path) -> None:
     classification = CoverageClassification(
         company="Tesla",

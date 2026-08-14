@@ -130,6 +130,9 @@ class Repository(Protocol):
     def company_counts(self) -> dict[str, dict[str, int]]:
         pass
 
+    def company_apply_urls(self, companies: Sequence[str]) -> dict[str, tuple[str, ...]]:
+        pass
+
     def coverage_classifications(self) -> list[CoverageClassification]:
         pass
 

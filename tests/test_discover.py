@@ -21,6 +21,7 @@ from stage.services.discover import (
     GENERIC_TOKENS,
     MAX_CANDIDATES_PER_COMPANY,
     ClientFactory,
+    direct_companies_from_apply_urls,
     name_matches,
     probe_companies,
     resolve_careers_url,
@@ -100,6 +101,22 @@ def test_the_gate_is_token_boundary_not_substring() -> None:
 def test_an_all_generic_overlap_needs_more_than_one_token() -> None:
     assert name_matches("National Bank of Canada", "National Bank")
     assert not name_matches("Capital One", "Capital")
+
+
+def test_direct_apply_urls_keep_the_exact_detected_board_token() -> None:
+    rows = direct_companies_from_apply_urls(
+        {
+            "Acme": (
+                "https://boards.greenhouse.io/acme/jobs/123",
+                "https://jobs.lever.co/acme/456",
+            ),
+            "Needs Manual Review": ("https://cae.wd3.myworkdayjobs.com/en-US/careers",),
+        }
+    )
+
+    assert [(row.name, row.platform, row.slug) for row in rows] == [
+        ("Acme", Platform.GREENHOUSE, "acme"),
+    ]
 
 
 def test_resolve_careers_url_produces_a_pasteable_registry_row() -> None:

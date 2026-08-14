@@ -49,6 +49,19 @@ _BM25_WEIGHTS = ", ".join(f"{weight:.1f}" for weight in FTS_COLUMN_WEIGHTS)
 _COMPOSITION_COLUMNS = frozenset(
     {"source", "location", "role", "term", "language", "status", "degree_requirement"}
 )
+_LEGACY_LOCATION_BUCKETS = {"other": "international", "remote": "unknown"}
+_STORED_LOCATION_VALUES = {
+    LocationBucket.INTERNATIONAL: ("international", "other"),
+    LocationBucket.UNKNOWN: ("unknown", "remote"),
+}
+
+
+def _location_bucket(value: str) -> LocationBucket:
+    return LocationBucket(_LEGACY_LOCATION_BUCKETS.get(value, value))
+
+
+def _stored_location_values(bucket: LocationBucket) -> tuple[str, ...]:
+    return _STORED_LOCATION_VALUES.get(bucket, (bucket.value,))
 
 
 def fold_company(value: str) -> str:
@@ -253,7 +266,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         apply_url_canonical=row["apply_url_canonical"],
         description=row["description"],
         location_raw=row["location_raw"],
-        location=LocationBucket(row["location"]),
+        location=_location_bucket(row["location"]),
         remote_scope=RemoteScope(remote_scope) if remote_scope else None,
         language=Language(row["language"]),
         term=row["term"],
@@ -310,7 +323,7 @@ def _row_to_quarantined(row: sqlite3.Row) -> QuarantinedJob:
         last_seen=_require_datetime(row["last_seen"], "last_seen"),
         apply_url_raw=row["apply_url_raw"],
         location_raw=row["location_raw"],
-        location=LocationBucket(row["location"]),
+        location=_location_bucket(row["location"]),
         remote_scope=RemoteScope(remote_scope) if remote_scope else None,
         matched_phrase=row["matched_phrase"],
     )
@@ -950,8 +963,9 @@ class SqliteRepository:
             clauses.append("jobs.status = ?")
             params.append(filters.status.value)
         if filters.location is not None:
-            clauses.append("jobs.location = ?")
-            params.append(filters.location.value)
+            locations = _stored_location_values(filters.location)
+            clauses.append(f"jobs.location IN ({', '.join('?' * len(locations))})")
+            params.extend(locations)
         if filters.term is not None:
             clauses.append("jobs.term = ?")
             params.append(filters.term)
@@ -1113,6 +1127,27 @@ class SqliteRepository:
             counts.setdefault(str(row["company"]), {})[str(row["source"])] = int(row["total"])
         return counts
 
+    def company_apply_urls(self, companies: Sequence[str]) -> dict[str, tuple[str, ...]]:
+        wanted = {fold_company(company): company for company in companies}
+        if not wanted:
+            return {}
+        rows = self._conn.execute(
+            "SELECT company, company_fold, apply_url_raw FROM jobs "
+            "WHERE duplicate_of IS NULL AND status = ? AND apply_url_raw <> '' "
+            "ORDER BY last_seen DESC, apply_url_raw",
+            (JobStatus.OPEN.value,),
+        ).fetchall()
+        collected: dict[str, list[str]] = {}
+        for row in rows:
+            company = wanted.get(str(row["company_fold"]))
+            url = str(row["apply_url_raw"]).strip()
+            if company is None or not url:
+                continue
+            urls = collected.setdefault(company, [])
+            if url not in urls and len(urls) < 5:
+                urls.append(url)
+        return {company: tuple(urls) for company, urls in collected.items()}
+
     def coverage_classifications(self) -> list[CoverageClassification]:
         rows = self._conn.execute(
             "SELECT company, disposition, note, checked_on, url FROM coverage_classifications "
@@ -1157,7 +1192,13 @@ class SqliteRepository:
             f"SELECT {column} AS bucket, COUNT(*) AS total FROM jobs "
             "WHERE duplicate_of IS NULL GROUP BY bucket ORDER BY total DESC"
         ).fetchall()
-        return {str(row["bucket"]): int(row["total"]) for row in rows}
+        counts: dict[str, int] = {}
+        for row in rows:
+            bucket = str(row["bucket"])
+            if column == "location":
+                bucket = _location_bucket(bucket).value
+            counts[bucket] = counts.get(bucket, 0) + int(row["total"])
+        return counts
 
     def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]:
         rows = self._conn.execute(

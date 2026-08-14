@@ -1,6 +1,6 @@
 import asyncio
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -167,6 +167,9 @@ class AsyncRepository:
 
     async def company_counts(self) -> dict[str, dict[str, int]]:
         return await self._writer.run(lambda repository: repository.company_counts())
+
+    async def company_apply_urls(self, companies: Sequence[str]) -> dict[str, tuple[str, ...]]:
+        return await self._writer.run(lambda repository: repository.company_apply_urls(companies))
 
     async def coverage_classifications(self) -> list[CoverageClassification]:
         return await self._writer.run(lambda repository: repository.coverage_classifications())
