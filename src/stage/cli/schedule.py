@@ -4,7 +4,6 @@ import platform
 import plistlib
 import subprocess
 import sys
-import traceback
 import xml.etree.ElementTree as ElementTree
 from collections.abc import Sequence
 from contextlib import redirect_stderr, redirect_stdout
@@ -151,20 +150,12 @@ def _log_dir() -> Path:
 
 
 def _invoke_cli(arguments: Sequence[str]) -> int:
-    import typer
-
-    from stage.cli.app import app
-
-    try:
-        app(args=list(arguments), prog_name="stage", standalone_mode=False)
-    except typer.Exit as error:
-        return int(error.exit_code)
-    except SystemExit as error:
-        return int(error.code) if isinstance(error.code, int) else 1
-    except Exception:
-        traceback.print_exc()
-        return 1
-    return 0
+    completed = _execute((sys.executable, "-m", "stage", *arguments))
+    if completed.stdout:
+        print(completed.stdout, end="")
+    if completed.stderr:
+        print(completed.stderr, end="", file=sys.stderr)
+    return completed.returncode
 
 
 def _execute(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
