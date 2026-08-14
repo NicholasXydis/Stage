@@ -14,8 +14,9 @@
   workday_tenant: bmo
   workday_site: External
   workday_dc: wd3
-  notes: '2026-08-12: enabled for the bounded resumable Workday crawl. It receives at most
-    five listing requests per daily sync and retains progress; re-measure yield in October'
+  workday_facet: company:99ba898c88ac011c8a873c01f2016c06
+  notes: '2026-08-13: pinned to BMO''s verified Intern (Fixed Term) facet, so sync avoids
+    its 1,180-role general board'
 - name: Bombardier
   platform: successfactors
   slug: bombardier
@@ -33,6 +34,15 @@
   workday_tenant: cae
   workday_site: career
   workday_dc: wd3
+- name: Cavendish Farms
+  platform: oracle_cloud
+  slug: hcpd
+  priority: normal
+  source_of_record: manual
+  last_verified: 2026-08-13
+  oracle_host: hcpd.fa.ca2.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-13: public Oracle candidate JSON verified; Application Support Student/Intern is a current technical posting'
 - name: CIBC (campus)
   platform: workday
   slug: cibc
@@ -216,8 +226,10 @@
   workday_tenant: td
   workday_site: TD_Bank_Careers
   workday_dc: wd3
-  notes: '2026-08-12: enabled for the bounded resumable Workday crawl. It receives at most
-    five listing requests per daily sync and retains progress; re-measure yield in October'
+  workday_facet: jobFamily:de769652963501ab29a8b80c0704c3aa,de769652963501e60b293b0d070431ab
+  notes: '2026-08-13: pinned to TD''s verified Campus and Interns & Associates job-family
+    filters; both values are retained so future student postings are included without walking
+    the 1,824-role general board'
 - name: TELUS Digital
   platform: greenhouse
   slug: telusdigitalbr
@@ -688,6 +700,18 @@
   enabled: false
   notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
     evidence of the right company; needs a human to open the board once'
+- name: McGill University
+  platform: workday
+  slug: mcgill
+  priority: high
+  source_of_record: discover
+  last_verified: 2026-08-13
+  workday_tenant: mcgill
+  workday_site: mcgill_careers
+  workday_dc: wd3
+  workday_facet: workerSubType:5b8bbc1be9ca01b84e1ed240de00830e
+  notes: '2026-08-13: verified public Student (Fixed Term) facet; Stage retains only CS,
+    software, data, and research roles after bilingual screening'
 - name: Microchip Technology
   platform: smartrecruiters
   slug: microchip
@@ -759,6 +783,15 @@
   priority: normal
   source_of_record: openjobs
   last_verified: *id002
+- name: Oracle
+  platform: oracle_cloud
+  slug: eeho
+  priority: normal
+  source_of_record: manual
+  last_verified: 2026-08-13
+  oracle_host: eeho.fa.us2.oraclecloud.com
+  oracle_site: jobsearch
+  notes: '2026-08-13: public Oracle candidate JSON verified; current technical internships include OCI software and AI agent roles'
 - name: Palantir
   platform: smartrecruiters
   slug: palantir
@@ -2326,6 +2359,9 @@
   workday_tenant: nasdaq
   workday_site: Global_External_Site
   workday_dc: wd1
+  workday_facet: workerSubType:88704065592e0140cc56a1a7463955ae
+  notes: '2026-08-13: verified public fixed-term facet; it avoids walking Nasdaq''s 182-role
+    general board while the title classifier retains only CS internships and co-ops'
 - name: ness digital
   platform: jobvite
   slug: ness

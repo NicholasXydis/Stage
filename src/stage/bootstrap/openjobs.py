@@ -261,6 +261,8 @@ def to_registry_rows(report: CrossReference) -> str:
                     workday_tenant=item.candidate.workday_tenant,
                     workday_site=item.candidate.workday_site,
                     workday_dc=item.candidate.workday_dc,
+                    oracle_host=item.candidate.oracle_host,
+                    oracle_site=item.candidate.oracle_site,
                 )
             )
         )
@@ -307,6 +309,8 @@ def mined_registry_rows(found: Sequence[tuple[DatasetEntry, PlatformCandidate]])
                     workday_tenant=candidate.workday_tenant,
                     workday_site=candidate.workday_site,
                     workday_dc=candidate.workday_dc,
+                    oracle_host=candidate.oracle_host,
+                    oracle_site=candidate.oracle_site,
                 )
             )
         )

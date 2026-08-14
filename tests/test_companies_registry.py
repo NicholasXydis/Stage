@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -12,11 +13,12 @@ from stage.domain import (
     RotationMember,
     SourceRotated,
     SourceStarted,
+    WorkdayCrawlStep,
     rotate,
 )
 from stage.http import profile
 from stage.sources.workday import WorkdayAdapter
-from stage.storage import open_repository
+from stage.storage import SourceBatch, open_repository
 
 
 def test_sibling_workday_sites_on_one_tenant_are_distinct_boards() -> None:
@@ -91,10 +93,10 @@ def test_the_shipped_workday_schedule_fits_its_shared_request_ceiling() -> None:
 
     assert set(rotation.selected) == {company.registry_key for company in companies}
     assert not rotation.deferred
-    pages, details = WorkdayAdapter.crawl_budget(
-        len(companies), profile("workday").max_requests_per_run
+    budgets, details = WorkdayAdapter.crawl_budgets(
+        companies, {}, {}, profile("workday").max_requests_per_run
     )
-    assert len(companies) * pages + details + WorkdayAdapter.retry_reserve <= (
+    assert sum(budgets.values()) + details + WorkdayAdapter.retry_reserve <= (
         profile("workday").max_requests_per_run
     )
 
@@ -145,3 +147,90 @@ async def test_a_workday_priority_cannot_bypass_fair_rotation(db_path: Path) -> 
     assert len(planned) == 100
     assert "board-100" not in planned
     assert (rotated.selected, rotated.deferred) == (100, 1)
+
+
+async def test_a_workday_resume_dry_run_only_plans_unfinished_boards(db_path: Path) -> None:
+    from stage.services.sync import sync
+
+    complete = Company(
+        name="Complete",
+        platform=Platform.WORKDAY,
+        slug="complete",
+        workday_tenant="complete",
+        workday_site="External",
+        workday_dc="wd3",
+    )
+    unfinished = Company(
+        name="Unfinished",
+        platform=Platform.WORKDAY,
+        slug="unfinished",
+        workday_tenant="unfinished",
+        workday_site="External",
+        workday_dc="wd3",
+    )
+    now = datetime(2026, 8, 13, tzinfo=UTC)
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="workday",
+                run_started_at=now,
+                workday_crawls=(
+                    WorkdayCrawlStep(
+                        board=WorkdayAdapter().board_key(unfinished), next_offset=20, total=100
+                    ),
+                ),
+            )
+        )
+        events = [
+            event
+            async for event in sync(
+                repository, [complete, unfinished], sources=("workday",), dry_run=True
+            )
+        ]
+
+    started = next(event for event in events if isinstance(event, SourceStarted))
+    planned = [event.company for event in events if isinstance(event, PlannedRequest)]
+    assert started.companies == 1
+    assert planned == ["Unfinished"]
+
+
+def test_oracle_boards_on_a_shared_slug_remain_distinct() -> None:
+    first = Company(
+        name="First",
+        platform=Platform.ORACLE_CLOUD,
+        slug="eeho",
+        oracle_host="eeho.fa.us2.oraclecloud.com",
+        oracle_site="jobsearch",
+    )
+    second = Company(
+        name="Second",
+        platform=Platform.ORACLE_CLOUD,
+        slug="eeho",
+        oracle_host="eeho.fa.uk2.oraclecloud.com",
+        oracle_site="external",
+    )
+    assert board_identity(first) != board_identity(second)
+
+
+def test_oracle_registry_rows_need_a_safe_host_and_site(tmp_path: Path) -> None:
+    path = tmp_path / "companies.yaml"
+    path.write_text(
+        "- name: Oracle\n"
+        "  platform: oracle_cloud\n"
+        "  slug: eeho\n"
+        "  oracle_host: eeho.fa.us2.oraclecloud.com\n"
+        "  oracle_site: jobsearch\n",
+        encoding="utf-8",
+    )
+    company = load_companies(path)[0]
+    assert (company.oracle_host, company.oracle_site) == (
+        "eeho.fa.us2.oraclecloud.com",
+        "jobsearch",
+    )
+
+    path.write_text(
+        "- name: Oracle\n  platform: oracle_cloud\n  slug: eeho\n  oracle_host: evil.example\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RegistryError, match="oracle_host and oracle_site"):
+        load_companies(path)

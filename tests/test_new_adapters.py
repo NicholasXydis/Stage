@@ -225,12 +225,29 @@ def test_an_adapter_whose_host_embeds_the_slug_shares_one_bucket() -> None:
     from stage.sources import get_adapters
 
     for adapter in get_adapters().values():
-        hosts = adapter.hosts_for(
-            [
+        if adapter.platform is Platform.ORACLE_CLOUD:
+            companies = [
+                Company(
+                    name="A",
+                    platform=adapter.platform,
+                    slug="acme",
+                    oracle_host="eeho.fa.us2.oraclecloud.com",
+                    oracle_site="jobsearch",
+                ),
+                Company(
+                    name="B",
+                    platform=adapter.platform,
+                    slug="globex",
+                    oracle_host="eeho.fa.us2.oraclecloud.com",
+                    oracle_site="jobsearch",
+                ),
+            ]
+        else:
+            companies = [
                 Company(name="A", platform=adapter.platform, slug="acme"),
                 Company(name="B", platform=adapter.platform, slug="globex"),
             ]
-        )
+        hosts = adapter.hosts_for(companies)
         if len(hosts) < 2:
             continue
         assert adapter.bucket_key, (

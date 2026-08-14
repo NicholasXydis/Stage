@@ -28,6 +28,8 @@ def safe_slug(slug: str) -> str:
 
 SAFE_WORKDAY_DC = re.compile(r"^wd\d{1,2}$")
 SAFE_WORKDAY_SITE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+SAFE_ORACLE_HOST = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,62})\.)+oraclecloud\.com$")
+SAFE_ORACLE_SITE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
 def workday_target(tenant: str, site: str, dc: str) -> tuple[str, str]:
@@ -61,6 +63,32 @@ def workday_target(tenant: str, site: str, dc: str) -> tuple[str, str]:
         )
     host = f"{safe_tenant}.{stripped_dc}.myworkdayjobs.com"
     return host, f"/wday/cxs/{safe_tenant}/{stripped_site}/jobs"
+
+
+def oracle_target(host: str, site: str) -> tuple[str, str]:
+    missing = [
+        field
+        for field, value in (("oracle_host", host), ("oracle_site", site))
+        if not value.strip()
+    ]
+    if missing:
+        raise SlugRejectedError(
+            f"registry row is missing {', '.join(missing)} — an Oracle candidate site "
+            "cannot be guessed. Use `stage discover --url`"
+        )
+    safe_host = host.strip().lower()
+    if not SAFE_ORACLE_HOST.match(safe_host):
+        raise SlugRejectedError(
+            f"{host!r} is not a usable Oracle Cloud host — expected an oraclecloud.com "
+            "host because it interpolates into the request URL"
+        )
+    safe_site = site.strip()
+    if not SAFE_ORACLE_SITE.match(safe_site):
+        raise SlugRejectedError(
+            f"{site!r} is not a usable Oracle candidate site — it interpolates into the "
+            "request path, so letters, digits, underscores and hyphens only"
+        )
+    return safe_host, safe_site
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +184,13 @@ PROBES: tuple[PlatformProbe, ...] = (
         name_paths=("name",),
         params=MappingProxyType({"details": "true"}),
     ),
+    PlatformProbe(
+        platform=Platform.COLLAGE,
+        host="api.collage.co",
+        probe_url="https://api.collage.co/v1/positions/{slug}",
+        rate_profile="moderate",
+        jobs_paths=("positions",),
+    ),
 )
 
 PROBES_BY_PLATFORM: MappingProxyType[Platform, PlatformProbe] = MappingProxyType(
@@ -236,6 +271,11 @@ URL_PATTERNS: tuple[UrlPattern, ...] = (
     UrlPattern(
         platform=Platform.BREEZY,
         host_pattern=re.compile(r"^(?P<slug>[a-z0-9][a-z0-9-]*)\.breezy\.hr$"),
+    ),
+    UrlPattern(
+        platform=Platform.COLLAGE,
+        hosts=("secure.collage.co", "api.collage.co"),
+        path_pattern=_path(r"^/(?:jobs|v1/positions)/(?P<slug>[^/?#]+)"),
     ),
     UrlPattern(
         platform=Platform.TEAMTAILOR,
@@ -360,7 +400,15 @@ def _oracle_cloud(host: str, path: str) -> PlatformCandidate | None:
     slug = host.split(".")[0]
     if not SAFE_SLUG.match(slug):
         return None
-    return PlatformCandidate(platform=Platform.ORACLE_CLOUD, slug=slug)
+    matched = re.search(r"/sites/([A-Za-z0-9][A-Za-z0-9_-]{0,63})(?:/|$)", path, re.I)
+    site = matched.group(1) if matched is not None else None
+    return PlatformCandidate(
+        platform=Platform.ORACLE_CLOUD,
+        slug=slug,
+        oracle_host=host,
+        oracle_site=site,
+        resolves_board=site is not None,
+    )
 
 
 def identify_url(url: str) -> PlatformCandidate | None:

@@ -6,6 +6,7 @@ from stage.sources.platforms import (
     SlugRejectedError,
     identify_url,
     job_count,
+    oracle_target,
     safe_slug,
 )
 
@@ -95,3 +96,26 @@ def test_job_count_reads_an_explicit_total_before_falling_back_to_length() -> No
     assert job_count({"totalFound": 42, "content": [{}, {}]}, probe) == 42
     assert job_count({"content": [{}, {}]}, probe) == 2
     assert job_count({"nothing": True}, probe) is None
+
+
+def test_oracle_candidate_urls_retain_the_exact_host_and_site() -> None:
+    candidate = identify_url(
+        "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/jobsearch/job/334366"
+    )
+    assert candidate is not None
+    assert candidate.platform is Platform.ORACLE_CLOUD
+    assert candidate.oracle_host == "eeho.fa.us2.oraclecloud.com"
+    assert candidate.oracle_site == "jobsearch"
+
+
+def test_oracle_target_refuses_hosts_or_sites_that_could_rewrite_requests() -> None:
+    assert oracle_target("EEHO.FA.US2.ORACLECLOUD.COM", "jobsearch") == (
+        "eeho.fa.us2.oraclecloud.com",
+        "jobsearch",
+    )
+    for host, site in (
+        ("evil.example", "jobsearch"),
+        ("eeho.fa.us2.oraclecloud.com", "job/search"),
+    ):
+        with pytest.raises(SlugRejectedError):
+            oracle_target(host, site)

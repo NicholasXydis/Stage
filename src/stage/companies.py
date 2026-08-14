@@ -20,6 +20,7 @@ from stage.domain import (
     public_https_url,
 )
 from stage.paths import registry_path
+from stage.sources.platforms import SlugRejectedError, oracle_target
 
 
 class RegistryError(Exception):
@@ -71,6 +72,27 @@ def _parse_date(row: dict[str, Any], key: str, index: int) -> date | None:
                 f"2026-08-08, not {value!r}"
             ) from exc
     raise RegistryError(f"companies.yaml entry {index}: field {key!r} must be a date")
+
+
+def _oracle_fields(
+    row: dict[str, Any], index: int, platform: Platform
+) -> tuple[str | None, str | None]:
+    host = _optional_str(row, "oracle_host")
+    site = _optional_str(row, "oracle_site")
+    if platform is not Platform.ORACLE_CLOUD:
+        if host is not None or site is not None:
+            raise RegistryError(
+                f"companies.yaml entry {index}: Oracle fields only belong on platform oracle_cloud"
+            )
+        return None, None
+    if host is None or site is None:
+        raise RegistryError(
+            f"companies.yaml entry {index}: platform oracle_cloud needs oracle_host and oracle_site"
+        )
+    try:
+        return oracle_target(host, site)
+    except SlugRejectedError as exc:
+        raise RegistryError(f"companies.yaml entry {index}: {exc}") from exc
 
 
 def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> CustomBoard | None:
@@ -149,6 +171,7 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
 
     enabled = _require_bool(row, "enabled", index, default=True)
     name_gate_exempt = _require_bool(row, "name_gate_exempt", index, default=False)
+    oracle_host, oracle_site = _oracle_fields(row, index, platform)
 
     return Company(
         name=_require_str(row, "name", index),
@@ -164,6 +187,8 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
         workday_site=_optional_str(row, "workday_site"),
         workday_dc=_optional_str(row, "workday_dc"),
         workday_facet=_optional_str(row, "workday_facet"),
+        oracle_host=oracle_host,
+        oracle_site=oracle_site,
         name_gate_exempt=name_gate_exempt,
         notes=_optional_str(row, "notes"),
         custom=_custom_board(row, index, platform),
@@ -171,12 +196,18 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
 
 
 def board_identity(company: Company) -> tuple[Platform, str, str]:
-    return (company.platform, company.slug.lower(), (company.workday_site or "").lower())
+    if company.platform is Platform.ORACLE_CLOUD:
+        target = ":".join(part for part in (company.oracle_host, company.oracle_site) if part)
+    else:
+        target = company.workday_site or ""
+    return (company.platform, company.slug.lower(), target.lower())
 
 
 def board_label(company: Company) -> str:
     if company.workday_site:
         return f"{company.platform.value}/{company.slug}/{company.workday_site}"
+    if company.oracle_host:
+        return f"{company.platform.value}/{company.oracle_host}/{company.oracle_site or '?'}"
     return f"{company.platform.value}/{company.slug}"
 
 
@@ -192,7 +223,14 @@ def _registry_row(company: Company) -> dict[str, Any]:
         row["last_verified"] = company.last_verified
     if company.recheck_after is not None:
         row["recheck_after"] = company.recheck_after
-    for key in ("workday_tenant", "workday_site", "workday_dc", "workday_facet"):
+    for key in (
+        "workday_tenant",
+        "workday_site",
+        "workday_dc",
+        "workday_facet",
+        "oracle_host",
+        "oracle_site",
+    ):
         value = getattr(company, key)
         if value is not None:
             row[key] = value

@@ -19,6 +19,8 @@ class Company:
     workday_site: str | None = None
     workday_dc: str | None = None
     workday_facet: str | None = None
+    oracle_host: str | None = None
+    oracle_site: str | None = None
     name_gate_exempt: bool = False
     notes: str | None = None
     recheck_after: date | None = None
@@ -30,5 +32,14 @@ class Company:
     @property
     def registry_key(self) -> str:
         parts = [self.platform.value, self.slug]
-        parts.extend(part for part in (self.workday_site, self.workday_dc) if part)
+        parts.extend(
+            part
+            for part in (
+                self.workday_site,
+                self.workday_dc,
+                self.oracle_host,
+                self.oracle_site,
+            )
+            if part
+        )
         return ":".join(parts)
