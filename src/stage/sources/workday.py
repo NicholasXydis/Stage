@@ -32,8 +32,9 @@ from stage.sources.platforms import SlugRejectedError, workday_target
 
 PAGE_SIZE = 20
 MAX_PAGES = 25
+MAX_CRAWL_PAGES = 100
 RESULT_CAP = 10_000
-CRAWL_PAGE_CAP = 5
+CRAWL_PAGE_CAP = 6
 RETRY_RESERVE = 20
 
 
@@ -148,13 +149,44 @@ class WorkdayAdapter:
     retry_reserve: ClassVar[int] = RETRY_RESERVE
 
     @classmethod
-    def crawl_budget(cls, companies: int, ceiling: int) -> tuple[int, int]:
-        if companies < 1:
+    def crawl_budgets(
+        cls,
+        companies: Sequence[Company],
+        crawls: Mapping[str, WorkdayCrawl],
+        facets: Mapping[tuple[str, str], WorkdayFacet],
+        ceiling: int,
+    ) -> tuple[dict[str, int], int]:
+        if not companies:
             raise ValueError("a Workday crawl needs at least one board")
         available = max(1, ceiling - cls.retry_reserve)
-        pages = min(cls.crawl_page_cap, max(1, available // companies))
-        details = min(cls.detail_budget, max(0, available - companies * pages))
-        return pages, details
+        budgets = {company.registry_key: 1 for company in companies}
+        remaining = available - len(budgets)
+        demands: list[tuple[int, str]] = []
+        for company in companies:
+            crawl = crawls.get(board_key(cls.name, _board(company)))
+            facet = _pinned_facet(company) or facets.get(
+                (company.workday_tenant or "", company.workday_site or "")
+            )
+            if crawl is None or crawl.total is None:
+                continue
+            if crawl.facet_parameter != (facet.parameter if facet is not None else ""):
+                continue
+            if crawl.facet_ids != (facet.facet_ids if facet is not None else ()):
+                continue
+            start = max(0, crawl.next_offset - PAGE_SIZE)
+            pages = max(1, (max(0, crawl.total - start) + PAGE_SIZE - 1) // PAGE_SIZE)
+            demands.append((min(MAX_CRAWL_PAGES, pages), company.registry_key))
+        for pages, key in sorted(demands, key=lambda item: (-item[0], item[1])):
+            extra = min(remaining, pages - budgets[key])
+            budgets[key] += extra
+            remaining -= extra
+        for company in companies:
+            key = company.registry_key
+            extra = min(remaining, max(0, cls.crawl_page_cap - budgets[key]))
+            budgets[key] += extra
+            remaining -= extra
+        details = min(cls.detail_budget, max(0, remaining))
+        return budgets, details
 
     def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:
         allowed: set[str] = set()
@@ -193,6 +225,8 @@ class WorkdayAdapter:
     ) -> FetchResult:
         if page_budget < 1:
             raise ValueError("Workday page budget must be positive")
+        if page_budget > MAX_CRAWL_PAGES:
+            raise ValueError("Workday page budget exceeds its crawl cap")
         url = self.plan(company)[0]
         tenant = company.workday_tenant or ""
         site = company.workday_site or ""
@@ -245,26 +279,40 @@ class WorkdayAdapter:
                         f"Payload captured at {captured}"
                     )
             elif facet is not None and not facet_still_offered(page, facet):
-                stale_facet = True
                 if facet.pinned:
+                    stale_facet = True
                     degraded = (
                         f"pinned facet {facet.facet_ids!r} is no longer offered under "
                         f"{facet.parameter!r}; honoured anyway. Re-pin with "
                         "`stage discover --url` or clear `workday_facet`"
                     )
                 else:
-                    degraded = (
-                        f"cached facet {facet.facet_ids!r} is no longer offered under "
-                        f"{facet.parameter!r}; re-resolving from this tenant's own facet list"
-                    )
-                    forgotten = facet
-                    facet = None
-                    applied = {}
-                    postings.clear()
-                    offset = 0
-                    total = None
-                    crawl_reset = True
-                    continue
+                    probe_body: dict[str, Any] = {
+                        "appliedFacets": {},
+                        "limit": PAGE_SIZE,
+                        "offset": 0,
+                        "searchText": "",
+                    }
+                    probe_response = await client.post_json(url, body=probe_body)
+                    probe, probe_dropped = _validate(probe_response.payload, company)
+                    malformed += probe_dropped
+                    pages += 1
+                    if not facet_still_offered(probe, facet):
+                        stale_facet = True
+                        degraded = (
+                            f"cached facet {facet.facet_ids!r} is no longer offered under "
+                            f"{facet.parameter!r}; re-resolving from this tenant's own facet list"
+                        )
+                        forgotten = facet
+                        facet = None
+                        applied = {}
+                        postings.clear()
+                        offset = 0
+                        total = None
+                        crawl_reset = True
+                        page = probe
+                        dropped = probe_dropped
+                        response = probe_response
 
             if facet is None and not applied:
                 resolved = resolve_facet(page, tenant, site, now)
@@ -303,13 +351,13 @@ class WorkdayAdapter:
 
         capped = not reached_end
         if capped:
-            if page_budget < MAX_PAGES:
+            if page_budget != MAX_PAGES and page_budget < MAX_CRAWL_PAGES:
                 degraded = (
                     f"resumable crawl paused after {pages} page(s); resumes from offset {offset} "
                     "on the next sync and closes nothing yet"
                 )
             else:
-                degraded = f"stopped at the {MAX_PAGES}-page cap; the board may be truncated"
+                degraded = f"stopped at the {page_budget}-page cap; the board may be truncated"
         if total_changed:
             degraded = (
                 "reported total changed before the board ended; progress was retained and "

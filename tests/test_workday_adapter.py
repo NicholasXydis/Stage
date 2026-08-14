@@ -18,6 +18,7 @@ from stage.domain import (
 from stage.http import HttpClient, RatePosture, profile
 from stage.sources.base import PayloadValidationError
 from stage.sources.workday import (
+    MAX_CRAWL_PAGES,
     MAX_PAGES,
     PAGE_SIZE,
     WorkdayAdapter,
@@ -99,12 +100,66 @@ def test_one_malformed_row_does_not_take_the_platform_offline() -> None:
     assert adapter.hosts_for(rows) == frozenset({"cae.wd3.myworkdayjobs.com"})
 
 
-def test_the_crawl_budget_reserves_space_for_retries() -> None:
+def test_the_crawl_budgets_reserve_space_for_retries() -> None:
     posture = profile("workday")
-    pages, details = WorkdayAdapter.crawl_budget(14, posture.max_requests_per_run)
-    assert (pages, details) == (5, 30)
-    assert 14 * pages + details + WorkdayAdapter.retry_reserve <= posture.max_requests_per_run
-    assert WorkdayAdapter.crawl_budget(100, posture.max_requests_per_run) == (1, 0)
+    companies = [
+        _company(name=f"Company {index}", slug=f"company-{index}", workday_tenant=f"tenant{index}")
+        for index in range(14)
+    ]
+    budgets, details = WorkdayAdapter.crawl_budgets(companies, {}, {}, posture.max_requests_per_run)
+    assert set(budgets) == {company.registry_key for company in companies}
+    assert set(budgets.values()) == {6}
+    assert details == 16
+    assert (
+        sum(budgets.values()) + details + WorkdayAdapter.retry_reserve
+        <= posture.max_requests_per_run
+    )
+
+
+def test_a_large_resumable_board_gets_enough_budget_to_finish_on_the_second_sync() -> None:
+    posture = profile("workday")
+    companies = [
+        _company(name=f"Company {index}", slug=f"company-{index}", workday_tenant=f"tenant{index}")
+        for index in range(14)
+    ]
+    adapter = WorkdayAdapter()
+    large = companies[0]
+    crawl = WorkdayCrawl(
+        board=adapter.board_key(large),
+        next_offset=100,
+        total=1773,
+    )
+    budgets, details = adapter.crawl_budgets(
+        companies, {adapter.board_key(large): crawl}, {}, posture.max_requests_per_run
+    )
+    assert budgets[large.registry_key] == 85
+    assert budgets[large.registry_key] <= MAX_CRAWL_PAGES
+    assert sum(budgets.values()) + details + adapter.retry_reserve <= posture.max_requests_per_run
+
+
+def test_a_cached_facet_keeps_a_resumable_board_on_the_two_sync_budget() -> None:
+    company = _company()
+    adapter = WorkdayAdapter()
+    facet = WorkdayFacet(
+        tenant=company.workday_tenant or "",
+        site=company.workday_site or "",
+        parameter="workerSubType",
+        facet_ids=("student",),
+    )
+    crawl = WorkdayCrawl(
+        board=adapter.board_key(company),
+        next_offset=100,
+        total=1773,
+        facet_parameter=facet.parameter,
+        facet_ids=facet.facet_ids,
+    )
+    budgets, _ = adapter.crawl_budgets(
+        [company],
+        {crawl.board: crawl},
+        {(facet.tenant, facet.site): facet},
+        120,
+    )
+    assert budgets[company.registry_key] == 85
 
 
 def test_a_facet_is_resolved_from_the_responses_own_facet_list() -> None:
@@ -383,11 +438,11 @@ async def test_resumable_crawl_reconciles_only_after_the_terminal_page(
     def page(request: httpx.Request) -> httpx.Response:
         offset = int(json.loads(request.content)["offset"])
         offsets.append(offset)
-        count = 5 if offset == 100 else PAGE_SIZE
+        count = 5 if offset == 120 else PAGE_SIZE
         return httpx.Response(
             200,
             json={
-                "total": 105,
+                "total": 125,
                 "jobPostings": [_posting(offset + index) for index in range(count)],
                 "facets": _facets(),
             },
@@ -418,7 +473,7 @@ async def test_resumable_crawl_reconciles_only_after_the_terminal_page(
             pass
 
         first_crawl = (await repository.load_workday_crawls())[WorkdayAdapter().board_key(company)]
-        assert first_crawl.next_offset == 100
+        assert first_crawl.next_offset == 120
         before_completion = await repository.get_job(old.id)
         assert before_completion is not None and before_completion.status is JobStatus.OPEN
 
@@ -433,7 +488,68 @@ async def test_resumable_crawl_reconciles_only_after_the_terminal_page(
         assert closed is not None and closed.status is JobStatus.CLOSED
         assert await repository.load_workday_crawls() == {}
 
-    assert offsets == [0, 20, 40, 60, 80, 80, 100]
+    assert offsets == [0, 20, 40, 60, 80, 100, 100, 120]
+
+
+@respx.mock
+async def test_an_unfinished_resume_is_discarded_after_the_second_workday_pass(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import CompanyFinished, Job, JobStatus, job_id
+    from stage.services import sync as sync_module
+    from stage.storage import SourceBatch, open_repository
+
+    company = _company(workday_facet="timeType:f-intern")
+
+    def page(request: httpx.Request) -> httpx.Response:
+        offset = int(json.loads(request.content)["offset"])
+        return httpx.Response(
+            200,
+            json={
+                "total": 3000,
+                "jobPostings": [_posting(offset + index) for index in range(PAGE_SIZE)],
+                "facets": _facets(),
+            },
+        )
+
+    respx.post(CXS).mock(side_effect=page)
+    monkeypatch.setattr(sync_module, "resolve", lambda *_: UNPACED)
+    old = Job(
+        id=job_id("workday", "cae-career", "R99999"),
+        source="workday",
+        company=company.name,
+        title_raw="Software Engineer Intern",
+        title_normalized="software engineer intern",
+        apply_url_raw="https://example.test/old",
+        description="",
+        first_seen=NOW - timedelta(days=1),
+        last_seen=NOW - timedelta(days=1),
+    )
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="workday", run_started_at=old.last_seen, jobs=(old,))
+        )
+        async for _ in sync_module.sync(
+            repository, [company], sources=("workday",), now_fn=lambda: NOW
+        ):
+            pass
+
+        events = [
+            event
+            async for event in sync_module.sync(
+                repository,
+                [company],
+                sources=("workday",),
+                now_fn=lambda: NOW + timedelta(days=1),
+            )
+        ]
+        retained = await repository.get_job(old.id)
+        assert retained is not None and retained.status is JobStatus.OPEN
+        assert await repository.load_workday_crawls() == {}
+
+    finished = next(event for event in events if isinstance(event, CompanyFinished))
+    assert "two-pass Workday limit reached" in finished.degraded
 
 
 @respx.mock
@@ -1049,6 +1165,35 @@ async def test_a_cached_facet_needs_no_discovery_page_at_all() -> None:
 
     assert len(bodies) == 1
     assert bodies[0]["appliedFacets"] == {"timeType": ["f-intern"]}
+
+
+@respx.mock
+async def test_a_filter_dependent_facet_is_confirmed_before_it_is_forgotten() -> None:
+    bodies: list[dict[str, object]] = []
+
+    def record(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        bodies.append(body)
+        facet_id = "f-renamed" if body["appliedFacets"] else "f-intern"
+        return httpx.Response(
+            200,
+            json={"total": 1, "jobPostings": [_posting(1)], "facets": _facets(facet_id)},
+        )
+
+    respx.post(CXS).mock(side_effect=record)
+    cached = WorkdayFacet(
+        tenant="cae", site="career", parameter="timeType", facet_ids=("f-intern",)
+    )
+    async with _client(UNPACED) as client:
+        result = await WorkdayAdapter().fetch(_company(), client, NOW, {("cae", "career"): cached})
+
+    assert [body["appliedFacets"] for body in bodies] == [
+        {"timeType": ["f-intern"]},
+        {},
+    ]
+    assert result.authoritative
+    assert result.facets == ()
+    assert result.forgotten_facets == ()
 
 
 @respx.mock

@@ -147,7 +147,7 @@ async def test_vanished_postings_are_closed_not_deleted(
     assert closed_job.status is JobStatus.CLOSED
     assert closed_job.first_seen == run_time
     assert closed_job.last_seen == run_time
-    assert closed_job.title_raw == "Marketing Intern"
+    assert closed_job.title_raw == "Cybersecurity Analyst Intern"
 
     assert survivor is not None
     assert survivor.status is JobStatus.OPEN

@@ -211,6 +211,7 @@ async def _fetch_company(
     details: Sequence[str],
     crawls: Mapping[str, WorkdayCrawl],
     page_budget: int,
+    final_workday_pass: bool,
 ) -> tuple[Company, FetchResult | None, str, float]:
     started = time.perf_counter()
     try:
@@ -224,6 +225,22 @@ async def _fetch_company(
                 crawl=crawls.get(_safe_board_key(adapter, company)),
                 page_budget=page_budget,
             )
+            crawl = result.workday_crawl
+            if (
+                final_workday_pass
+                and crawl is not None
+                and not crawl.complete
+                and not crawl.discard
+            ):
+                message = (
+                    "two-pass Workday limit reached before this board completed; retained "
+                    "postings stay open, crawl state was discarded, and the next sync starts fresh"
+                )
+                result = replace(
+                    result,
+                    degraded=f"{result.degraded}; {message}" if result.degraded else message,
+                    workday_crawl=replace(crawl, discard=True),
+                )
         else:
             result = await adapter.fetch(company, client, now, facets, details)
     except Exception as exc:
@@ -433,10 +450,33 @@ async def _run_company_source(
     )
     covered = set(rotation.selected)
     ordered = [company for company in companies if company.registry_key in covered]
-    shuffler.shuffle(ordered)
     source_clock = time.perf_counter()
+    fetch_clock = time.perf_counter()
+    seed = dict(await repository.load_validators(source_name))
+    if workday_adapter is not None:
+        facets = await repository.load_workday_facets()
+        crawls = await repository.load_workday_crawls()
+        resuming_workday = bool(crawls)
+        if resuming_workday:
+            ordered = [
+                company for company in companies if _safe_board_key(adapter, company) in crawls
+            ]
+        posture = resolve(adapter.rate_profile, [company.rate_profile for company in ordered])
+        page_budgets, detail_budget = workday_adapter.crawl_budgets(
+            ordered, crawls, facets, posture.max_requests_per_run
+        )
+    else:
+        resuming_workday = False
+        posture = resolve(adapter.rate_profile, [company.rate_profile for company in ordered])
+        page_budgets = {
+            company.registry_key: adapter.max_requests_per_company for company in ordered
+        }
+        detail_budget = adapter.detail_budget
+        facets = {}
+        crawls = {}
+    shuffler.shuffle(ordered)
     yield SourceStarted(source=source_name, companies=len(ordered))
-    if rotation.rotating:
+    if rotation.rotating and not resuming_workday:
         yield SourceRotated(
             source=source_name,
             bucket=rotation_bucket,
@@ -445,25 +485,10 @@ async def _run_company_source(
             cursor=rotation.cursor,
             wrapped=rotation.wrapped,
         )
-
-    fetch_clock = time.perf_counter()
-    seed = dict(await repository.load_validators(source_name))
-    posture = resolve(adapter.rate_profile, [company.rate_profile for company in ordered])
-    if workday_adapter is not None:
-        page_budget, detail_budget = workday_adapter.crawl_budget(
-            len(ordered), posture.max_requests_per_run
-        )
-        facets = await repository.load_workday_facets()
-        crawls = await repository.load_workday_crawls()
-    else:
-        page_budget = adapter.max_requests_per_company
-        detail_budget = adapter.detail_budget
-        facets = {}
-        crawls = {}
     detail_queue = await repository.detail_queue(source_name, detail_budget)
 
     if dry_run:
-        worst_case = len(ordered) * page_budget + (detail_budget if is_workday else 0)
+        worst_case = sum(page_budgets.values()) + (detail_budget if is_workday else 0)
         plan_bounds.append((rotation_bucket, source_name, len(ordered), worst_case))
         async for event in _plan_company_source(adapter, ordered, seed):
             yield event
@@ -511,7 +536,8 @@ async def _run_company_source(
                 facets,
                 detail_queue,
                 crawls,
-                page_budget,
+                page_budgets[company.registry_key],
+                resuming_workday,
             )
             for company in ordered
         ]
@@ -565,8 +591,12 @@ async def _run_company_source(
 
         metrics = _client_metrics(client)
         validators = _keepable_validators(cache, skip_urls)
-        settled = _advance_cursor(
-            client.rate_state(run_started_at), rotation, rotation_bucket, run_started_at
+        settled = (
+            client.rate_state(run_started_at)
+            if resuming_workday
+            else _advance_cursor(
+                client.rate_state(run_started_at), rotation, rotation_bucket, run_started_at
+            )
         )
 
     fetch_ms = (time.perf_counter() - fetch_clock) * 1000
@@ -602,7 +632,7 @@ async def _run_company_source(
     stats.append(
         replace(
             _stats(source_name, counts, errors, metrics, elapsed_ms),
-            deferred=len(rotation.deferred),
+            deferred=0 if resuming_workday else len(rotation.deferred),
         )
     )
     yield _finished(
