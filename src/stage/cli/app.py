@@ -1,3 +1,4 @@
+import sys
 from collections.abc import AsyncIterator, Coroutine
 from datetime import date
 from enum import StrEnum
@@ -149,6 +150,13 @@ def sync(
             help="Show the sync plan without fetching or changing the database",
         ),
     ] = False,
+    force_refresh: Annotated[
+        bool,
+        typer.Option(
+            "--force-refresh",
+            help="Re-fetch every board even if it was refreshed inside its window",
+        ),
+    ] = False,
     request_log: Annotated[
         Path | None,
         typer.Option(
@@ -165,6 +173,7 @@ def sync(
 
     from stage.cli.logfile import open_request_log
     from stage.cli.render import failure, render_sync
+    from stage.cli.runlock import AnotherRunInProgressError, single_run
     from stage.companies import RegistryError, load_companies
     from stage.domain import SyncOutcome
     from stage.services.sync import NoSourcesSelectedError
@@ -192,11 +201,19 @@ def sync(
                     sources=source or None,
                     excluded=exclude or None,
                     dry_run=dry_run,
+                    force_refresh=force_refresh,
                 )
                 return await render_sync(console, events, request_log=stream)
 
     try:
-        outcome = run_async(run())
+        if dry_run:
+            outcome = run_async(run())
+        else:
+            with single_run("sync"):
+                outcome = run_async(run())
+    except AnotherRunInProgressError as exc:
+        console.print(failure(exc))
+        raise typer.Exit(code=2) from exc
     except (RegistryError, NoSourcesSelectedError) as exc:
         console.print(failure(exc))
         raise typer.Exit(code=2) from exc
@@ -775,7 +792,7 @@ def rescreen(db: DatabaseOption = None) -> None:
             return await rescreen_service(repository, now=datetime.now(UTC))
 
     result = run_async(run())
-    if not result.examined:
+    if not result.examined and not result.released:
         console.print("[dim]Nothing stored yet — run stage sync.[/dim]")
         return
     if result.skipped:
@@ -793,11 +810,14 @@ def rescreen(db: DatabaseOption = None) -> None:
         changes.append(f"[yellow]{result.updated} classification(s) updated[/yellow]")
     if result.quarantined:
         changes.append(f"[yellow]{result.quarantined} moved to quarantine[/yellow]")
+    if result.released:
+        changes.append(f"[green]{result.released} restored from quarantine[/green]")
     console.print(f"Re-screened {result.examined} posting(s) — {', '.join(changes)}.")
-    console.print(
-        "[dim]Screening only. A posting the lexicon should now keep comes back on the next "
-        "sync, which is what re-fetches the fields classification needs.[/dim]"
-    )
+    if result.released:
+        console.print(
+            "[dim]Restored postings keep their original title, link, and location. A later source "
+            "refresh may fill metadata that quarantine does not retain.[/dim]"
+        )
 
 
 @app.command(help="Check database integrity, source health, and staleness")
@@ -1121,6 +1141,13 @@ def discover(
         list[str] | None,
         typer.Option("--platform", help="Probe only these platform adapters; repeatable"),
     ] = None,
+    exclude: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--exclude",
+            help="Skip these platform adapters while probing; repeatable",
+        ),
+    ] = None,
     only: Annotated[
         list[str] | None,
         typer.Option(
@@ -1156,6 +1183,20 @@ def discover(
             help="Probe companies found in feeds but missing from the registry",
         ),
     ] = False,
+    direct_only: Annotated[
+        bool,
+        typer.Option(
+            "--direct-only",
+            help="With --unregistered, verify only ATS links already present in feed applications",
+        ),
+    ] = False,
+    adopt_unnamed: Annotated[
+        bool,
+        typer.Option(
+            "--adopt-unnamed",
+            help="With --direct-only, also adopt boards whose platform publishes no board name",
+        ),
+    ] = False,
     limit: Annotated[
         int,
         typer.Option(
@@ -1181,6 +1222,7 @@ def discover(
 
     from stage.cli.logfile import open_request_log
     from stage.cli.render import failure, plain, render_discovery
+    from stage.cli.runlock import AnotherRunInProgressError, single_run
     from stage.companies import RegistryError
     from stage.domain import DiscoveryEvent, DiscoveryFinished, EmployerSize, Platform
     from stage.services.discover import NoMatchingCompanyError
@@ -1193,8 +1235,20 @@ def discover(
     if verify and unregistered:
         console.print("[red]Pass either --verify or --unregistered, not both.[/red]")
         raise typer.Exit(code=2)
+    if direct_only and not unregistered:
+        console.print("[red]--direct-only requires --unregistered.[/red]")
+        raise typer.Exit(code=2)
+    if adopt_unnamed and not direct_only:
+        console.print(
+            "[red]--adopt-unnamed requires --direct-only[/red] — the token must come from an "
+            "apply URL."
+        )
+        raise typer.Exit(code=2)
     if apply and not (verify or unregistered):
         console.print("[red]--apply only means something with --verify or --unregistered.[/red]")
+        raise typer.Exit(code=2)
+    if platform and exclude:
+        console.print("[red]Pass either --platform or --exclude, not both.[/red]")
         raise typer.Exit(code=2)
     if not verify and not unregistered and url is None and not companies:
         console.print(
@@ -1209,6 +1263,9 @@ def discover(
             [_require_enum(value, Platform, "--platform") for value in platform]
             if platform
             else None
+        )
+        excluded = (
+            [_require_enum(value, Platform, "--exclude") for value in exclude] if exclude else None
         )
     except InvalidOptionError as exc:
         _print_failure(exc)
@@ -1233,7 +1290,7 @@ def discover(
                 rows = load_companies(registry)
                 outcome = await render_discovery(
                     console,
-                    verify_registry(rows, platforms=platforms, only=only),
+                    verify_registry(rows, platforms=platforms, excluded=excluded, only=only),
                     verified_on=today,
                     request_log=stream,
                     collect=True,
@@ -1266,18 +1323,30 @@ def discover(
                     registry=registry,
                     db=db,
                     platforms=platforms,
+                    excluded=excluded,
                     size=size,
                     limit=limit,
+                    direct_only=direct_only,
+                    adopt_unnamed=adopt_unnamed,
                     apply_rows=apply,
                     today=today,
                     stream=stream,
                 )
 
-            events = probe_companies(companies or [], platforms=platforms, size=size)
+            events = probe_companies(
+                companies or [], platforms=platforms, excluded=excluded, size=size
+            )
             return await render_discovery(console, events, verified_on=today, request_log=stream)
 
     try:
-        resolved = run_async(run())
+        if url is not None:
+            resolved = run_async(run())
+        else:
+            with single_run("discover"):
+                resolved = run_async(run())
+    except AnotherRunInProgressError as exc:
+        console.print(failure(exc))
+        raise typer.Exit(code=2) from exc
     except (RegistryError, NoMatchingCompanyError) as exc:
         console.print(failure(exc))
         raise typer.Exit(code=2) from exc
@@ -1290,12 +1359,16 @@ async def _adopt_unregistered(
     registry: Path | None,
     db: Path | None,
     platforms: list[Any] | None,
+    excluded: list[Any] | None,
     size: Any,
     limit: int,
+    direct_only: bool,
+    adopt_unnamed: bool,
     apply_rows: bool,
     today: date,
     stream: Any,
 ) -> bool:
+    from stage.cli.logfile import open_probe_journal, probe_journal_path
     from stage.cli.render import plain
     from stage.companies import load_companies, update_registry
     from stage.domain import PlatformProbed
@@ -1313,9 +1386,9 @@ async def _adopt_unregistered(
         report = await coverage(repository, rows, unregistered=True)
         names = [entry.company for entry in report.unregistered][:limit]
         apply_urls = await repository.company_apply_urls(names)
-    direct = direct_companies_from_apply_urls(apply_urls, platforms=platforms)
+    direct = direct_companies_from_apply_urls(apply_urls, platforms=platforms, excluded=excluded)
     direct_names = {company.name for company in direct}
-    names = [name for name in names if name not in direct_names]
+    names = [] if direct_only else [name for name in names if name not in direct_names]
     if not names and not direct:
         console.print(plain("No unregistered employers to probe. Run stage sync first."))
         return False
@@ -1327,28 +1400,53 @@ async def _adopt_unregistered(
     results: list[tuple[str, Any]] = []
     streams = []
     if direct:
-        streams.append(verify_registry(direct, platforms=platforms))
+        streams.append(verify_registry(direct, platforms=platforms, excluded=excluded))
     if names:
-        streams.append(probe_companies(names, platforms=platforms, size=size))
-    for events in streams:
-        async for event in events:
-            if stream is not None:
-                stream(event)
-            if isinstance(event, PlatformProbed):
-                results.append((event.result.company, event.result))
+        streams.append(probe_companies(names, platforms=platforms, excluded=excluded, size=size))
+    with open_probe_journal() as journal:
+        for events in streams:
+            async for event in events:
+                if stream is not None:
+                    stream(event)
+                if isinstance(event, PlatformProbed):
+                    results.append((event.result.company, event.result))
+                    journal(
+                        {
+                            "company": event.result.company,
+                            "platform": event.result.candidate.platform.value,
+                            "slug": event.result.candidate.slug,
+                            "verdict": event.result.verdict.value,
+                            "job_count": event.result.job_count,
+                            "board_name": event.result.board_name,
+                            "detail": event.result.detail,
+                        }
+                    )
 
-    outcome = adopt_unregistered(rows, results, today=today)
+    outcome = adopt_unregistered(rows, results, today=today, adopt_unnamed=adopt_unnamed)
     console.print(
         plain(
             f"{outcome.probed} probed — {len(outcome.adopted)} adoptable "
-            f"({outcome.postings} posting(s)), {len(outcome.refused)} refused, "
-            f"{outcome.already_known} already known"
+            f"({outcome.postings} posting(s)), {len(outcome.review)} needing review, "
+            f"{len(outcome.refused)} refused, {outcome.already_known} already known"
         )
     )
     for row in outcome.adopted[:20]:
         console.print(plain(f"  + {row.company.name} — {row.job_count} job(s)"))
+    if outcome.review:
+        console.print(
+            plain("Boards with postings but no board name — a human decides these (§5.3):")
+        )
+        for candidate in outcome.review[:40]:
+            mark = "slug is distinctive" if candidate.distinctive else "slug is generic, check it"
+            console.print(
+                plain(
+                    f"  ? {candidate.company} ({candidate.label}) — "
+                    f"{candidate.job_count} job(s), {mark}"
+                )
+            )
     for company, board, reason in outcome.refused[:10]:
         console.print(plain(f"  - {company} ({board}): {reason}"))
+    console.print(plain(f"Every probe result was journalled to {probe_journal_path()}"))
 
     if not outcome.adopted:
         return False
@@ -1357,7 +1455,7 @@ async def _adopt_unregistered(
         return True
 
     def update(existing: tuple[Any, ...]) -> tuple[list[Any], Any]:
-        latest = adopt_unregistered(existing, results, today=today)
+        latest = adopt_unregistered(existing, results, today=today, adopt_unnamed=adopt_unnamed)
         return [*existing, *(row.company for row in latest.adopted)], latest
 
     target, applied = update_registry(update, registry)
@@ -1434,8 +1532,10 @@ def show_help(
 
 
 def main() -> None:
+    from stage.cli.serialize import configure_terminal_output
     from stage.storage.migrations import SchemaVersionError
 
+    configure_terminal_output(sys.stdout, sys.platform)
     try:
         app()
     except SchemaVersionError as exc:

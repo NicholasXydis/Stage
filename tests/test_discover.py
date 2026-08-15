@@ -7,6 +7,7 @@ from stage.domain import (
     Company,
     DiscoveryEvent,
     DiscoveryFinished,
+    DiscoveryStarted,
     EmployerSize,
     Platform,
     PlatformCandidate,
@@ -117,6 +118,40 @@ def test_direct_apply_urls_keep_the_exact_detected_board_token() -> None:
     assert [(row.name, row.platform, row.slug) for row in rows] == [
         ("Acme", Platform.GREENHOUSE, "acme"),
     ]
+
+
+def test_direct_apply_urls_exclude_a_named_platform() -> None:
+    rows = direct_companies_from_apply_urls(
+        {
+            "Acme": (
+                "https://boards.greenhouse.io/acme/jobs/123",
+                "https://jobs.lever.co/acme/456",
+            ),
+        },
+        excluded=[Platform.GREENHOUSE],
+    )
+
+    assert [(row.name, row.platform, row.slug) for row in rows] == [
+        ("Acme", Platform.LEVER, "acme"),
+    ]
+
+
+async def test_excluded_platforms_are_not_probed() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404)
+
+    events = await _collect(
+        probe_companies(
+            ["Faire"],
+            excluded=[Platform.GREENHOUSE, Platform.WORKABLE],
+            client_factory=_client_factory(handler),
+        )
+    )
+    started = events[0]
+    assert isinstance(started, DiscoveryStarted)
+    assert "greenhouse" not in started.platforms
+    assert "workable" not in started.platforms
+    assert "lever" in started.platforms
 
 
 def test_resolve_careers_url_produces_a_pasteable_registry_row() -> None:

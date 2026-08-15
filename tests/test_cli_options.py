@@ -45,3 +45,20 @@ def test_purge_dry_run_reports_no_removal(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "No postings removed" in result.stdout
+
+
+def test_discover_direct_only_requires_unregistered() -> None:
+    result = CliRunner().invoke(app, ["discover", "--direct-only"])
+
+    assert result.exit_code == 2
+    assert "requires --unregistered" in result.stdout
+
+
+def test_discover_rejects_platform_and_exclude_together() -> None:
+    result = CliRunner().invoke(
+        app,
+        ["discover", "--verify", "--platform", "greenhouse", "--exclude", "workable"],
+    )
+
+    assert result.exit_code == 2
+    assert "not both" in result.stdout

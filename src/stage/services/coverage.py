@@ -101,6 +101,7 @@ def _unregistered(
     seen: dict[str, dict[str, int]],
     classifications: Sequence[CoverageClassification],
 ) -> tuple[UnregisteredCompany, ...]:
+    exact_names = {name_tokens(company.name) for company in companies}
     index: dict[str, list[str]] = {}
     for company in companies:
         for token in name_tokens(company.name) - GENERIC_TOKENS:
@@ -109,6 +110,8 @@ def _unregistered(
     unknown: list[UnregisteredCompany] = []
     for name, sources in seen.items():
         tokens = name_tokens(name)
+        if tokens in exact_names:
+            continue
         nearby = {
             candidate for token in tokens - GENERIC_TOKENS for candidate in index.get(token, ())
         }

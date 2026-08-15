@@ -145,6 +145,33 @@ async def test_unregistered_names_exclude_the_registry_even_under_a_different_ca
 
 
 @pytest.mark.asyncio
+async def test_exact_generic_token_name_is_not_unregistered(seeded: Path) -> None:
+    async with open_repository(seeded) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="simplify",
+                run_started_at=NOW,
+                jobs=(_job("simplify:feed:3", "Western Digital", source="simplify"),),
+            )
+        )
+        report = await coverage(
+            repository,
+            (
+                *COMPANIES,
+                Company(
+                    name="Western Digital",
+                    platform=Platform.GREENHOUSE,
+                    slug="western-digital",
+                ),
+            ),
+            now=NOW,
+            unregistered=True,
+        )
+
+    assert "Western Digital" not in {row.company for row in report.unregistered}
+
+
+@pytest.mark.asyncio
 async def test_unregistered_rows_carry_their_sources_and_volume(seeded: Path) -> None:
     async with open_repository(seeded) as repository:
         report = await coverage(repository, COMPANIES, now=NOW, unregistered=True)
