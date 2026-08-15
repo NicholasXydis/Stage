@@ -7,12 +7,23 @@ from stage.sources import get_adapters
 def test_the_documented_tiers_exist() -> None:
     assert set(PROFILES) == {
         "standard",
+        "broad",
         "moderate",
+        "paginated",
         "conservative",
         "workday",
         "feeds",
         "discovery",
     }
+
+
+def test_the_paginated_tier_raises_only_the_ceiling_never_the_rate() -> None:
+    moderate, paginated = profile("moderate"), profile("paginated")
+    assert (paginated.concurrency, paginated.min_interval_s) == (
+        moderate.concurrency,
+        moderate.min_interval_s,
+    ), "the ceiling bounds a bug's blast radius; the rate is what a host actually feels"
+    assert paginated.max_requests_per_run > moderate.max_requests_per_run
 
 
 def test_discovery_never_loosens_a_platforms_own_tier() -> None:
@@ -35,12 +46,20 @@ def test_conservative_is_stricter_than_standard() -> None:
     assert conservative.max_requests_per_run < standard.max_requests_per_run
 
 
-def test_workday_matches_the_shared_bucket_posture() -> None:
+def test_workday_pacing_is_the_control_that_must_not_drift() -> None:
     workday = profile("workday")
-    assert (workday.concurrency, workday.min_interval_s, workday.max_requests_per_run) == (
-        2,
-        1.5,
-        120,
+    assert (workday.concurrency, workday.min_interval_s) == (2, 1.5), (
+        "all tenants share one Akamai-fronted bucket; the stride is the ban-risk control"
+    )
+
+
+def test_the_workday_ceiling_can_cover_a_whole_rotation_slice() -> None:
+    from stage.sources.workday import WorkdayAdapter
+
+    ceiling = profile("workday").max_requests_per_run
+    needed = WorkdayAdapter.rotation_slice + WorkdayAdapter.retry_reserve
+    assert ceiling >= needed, (
+        f"ceiling {ceiling} starves a slice of {WorkdayAdapter.rotation_slice}: its tail is skipped"
     )
 
 
@@ -87,3 +106,32 @@ def test_strictest_is_per_dimension_and_never_adopts_a_whole_profile() -> None:
         "the result is a new posture, not whichever input won a single comparison"
     )
     assert merged == tight_rate_loose_ceiling.strictest(loose_rate_tight_ceiling)
+
+
+def test_the_broad_tier_raises_only_the_ceiling_never_the_rate() -> None:
+    standard, broad = profile("standard"), profile("broad")
+    assert (broad.concurrency, broad.min_interval_s) == (
+        standard.concurrency,
+        standard.min_interval_s,
+    ), "a bigger board list needs more requests, not a faster one"
+    assert broad.max_requests_per_run > standard.max_requests_per_run
+
+
+def test_every_shipped_platform_ceiling_covers_its_enabled_board_count() -> None:
+    import collections
+
+    from stage.companies import load_companies
+    from stage.sources import get_adapters, load_builtins
+
+    load_builtins()
+    enabled: collections.Counter[str] = collections.Counter(
+        company.platform.value for company in load_companies() if company.enabled
+    )
+    for adapter in get_adapters().values():
+        boards = enabled.get(adapter.platform.value, 0)
+        if not boards or adapter.rotation_slice:
+            continue
+        ceiling = profile(adapter.rate_profile).max_requests_per_run
+        assert ceiling >= boards, (
+            f"{adapter.name}: {boards} boards against a ceiling of {ceiling} truncates every run"
+        )

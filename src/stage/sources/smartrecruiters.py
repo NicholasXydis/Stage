@@ -61,7 +61,7 @@ class SmartRecruitersPage(BaseModel):
 class SmartRecruitersAdapter:
     name: ClassVar[str] = "smartrecruiters"
     platform: ClassVar[Platform] = Platform.SMARTRECRUITERS
-    rate_profile: ClassVar[str] = "moderate"
+    rate_profile: ClassVar[str] = "paginated"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = ""
     detail_budget: ClassVar[int] = 120

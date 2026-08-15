@@ -18,7 +18,14 @@ from stage.http.client import (
     ResponseTooLargeError,
     RetryableStatusError,
 )
-from stage.http.profiles import PROFILES, RatePosture, UnknownProfileError, profile, resolve
+from stage.http.profiles import (
+    CEILING_BACKSTOP,
+    PROFILES,
+    RatePosture,
+    UnknownProfileError,
+    profile,
+    resolve,
+)
 
 __all__ = [
     "PROFILES",
@@ -37,6 +44,7 @@ __all__ = [
     "HttpStatusError",
     "RedirectNotAllowedError",
     "JsonResponse",
+    "CEILING_BACKSTOP",
     "RatePosture",
     "RequestRecord",
     "ResponseTooLargeError",

@@ -41,7 +41,7 @@ class GreenhouseBoard(BaseModel):
 class GreenhouseAdapter(BoardAdapter):
     name: ClassVar[str] = "greenhouse"
     platform: ClassVar[Platform] = Platform.GREENHOUSE
-    rate_profile: ClassVar[str] = "standard"
+    rate_profile: ClassVar[str] = "broad"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     detail_budget: ClassVar[int] = 0
     max_requests_per_company: ClassVar[int] = 2

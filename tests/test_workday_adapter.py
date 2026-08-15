@@ -108,8 +108,8 @@ def test_the_crawl_budgets_reserve_space_for_retries() -> None:
     ]
     budgets, details = WorkdayAdapter.crawl_budgets(companies, {}, {}, posture.max_requests_per_run)
     assert set(budgets) == {company.registry_key for company in companies}
-    assert set(budgets.values()) == {6}
-    assert details == 16
+    assert set(budgets.values()) == {WorkdayAdapter.crawl_page_cap}
+    assert details <= WorkdayAdapter.detail_budget
     assert (
         sum(budgets.values()) + details + WorkdayAdapter.retry_reserve
         <= posture.max_requests_per_run
@@ -153,13 +153,16 @@ def test_a_cached_facet_keeps_a_resumable_board_on_the_two_sync_budget() -> None
         facet_parameter=facet.parameter,
         facet_ids=facet.facet_ids,
     )
+    ceiling = 120
     budgets, _ = adapter.crawl_budgets(
         [company],
         {crawl.board: crawl},
         {(facet.tenant, facet.site): facet},
-        120,
+        ceiling,
     )
-    assert budgets[company.registry_key] == 85
+    assert budgets[company.registry_key] == ceiling - adapter.retry_reserve, (
+        "a board that still has pages to walk takes everything the ceiling leaves after retries"
+    )
 
 
 def test_a_facet_is_resolved_from_the_responses_own_facet_list() -> None:
@@ -549,7 +552,7 @@ async def test_an_unfinished_resume_is_discarded_after_the_second_workday_pass(
         assert await repository.load_workday_crawls() == {}
 
     finished = next(event for event in events if isinstance(event, CompanyFinished))
-    assert "two-pass Workday limit reached" in finished.degraded
+    assert "resumed once and still incomplete" in finished.degraded
 
 
 @respx.mock
@@ -725,7 +728,7 @@ def test_the_dry_run_bound_is_reported_per_bucket_against_that_buckets_ceiling()
     plan = plans[0]
     assert plan.planned == 14
     assert plan.worst_case == 100
-    assert plan.ceiling == 120
+    assert plan.ceiling == profile("workday").max_requests_per_run
     assert not plan.exceeds_ceiling
 
 
@@ -1460,4 +1463,72 @@ async def test_an_unfaceted_fallback_walk_claims_no_structured_evidence() -> Non
 
     assert result.jobs[0].signals.employment_type == "", (
         "a whole-board walk says nothing about whether a posting is an internship"
+    )
+
+
+def test_a_ceiling_below_the_board_count_starves_the_tail_silently() -> None:
+    companies = [
+        _company(name=f"Company {index}", slug=f"company-{index}", workday_tenant=f"tenant{index}")
+        for index in range(200)
+    ]
+    budgets, details = WorkdayAdapter.crawl_budgets(companies, {}, {}, 120)
+    assert set(budgets.values()) == {1}, "a starved board asks for one page, never a negative one"
+    assert details == 0, "nothing is left over for detail fetches"
+    assert sum(budgets.values()) > 120 - WorkdayAdapter.retry_reserve, (
+        "the plan outruns the ceiling, so the run is cut off part-way and the tail never fetched"
+    )
+
+
+def test_the_shipped_ceiling_covers_the_shipped_rotation_slice() -> None:
+    from stage.http import profile
+
+    companies = [
+        _company(name=f"Company {index}", slug=f"company-{index}", workday_tenant=f"tenant{index}")
+        for index in range(WorkdayAdapter.rotation_slice)
+    ]
+    ceiling = profile("workday").max_requests_per_run
+    budgets, details = WorkdayAdapter.crawl_budgets(companies, {}, {}, ceiling)
+    assert sum(budgets.values()) + details + WorkdayAdapter.retry_reserve <= ceiling
+    assert min(budgets.values()) >= 1, "a selected board must always get at least one request"
+
+
+@respx.mock
+async def test_one_open_crawl_does_not_stop_the_other_boards_being_fetched() -> None:
+    from stage.domain import CompanyFinished
+    from stage.services import sync as sync_module
+    from stage.storage import SourceBatch, open_repository
+
+    respx.post(url__regex=r"https://.*\.myworkdayjobs\.com/.*").mock(
+        return_value=httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": []})
+    )
+    boards = [
+        _company(name=f"Board {index}", slug=f"board{index}", workday_tenant=f"tenant{index}")
+        for index in range(4)
+    ]
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "stage.db"
+        async with open_repository(path) as repository:
+            await repository.apply_source_batch(
+                SourceBatch(
+                    source="workday",
+                    run_started_at=NOW,
+                    workday_crawls=(
+                        WorkdayCrawlStep(
+                            board=WorkdayAdapter().board_key(boards[0]), next_offset=20, total=500
+                        ),
+                    ),
+                )
+            )
+            fetched = [
+                event.company
+                async for event in sync_module.sync(
+                    repository, boards, sources=("workday",), now_fn=lambda: NOW
+                )
+                if isinstance(event, CompanyFinished)
+            ]
+
+    assert len(fetched) == len(boards), (
+        "an open crawl on one board must not turn the whole run into a resume-only pass"
     )
