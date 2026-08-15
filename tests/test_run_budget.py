@@ -189,3 +189,37 @@ async def test_the_daily_cap_actually_reaches_the_budget_that_spends(
     assert len(fetched) <= 1, (
         "the allowance has to reach the budget that counts requests, or the cap is decorative"
     )
+
+
+def test_a_broken_registry_is_reported_even_while_another_run_holds_the_lock(
+    tmp_path: Path,
+) -> None:
+    from typer.testing import CliRunner
+
+    from stage.cli.app import app
+
+    registry = tmp_path / "companies.yaml"
+    registry.write_text(
+        "- {name: A, platform: greenhouse, slug: a, last_verified: nope}\n", encoding="utf-8"
+    )
+    lock = tmp_path / "network.lock"
+    with single_run("sync", lock):
+        result = CliRunner().invoke(
+            app,
+            ["sync", "--registry", str(registry), "--db", str(tmp_path / "s.db")],
+        )
+
+    assert result.exit_code == 2
+    assert "last_verified" in result.stdout, (
+        "a config error needs no network, so the lock must never mask it"
+    )
+
+
+def test_two_databases_do_not_contend_for_one_lock(tmp_path: Path) -> None:
+    from stage.cli.app import _lock_path
+
+    first = _lock_path(tmp_path / "one.db")
+    second = _lock_path(tmp_path / "two.db")
+    assert first != second, "independent databases are independent runs"
+    with single_run("sync", first), single_run("sync", second):
+        pass

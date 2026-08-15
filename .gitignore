@@ -37,7 +37,7 @@ htmlcov/
 *.sqlite
 *.sqlite3
 
-.*.yaml.lock
+.*.lock
 
 tests/captured/
 *.log

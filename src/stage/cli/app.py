@@ -119,6 +119,11 @@ def _database(explicit: Path | None) -> Path:
     return explicit.expanduser() if explicit else database_path()
 
 
+def _lock_path(explicit: Path | None) -> Path:
+    target = _database(explicit)
+    return target.with_name(f".{target.name}.lock")
+
+
 def _print_failure(exc: BaseException) -> None:
     from rich.console import Console
 
@@ -186,8 +191,13 @@ def sync(
         console.print("[red]Pass either --source or --exclude, not both.[/red]")
         raise typer.Exit(code=2)
 
-    async def run() -> SyncOutcome:
+    try:
         companies = load_companies(registry)
+    except RegistryError as exc:
+        console.print(failure(exc))
+        raise typer.Exit(code=2) from exc
+
+    async def run() -> SyncOutcome:
         with ExitStack() as stack:
             stream = (
                 stack.enter_context(open_request_log(request_log))
@@ -209,7 +219,7 @@ def sync(
         if dry_run:
             outcome = run_async(run())
         else:
-            with single_run("sync"):
+            with single_run("sync", _lock_path(db)):
                 outcome = run_async(run())
     except AnotherRunInProgressError as exc:
         console.print(failure(exc))
@@ -1224,6 +1234,7 @@ def discover(
     from stage.cli.render import failure, plain, render_discovery
     from stage.cli.runlock import AnotherRunInProgressError, single_run
     from stage.companies import RegistryError
+    from stage.companies import load_companies as load_registry
     from stage.domain import DiscoveryEvent, DiscoveryFinished, EmployerSize, Platform
     from stage.services.discover import NoMatchingCompanyError
 
@@ -1287,7 +1298,7 @@ def discover(
                 from stage.companies import load_companies, update_registry
                 from stage.services.discover import apply_verification, verify_registry
 
-                rows = load_companies(registry)
+                rows = checked if checked is not None else load_companies(registry)
                 outcome = await render_discovery(
                     console,
                     verify_registry(rows, platforms=platforms, excluded=excluded, only=only),
@@ -1338,11 +1349,19 @@ def discover(
             )
             return await render_discovery(console, events, verified_on=today, request_log=stream)
 
+    checked = None
+    if verify:
+        try:
+            checked = load_registry(registry)
+        except RegistryError as exc:
+            console.print(failure(exc))
+            raise typer.Exit(code=2) from exc
+
     try:
         if url is not None:
             resolved = run_async(run())
         else:
-            with single_run("discover"):
+            with single_run("discover", _lock_path(db)):
                 resolved = run_async(run())
     except AnotherRunInProgressError as exc:
         console.print(failure(exc))
@@ -1499,9 +1518,15 @@ _HELP_GUIDE = (
 
 def _render_schedule(console: Any, report: Any) -> None:
     console.print(f"Scheduler: {report.backend} (per user)")
-    for action, enabled in report.actions:
+    from stage.cli.schedule import matches_definition
+
+    for action, enabled, installed in report.actions:
         state = "enabled" if enabled else "disabled"
         console.print(f"  {action.label}: {state} — {action.cadence} at {action.time} local time")
+        if enabled and not matches_definition(action, installed):
+            console.print(
+                f"    [yellow]installed as {installed}[/yellow] — run stage schedule enable"
+            )
     console.print(f"Logs: {report.log_dir}")
 
 

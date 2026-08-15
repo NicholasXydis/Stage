@@ -32,7 +32,7 @@ def test_windows_enable_replaces_only_stage_tasks_and_uses_the_packaged_runner(
     report = schedule.enable()
 
     assert report.backend == "Windows Task Scheduler"
-    assert all(enabled for _, enabled in report.actions)
+    assert all(entry[1] for entry in report.actions)
     created = [command for command in commands if "/Create" in command]
     assert len(created) == 2
     assert all("/XML" in command for command in created)
@@ -67,7 +67,7 @@ def test_windows_disable_only_deletes_stage_tasks(monkeypatch: pytest.MonkeyPatc
 
     report = schedule.disable()
 
-    assert not any(enabled for _, enabled in report.actions)
+    assert not any(entry[1] for entry in report.actions)
     deleted = [command for command in commands if "/Delete" in command]
     assert deleted == [
         ("schtasks", "/Delete", "/TN", "Stage Sync", "/F"),

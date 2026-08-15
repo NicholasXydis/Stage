@@ -3,6 +3,7 @@ import os
 import platform
 import plistlib
 import random
+import re
 import subprocess
 import sys
 import time
@@ -52,7 +53,7 @@ class ScheduledAction:
 @dataclass(frozen=True, slots=True)
 class ScheduleStatus:
     backend: str
-    actions: tuple[tuple[ScheduledAction, bool], ...]
+    actions: tuple[tuple[ScheduledAction, bool, str], ...]
     log_dir: Path
 
 
@@ -104,14 +105,64 @@ def disable() -> ScheduleStatus:
 
 def status() -> ScheduleStatus:
     backend = _backend()
+    exists, label = {
+        "windows": (_windows_exists, "Windows Task Scheduler"),
+        "macos": (_macos_exists, "macOS launchd"),
+    }.get(backend, (_linux_exists, "Linux systemd user timers"))
+    states = tuple(
+        (action, exists(action), _installed_cadence(action, backend)) for action in _ACTIONS
+    )
+    return ScheduleStatus(label, states, _log_dir())
+
+
+def _installed_cadence(action: ScheduledAction, backend: str) -> str:
     if backend == "windows":
-        enabled = tuple((action, _windows_exists(action)) for action in _ACTIONS)
-        return ScheduleStatus("Windows Task Scheduler", enabled, _log_dir())
+        return _windows_installed(action)
     if backend == "macos":
-        enabled = tuple((action, _macos_exists(action)) for action in _ACTIONS)
-        return ScheduleStatus("macOS launchd", enabled, _log_dir())
-    enabled = tuple((action, _linux_exists(action)) for action in _ACTIONS)
-    return ScheduleStatus("Linux systemd user timers", enabled, _log_dir())
+        return _macos_installed(action)
+    return _linux_installed(action)
+
+
+def _windows_installed(action: ScheduledAction) -> str:
+    result = _execute(("schtasks", "/Query", "/TN", action.label, "/XML"))
+    if result.returncode != 0:
+        return ""
+    body = result.stdout
+    match = re.search(r"<Interval>PT(\d+)H</Interval>", body)
+    if match:
+        return f"every {int(match.group(1))} hours"
+    return "daily" if "<ScheduleByDay>" in body else "weekly"
+
+
+def _macos_installed(action: ScheduledAction) -> str:
+    path = _launch_path(action)
+    if not path.is_file():
+        return ""
+    try:
+        payload = plistlib.loads(path.read_bytes())
+    except (OSError, plistlib.InvalidFileException):
+        return ""
+    schedule = payload.get("StartCalendarInterval")
+    if isinstance(schedule, list) and len(schedule) > 1:
+        return f"every {24 // len(schedule)} hours"
+    return "weekly" if action.launchd_weekday is not None else "daily"
+
+
+def _linux_installed(action: ScheduledAction) -> str:
+    path = _systemd_dir() / f"{_systemd_name(action)}.timer"
+    try:
+        body = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    match = re.search(r"OnCalendar=.*?\s(\d{2}(?:,\d{2})*):", body)
+    if match:
+        slots = len(match.group(1).split(","))
+        return f"every {24 // slots} hours" if slots > 1 else "daily"
+    return "weekly" if action.systemd_day is not None else "daily"
+
+
+def matches_definition(action: ScheduledAction, installed: str) -> bool:
+    return not installed or action.cadence.startswith(installed)
 
 
 def run_scheduled(key: str) -> int:
