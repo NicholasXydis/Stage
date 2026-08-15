@@ -1,9 +1,13 @@
 swe:
+  - application engineering
+  - systems engineering
+  - system engineering
   - software engineer
   - software engineering
   - software developer
   - software development
   - software dev
+  - software
   - developer
   - development engineer
   - programmer
@@ -84,10 +88,13 @@ swe:
   - kernel engineer
   - kernel developer
   - kernel optimization
+  - kernel architecture
   - performance engineer
   - distributed systems engineer
   - game engine engineer
   - tools engineer
+  - automation engineer
+  - tooling engineer
   - blockchain engineer
   - smart contract engineer
   - augmented reality engineer
@@ -420,6 +427,16 @@ swe:
   - ingenieure de diffusion publicitaire
   - systemes publicitaires
   - automatisation des sinistres
+  - java web development
+  - software analyst
+  - aerospace software apps engineer
+  - mission software
+  - software and gaming
+  - développement web java
+  - analyste logiciel
+  - ingénieur d'applications logicielles aérospatiales
+  - logiciel de mission
+  - logiciels et jeux
 security:
   - security engineer
   - security engineering
@@ -690,7 +707,16 @@ security:
   - automatisation de la conformite
   - anti cheat engineer
   - anti triche
+  - ai for network security and orchestration
+  - secure cloud platform
+  - ia pour la sécurité réseau et l orchestration
+  - plateforme infonuagique sécurisée
 data:
+  - analytics
+  - visualization engineer
+  - modeling and visualization
+  - cyber analytics
+  - insights and analytics
   - data science
   - data scientist
   - data engineer
@@ -900,6 +926,9 @@ data:
   - chemoinformatique
   - ingenierie d attribution
 ml-ai:
+  - foundation model
+  - ai operations
+  - ai foundation model
   - machine learning
   - deep learning
   - artificial intelligence
@@ -933,6 +962,11 @@ ml-ai:
   - ai first engineer
   - ai first engineering
   - ai automation engineer
+  - ai automation
+  - ai intern
+  - ai robotics
+  - ai architecture
+  - architecture ai
   - ai swe
   - ai product engineer
   - ai solutions engineer
@@ -1143,6 +1177,18 @@ ml-ai:
   - apprentissage automatique pour la decouverte de medicaments
   - ia clinique
   - systemes de tutorat ia
+  - ai agents and automations
+  - ai and sw development engineering
+  - ai and domain aware audio processing
+  - ai for scientific reasoning
+  - video world models
+  - infrared imaging and algorithms
+  - agents et automatisations ia
+  - ingénierie du développement ia et logiciel
+  - ia et traitement audio contextuel
+  - ia pour le raisonnement scientifique
+  - modèles du monde vidéo
+  - imagerie infrarouge et algorithmes
 quant:
   - quantitative
   - quantitative researcher
@@ -1355,7 +1401,10 @@ quant:
   - mathematiques computationnelles
   - recherche algorithmique
 infra:
+  - cloud services
+  - cloud operations
   - infrastructure engineer
+  - infrastructure intern
   - site reliability
   - sre
   - devops
@@ -1643,6 +1692,10 @@ infra:
   - deploiement de modeles
   - ingenierie infonuagique
   - infrastructure de contenu
+  - database engineering
+  - ai for intent based networking
+  - ingénierie de bases de données
+  - ia pour les réseaux pilotés par intention
 hardware:
   - hardware engineer
   - hardware engineering
@@ -1786,7 +1839,12 @@ hardware:
   - compilateur aa
   - logiciel d accelerateur ia
   - fabrication assistee par ordinateur
+  - mechatronic systems and ai design
+  - systèmes mécatroniques et conception ia
 embedded:
+  - controls engineering
+  - automation and controls
+  - controls co op
   - vehicle software
   - vehicle controls
   - logiciel de véhicule
@@ -1986,14 +2044,26 @@ embedded:
   - logiciel de reseau electrique intelligent
   - fabrication numerique
   - logiciel d automatisation de laboratoire
+  - ai for functional avionics
+  - ia pour l avionique fonctionnelle
 general-cs:
   - computer science
   - computer engineering
   - computer scientist
+  - computing
   - computing science
+  - computational engineering
   - informatique
   - genie informatique
   - sciences informatiques
+  - technology intern
+  - technology internship
+  - technology co op
+  - technical intern
+  - technical internship
+  - technical co op
+  - stage technique
+  - stagiaire technique
 
 source_categories:
   swe:

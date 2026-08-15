@@ -16,6 +16,10 @@ markers:
   - cooperative education
   - work term
   - industrial placement
+  - placement year
+  - year placement
+  - year in industry
+  - industrial year
   - student placement
   - summer analyst
   - summer associate
@@ -136,8 +140,6 @@ blocked_bigrams:
   - student life
   - student success
   - student engagement
-
-disqualifiers:
   - new grad
   - new graduate
   - recent graduate
@@ -146,16 +148,18 @@ disqualifiers:
   - entry level
   - full time permanent
   - permanent full time
-  - manager of interns
-  - intern manager
-  - internship program manager
-  - internship coordinator
-  - mentor interns
-  - supervise interns
+  - poste permanent
   - nouveau diplômé
   - nouvelle diplômée
   - jeune diplômé
   - jeune diplômée
   - diplômé récent
   - diplômée récente
-  - poste permanent
+
+disqualifiers:
+  - manager of interns
+  - intern manager
+  - internship program manager
+  - internship coordinator
+  - mentor interns
+  - supervise interns

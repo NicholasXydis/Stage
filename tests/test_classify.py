@@ -508,12 +508,44 @@ def test_french_work_study_contracts_are_recognized(title: str) -> None:
 @pytest.mark.parametrize(
     "title",
     [
-        "Jeune diplômée — Software Engineer Intern",
+        "Jeune diplômée — Développeuse logiciel",
         "Diplômée récente — Développeuse logiciel",
+        "Nouveau diplômé — Ingénieur logiciel",
     ],
 )
 def test_french_new_grad_titles_are_not_internships(title: str) -> None:
     assert not screen_internship(title).is_internship
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Jeune diplômée — Software Engineer Intern",
+        "Intern to Entry Level Conversion Intern Program - Engineering",
+        "Technical Intern and New Grad",
+        "Entry-Level Software Engineer - Internship - Fresh Graduate",
+    ],
+)
+def test_a_cohort_word_never_cancels_an_explicit_internship(title: str) -> None:
+    assert screen_internship(title).is_internship, (
+        f"{title!r}: a cohort label loses to an explicit marker, as a seniority word already does"
+    )
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Software Engineer - Entry Level 2027",
+        "New Graduate Engineer, Software",
+        "Software Engineer, New Grad",
+        "Recent Graduate - Trading Assistant",
+        "Graduate Program Ingenieros",
+    ],
+)
+def test_a_cohort_word_still_rejects_when_nothing_says_internship(title: str) -> None:
+    assert not screen_internship(title).is_internship, (
+        "moving these off the unconditional list must not admit ordinary new-grad postings"
+    )
 
 
 @pytest.mark.parametrize(
@@ -665,4 +697,35 @@ def test_additional_live_data_ai_and_vehicle_titles_resolve(title: str, role: Ro
     ],
 )
 def test_tied_role_phrases_choose_the_earliest_title_match(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Java Web Development Intern", RoleCategory.SWE),
+        ("Software Analyst Intern", RoleCategory.SWE),
+        ("Aerospace Software Apps Engineer Intern", RoleCategory.SWE),
+        ("Mission Software Intern", RoleCategory.SWE),
+        ("Intern - Engineering - Software & Gaming", RoleCategory.SWE),
+        ("AI Agents & Automations Internship", RoleCategory.ML_AI),
+        ("AI and SW Development Engineering Intern", RoleCategory.ML_AI),
+        ("AI and domain-aware audio Processing Intern", RoleCategory.ML_AI),
+        ("Research Intern - AI for Scientific Reasoning", RoleCategory.ML_AI),
+        ("Research Intern - Video World Models", RoleCategory.ML_AI),
+        ("Intern - Infrared Imaging & Algorithms", RoleCategory.ML_AI),
+        ("Database Engineering Intern", RoleCategory.INFRA),
+        ("AI for Intent-Based Networking Internship", RoleCategory.INFRA),
+        ("College Intern - Mechatronic Systems & AI Design", RoleCategory.HARDWARE),
+        ("Internship - AI for Functional Avionics", RoleCategory.EMBEDDED),
+        ("Stagiaire développement web Java", RoleCategory.SWE),
+        ("Stagiaire ingénieur d'applications logicielles aérospatiales", RoleCategory.SWE),
+        ("Stagiaire agents et automatisations IA", RoleCategory.ML_AI),
+        ("Stagiaire ingénierie de bases de données", RoleCategory.INFRA),
+        ("Stagiaire systèmes mécatroniques et conception IA", RoleCategory.HARDWARE),
+        ("Stagiaire IA pour l'avionique fonctionnelle", RoleCategory.EMBEDDED),
+        ("Stagiaire plateforme infonuagique sécurisée", RoleCategory.SECURITY),
+    ],
+)
+def test_audited_technical_role_gaps_resolve(title: str, role: RoleCategory) -> None:
     assert classify_role(title).role is role, title

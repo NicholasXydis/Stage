@@ -368,3 +368,8 @@ def test_postdoctoral_titles_are_outside_degree_scope(title: str) -> None:
     rejection = screen_degree_scope(_job(title))
     assert rejection is not None
     assert rejection.reason is RejectionReason.OUT_OF_SCOPE_DEGREE
+
+
+def test_a_fullstack_vehicle_ui_engineer_is_not_rejected_as_a_ui_role() -> None:
+    title = "Fullstack C++ Engineer Intern, Vehicle User Interface"
+    assert screen_is_cs_role(_job(title)) is None
