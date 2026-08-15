@@ -34,10 +34,18 @@ def _client(posture: RatePosture | None = None, **kwargs: object) -> HttpClient:
 
 
 @respx.mock
-async def test_a_403_records_a_failure_tightens_and_persists_a_cooldown() -> None:
+async def test_one_denying_tenant_fails_its_board_without_blocking_its_neighbours() -> None:
+    healthy = "other.wd3.myworkdayjobs.com"
     route = respx.get(URL).mock(return_value=httpx.Response(403))
 
-    async with _client() as client:
+    client = HttpClient(
+        allowed_hosts=frozenset({HOST, healthy}),
+        posture=FAST,
+        bucket_key="workday",
+        jitter=False,
+        now=NOW,
+    )
+    async with client:
         with pytest.raises(ForbiddenError):
             await client.get_json(URL)
         settled = client.rate_state(NOW)
@@ -45,10 +53,75 @@ async def test_a_403_records_a_failure_tightens_and_persists_a_cooldown() -> Non
     assert route.call_count == 1, "a 403 is a decision, not congestion — never retried"
     assert len(settled) == 1
     assert settled[0].consecutive_failures == 1
-    assert settled[0].min_interval_override is not None
-    assert settled[0].blocked_until is not None
-    assert settled[0].blocked_until > NOW
     assert settled[0].reason == "HTTP 403"
+    assert settled[0].blocked_until is None, (
+        "one dead tenant on a bucket of hundreds is a fact about that tenant, not about our rate"
+    )
+
+
+@respx.mock
+async def test_a_bucket_key_over_one_host_still_blocks_on_its_first_denial() -> None:
+    host = "api.collage.co"
+    respx.get(f"https://{host}/jobs").mock(return_value=httpx.Response(403))
+
+    client = HttpClient(
+        allowed_hosts=frozenset({host}),
+        posture=FAST,
+        bucket_key="collage",
+        jitter=False,
+        now=NOW,
+    )
+    async with client:
+        with pytest.raises(ForbiddenError):
+            await client.get_json(f"https://{host}/jobs")
+        settled = client.rate_state(NOW)
+
+    assert settled[0].blocked_until is not None, (
+        "a named bucket over a single host has no second host to corroborate, so it must block"
+    )
+
+
+@respx.mock
+async def test_two_denying_tenants_do_block_the_shared_bucket() -> None:
+    second = "other.wd3.myworkdayjobs.com"
+    respx.get(URL).mock(return_value=httpx.Response(403))
+    respx.get(f"https://{second}/jobs").mock(return_value=httpx.Response(403))
+
+    client = HttpClient(
+        allowed_hosts=frozenset({HOST, second}),
+        posture=FAST,
+        bucket_key="workday",
+        jitter=False,
+        now=NOW,
+    )
+    async with client:
+        for url in (URL, f"https://{second}/jobs"):
+            with pytest.raises(ForbiddenError):
+                await client.get_json(url)
+        settled = client.rate_state(NOW)
+
+    assert settled[0].blocked_until is not None, (
+        "denials spread across distinct hosts is evidence about us, not about one tenant"
+    )
+    assert settled[0].blocked_until > NOW
+    assert settled[0].min_interval_override is not None
+
+
+@respx.mock
+async def test_a_single_host_bucket_still_blocks_on_its_first_denial() -> None:
+    host = "api.smartrecruiters.com"
+    respx.get(f"https://{host}/jobs").mock(return_value=httpx.Response(403))
+
+    client = HttpClient(allowed_hosts=frozenset({host}), posture=FAST, jitter=False, now=NOW)
+    async with client:
+        with pytest.raises(ForbiddenError):
+            await client.get_json(f"https://{host}/jobs")
+        settled = client.rate_state(NOW)
+
+    assert settled[0].blocked_until is not None, (
+        "when the bucket is one host, its denial is the only evidence there is"
+    )
+    assert settled[0].min_interval_override is not None
 
 
 @respx.mock

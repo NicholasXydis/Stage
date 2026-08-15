@@ -23,11 +23,13 @@ USER_AGENT = "stage-cli/0.1.0 (+https://github.com/NicholasXydis/stage; internsh
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 MAX_RETRY_AFTER_S = 60.0
 MAX_INTERVAL_S = 10.0
+MIN_TIGHTEN_FLOOR_S = 0.25
 MAX_ATTEMPTS = 3
 JITTER_MAX_S = 0.5
 RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 BLOCKING_STATUSES = frozenset({401, 403})
 BLOCKED_COOLDOWN_S = 1800.0
+DENIED_HOSTS_BEFORE_BLOCK = 2
 MAX_REDIRECTS = 3
 DEFAULT_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=10.0)
 
@@ -131,6 +133,7 @@ class HostBudget:
     last_error: str = ""
     deferred_s: float = 0.0
     deferred_reason: str = ""
+    denied_hosts: set[str] = field(default_factory=set)
     semaphore: asyncio.Semaphore = field(init=False)
     gate: asyncio.Lock = field(init=False)
 
@@ -154,7 +157,8 @@ class HostBudget:
             self.deferred_reason = reason
 
     def tighten(self, factor: float, *, rejected: bool = False) -> None:
-        self.min_interval_s = min(MAX_INTERVAL_S, self.min_interval_s * factor)
+        established = max(self.min_interval_s, MIN_TIGHTEN_FLOOR_S)
+        self.min_interval_s = min(MAX_INTERVAL_S, established * factor)
         self.metrics.tightenings += 1
         if rejected:
             self.rejections += 1
@@ -507,11 +511,15 @@ class HttpClient:
         if response.status_code in BLOCKING_STATUSES:
             budget.metrics.failures += 1
             budget.breaker.record_failure()
-            budget.tighten(2.0, rejected=True)
             reason = f"HTTP {response.status_code}"
             budget.last_error = reason
-            budget.defer_for(BLOCKED_COOLDOWN_S, reason)
-            raise ForbiddenError(f"{bucket} returned {response.status_code}")
+            host = (target.host or bucket).lower()
+            budget.denied_hosts.add(host)
+            spans_hosts = len(self._allowed_hosts) > 1
+            if not spans_hosts or len(budget.denied_hosts) >= DENIED_HOSTS_BEFORE_BLOCK:
+                budget.tighten(2.0, rejected=True)
+                budget.defer_for(BLOCKED_COOLDOWN_S, reason)
+            raise ForbiddenError(f"{host} returned {response.status_code}")
 
         if response.status_code in RETRYABLE_STATUSES:
             budget.metrics.failures += 1
