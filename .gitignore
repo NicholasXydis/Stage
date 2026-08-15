@@ -37,6 +37,8 @@ htmlcov/
 *.sqlite
 *.sqlite3
 
+.*.yaml.lock
+
 tests/captured/
 *.log
 *.log.[0-9]

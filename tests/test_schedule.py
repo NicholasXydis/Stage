@@ -42,7 +42,8 @@ def test_windows_enable_replaces_only_stage_tasks_and_uses_the_packaged_runner(
     }
     sync_xml = schedule._windows_task_xml(schedule._ACTIONS[0]).decode("utf-16")
     discover_xml = schedule._windows_task_xml(schedule._ACTIONS[1]).decode("utf-16")
-    assert "T10:00:00</StartBoundary>" in sync_xml
+    assert f"T{schedule.SYNC_TIME}:00</StartBoundary>" in sync_xml
+    assert "<Interval>PT6H</Interval>" in sync_xml
     assert "T10:30:00</StartBoundary>" in discover_xml
     assert "<DaysOfWeek><Monday /></DaysOfWeek>" in discover_xml
     assert "<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>" in sync_xml
@@ -100,7 +101,7 @@ def test_macos_enable_writes_launch_agents_at_the_configured_times(
         sync = plistlib.load(stream)
     with discover_path.open("rb") as stream:
         discover = plistlib.load(stream)
-    assert sync["StartCalendarInterval"] == {"Hour": 10, "Minute": 0}
+    assert sync["StartCalendarInterval"] == [{"Hour": hour, "Minute": 0} for hour in (0, 6, 12, 18)]
     assert discover["StartCalendarInterval"] == {"Hour": 10, "Minute": 30, "Weekday": 1}
     assert sync["ProgramArguments"][1:] == ["-m", "stage.cli.schedule", "run", "sync"]
     assert any(command[:2] == ("launchctl", "bootstrap") for command in commands)
@@ -124,7 +125,9 @@ def test_linux_enable_writes_persistent_user_timers(
 
     assert report.backend == "Linux systemd user timers"
     root = tmp_path / "config" / "systemd" / "user"
-    assert "OnCalendar=*-*-* 10:00:00" in (root / "stage-sync.timer").read_text(encoding="utf-8")
+    assert "OnCalendar=*-*-* 00,06,12,18:00:00" in (root / "stage-sync.timer").read_text(
+        encoding="utf-8"
+    )
     discovery = (root / "stage-discover.timer").read_text(encoding="utf-8")
     assert "OnCalendar=Mon *-*-* 10:30:00" in discovery
     assert "Persistent=true" in discovery
@@ -179,3 +182,77 @@ def test_schedule_help_is_layered_and_classification_explains_required_evidence(
     assert {"enable", "status", "disable"} <= set(schedule_output.split())
     assert classify_help.exit_code == 0
     assert "Required unless --clear" in classify_output
+
+
+def test_the_sync_action_runs_every_six_hours() -> None:
+    from stage.cli.schedule import _ACTIONS, SYNC_EVERY_HOURS
+
+    sync = next(action for action in _ACTIONS if action.key == "sync")
+    assert sync.repeat_hours == SYNC_EVERY_HOURS
+    assert sync.start_hours == (0, 6, 12, 18)
+    assert 24 % SYNC_EVERY_HOURS == 0, "an uneven cadence drifts against the calendar day"
+
+
+def test_the_weekly_action_is_not_repeated() -> None:
+    from stage.cli.schedule import _ACTIONS
+
+    discover = next(action for action in _ACTIONS if action.key == "discover")
+    assert discover.repeat_hours is None
+    assert len(discover.start_hours) == 1
+
+
+def test_the_windows_trigger_repeats_across_the_day() -> None:
+    from stage.cli.schedule import _ACTIONS, _windows_task_xml
+
+    sync = next(action for action in _ACTIONS if action.key == "sync")
+    xml = _windows_task_xml(sync).decode("utf-16")
+    assert "<Interval>PT6H</Interval>" in xml
+    assert "<Duration>P1D</Duration>" in xml
+    assert "<StartWhenAvailable>true</StartWhenAvailable>" in xml, "a missed run must catch up"
+    assert "<WakeToRun>false</WakeToRun>" in xml, "never wake a machine to fetch postings"
+
+
+def test_the_systemd_timer_lists_every_slot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.cli import schedule as module
+
+    monkeypatch.setattr(module, "_systemd_dir", lambda: tmp_path)
+    sync = next(action for action in module._ACTIONS if action.key == "sync")
+    module._write_systemd_units(sync)
+    timer = (tmp_path / f"{module._systemd_name(sync)}.timer").read_text(encoding="utf-8")
+    assert "OnCalendar=*-*-* 00,06,12,18:00:00" in timer
+    assert "Persistent=true" in timer, "a missed run must fire when the machine returns"
+
+
+def test_the_launch_agent_lists_every_slot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import plistlib
+
+    from stage.cli import schedule as module
+
+    monkeypatch.setattr(module, "_launch_agent_dir", lambda: tmp_path)
+    sync = next(action for action in module._ACTIONS if action.key == "sync")
+    payload = plistlib.loads(module._write_launch_agent(sync).read_bytes())
+    schedule = payload["StartCalendarInterval"]
+    assert isinstance(schedule, list)
+    assert [entry["Hour"] for entry in schedule] == [0, 6, 12, 18]
+
+
+def test_load_spreading_waits_a_bounded_random_time() -> None:
+    from stage.cli.schedule import _ACTIONS, MAX_JITTER_S, _spread_load
+
+    slept: list[float] = []
+    sync = next(action for action in _ACTIONS if action.key == "sync")
+    for _ in range(40):
+        _spread_load(sync, slept.append)
+    assert all(0.0 <= value <= MAX_JITTER_S for value in slept)
+    assert max(slept) > 0.0, "spreading load means an actual offset, not always zero"
+
+
+def test_a_one_off_action_is_never_delayed() -> None:
+    from stage.cli.schedule import _ACTIONS, _spread_load
+
+    slept: list[float] = []
+    discover = next(action for action in _ACTIONS if action.key == "discover")
+    _spread_load(discover, slept.append)
+    assert slept == []

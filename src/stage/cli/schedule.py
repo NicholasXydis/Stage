@@ -2,10 +2,12 @@ import argparse
 import os
 import platform
 import plistlib
+import random
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ElementTree
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,8 +18,10 @@ from typing import cast
 from stage.cli.logfile import rotate
 from stage.paths import data_dir
 
-SYNC_TIME = "10:00"
+SYNC_TIME = "00:00"
 DISCOVER_TIME = "10:30"
+SYNC_EVERY_HOURS = 6
+MAX_JITTER_S = 1800
 
 
 class ScheduleError(Exception):
@@ -35,6 +39,14 @@ class ScheduledAction:
     windows_day: str | None = None
     launchd_weekday: int | None = None
     systemd_day: str | None = None
+    repeat_hours: int | None = None
+
+    @property
+    def start_hours(self) -> tuple[int, ...]:
+        first = int(self.time[:2])
+        if self.repeat_hours is None:
+            return (first,)
+        return tuple(range(first, 24, self.repeat_hours))
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,10 +60,11 @@ _ACTIONS = (
     ScheduledAction(
         key="sync",
         label="Stage Sync",
-        cadence="daily",
+        cadence=f"every {SYNC_EVERY_HOURS} hours",
         time=SYNC_TIME,
         windows_schedule="DAILY",
         cli_arguments=("sync",),
+        repeat_hours=SYNC_EVERY_HOURS,
     ),
     ScheduledAction(
         key="discover",
@@ -119,12 +132,21 @@ def run_scheduled(key: str) -> int:
     return exit_code
 
 
+def _spread_load(action: ScheduledAction, sleeper: Callable[[float], None] = time.sleep) -> None:
+    if action.repeat_hours is None:
+        return
+    sleeper(random.SystemRandom().uniform(0.0, float(MAX_JITTER_S)))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a Stage scheduled action.")
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser("run", help="run one configured action")
     run.add_argument("action", choices=[action.key for action in _ACTIONS])
     arguments = parser.parse_args()
+    action = next((candidate for candidate in _ACTIONS if candidate.key == arguments.action), None)
+    if action is not None:
+        _spread_load(action)
     raise SystemExit(run_scheduled(arguments.action))
 
 
@@ -204,6 +226,11 @@ def _windows_task_xml(action: ScheduledAction) -> bytes:
     if action.windows_day is None:
         schedule = ElementTree.SubElement(trigger, "ScheduleByDay")
         ElementTree.SubElement(schedule, "DaysInterval").text = "1"
+        if action.repeat_hours is not None:
+            repetition = ElementTree.SubElement(trigger, "Repetition")
+            ElementTree.SubElement(repetition, "Interval").text = f"PT{action.repeat_hours}H"
+            ElementTree.SubElement(repetition, "Duration").text = "P1D"
+            ElementTree.SubElement(repetition, "StopAtDurationEnd").text = "false"
     else:
         schedule = ElementTree.SubElement(trigger, "ScheduleByWeek")
         ElementTree.SubElement(schedule, "WeeksInterval").text = "1"
@@ -261,13 +288,17 @@ def _launch_path(action: ScheduledAction) -> Path:
 
 
 def _write_launch_agent(action: ScheduledAction) -> Path:
-    calendar: dict[str, int] = {"Hour": int(action.time[:2]), "Minute": int(action.time[3:])}
+    minute = int(action.time[3:])
+    schedule: list[dict[str, int]] = [
+        {"Hour": hour, "Minute": minute} for hour in action.start_hours
+    ]
     if action.launchd_weekday is not None:
-        calendar["Weekday"] = action.launchd_weekday
+        for entry in schedule:
+            entry["Weekday"] = action.launchd_weekday
     payload: dict[str, object] = {
         "Label": _launch_label(action),
         "ProgramArguments": list(_command(action)),
-        "StartCalendarInterval": calendar,
+        "StartCalendarInterval": schedule if len(schedule) > 1 else schedule[0],
         "StandardOutPath": str(_log_dir() / f"scheduled-{action.key}.log"),
         "StandardErrorPath": str(_log_dir() / f"scheduled-{action.key}.log"),
         "ProcessType": "Background",
@@ -336,7 +367,8 @@ def _write_systemd_units(action: ScheduledAction) -> None:
     service = (
         f"[Unit]\nDescription={action.label}\n\n[Service]\nType=oneshot\nExecStart={command}\n"
     )
-    calendar = f"*-*-* {action.time}:00"
+    hours = ",".join(f"{hour:02d}" for hour in action.start_hours)
+    calendar = f"*-*-* {hours}:{action.time[3:]}:00"
     if action.systemd_day is not None:
         calendar = f"{action.systemd_day} {calendar}"
     timer = (
