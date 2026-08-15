@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from stage.dedup import resolve_duplicates
 from stage.domain import Job, PurgeResult, QuarantinedJob, RateState, RoleCategory
 from stage.storage import AsyncRepository, SourceBatch
 
@@ -54,10 +55,11 @@ class RescreenResult:
     quarantined: int
     total: int = 0
     updated: int = 0
+    released: int = 0
 
     @property
     def changed(self) -> bool:
-        return bool(self.updated or self.quarantined)
+        return bool(self.updated or self.quarantined or self.released)
 
     @property
     def skipped(self) -> int:
@@ -97,7 +99,14 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
             )
         quarantined += len(rejected)
         updated += len(updates)
-    return RescreenResult(examined=examined, quarantined=quarantined, total=total, updated=updated)
+    released = await _release_reclassified_quarantine(repository, moment)
+    return RescreenResult(
+        examined=examined,
+        quarantined=quarantined,
+        total=total,
+        updated=updated,
+        released=released,
+    )
 
 
 def _reclassifications(
@@ -136,3 +145,54 @@ def _reclassifications(
         if rejection is not None:
             rejected.append(to_quarantined(candidate, rejection))
     return tuple(candidates), tuple(rejected)
+
+
+async def _release_reclassified_quarantine(
+    repository: AsyncRepository,
+    moment: datetime,
+) -> int:
+    from stage.domain import QuarantineFilters, RejectionReason
+    from stage.lexicon import fold
+    from stage.services.sync import normalize_batch
+
+    remaining = RESCREEN_LIMIT
+    entries: list[QuarantinedJob] = []
+    for reason in (
+        RejectionReason.UNKNOWN_CS_ROLE,
+        RejectionReason.NOT_A_CS_ROLE,
+        RejectionReason.OUT_OF_SCOPE_LOCATION,
+        RejectionReason.UNKNOWN_LOCATION,
+    ):
+        if not remaining:
+            break
+        found = await repository.list_quarantined(QuarantineFilters(reason=reason, limit=remaining))
+        entries.extend(found)
+        remaining -= len(found)
+    candidates = tuple(
+        Job(
+            id=entry.id,
+            source=entry.source,
+            company=entry.company,
+            title_raw=entry.title_raw,
+            title_normalized=fold(entry.title_raw),
+            apply_url_raw=entry.apply_url_raw,
+            description="",
+            first_seen=entry.first_seen,
+            last_seen=entry.last_seen,
+            location_raw=entry.location_raw,
+            location=entry.location,
+            remote_scope=entry.remote_scope,
+        )
+        for entry in entries
+    )
+    kept, _ = normalize_batch(candidates)
+    for source in sorted({entry.source for entry in kept}):
+        await repository.apply_source_batch(
+            SourceBatch(
+                source=source,
+                run_started_at=moment,
+                jobs=tuple(entry for entry in kept if entry.source == source),
+                resolve_duplicates=resolve_duplicates,
+            )
+        )
+    return len(kept)

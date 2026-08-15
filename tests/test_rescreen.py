@@ -3,7 +3,14 @@ from pathlib import Path
 
 import pytest
 
-from stage.domain import Job, JobStatus, LocationBucket, RoleCategory
+from stage.domain import (
+    Job,
+    JobStatus,
+    LocationBucket,
+    QuarantineFilters,
+    RejectionReason,
+    RoleCategory,
+)
 from stage.services.maintenance import rescreen
 from stage.storage import open_repository
 from stage.storage.repository import SourceBatch
@@ -83,6 +90,81 @@ async def test_a_second_pass_finds_nothing_left_to_do(seeded: Path) -> None:
         again = await rescreen(repository, now=NOW)
     assert again.quarantined == 0
     assert again.changed is False
+
+
+@pytest.mark.asyncio
+async def test_rescreen_restores_a_quarantined_title_that_the_lexicon_now_accepts(
+    db_path: Path,
+) -> None:
+    from stage.classify.scope import Rejection, to_quarantined
+
+    job = _job("workday:td:released", "Software Engineer Intern", role=RoleCategory.UNKNOWN)
+    store = SqliteRepository.connect(db_path)
+    store.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=NOW,
+            quarantined=(
+                to_quarantined(
+                    job,
+                    Rejection(
+                        reason=RejectionReason.UNKNOWN_CS_ROLE,
+                        matched_phrase="no matching CS role or source category",
+                    ),
+                ),
+            ),
+        )
+    )
+    store.close()
+
+    async with open_repository(db_path) as repository:
+        result = await rescreen(repository, now=NOW)
+
+    assert result.released == 1
+    store = SqliteRepository.connect(db_path)
+    restored = store.get_job(job.id)
+    assert restored is not None
+    assert restored.role is RoleCategory.SWE
+    assert store.list_quarantined(QuarantineFilters(limit=10)) == []
+    store.close()
+
+
+@pytest.mark.asyncio
+async def test_rescreen_restores_a_quarantined_location_that_is_now_in_scope(db_path: Path) -> None:
+    from dataclasses import replace
+
+    from stage.classify.scope import Rejection, to_quarantined
+
+    job = replace(
+        _job("workday:td:tokyo", "Software Engineer Intern"),
+        location_raw="Tokyo, Japan",
+        location=LocationBucket.INTERNATIONAL,
+    )
+    store = SqliteRepository.connect(db_path)
+    store.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=NOW,
+            quarantined=(
+                to_quarantined(
+                    job,
+                    Rejection(
+                        reason=RejectionReason.OUT_OF_SCOPE_LOCATION,
+                        matched_phrase="Tokyo, Japan",
+                    ),
+                ),
+            ),
+        )
+    )
+    store.close()
+
+    async with open_repository(db_path) as repository:
+        result = await rescreen(repository, now=NOW)
+
+    assert result.released == 1
+    store = SqliteRepository.connect(db_path)
+    assert store.get_job(job.id) is not None
+    store.close()
 
 
 @pytest.mark.asyncio
