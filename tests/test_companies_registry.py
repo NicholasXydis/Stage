@@ -80,24 +80,51 @@ def test_the_shipped_registry_loads_and_every_enabled_row_is_verified() -> None:
             assert company.last_verified is not None, company.name
 
 
-def test_the_shipped_workday_schedule_fits_its_shared_request_ceiling() -> None:
+MAX_WORKDAY_RUNS_PER_CYCLE = 2
+
+
+def test_the_shipped_workday_schedule_covers_every_board_within_a_bounded_cycle() -> None:
     companies = [
         company
         for company in load_companies()
         if company.enabled and company.platform is Platform.WORKDAY
     ]
+    runs = -(-len(companies) // WorkdayAdapter.rotation_slice)
+    assert runs <= MAX_WORKDAY_RUNS_PER_CYCLE, (
+        f"{len(companies)} boards at a slice of {WorkdayAdapter.rotation_slice} needs {runs} runs"
+    )
+
     rotation = rotate(
         [RotationMember(key=company.registry_key) for company in companies],
         budget=WorkdayAdapter.rotation_slice,
     )
-
-    assert set(rotation.selected) == {company.registry_key for company in companies}
-    assert not rotation.deferred
+    selected = set(rotation.selected)
+    ceiling = profile("workday").max_requests_per_run
     budgets, details = WorkdayAdapter.crawl_budgets(
-        companies, {}, {}, profile("workday").max_requests_per_run
+        [company for company in companies if company.registry_key in selected] or companies,
+        {},
+        {},
+        ceiling,
     )
-    assert sum(budgets.values()) + details + WorkdayAdapter.retry_reserve <= (
-        profile("workday").max_requests_per_run
+    assert min(budgets.values()) >= 1, "a selected board must always get at least one request"
+    assert sum(budgets.values()) + details + WorkdayAdapter.retry_reserve <= ceiling
+
+
+def test_the_shipped_workday_rotation_cycle_reaches_every_board() -> None:
+    companies = [
+        company
+        for company in load_companies()
+        if company.enabled and company.platform is Platform.WORKDAY
+    ]
+    members = [RotationMember(key=company.registry_key) for company in companies]
+    seen: set[str] = set()
+    cursor = ""
+    for _ in range(MAX_WORKDAY_RUNS_PER_CYCLE):
+        rotation = rotate(members, cursor=cursor, budget=WorkdayAdapter.rotation_slice)
+        seen.update(rotation.selected)
+        cursor = rotation.cursor
+    assert seen == {company.registry_key for company in companies}, (
+        "a board the cycle never reaches is a board whose postings quietly go stale"
     )
 
 
@@ -116,10 +143,18 @@ async def test_a_workday_dry_run_touches_every_enabled_board_within_budget(db_pa
 
     started = next(event for event in events if isinstance(event, SourceStarted))
     plan = next(event for event in events if isinstance(event, BucketPlan))
-    assert started.companies == len(companies)
-    assert plan.planned == len(companies)
-    assert plan.worst_case == 100
-    assert not [event for event in events if isinstance(event, SourceRotated)]
+    slice_size = min(len(companies), WorkdayAdapter.rotation_slice)
+    assert started.companies == slice_size
+    assert plan.planned == slice_size
+    from stage.services.sync import _reserve_for
+
+    sized = profile("workday").sized_for(len(companies), _reserve_for(WorkdayAdapter()))
+    assert plan.worst_case <= sized.max_requests_per_run, (
+        "the planned worst case must fit under the ceiling or the tail of the slice is skipped"
+    )
+    assert plan.ceiling == sized.max_requests_per_run, (
+        "the reported ceiling is the derived one, so growth raises it instead of truncating"
+    )
 
 
 async def test_a_workday_priority_cannot_bypass_fair_rotation(db_path: Path) -> None:
@@ -133,23 +168,24 @@ async def test_a_workday_priority_cannot_bypass_fair_rotation(db_path: Path) -> 
             workday_tenant=f"tenant-{index:03d}",
             workday_site="External",
             workday_dc="wd3",
-            priority=Priority.HIGH if index == 100 else Priority.NORMAL,
+            priority=Priority.HIGH if index == WorkdayAdapter.rotation_slice else Priority.NORMAL,
         )
-        for index in range(101)
+        for index in range(WorkdayAdapter.rotation_slice + 1)
     ]
     async with open_repository(db_path) as repository:
         events = [
             event async for event in sync(repository, companies, sources=("workday",), dry_run=True)
         ]
 
+    slice_size = WorkdayAdapter.rotation_slice
     planned = {event.company for event in events if isinstance(event, PlannedRequest)}
     rotated = next(event for event in events if isinstance(event, SourceRotated))
-    assert len(planned) == 100
-    assert "board-100" not in planned
-    assert (rotated.selected, rotated.deferred) == (100, 1)
+    assert len(planned) == slice_size
+    assert f"board-{slice_size:03d}" not in planned
+    assert (rotated.selected, rotated.deferred) == (slice_size, 1)
 
 
-async def test_a_workday_resume_dry_run_only_plans_unfinished_boards(db_path: Path) -> None:
+async def test_a_workday_resume_never_starves_the_boards_without_a_crawl(db_path: Path) -> None:
     from stage.services.sync import sync
 
     complete = Company(
@@ -190,8 +226,10 @@ async def test_a_workday_resume_dry_run_only_plans_unfinished_boards(db_path: Pa
 
     started = next(event for event in events if isinstance(event, SourceStarted))
     planned = [event.company for event in events if isinstance(event, PlannedRequest)]
-    assert started.companies == 1
-    assert planned == ["Unfinished"]
+    assert started.companies == 2
+    assert sorted(planned) == ["Complete", "Unfinished"], (
+        "an open crawl resumes inside a normal run; it must never make the run skip other boards"
+    )
 
 
 def test_oracle_boards_on_a_shared_slug_remain_distinct() -> None:

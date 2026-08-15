@@ -1,12 +1,14 @@
 import pytest
 
-from stage.domain import Platform
+from stage.domain import Company, Platform
+from stage.sources.ashby import AshbyAdapter
 from stage.sources.platforms import (
     PROBES_BY_PLATFORM,
     SlugRejectedError,
     identify_url,
     job_count,
     oracle_target,
+    safe_path_slug,
     safe_slug,
 )
 
@@ -18,6 +20,7 @@ from stage.sources.platforms import (
         ("https://job-boards.greenhouse.io/datadog/jobs/123", Platform.GREENHOUSE, "datadog"),
         ("https://jobs.lever.co/shopify/abc-def", Platform.LEVER, "shopify"),
         ("https://jobs.ashbyhq.com/coveo", Platform.ASHBY, "coveo"),
+        ("https://jobs.ashbyhq.com/mistral.ai", Platform.ASHBY, "mistral.ai"),
         ("https://careers.smartrecruiters.com/Ubisoft", Platform.SMARTRECRUITERS, "ubisoft"),
         ("https://apply.workable.com/genetec/", Platform.WORKABLE, "genetec"),
         ("https://acme.recruitee.com/o/intern", Platform.RECRUITEE, "acme"),
@@ -76,6 +79,14 @@ def test_workday_cxs_endpoint_form_resolves_identically() -> None:
 )
 def test_unrecognized_urls_return_nothing_rather_than_guessing(url: str) -> None:
     assert identify_url(url) is None
+
+
+def test_path_slug_permits_a_dotted_ashby_identifier() -> None:
+    probe = PROBES_BY_PLATFORM[Platform.ASHBY]
+    assert safe_path_slug("mistral.ai") == "mistral.ai"
+    assert probe.url_for("mistral.ai").endswith("/mistral.ai")
+    company = Company(name="Mistral AI", platform=Platform.ASHBY, slug="mistral.ai")
+    assert AshbyAdapter().url_for(company).endswith("/mistral.ai")
 
 
 def test_slug_gate_refuses_anything_that_could_rewrite_a_host() -> None:

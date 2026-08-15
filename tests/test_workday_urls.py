@@ -94,7 +94,7 @@ def test_a_recognised_vendor_host_is_not_reinterpreted_as_successfactors() -> No
     assert _identify_url("https://acme.com/go-kart-racing") is None
 
 
-@pytest.mark.parametrize("dc", ["wd1", "wd3", "wd5", "wd10", "wd99"])
+@pytest.mark.parametrize("dc", ["wd1", "wd3", "wd5", "wd10", "wd99", "wd102", "wd501"])
 def test_a_two_digit_datacenter_is_accepted_and_not_read_as_a_prefix(dc: str) -> None:
     host, _ = workday_target("desjardins", "Desjardins", dc)
     assert host == f"desjardins.{dc}.myworkdayjobs.com"

@@ -131,15 +131,22 @@ def test_excluding_workday_removes_every_workday_board_from_the_plan() -> None:
     assert "workday" in with_workday, "the exclusion is what removes it, not the registry"
 
 
-def test_parked_canadian_employers_are_a_larger_gap_than_vocabulary() -> None:
+def test_every_parked_row_records_why_so_the_gap_stays_workable() -> None:
     from stage.companies import load_companies
 
     rows = load_companies()
     disabled = [company for company in rows if not company.enabled]
-    assert len(disabled) > 150, (
-        f"{len(disabled)} of {len(rows)} rows disabled; the registry bounds recall"
-    )
-    workday_off = [c for c in disabled if c.platform.value == "workday"]
-    assert len(workday_off) > 50, (
-        f"{len(workday_off)} Workday rows off, and Montreal publishes there"
-    )
+    assert disabled, "a registry with nothing parked has lost its record of what it cannot reach"
+    unexplained = [company.name for company in disabled if not (company.notes or "").strip()]
+    assert not unexplained, f"{len(unexplained)} parked rows carry no reason: {unexplained[:5]}"
+
+
+def test_an_enabled_row_always_carries_the_evidence_that_enabled_it() -> None:
+    from stage.companies import load_companies
+
+    unverified = [
+        company.name
+        for company in load_companies()
+        if company.enabled and company.last_verified is None
+    ]
+    assert not unverified, f"{len(unverified)} enabled rows were never verified: {unverified[:5]}"

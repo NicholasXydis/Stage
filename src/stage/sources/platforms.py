@@ -1,5 +1,5 @@
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any
@@ -8,6 +8,7 @@ from stage.domain import Platform, PlatformCandidate
 from stage.lexicon import fold
 
 SAFE_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
+SAFE_PATH_SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,61}[a-z0-9])?$")
 _LOCALE = r"[a-z]{2}(?:-[A-Za-z]{2})?"
 _WORKDAY_HOST = re.compile(r"^(?P<tenant>[a-z0-9][a-z0-9-]*)\.(?P<dc>wd\d+)\.myworkdayjobs\.com$")
 
@@ -26,7 +27,17 @@ def safe_slug(slug: str) -> str:
     return lowered
 
 
-SAFE_WORKDAY_DC = re.compile(r"^wd\d{1,2}$")
+def safe_path_slug(slug: str) -> str:
+    lowered = slug.strip().lower()
+    if not SAFE_PATH_SLUG.match(lowered):
+        raise SlugRejectedError(
+            f"{slug!r} is not a usable path token — lowercase letters, digits, dots and "
+            "hyphens only"
+        )
+    return lowered
+
+
+SAFE_WORKDAY_DC = re.compile(r"^wd\d{1,3}$")
 SAFE_WORKDAY_SITE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 SAFE_ORACLE_HOST = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,62})\.)+oraclecloud\.com$")
 SAFE_ORACLE_SITE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
@@ -103,17 +114,18 @@ class PlatformProbe:
     params: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
     verify_url: str | None = None
     verify_name_paths: tuple[str, ...] = ()
+    slug_validator: Callable[[str], str] = safe_slug
 
     def host_for(self, slug: str) -> str:
-        return self.host.format(slug=safe_slug(slug))
+        return self.host.format(slug=self.slug_validator(slug))
 
     def url_for(self, slug: str) -> str:
-        return self.probe_url.format(slug=safe_slug(slug))
+        return self.probe_url.format(slug=self.slug_validator(slug))
 
     def verify_url_for(self, slug: str) -> str | None:
         if self.verify_url is None:
             return None
-        return self.verify_url.format(slug=safe_slug(slug))
+        return self.verify_url.format(slug=self.slug_validator(slug))
 
 
 PROBES: tuple[PlatformProbe, ...] = (
@@ -142,6 +154,7 @@ PROBES: tuple[PlatformProbe, ...] = (
         rate_profile="standard",
         jobs_paths=("jobs",),
         name_paths=("organizationName", "jobs.0.organizationName"),
+        slug_validator=safe_path_slug,
     ),
     PlatformProbe(
         platform=Platform.SMARTRECRUITERS,
@@ -208,6 +221,7 @@ class UrlPattern:
     hosts: tuple[str, ...] = ()
     host_pattern: re.Pattern[str] | None = None
     path_pattern: re.Pattern[str] | None = None
+    slug_validator: Callable[[str], str] = safe_slug
 
 
 def _path(expr: str) -> re.Pattern[str]:
@@ -235,6 +249,7 @@ URL_PATTERNS: tuple[UrlPattern, ...] = (
         platform=Platform.ASHBY,
         hosts=("jobs.ashbyhq.com", "api.ashbyhq.com"),
         path_pattern=_path(r"^/(?:posting-api/job-board/)?(?P<slug>[^/?#]+)"),
+        slug_validator=safe_path_slug,
     ),
     UrlPattern(
         platform=Platform.SMARTRECRUITERS,
@@ -436,8 +451,11 @@ def identify_url(url: str) -> PlatformCandidate | None:
         path_match = pattern.path_pattern.match(path)
         if path_match is None:
             continue
-        slug = path_match.group("slug").lower()
-        if slug in _RESERVED_PATH_SEGMENTS or not SAFE_SLUG.match(slug):
+        try:
+            slug = pattern.slug_validator(path_match.group("slug"))
+        except SlugRejectedError:
+            continue
+        if slug in _RESERVED_PATH_SEGMENTS:
             continue
         return PlatformCandidate(pattern.platform, slug)
 

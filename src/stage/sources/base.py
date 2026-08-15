@@ -127,14 +127,15 @@ class BoardAdapter:
     host_template: ClassVar[str] = ""
     path: ClassVar[str] = ""
     query: ClassVar[tuple[tuple[str, str], ...]] = ()
+    slug_validator: ClassVar[Callable[[str], str]] = safe_slug
 
     def host_for(self, company: Company) -> str:
-        return self.host_template.format(slug=safe_slug(company.slug))
+        return self.host_template.format(slug=type(self).slug_validator(company.slug))
 
     def url_for(self, company: Company) -> str:
         if self.host_template:
             return f"https://{self.host_for(company)}{self.path}"
-        return self.base_url.format(slug=safe_slug(company.slug))
+        return self.base_url.format(slug=type(self).slug_validator(company.slug))
 
     def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:
         if not self.host_template:

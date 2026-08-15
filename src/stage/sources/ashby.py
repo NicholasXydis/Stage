@@ -7,6 +7,7 @@ from stage.domain import Company, Job, Platform, SourceSignals, job_id
 from stage.sources import register
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import BoardAdapter, NullableBool, NullableStr
+from stage.sources.platforms import safe_path_slug
 
 BASE_URL = "https://api.ashbyhq.com/posting-api/job-board/{slug}"
 HOST = "api.ashbyhq.com"
@@ -66,6 +67,7 @@ class AshbyAdapter(BoardAdapter):
     max_requests_per_company: ClassVar[int] = 1
 
     base_url: ClassVar[str] = BASE_URL
+    slug_validator = safe_path_slug
     root_model: ClassVar[type[BaseModel] | None] = AshbyBoard
     rows_field: ClassVar[str] = "jobs"
     row_model: ClassVar[type[BaseModel]] = AshbyPosting
