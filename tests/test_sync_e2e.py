@@ -48,7 +48,11 @@ async def _run_sync(
     return [
         event
         async for event in sync(
-            repository, companies, sources=["greenhouse"], now_fn=lambda: moment
+            repository,
+            companies,
+            sources=["greenhouse"],
+            now_fn=lambda: moment,
+            force_refresh=True,
         )
     ]
 
@@ -251,6 +255,7 @@ async def test_a_tripped_ceiling_is_reported_not_swallowed(
         "resolve",
         lambda *_: RatePosture(concurrency=3, min_interval_s=0.0, max_requests_per_run=1),
     )
+    monkeypatch.setattr(RatePosture, "sized_for", lambda self, *_, **__: self)
     boards = [
         Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme"),
         Company(name="Second", platform=Platform.GREENHOUSE, slug="second"),

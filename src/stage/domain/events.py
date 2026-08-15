@@ -80,6 +80,23 @@ class SourceRotated:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceFresh:
+    source: str
+    skipped: int
+    remaining: int
+    refresh_interval_h: float
+
+
+@dataclass(frozen=True, slots=True)
+class SourceCapped:
+    source: str
+    bucket: str
+    spent: int
+    allowance: int
+    ceiling: int
+
+
+@dataclass(frozen=True, slots=True)
 class PlannedRequest:
     source: str
     company: str
@@ -153,6 +170,8 @@ SyncEvent = (
     | UnroutableCompanies
     | SourceBlocked
     | SourceRotated
+    | SourceFresh
+    | SourceCapped
     | SourceStarted
     | CompanyStarted
     | CompanyFinished

@@ -35,8 +35,10 @@ from stage.domain import (
     RateState,
     RequestLogged,
     SourceBlocked,
+    SourceCapped,
     SourceFailed,
     SourceFinished,
+    SourceFresh,
     SourceRotated,
     SourceStarted,
     SyncEvent,
@@ -849,6 +851,16 @@ async def render_sync(
                 console.print(
                     f"  [dim]rotating[/dim] — {rotated.deferred} board(s) deferred to a later "
                     f"run on bucket {rotated.bucket} ({phase})"
+                )
+            case SourceCapped() as capped:
+                console.print(
+                    f"  [yellow]capped[/yellow] — {capped.spent} spent on {capped.bucket} in 24h, "
+                    f"so this run may use {capped.allowance} of {capped.ceiling}"
+                )
+            case SourceFresh() as fresh:
+                console.print(
+                    f"  [dim]fresh[/dim] — {fresh.skipped} refreshed within "
+                    f"{fresh.refresh_interval_h:.0f}h, {fresh.remaining} left"
                 )
             case PlannedRequest(company=company, url=url, has_validator=cached):
                 if not planned:

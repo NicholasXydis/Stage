@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Sequence
 from dataclasses import asdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, cast
 
 if TYPE_CHECKING:
     from stage.services.canary import CanaryReport
@@ -11,6 +11,16 @@ if TYPE_CHECKING:
 
 from stage.domain import Job, QuarantinedJob, RateState, VisitState
 from stage.domain.text import dump
+
+
+class _ReconfigurableOutput(Protocol):
+    def reconfigure(self, *, encoding: str) -> object: ...
+
+
+def configure_terminal_output(stdout: object, platform: str) -> None:
+    if platform != "win32" or not hasattr(stdout, "reconfigure"):
+        return
+    cast(_ReconfigurableOutput, stdout).reconfigure(encoding="utf-8")
 
 
 def emit(payload: str) -> None:

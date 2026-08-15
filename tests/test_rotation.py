@@ -176,8 +176,8 @@ async def test_the_cursor_survives_the_process_and_the_next_run_covers_the_rest(
         return fetched, stored["boards-api.greenhouse.io"].rotation_cursor
 
     first, cursor_one = await run(NOW)
-    second, cursor_two = await run(NOW + timedelta(hours=1))
-    third, _ = await run(NOW + timedelta(hours=2))
+    second, cursor_two = await run(NOW + timedelta(hours=5))
+    third, _ = await run(NOW + timedelta(hours=10))
 
     assert sorted(first) == ["tenant-00", "tenant-01"]
     assert cursor_one == "greenhouse:t1", "the cursor names a registry row, not a display name"
@@ -206,7 +206,7 @@ async def test_a_high_priority_registry_row_is_fetched_on_every_run(
 
     seen: list[set[str]] = []
     for offset in range(3):
-        when = NOW + timedelta(hours=offset)
+        when = NOW + timedelta(hours=offset * 5)
         async with open_repository(db_path) as repository:
             fetched: set[str] = set()
             async for event in sync_module.sync(repository, companies, now_fn=_at(when)):
@@ -274,7 +274,7 @@ async def test_a_persistently_failing_member_is_distinguishable_from_a_deferred_
     )
 
     for offset in range(4):
-        when = NOW + timedelta(hours=offset)
+        when = NOW + timedelta(hours=offset * 5)
         async with open_repository(db_path) as repository:
             async for _ in sync_module.sync(repository, _registry(5), now_fn=_at(when)):
                 pass
@@ -564,6 +564,7 @@ def test_a_shared_bucket_takes_the_strictest_posture_claimed_for_it() -> None:
 
 def test_a_disabled_row_cannot_constrain_a_bucket_nothing_is_fetching() -> None:
     from stage.services.sync import _bucket_postures, _select
+    from stage.sources.greenhouse import GreenhouseAdapter
 
     companies = [
         Company(name="live", platform=Platform.GREENHOUSE, slug="live"),
@@ -578,7 +579,7 @@ def test_a_disabled_row_cannot_constrain_a_bucket_nothing_is_fetching() -> None:
     grouped, feeds, _ = _select(companies, ["greenhouse"])
     postures = _bucket_postures(grouped, {})
 
-    assert postures["boards-api.greenhouse.io"] == profile("standard")
+    assert postures["boards-api.greenhouse.io"] == profile(GreenhouseAdapter.rate_profile)
 
 
 def test_a_source_excluded_by_the_source_flag_does_not_constrain_a_bucket_either() -> None:
@@ -615,7 +616,7 @@ async def test_each_run_gets_fresh_budgets_so_a_second_sync_is_not_pre_spent(
 
     async with open_repository(db_path) as repository:
         for offset in range(2):
-            when = NOW + timedelta(hours=offset)
+            when = NOW + timedelta(hours=offset * 5)
             async for _ in sync_module.sync(repository, _registry(5), now_fn=_at(when)):
                 pass
 
@@ -669,3 +670,91 @@ def test_two_registry_rows_sharing_a_name_are_two_ring_members() -> None:
     result = rotate(members, budget=1)
     assert len(result.selected) == 1, "one budget unit selects one board, never two"
     assert len(result.deferred) == 1
+
+
+def test_a_slice_wider_than_the_ring_selects_everything_and_defers_nothing() -> None:
+    members = [RotationMember(key=f"board-{index:03d}") for index in range(50)]
+    rotation = rotate(members, budget=300)
+    assert set(rotation.selected) == {member.key for member in members}
+    assert not rotation.deferred, (
+        "a slice above the board count must reach every board in a single run"
+    )
+    assert not rotation.rotating
+
+
+def test_a_wide_slice_keeps_rotating_once_the_ring_outgrows_it() -> None:
+    members = [RotationMember(key=f"board-{index:03d}") for index in range(400)]
+    rotation = rotate(members, budget=300)
+    assert len(rotation.selected) == 300
+    assert len(rotation.deferred) == 100, (
+        "rotation must stay armed as a valve for when the registry outgrows the ceiling"
+    )
+
+
+class _DailyAdapter(_CountingAdapter):
+    rate_profile = "conservative"
+
+
+@respx.mock
+async def test_a_daily_source_fetches_once_and_then_costs_nothing(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import SourceFresh
+    from stage.services import sync as sync_module
+
+    adapter = _DailyAdapter()
+    adapter.rotation_slice = 0
+    monkeypatch.setattr(sync_module, "adapter_for_platform", lambda _: adapter)
+    monkeypatch.setattr(sync_module, "get_feeds", dict)
+    respx.get(url__regex=r"https://boards-api\.greenhouse\.io/.*").mock(
+        return_value=httpx.Response(200, json={"jobs": []})
+    )
+    companies = _registry(4)
+
+    fetched: list[int] = []
+    skipped: list[int] = []
+    for offset in (0, 1, 2):
+        async with open_repository(db_path) as repository:
+            seen = 0
+            fresh = 0
+            async for event in sync_module.sync(
+                repository, companies, now_fn=_at(NOW + timedelta(hours=offset))
+            ):
+                if isinstance(event, CompanyFinished):
+                    seen += 1
+                if isinstance(event, SourceFresh):
+                    fresh += event.skipped
+            fetched.append(seen)
+            skipped.append(fresh)
+
+    assert fetched == [len(companies), 0, 0], "one full pass, then nothing until the window opens"
+    assert skipped == [0, len(companies), len(companies)], "the skip is reported, never silent"
+
+
+@respx.mock
+async def test_a_daily_source_refreshes_again_once_the_window_has_passed(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services import sync as sync_module
+
+    adapter = _DailyAdapter()
+    adapter.rotation_slice = 0
+    monkeypatch.setattr(sync_module, "adapter_for_platform", lambda _: adapter)
+    monkeypatch.setattr(sync_module, "get_feeds", dict)
+    respx.get(url__regex=r"https://boards-api\.greenhouse\.io/.*").mock(
+        return_value=httpx.Response(200, json={"jobs": []})
+    )
+    companies = _registry(4)
+
+    counts: list[int] = []
+    for when in (NOW, NOW + timedelta(hours=21)):
+        async with open_repository(db_path) as repository:
+            seen = 0
+            async for event in sync_module.sync(repository, companies, now_fn=_at(when)):
+                if isinstance(event, CompanyFinished):
+                    seen += 1
+            counts.append(seen)
+
+    assert counts == [len(companies), len(companies)], (
+        "a daily source must come back on its own once the refresh window has elapsed"
+    )
