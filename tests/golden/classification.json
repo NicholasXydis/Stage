@@ -415,10 +415,30 @@
         "signals": {}
       },
       "expected": {
-        "kept": false,
-        "reason": "unknown-location",
-        "matched_phrase": "no recognizable location",
-        "location": "unknown"
+        "kept": true,
+        "location": "unknown",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
+      }
+    },
+    {
+      "id": "loc-unreadable-multi",
+      "input": {
+        "source": "greenhouse",
+        "company": "Cloudflare",
+        "title_raw": "Software Engineer Intern",
+        "location_raw": "2 Locations",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "unknown",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
       }
     },
     {

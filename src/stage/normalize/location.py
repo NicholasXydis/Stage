@@ -71,15 +71,15 @@ def _index() -> _PhraseIndex:
 def _code_hits(segment: str, lexicon: LocationLexicon) -> tuple[bool, bool]:
     canada = usa = False
     for field in _FIELD_SPLIT.split(segment):
-        folded = fold(field)
-        if folded not in lexicon.canada_codes and folded not in lexicon.usa_codes:
-            continue
-        if not re.search(rf"\b{folded.upper()}\b", segment):
-            continue
-        if folded in lexicon.canada_codes:
-            canada = True
-        else:
-            usa = True
+        for token in fold(field).split():
+            if token not in lexicon.canada_codes and token not in lexicon.usa_codes:
+                continue
+            if not re.search(rf"\b{token.upper()}\b", segment):
+                continue
+            if token in lexicon.canada_codes:
+                canada = True
+            else:
+                usa = True
     return canada, usa
 
 

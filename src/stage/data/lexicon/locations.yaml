@@ -1,4 +1,14 @@
 montreal:
+  - Bronfman Building
+  - McConnell Eng
+  - McLennan Library
+  - Stewart Biology
+  - Macdonald Eng
+  - MacdonaldStewart
+  - Redpath Library
+  - Hugessen House
+  - Outaouais Campus McGill
+  - de Maisonneuve
   - Montréal
   - Montreal
   - Ville de Montréal
@@ -160,6 +170,29 @@ canada_country:
   - Canadian
 
 usa_cities:
+  - Tysons
+  - Ventura
+  - Stamford
+  - Edison
+  - Jersey City
+  - Cedar Falls
+  - Sterling
+  - Little Rock
+  - Lockhart
+  - Carlsbad
+  - West Conshohocken
+  - Pleasant Prairie
+  - Fridley
+  - Tiffin
+  - Fort Smith
+  - Waco
+  - Hillsboro
+  - Brighton
+  - Burbank
+  - Pullman
+  - University Park
+  - Penn State
+  - Conshohocken
   - New York
   - New York City
   - NYC
@@ -400,6 +433,22 @@ usa_country:
   - Etats-Unis
 
 international:
+  - Botswana
+  - Gabon
+  - Cote dIvoire
+  - Ivory Coast
+  - Iran
+  - Macedonia
+  - French Guiana
+  - Reunion
+  - Mayotte
+  - Åland Islands
+  - Aland Islands
+  - Cayman Islands
+  - Bermuda
+  - Slovakia
+  - Albania
+  - Georgia the country
   - Anywhere
   - Global
   - Work From Anywhere
@@ -556,6 +605,117 @@ international:
   - South America
 
 international_cities:
+  - Metzingen
+  - Riederich
+  - Oberkochen
+  - Aachen
+  - Jena
+  - Karlsruhe
+  - Leverkusen
+  - Hannover
+  - Köln
+  - Cologne
+  - Braunschweig
+  - Nürnberg
+  - Nuremberg
+  - Mainz
+  - Essen
+  - Dresden
+  - Saarbrücken
+  - Wetzlar
+  - Göttingen
+  - Erfurt
+  - Kiel
+  - Magdeburg
+  - Schwerin
+  - Bremen
+  - Potsdam
+  - Dortmund
+  - Bonn
+  - Ingolstadt
+  - Troisdorf
+  - Ulm
+  - Buxtehude
+  - Kassel
+  - Roßdorf
+  - Witten
+  - Rossdorf
+  - Tunis
+  - Beirut
+  - Casablanca
+  - Bangkok
+  - Hanoi
+  - Guangzhou
+  - Chengdu
+  - Hsinchu
+  - Ghent
+  - Gent
+  - Gothenburg
+  - Pisa
+  - Perugia
+  - Malaga
+  - Gijon
+  - Cork
+  - Skopje
+  - Tirana
+  - Bratislava
+  - Brno
+  - Izmir
+  - Perm
+  - Vladivostok
+  - Surat
+  - Coimbatore
+  - Sepang
+  - Monaco
+  - Basingstoke
+  - Uxbridge
+  - Middlesbrough
+  - Stansted
+  - Neuchatel
+  - Ipoh
+  - Aguascalientes
+  - Bayan Lepas
+  - Canberra
+  - Szczecin
+  - Rzeszow
+  - Kalisz
+  - Mexicali
+  - Vlissingen
+  - Gorinchem
+  - Castiglione Olona
+  - Assago
+  - Putrajaya
+  - Makati City
+  - Sheung Wan
+  - Fanling
+  - Tbilisi
+  - Tblisi
+  - Mátészalka
+  - Matészalka
+  - Longvic
+  - Colomiers
+  - Vernon
+  - Issy-les-Moulineaux
+  - Noyal Pontivy
+  - Subang
+  - Zhejiang
+  - Dammam
+  - Yanbu
+  - King Abdullah Economic City
+  - Sao Jose dos Campos
+  - Wada
+  - Cayenne
+  - Kourou
+  - Mamoudzou
+  - Remire-Montjoly
+  - Matoury
+  - Abidjan
+  - Libreville
+  - Tehran
+  - Santiago
+  - Grand Cayman
+  - Antigua
+  - Gift City
   - Abu Dhabi
   - Ahmedabad
   - Amman

@@ -11,6 +11,7 @@ from stage.domain import (
     QuarantinedJob,
     QuarantineFilters,
     RejectionReason,
+    RemoteScope,
     location_agrees,
     term_agrees,
 )
@@ -51,18 +52,18 @@ def test_international_locations_are_kept(run_time: datetime) -> None:
     assert rejected == ()
 
 
-def test_unknown_location_rejection_explains_the_missing_evidence(run_time: datetime) -> None:
-    _, rejected = normalize_batch([_job("1", "Hybrid", run_time)])
-    assert rejected[0].matched_phrase == "no recognizable location"
-    assert rejected[0].location_raw == "Hybrid"
+def test_a_remote_rejection_explains_the_evidence(run_time: datetime) -> None:
+    _, rejected = normalize_batch([_job("1", "Remote", run_time)])
+    assert rejected[0].matched_phrase == "remote"
+    assert rejected[0].location_raw == "Remote"
 
 
-def test_unknown_locations_are_quarantined(run_time: datetime) -> None:
+def test_remote_postings_are_quarantined(run_time: datetime) -> None:
     kept, rejected = normalize_batch(
         [
-            _job("1", "Hybrid", run_time),
-            _job("2", "Multiple Locations", run_time),
-            _job("3", "", run_time),
+            _job("1", "Remote", run_time),
+            _job("2", "Distributed", run_time),
+            _job("3", "Remote job", run_time),
         ]
     )
     assert kept == ()
@@ -70,13 +71,50 @@ def test_unknown_locations_are_quarantined(run_time: datetime) -> None:
     assert all(entry.reason is RejectionReason.UNKNOWN_LOCATION for entry in rejected)
 
 
+def test_a_location_that_could_not_be_read_is_kept_and_stays_visible(run_time: datetime) -> None:
+    kept, rejected = normalize_batch(
+        [
+            _job("1", "Hybrid", run_time),
+            _job("2", "Multiple Locations", run_time),
+            _job("3", "", run_time),
+            _job("4", "2 Locations", run_time),
+        ]
+    )
+    assert rejected == (), (
+        "worldwide scope admits every readable place, so a failed reading rejects nothing"
+    )
+    assert [job.id for job in kept] == ["1", "2", "3", "4"]
+    assert all(job.location is LocationBucket.UNKNOWN for job in kept)
+
+
 @pytest.mark.parametrize("bucket", list(LocationBucket))
-def test_screen_location_rejects_unknown_and_nothing_else(
+def test_screen_location_rejects_only_an_unlocated_remote_posting(
     bucket: LocationBucket, run_time: datetime
 ) -> None:
-    job = replace(_job("x", "", run_time), location=bucket)
+    job = replace(
+        _job("x", "Remote", run_time), location=bucket, remote_scope=RemoteScope.UNSPECIFIED
+    )
     rejected = screen_location(job) is not None
     assert rejected is (bucket is LocationBucket.UNKNOWN), bucket
+
+
+@pytest.mark.parametrize("bucket", list(LocationBucket))
+def test_screen_location_never_rejects_when_resolution_merely_failed(
+    bucket: LocationBucket, run_time: datetime
+) -> None:
+    job = replace(_job("x", "", run_time), location=bucket, remote_scope=None)
+    assert screen_location(job) is None, bucket
+
+
+def test_remote_keeps_the_country_it_names(run_time: datetime) -> None:
+    kept, rejected = normalize_batch(
+        [
+            _job("1", "Remote - United States", run_time),
+            _job("2", "Montreal, QC; Remote", run_time),
+        ]
+    )
+    assert rejected == (), "a remote posting that still names a place has a location"
+    assert [job.location for job in kept] == [LocationBucket.USA, LocationBucket.MONTREAL]
 
 
 async def test_quarantined_postings_leave_the_jobs_table(db_path: Path, run_time: datetime) -> None:
@@ -84,7 +122,7 @@ async def test_quarantined_postings_leave_the_jobs_table(db_path: Path, run_time
         kept, rejected = normalize_batch(
             [
                 _job("keep", "Toronto, ON, Canada", run_time),
-                _job("reject", "Hybrid", run_time),
+                _job("reject", "Remote", run_time),
             ]
         )
         result = await repository.apply_source_batch(
@@ -111,7 +149,7 @@ async def test_a_posting_already_stored_is_moved_when_a_rule_starts_rejecting_it
     db_path: Path, run_time: datetime
 ) -> None:
     async with open_repository(db_path) as repository:
-        stored = _job("row", "Hybrid", run_time)
+        stored = _job("row", "Remote", run_time)
         await repository.apply_source_batch(
             SourceBatch(source="greenhouse", run_started_at=run_time, jobs=(stored,))
         )
@@ -136,7 +174,7 @@ async def test_a_released_posting_keeps_its_original_first_seen(
 ) -> None:
     later = run_time + timedelta(days=9)
     async with open_repository(db_path) as repository:
-        _, rejected = normalize_batch([_job("row", "Hybrid", run_time)])
+        _, rejected = normalize_batch([_job("row", "Remote", run_time)])
         await repository.apply_source_batch(
             SourceBatch(source="greenhouse", run_started_at=run_time, quarantined=rejected)
         )
@@ -159,8 +197,8 @@ async def test_quarantine_filters(db_path: Path, run_time: datetime) -> None:
     async with open_repository(db_path) as repository:
         _, rejected = normalize_batch(
             [
-                _job("a", "Hybrid", run_time),
-                _job("b", "Multiple Locations", run_time),
+                _job("a", "Remote", run_time),
+                _job("b", "Distributed", run_time),
             ]
         )
         await repository.apply_source_batch(

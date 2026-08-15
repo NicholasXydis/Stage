@@ -12,9 +12,11 @@ class Rejection:
 def screen_location(job: Job, evidence: tuple[str, ...] = ()) -> Rejection | None:
     if job.location is not LocationBucket.UNKNOWN:
         return None
+    if job.remote_scope is None:
+        return None
     return Rejection(
         reason=RejectionReason.UNKNOWN_LOCATION,
-        matched_phrase=", ".join(evidence) or "no recognizable location",
+        matched_phrase=", ".join(evidence) or "remote is not a location",
     )
 
 
