@@ -3,7 +3,7 @@ import random
 import time
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from stage.classify import (
     classify_role,
@@ -34,8 +34,10 @@ from stage.domain import (
     Rotation,
     RotationMember,
     SourceBlocked,
+    SourceCapped,
     SourceFailed,
     SourceFinished,
+    SourceFresh,
     SourceRotated,
     SourceRunStats,
     SourceStarted,
@@ -50,7 +52,14 @@ from stage.domain import (
     WorkdayFacet,
     rotate,
 )
-from stage.http import HostBudget, HttpClient, RatePosture, ValidatorCache, resolve
+from stage.http import (
+    CEILING_BACKSTOP,
+    HostBudget,
+    HttpClient,
+    RatePosture,
+    ValidatorCache,
+    resolve,
+)
 from stage.normalize import (
     canonical_apply_url,
     detect_language,
@@ -80,7 +89,9 @@ def _bucket_postures(
         (
             adapter.hosts,
             adapter.bucket_key,
-            resolve(adapter.rate_profile, [company.rate_profile for company in companies]),
+            resolve(
+                adapter.rate_profile, [company.rate_profile for company in companies]
+            ).sized_for(len(companies), _reserve_for(adapter)),
         )
         for adapter, companies in grouped.values()
     ]
@@ -98,6 +109,33 @@ def _bucket_postures(
 
 def _bucket_keys(hosts: frozenset[str], bucket_key: str) -> tuple[str, ...]:
     return (bucket_key,) if bucket_key else tuple(sorted(hosts))
+
+
+def _reserve_for(adapter: Adapter) -> int:
+    return getattr(adapter, "retry_reserve", 0) + adapter.detail_budget
+
+
+DAILY_RUNS = 4
+
+
+async def _spent_today(repository: AsyncRepository, since: datetime) -> tuple[dict[str, int], bool]:
+    runs = await repository.run_history(DAILY_RUNS * 4)
+    spent: dict[str, int] = {}
+    seen_any = False
+    for run in runs:
+        if run.started_at < since:
+            continue
+        seen_any = True
+        for entry in run.sources:
+            spent[entry.source] = spent.get(entry.source, 0) + entry.requests
+    return spent, seen_any
+
+
+def _daily_allowance(posture: RatePosture, spent: int, has_history: bool) -> int:
+    if not has_history:
+        return posture.max_requests_per_run
+    cap = min(CEILING_BACKSTOP * 2, posture.max_requests_per_run * DAILY_RUNS)
+    return max(0, min(posture.max_requests_per_run, cap - spent))
 
 
 def _active_block(
@@ -233,8 +271,7 @@ async def _fetch_company(
                 and not crawl.discard
             ):
                 message = (
-                    "two-pass Workday limit reached before this board completed; retained "
-                    "postings stay open, crawl state was discarded, and the next sync starts fresh"
+                    "resumed once and still incomplete; postings stay open, crawl state discarded"
                 )
                 result = replace(
                     result,
@@ -301,6 +338,16 @@ def _safe_plan(adapter: Adapter, company: Company) -> tuple[tuple[str, ...], str
         return adapter.plan(company), ""
     except Exception as exc:
         return (), f"{type(exc).__name__}: {exc}"
+
+
+def _stalest_first(
+    adapter: Adapter, companies: Sequence[Company], last_success: Mapping[str, datetime | None]
+) -> list[Company]:
+    def age(company: Company) -> tuple[int, datetime]:
+        seen = last_success.get(_safe_board_key(adapter, company))
+        return (1, seen) if seen is not None else (0, datetime.min.replace(tzinfo=UTC))
+
+    return sorted(companies, key=age)
 
 
 def _safe_board_key(adapter: Adapter, company: Company) -> str:
@@ -415,6 +462,9 @@ async def _run_company_source(
     budgets: dict[str, HostBudget],
     postures: Mapping[str, RatePosture],
     plan_bounds: list[tuple[str, str, int, int]],
+    force_refresh: bool,
+    spent_today: Mapping[str, int],
+    has_history: bool,
 ) -> AsyncIterator[SyncEvent]:
     source_name = adapter.name
     buckets = _bucket_keys(adapter.hosts, adapter.bucket_key)
@@ -437,6 +487,12 @@ async def _run_company_source(
     stored = rate_state.get(rotation_bucket)
     workday_adapter = adapter if isinstance(adapter, WorkdayAdapter) else None
     is_workday = workday_adapter is not None
+    window_h = postures.get(rotation_bucket, RatePosture()).refresh_interval_h
+    last_success = {
+        visit.board: visit.last_success_at
+        for visit in await repository.all_visits()
+        if visit.source == source_name
+    }
     rotation = rotate(
         [
             RotationMember(
@@ -452,22 +508,42 @@ async def _run_company_source(
     ordered = [company for company in companies if company.registry_key in covered]
     source_clock = time.perf_counter()
     fetch_clock = time.perf_counter()
+
+    open_crawls = (
+        frozenset(await repository.load_workday_crawls())
+        if workday_adapter is not None
+        else frozenset()
+    )
+    refreshed_recently = 0
+    if window_h > 0 and not force_refresh and not dry_run:
+        since = run_started_at - timedelta(hours=window_h)
+        kept_boards = [
+            company
+            for company in ordered
+            if _safe_board_key(adapter, company) in open_crawls
+            or (seen := last_success.get(_safe_board_key(adapter, company))) is None
+            or seen < since
+        ]
+        refreshed_recently = len(ordered) - len(kept_boards)
+        ordered = kept_boards
+
     seed = dict(await repository.load_validators(source_name))
+    resuming_boards: frozenset[str] = frozenset()
+    base = postures.get(rotation_bucket) or resolve(
+        adapter.rate_profile, [company.rate_profile for company in ordered]
+    )
+    allowance = _daily_allowance(base, spent_today.get(source_name, 0), has_history)
+    posture = replace(base, max_requests_per_run=allowance)
     if workday_adapter is not None:
         facets = await repository.load_workday_facets()
         crawls = await repository.load_workday_crawls()
-        resuming_workday = bool(crawls)
-        if resuming_workday:
-            ordered = [
-                company for company in companies if _safe_board_key(adapter, company) in crawls
-            ]
-        posture = resolve(adapter.rate_profile, [company.rate_profile for company in ordered])
-        page_budgets, detail_budget = workday_adapter.crawl_budgets(
-            ordered, crawls, facets, posture.max_requests_per_run
+        resuming_boards = frozenset(crawls)
+        page_budgets, detail_budget = (
+            workday_adapter.crawl_budgets(ordered, crawls, facets, posture.max_requests_per_run)
+            if ordered
+            else ({}, 0)
         )
     else:
-        resuming_workday = False
-        posture = resolve(adapter.rate_profile, [company.rate_profile for company in ordered])
         page_budgets = {
             company.registry_key: adapter.max_requests_per_company for company in ordered
         }
@@ -475,8 +551,24 @@ async def _run_company_source(
         facets = {}
         crawls = {}
     shuffler.shuffle(ordered)
+    ordered = _stalest_first(adapter, ordered, last_success)
     yield SourceStarted(source=source_name, companies=len(ordered))
-    if rotation.rotating and not resuming_workday:
+    if allowance < base.max_requests_per_run:
+        yield SourceCapped(
+            source=source_name,
+            bucket=rotation_bucket,
+            spent=spent_today.get(source_name, 0),
+            allowance=allowance,
+            ceiling=base.max_requests_per_run,
+        )
+    if refreshed_recently:
+        yield SourceFresh(
+            source=source_name,
+            skipped=refreshed_recently,
+            remaining=len(ordered),
+            refresh_interval_h=window_h,
+        )
+    if rotation.rotating:
         yield SourceRotated(
             source=source_name,
             bucket=rotation_bucket,
@@ -525,7 +617,7 @@ async def _run_company_source(
         rate_state=rate_state,
         now=run_started_at,
         budgets=budgets,
-        postures=postures,
+        postures={**postures, rotation_bucket: posture},
     ) as client:
         pending = [
             _fetch_company(
@@ -537,7 +629,7 @@ async def _run_company_source(
                 detail_queue,
                 crawls,
                 page_budgets[company.registry_key],
-                resuming_workday,
+                _safe_board_key(adapter, company) in resuming_boards,
             )
             for company in ordered
         ]
@@ -591,12 +683,8 @@ async def _run_company_source(
 
         metrics = _client_metrics(client)
         validators = _keepable_validators(cache, skip_urls)
-        settled = (
-            client.rate_state(run_started_at)
-            if resuming_workday
-            else _advance_cursor(
-                client.rate_state(run_started_at), rotation, rotation_bucket, run_started_at
-            )
+        settled = _advance_cursor(
+            client.rate_state(run_started_at), rotation, rotation_bucket, run_started_at
         )
 
     fetch_ms = (time.perf_counter() - fetch_clock) * 1000
@@ -632,7 +720,7 @@ async def _run_company_source(
     stats.append(
         replace(
             _stats(source_name, counts, errors, metrics, elapsed_ms),
-            deferred=0 if resuming_workday else len(rotation.deferred),
+            deferred=len(rotation.deferred),
         )
     )
     yield _finished(
@@ -883,6 +971,7 @@ async def sync(
     sources: Sequence[str] | None = None,
     excluded: Sequence[str] | None = None,
     dry_run: bool = False,
+    force_refresh: bool = False,
     now_fn: Callable[[], datetime] = lambda: datetime.now(UTC),
     rng: random.Random | None = None,
 ) -> AsyncIterator[SyncEvent]:
@@ -908,6 +997,7 @@ async def sync(
     blocked_sources: list[str] = []
 
     rate_state = await repository.load_rate_state()
+    spent_today, has_history = await _spent_today(repository, run_started_at - timedelta(hours=24))
     budgets: dict[str, HostBudget] = {}
     plan_bounds: list[tuple[str, str, int, int]] = []
     postures = _bucket_postures(grouped, feeds)
@@ -930,6 +1020,9 @@ async def sync(
                 budgets,
                 postures,
                 plan_bounds,
+                force_refresh,
+                spent_today,
+                has_history,
             ),
         )
         for name in sorted(grouped)

@@ -35,7 +35,7 @@ MAX_PAGES = 25
 MAX_CRAWL_PAGES = 100
 RESULT_CAP = 10_000
 CRAWL_PAGE_CAP = 6
-RETRY_RESERVE = 20
+RETRY_RESERVE = 40
 
 
 class WorkdayPosting(BaseModel):
@@ -141,7 +141,7 @@ class WorkdayAdapter:
 
     detail_budget: ClassVar[int] = 60
 
-    rotation_slice: ClassVar[int] = 100
+    rotation_slice: ClassVar[int] = 300
 
     max_requests_per_company: ClassVar[int] = MAX_PAGES
 
@@ -160,7 +160,7 @@ class WorkdayAdapter:
             raise ValueError("a Workday crawl needs at least one board")
         available = max(1, ceiling - cls.retry_reserve)
         budgets = {company.registry_key: 1 for company in companies}
-        remaining = available - len(budgets)
+        remaining = max(0, available - len(budgets))
         demands: list[tuple[int, str]] = []
         for company in companies:
             crawl = crawls.get(board_key(cls.name, _board(company)))
@@ -177,12 +177,12 @@ class WorkdayAdapter:
             pages = max(1, (max(0, crawl.total - start) + PAGE_SIZE - 1) // PAGE_SIZE)
             demands.append((min(MAX_CRAWL_PAGES, pages), company.registry_key))
         for pages, key in sorted(demands, key=lambda item: (-item[0], item[1])):
-            extra = min(remaining, pages - budgets[key])
+            extra = max(0, min(remaining, pages - budgets[key]))
             budgets[key] += extra
             remaining -= extra
         for company in companies:
             key = company.registry_key
-            extra = min(remaining, max(0, cls.crawl_page_cap - budgets[key]))
+            extra = max(0, min(remaining, cls.crawl_page_cap - budgets[key]))
             budgets[key] += extra
             remaining -= extra
         details = min(cls.detail_budget, max(0, remaining))
