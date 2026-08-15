@@ -111,3 +111,81 @@ def test_a_refusal_records_why_so_the_next_pass_does_not_repeat_it() -> None:
     report = adopt_unregistered([], results, today=TODAY)
     assert not report.adopted
     assert report.refused and "no postings" in report.refused[0][2]
+
+
+def test_a_nameless_board_with_postings_becomes_a_review_candidate() -> None:
+    results = [
+        ("Perplexity AI", _result(Platform.ASHBY, "perplexity", 99, ProbeVerdict.UNVERIFIED))
+    ]
+    report = adopt_unregistered([], results, today=TODAY)
+    assert not report.adopted, "a board that cannot name itself is never adopted automatically"
+    assert [entry.company for entry in report.review] == ["Perplexity AI"], (
+        "an Ashby or Lever board answering with postings must reach a human, not vanish"
+    )
+    assert report.review[0].job_count == 99
+
+
+def test_a_nameless_board_with_no_postings_is_not_a_review_candidate() -> None:
+    results = [("Ghost", _result(Platform.LEVER, "ghostboard", 0, ProbeVerdict.UNVERIFIED))]
+    assert not adopt_unregistered([], results, today=TODAY).review, (
+        "an empty board is §5.3's token that does not exist, not a decision for a human"
+    )
+
+
+def test_review_candidates_carry_whether_the_slug_is_distinctive() -> None:
+    results = [
+        ("Tenstorrent", _result(Platform.ASHBY, "tenstorrent", 12, ProbeVerdict.UNVERIFIED)),
+        ("Apple", _result(Platform.BAMBOOHR, "apple", 4, ProbeVerdict.UNVERIFIED)),
+    ]
+    marks = {
+        entry.company: entry.distinctive
+        for entry in adopt_unregistered([], results, today=TODAY).review
+    }
+    assert marks == {"Tenstorrent": True, "Apple": False}, (
+        "the generic-slug collision is the risk a human is being asked to rule on"
+    )
+
+
+def test_a_review_candidate_already_in_the_registry_is_not_re_offered() -> None:
+    existing = [Company(name="Perplexity AI", platform=Platform.ASHBY, slug="perplexity")]
+    results = [
+        ("Perplexity AI", _result(Platform.ASHBY, "perplexity", 99, ProbeVerdict.UNVERIFIED))
+    ]
+    assert not adopt_unregistered(existing, results, today=TODAY).review
+
+
+def test_one_nameless_board_under_two_captions_is_reviewed_once() -> None:
+    results = [
+        ("Astera Labs", _result(Platform.LEVER, "asteralabs", 164, ProbeVerdict.UNVERIFIED)),
+        ("Astera Labs Inc", _result(Platform.LEVER, "asteralabs", 164, ProbeVerdict.UNVERIFIED)),
+    ]
+    assert len(adopt_unregistered([], results, today=TODAY).review) == 1
+
+
+def test_a_nameless_board_is_adopted_only_when_provenance_is_asserted() -> None:
+    results = [
+        ("Perplexity AI", _result(Platform.ASHBY, "perplexity", 99, ProbeVerdict.UNVERIFIED))
+    ]
+    report = adopt_unregistered([], results, today=TODAY, adopt_unnamed=True)
+    assert [row.company.name for row in report.adopted] == ["Perplexity AI"]
+    assert not report.review, "an adopted board is no longer a pending decision"
+
+
+def test_an_adopted_nameless_row_records_that_the_name_gate_could_not_confirm_it() -> None:
+    results = [("Alan", _result(Platform.ASHBY, "alan", 90, ProbeVerdict.UNVERIFIED))]
+    row = adopt_unregistered([], results, today=TODAY, adopt_unnamed=True).adopted[0].company
+    assert row.name_gate_exempt, "a later --verify sweep must not disable it for lacking a name"
+    assert "provenance is the evidence" in (row.notes or "")
+    assert "apply URL" in (row.notes or ""), "the reader needs the evidence, not a verdict"
+
+
+def test_provenance_adoption_still_refuses_a_board_with_no_postings() -> None:
+    results = [("Ghost", _result(Platform.LEVER, "ghostboard", 0, ProbeVerdict.UNVERIFIED))]
+    report = adopt_unregistered([], results, today=TODAY, adopt_unnamed=True)
+    assert not report.adopted, "an empty board is not evidence of anything, whatever the provenance"
+
+
+def test_provenance_adoption_never_rescues_a_name_gate_rejection() -> None:
+    results = [("Coveo", _result(Platform.GREENHOUSE, "someoneelse", 40, ProbeVerdict.REJECTED))]
+    report = adopt_unregistered([], results, today=TODAY, adopt_unnamed=True)
+    assert not report.adopted, "a board that named a different company is still a rejection"

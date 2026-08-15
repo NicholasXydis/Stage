@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TextIO
@@ -32,3 +32,25 @@ def open_request_log(
     rotate(resolved, max_bytes=max_bytes, generations=generations)
     with resolved.open("a", encoding="utf-8") as stream:
         yield stream
+
+
+def probe_journal_path() -> Path:
+    from stage.paths import data_dir
+
+    return data_dir() / "probe-journal.jsonl"
+
+
+@contextmanager
+def open_probe_journal(path: Path | None = None) -> Iterator[Callable[[object], None]]:
+    import json
+
+    resolved = (path or probe_journal_path()).expanduser()
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    rotate(resolved)
+    with resolved.open("a", encoding="utf-8") as stream:
+
+        def record(entry: object) -> None:
+            stream.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
+            stream.flush()
+
+        yield record

@@ -218,8 +218,9 @@ def direct_companies_from_apply_urls(
     apply_urls: Mapping[str, Sequence[str]],
     *,
     platforms: Sequence[Platform] | None = None,
+    excluded: Sequence[Platform] | None = None,
 ) -> tuple[Company, ...]:
-    allowed = {probe.platform for probe in _selected_probes(platforms)}
+    allowed = {probe.platform for probe in _selected_probes(platforms, excluded)}
     rank = {probe.platform: index for index, probe in enumerate(PROBES)}
     direct: list[Company] = []
     for name, urls in apply_urls.items():
@@ -265,25 +266,31 @@ def to_company(
     )
 
 
-def _selected_probes(platforms: Sequence[Platform] | None) -> tuple[PlatformProbe, ...]:
+def _selected_probes(
+    platforms: Sequence[Platform] | None,
+    excluded: Sequence[Platform] | None = None,
+) -> tuple[PlatformProbe, ...]:
     if platforms is None:
-        return PROBES
-    chosen = []
-    for platform in platforms:
-        probe = PROBES_BY_PLATFORM.get(platform)
-        if probe is not None:
-            chosen.append(probe)
-    return tuple(chosen)
+        chosen = list(PROBES)
+    else:
+        chosen = [
+            PROBES_BY_PLATFORM[platform] for platform in platforms if platform in PROBES_BY_PLATFORM
+        ]
+    if excluded is None:
+        return tuple(chosen)
+    skip = set(excluded)
+    return tuple(probe for probe in chosen if probe.platform not in skip)
 
 
 async def probe_companies(
     names: Sequence[str],
     *,
     platforms: Sequence[Platform] | None = None,
+    excluded: Sequence[Platform] | None = None,
     size: EmployerSize | None = None,
     client_factory: ClientFactory = _default_client,
 ) -> AsyncIterator[DiscoveryEvent]:
-    probes = _selected_probes(platforms)
+    probes = _selected_probes(platforms, excluded)
     plans = {name: slug_candidates(name) for name in names}
 
     started = time.perf_counter()
@@ -435,6 +442,7 @@ async def verify_registry(
     companies: Sequence[Company],
     *,
     platforms: Sequence[Platform] | None = None,
+    excluded: Sequence[Platform] | None = None,
     only: Sequence[str] | None = None,
     client_factory: ClientFactory = _default_client,
 ) -> AsyncIterator[DiscoveryEvent]:
@@ -444,6 +452,7 @@ async def verify_registry(
         for company in companies
         if company.platform in PROBES_BY_PLATFORM
         and (platforms is None or company.platform in platforms)
+        and (excluded is None or company.platform not in excluded)
         and (wanted is None or fold(company.name) in wanted)
     ]
     if wanted is not None and not selected:
@@ -599,12 +608,26 @@ class AdoptedRow:
 
 
 @dataclass(frozen=True, slots=True)
+class ReviewCandidate:
+    company: str
+    platform: Platform
+    slug: str
+    job_count: int
+    distinctive: bool
+
+    @property
+    def label(self) -> str:
+        return f"{self.platform.value}/{self.slug}"
+
+
+@dataclass(frozen=True, slots=True)
 class AdoptionReport:
     adopted: tuple[AdoptedRow, ...]
     refused: tuple[tuple[str, str, str], ...]
     already_known: int
     probed: int
     applied: bool
+    review: tuple[ReviewCandidate, ...] = ()
 
     @property
     def postings(self) -> int:
@@ -624,6 +647,10 @@ def adoption_refusal(result: ProbeResult) -> str:
     return ""
 
 
+def needs_review(result: ProbeResult) -> bool:
+    return result.verdict is ProbeVerdict.UNVERIFIED and (result.job_count or 0) > 0
+
+
 def _adopted_note(today: date, result: ProbeResult) -> str:
     return (
         f"{today}: seen in feed postings but absent from the registry; discover matched "
@@ -632,23 +659,46 @@ def _adopted_note(today: date, result: ProbeResult) -> str:
     )
 
 
+def _unnamed_note(today: date, result: ProbeResult) -> str:
+    platform = result.candidate.platform.value
+    return (
+        f"{today}: token from this employer's own apply URL, not slug guessing; {platform} "
+        f"publishes no board name, so provenance is the evidence ({result.job_count} job(s))"
+    )
+
+
 def adopt_unregistered(
     existing: Sequence[Company],
     results: Sequence[tuple[str, ProbeResult]],
     *,
     today: date,
+    adopt_unnamed: bool = False,
 ) -> AdoptionReport:
     keys = {(row.platform, row.slug.lower()) for row in existing}
     captions = {row.name.casefold() for row in existing}
     adopted: list[AdoptedRow] = []
     refused: list[tuple[str, str, str]] = []
+    review: list[ReviewCandidate] = []
+    seen_review: set[tuple[Platform, str]] = set()
     known = 0
 
     for company, result in results:
         reason = adoption_refusal(result)
-        if reason:
+        if reason and not (adopt_unnamed and needs_review(result)):
+            key = (result.candidate.platform, result.candidate.slug.lower())
             if result.verdict is ProbeVerdict.MATCH:
                 refused.append((company, result.candidate.label, reason))
+            elif needs_review(result) and key not in keys and key not in seen_review:
+                seen_review.add(key)
+                review.append(
+                    ReviewCandidate(
+                        company=company,
+                        platform=result.candidate.platform,
+                        slug=result.candidate.slug,
+                        job_count=result.job_count or 0,
+                        distinctive=slug_is_distinctive(company, result.candidate.slug),
+                    )
+                )
             continue
         key = (result.candidate.platform, result.candidate.slug.lower())
         if key in keys or company.casefold() in captions:
@@ -665,7 +715,12 @@ def adopt_unregistered(
                     enabled=True,
                     last_verified=today,
                     source_of_record=SourceOfRecord.DISCOVER,
-                    notes=_adopted_note(today, result),
+                    name_gate_exempt=result.verdict is not ProbeVerdict.MATCH,
+                    notes=(
+                        _adopted_note(today, result)
+                        if result.verdict is ProbeVerdict.MATCH
+                        else _unnamed_note(today, result)
+                    ),
                 ),
                 job_count=result.job_count or 0,
             )
@@ -676,4 +731,5 @@ def adopt_unregistered(
         already_known=known,
         probed=len({company for company, _ in results}),
         applied=False,
+        review=tuple(review),
     )

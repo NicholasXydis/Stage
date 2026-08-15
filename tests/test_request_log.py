@@ -73,3 +73,29 @@ def test_at_least_one_generation_is_required(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="at least one generation"):
         rotate(log, max_bytes=1000, generations=0)
+
+
+def test_a_probe_journal_line_survives_a_killed_run(tmp_path: Path) -> None:
+    import json
+
+    from stage.cli.logfile import open_probe_journal
+
+    target = tmp_path / "probe-journal.jsonl"
+    with open_probe_journal(target) as record:
+        record({"company": "Perplexity AI", "verdict": "unverified"})
+        mid_run = target.read_text(encoding="utf-8")
+
+    assert json.loads(mid_run)["company"] == "Perplexity AI", (
+        "a probe costs a real request, so each result must be on disk before the run ends"
+    )
+
+
+def test_the_probe_journal_appends_one_line_per_result(tmp_path: Path) -> None:
+    from stage.cli.logfile import open_probe_journal
+
+    target = tmp_path / "probe-journal.jsonl"
+    with open_probe_journal(target) as record:
+        record({"company": "One"})
+        record({"company": "Two"})
+
+    assert target.read_text(encoding="utf-8").strip().count("\n") == 1
