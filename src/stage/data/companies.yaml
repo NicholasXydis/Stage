@@ -3,7 +3,7 @@
   slug: bhvr
   priority: high
   source_of_record: openjobs
-  last_verified: &id008 2026-08-04
+  last_verified: &id009 2026-08-04
 - name: Bombardier
   platform: successfactors
   slug: bombardier
@@ -23,7 +23,7 @@
   slug: coveofr
   priority: high
   source_of_record: discover
-  last_verified: &id013 2026-08-08
+  last_verified: &id014 2026-08-08
   name_gate_exempt: true
   notes: '2026-08-08: board publishes the name ''Coveo Solutions''; the name gate
     rejects this caption, and the board is confirmed correct'
@@ -78,18 +78,18 @@
   slug: gameloft
   priority: high
   source_of_record: openjobs
-  last_verified: &id003 2026-08-14
+  last_verified: &id004 2026-08-14
 - name: Genetec
   platform: workable
   slug: genetec-inc
   priority: high
   source_of_record: discover
+  paused_until: &id003 2026-08-18
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Hootsuite
   platform: greenhouse
   slug: hootsuite
@@ -144,12 +144,12 @@
   slug: mila-2
   priority: high
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: National Bank of Canada
   platform: avature
   slug: bnc
@@ -205,19 +205,19 @@
   slug: ubisoft2
   priority: high
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Videotron
   platform: smartrecruiters
   slug: Videotron
   priority: high
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: 1X
   platform: ashby
   slug: 1x
   priority: normal
   source_of_record: discover
-  last_verified: &id004 2026-08-14
+  last_verified: &id005 2026-08-14
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -227,7 +227,7 @@
   slug: 401auto
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; bamboohr publishes no board name, so
@@ -237,7 +237,7 @@
   slug: 42dot
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -247,7 +247,7 @@
   slug: abb
   priority: normal
   source_of_record: discover
-  last_verified: &id005 2026-08-14
+  last_verified: &id006 2026-08-14
   workday_tenant: abb
   workday_site: external_career_page
   workday_dc: wd3
@@ -264,7 +264,7 @@
   slug: acds
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -274,18 +274,18 @@
   slug: activate-interactive-pte-ltd
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Adobe
   platform: workday
   slug: adobe
   priority: normal
   source_of_record: openjobs
-  last_verified: &id006 2026-08-03
+  last_verified: &id007 2026-08-03
   workday_tenant: adobe
   workday_site: external_experienced
   workday_dc: wd5
@@ -304,7 +304,7 @@
   slug: transamerica
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: transamerica
   workday_site: nld-aegon
   workday_dc: wd5
@@ -326,7 +326,7 @@
   slug: afterquery
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -336,7 +336,7 @@
   slug: ag
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: ag
   workday_site: airbus
   workday_dc: wd3
@@ -347,7 +347,7 @@
   slug: airwallex
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -369,18 +369,18 @@
   slug: al-warren-oil-company-inc
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Alan
   platform: ashby
   slug: alan
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -412,13 +412,13 @@
   slug: alten
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Altera Corporation
   platform: workday
   slug: altera
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: altera
   workday_site: altera
   workday_dc: wd1
@@ -429,12 +429,12 @@
   slug: altom-transport
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Ambarella
   platform: workday
   slug: ambarella
@@ -452,7 +452,7 @@
   slug: amcor
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: amcor
   workday_site: amcor_external_career_site
   workday_dc: wd5
@@ -463,7 +463,7 @@
   slug: pae
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: pae
   workday_site: amentum_careers
   workday_dc: wd1
@@ -486,7 +486,7 @@
   slug: americanfidelity
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: americanfidelity
   workday_site: External
   workday_dc: wd5
@@ -497,7 +497,7 @@
   slug: myhrabc
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: myhrabc
   workday_site: global
   workday_dc: wd5
@@ -508,7 +508,7 @@
   slug: amgen
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: amgen
   workday_site: careers
   workday_dc: wd1
@@ -519,7 +519,7 @@
   slug: analogdevices
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: analogdevices
   workday_site: External
   workday_dc: wd1
@@ -530,7 +530,7 @@
   slug: amainc
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: amainc
   workday_site: ama_careers
   workday_dc: wd12
@@ -541,7 +541,7 @@
   slug: ancestry
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: ancestry
   workday_site: Careers
   workday_dc: wd501
@@ -558,7 +558,7 @@
   slug: anthelioncap
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -568,7 +568,7 @@
   slug: anybotics
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -578,7 +578,7 @@
   slug: apex-technology-inc
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -602,7 +602,7 @@
   slug: amat
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: amat
   workday_site: External
   workday_dc: wd1
@@ -619,7 +619,7 @@
   slug: aptura
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -635,7 +635,7 @@
   slug: veralto
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: veralto
   workday_site: HachJobs
   workday_dc: wd1
@@ -646,7 +646,7 @@
   slug: architect
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -656,7 +656,7 @@
   slug: ardian
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: ardian
   workday_site: ArdianCareers
   workday_dc: wd103
@@ -673,7 +673,7 @@
   slug: asuep
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: asuep
   workday_site: ASUEP
   workday_dc: wd5
@@ -684,7 +684,7 @@
   slug: fa-exkk-saasfaprod1
   priority: normal
   source_of_record: discover
-  last_verified: &id007 2026-08-14
+  last_verified: &id008 2026-08-14
   oracle_host: fa-exkk-saasfaprod1.fa.ocs.oraclecloud.com
   oracle_site: CX_1
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -718,7 +718,7 @@
   slug: asmglobal
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: asmglobal
   workday_site: careers
   workday_dc: wd1
@@ -729,7 +729,7 @@
   slug: asml
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: asml
   workday_site: asmlext1
   workday_dc: wd3
@@ -740,7 +740,7 @@
   slug: assurant
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: assurant
   workday_site: assurant_careers
   workday_dc: wd1
@@ -769,7 +769,7 @@
   slug: ataccama
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -785,7 +785,7 @@
   slug: aturapower
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; bamboohr publishes no board name, so
@@ -795,7 +795,7 @@
   slug: auctor
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -805,7 +805,7 @@
   slug: autodesk
   priority: normal
   source_of_record: openjobs
-  last_verified: *id006
+  last_verified: *id007
   workday_tenant: autodesk
   workday_site: Ext
   workday_dc: wd1
@@ -866,7 +866,7 @@
   slug: barkbackllc
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Base Power
   platform: ashby
   slug: base-power
@@ -880,18 +880,18 @@
   slug: bayutdubizzle
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: BDO Canada
   platform: workday
   slug: bdo
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: bdo
   workday_site: BDO
   workday_dc: wd3
@@ -918,7 +918,7 @@
   slug: fa-essf-saasfaprod1
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: fa-essf-saasfaprod1.fa.ocs.oraclecloud.com
   oracle_site: CX_1
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -929,7 +929,7 @@
   slug: bestow
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -939,7 +939,7 @@
   slug: bigblue
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -957,7 +957,7 @@
   slug: binance.us
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -967,7 +967,7 @@
   slug: biotechne
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: biotechne
   workday_site: Biotechne
   workday_dc: wd5
@@ -978,7 +978,7 @@
   slug: biibhr
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: biibhr
   workday_site: external
   workday_dc: wd3
@@ -989,7 +989,7 @@
   slug: eoje
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: eoje.fa.us2.oraclecloud.com
   oracle_site: CX_1001
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -1000,7 +1000,7 @@
   slug: blackbirdinteractive
   priority: normal
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: BlackEdge Capital
   platform: greenhouse
   slug: blackedgecapital
@@ -1021,7 +1021,7 @@
   slug: blackstar
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1031,7 +1031,7 @@
   slug: blackstone
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: blackstone
   workday_site: Blackstone_Campus_Careers
   workday_dc: wd1
@@ -1042,7 +1042,7 @@
   slug: blinqlabs
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Blockhouse
   platform: ashby
   slug: blockhouse
@@ -1117,7 +1117,7 @@
   slug: boschgroup
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Bot Auto
   platform: greenhouse
   slug: botauto
@@ -1143,7 +1143,7 @@
   slug: broadcom
   priority: normal
   source_of_record: openjobs
-  last_verified: &id009 2026-08-14
+  last_verified: &id010 2026-08-14
   recheck_after: *id001
   workday_tenant: broadcom
   workday_site: External_Career
@@ -1154,7 +1154,7 @@
   slug: brookfield
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: brookfield
   workday_site: brookfieldprivate
   workday_dc: wd5
@@ -1165,7 +1165,7 @@
   slug: bbh
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: bbh
   workday_site: bbh
   workday_dc: wd5
@@ -1188,7 +1188,7 @@
   slug: bynder
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1198,24 +1198,24 @@
   slug: bytedance
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Caddi Workflow Automation
   platform: workable
   slug: trycaddi
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: CAE
   platform: workday
   slug: cae
   priority: normal
   source_of_record: openjobs
-  last_verified: *id006
+  last_verified: *id007
   workday_tenant: cae
   workday_site: career
   workday_dc: wd3
@@ -1224,7 +1224,7 @@
   slug: calpionplutus
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; bamboohr publishes no board name, so
@@ -1242,7 +1242,7 @@
   slug: cambiumlearning
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: cambiumlearning
   workday_site: camb
   workday_dc: wd1
@@ -1265,7 +1265,7 @@
   slug: canadiantirecorporation
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: canadiantirecorporation
   workday_site: Enterprise_External_Careers_Site
   workday_dc: wd3
@@ -1276,13 +1276,13 @@
   slug: canva
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Capital One
   platform: workday
   slug: capitalone
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: capitalone
   workday_site: Capital_One
   workday_dc: wd12
@@ -1293,7 +1293,7 @@
   slug: capitaland
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: capitaland
   workday_site: capitalandinvestmentcareers
   workday_dc: wd3
@@ -1304,12 +1304,12 @@
   slug: capula-investment-management-ltd
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Carbon Engineering Ltd.
   platform: greenhouse
   slug: carbon
@@ -1334,7 +1334,7 @@
   slug: cat
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: cat
   workday_site: CaterpillarCareers
   workday_dc: wd5
@@ -1367,13 +1367,13 @@
   slug: cdprojektred
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Centerfield
   platform: ashby
   slug: centerfield
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1395,7 +1395,7 @@
   slug: certifyos
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1405,7 +1405,7 @@
   slug: cerved
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: cerved
   workday_site: cerved
   workday_dc: wd3
@@ -1416,7 +1416,7 @@
   slug: cc
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: cc
   workday_site: chanelcareers
   workday_dc: wd3
@@ -1440,7 +1440,7 @@
   slug: brambles
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: brambles
   workday_site: Brambles_Careers
   workday_dc: wd5
@@ -1502,7 +1502,7 @@
   slug: cisive
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: cisive
   workday_site: Cisive
   workday_dc: wd108
@@ -1513,7 +1513,7 @@
   slug: austintexas
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: austintexas
   workday_site: COA_Careers
   workday_dc: wd5
@@ -1542,7 +1542,7 @@
   slug: go-cloudforce
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -1552,7 +1552,7 @@
   slug: cmegroup
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: cmegroup
   workday_site: cme_careers
   workday_dc: wd1
@@ -1563,18 +1563,18 @@
   slug: cmic
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Codeage
   platform: smartrecruiters
   slug: codeage
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Cohere
   platform: ashby
   slug: cohere
@@ -1588,7 +1588,7 @@
   slug: cohesity
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: cohesity
   workday_site: cohesity_careers
   workday_dc: wd5
@@ -1605,7 +1605,7 @@
   slug: composio
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1615,18 +1615,18 @@
   slug: connectprep
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: ConocoPhillips
   platform: workday
   slug: conocophillips
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: conocophillips
   workday_site: External
   workday_dc: wd1
@@ -1637,7 +1637,7 @@
   slug: constellationspace
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1647,7 +1647,7 @@
   slug: copart
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: copart
   workday_site: copart
   workday_dc: wd12
@@ -1658,7 +1658,7 @@
   slug: coreandmain
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: coreandmain
   workday_site: coreandmain
   workday_dc: wd1
@@ -1713,7 +1713,7 @@
   slug: creatify
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1729,7 +1729,7 @@
   slug: crowdstrike
   priority: normal
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: crowdstrike
   workday_site: crowdstrikecareers
@@ -1740,7 +1740,7 @@
   slug: crowe
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: crowe
   workday_site: external_careers
   workday_dc: wd12
@@ -1783,7 +1783,7 @@
   slug: datarobot
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: datarobot
   workday_site: DataRobot_External_Careers
   workday_dc: wd1
@@ -1818,7 +1818,7 @@
   slug: rhsc
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: rhsc
   workday_site: delta_dental_of_michigan
   workday_dc: wd5
@@ -1841,7 +1841,7 @@
   slug: deuna
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -1851,7 +1851,7 @@
   slug: dexmate
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1908,7 +1908,7 @@
   slug: dow
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: dow
   workday_site: externalcareers
   workday_dc: wd1
@@ -1919,7 +1919,7 @@
   slug: draper
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: draper
   workday_site: Draper_Careers
   workday_dc: wd5
@@ -1950,7 +1950,7 @@
   slug: dryft
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -1966,7 +1966,7 @@
   slug: fa-ewub-saasfaprod1
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: fa-ewub-saasfaprod1.fa.ocs.oraclecloud.com
   oracle_site: CX_26
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -1993,7 +1993,7 @@
   slug: ebay
   priority: normal
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: ebay
   workday_site: apply
@@ -2026,7 +2026,7 @@
   slug: ellipsislabs
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2036,12 +2036,12 @@
   slug: eluvio
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Engineers Gate
   platform: greenhouse
   slug: engineersgate
@@ -2079,7 +2079,7 @@
   slug: epicorsoftware
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: epicorsoftware
   workday_site: epicorjobs
   workday_dc: wd5
@@ -2103,7 +2103,7 @@
   slug: equativ
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -2125,7 +2125,7 @@
   slug: eragon
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2135,7 +2135,7 @@
   slug: espa
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2163,13 +2163,13 @@
   slug: eurofins
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Euronext
   platform: workday
   slug: hrhub
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: hrhub
   workday_site: euronext_career_page
   workday_dc: wd3
@@ -2180,7 +2180,7 @@
   slug: evrealty-us
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -2232,7 +2232,7 @@
   slug: fa-exki-saasfaprod1
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: fa-exki-saasfaprod1.fa.ocs.oraclecloud.com
   oracle_site: CX_1
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -2243,7 +2243,7 @@
   slug: field-ai
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -2265,7 +2265,7 @@
   slug: finmid.com
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2275,7 +2275,7 @@
   slug: firetiger
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2285,7 +2285,7 @@
   slug: bankeasy
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: bankeasy
   workday_site: bank-easy-job-openings
   workday_dc: wd5
@@ -2296,7 +2296,7 @@
   slug: firstquality
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: firstquality
   workday_site: firstquality
   workday_dc: wd5
@@ -2319,7 +2319,7 @@
   slug: fluency
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2329,7 +2329,7 @@
   slug: fluxergy-2
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -2345,7 +2345,7 @@
   slug: forus
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2355,7 +2355,7 @@
   slug: frontcareers
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2365,7 +2365,7 @@
   slug: frontier-health
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2375,7 +2375,7 @@
   slug: gresearch
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: gresearch
   workday_site: G-Research
   workday_dc: wd103
@@ -2386,7 +2386,7 @@
   slug: gartner
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: gartner
   workday_site: EXT
   workday_dc: wd5
@@ -2397,7 +2397,7 @@
   slug: edqv
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: edqv.fa.us2.oraclecloud.com
   oracle_site: CX
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -2408,7 +2408,7 @@
   slug: geaerospace
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: geaerospace
   workday_site: ge_externalsite
   workday_dc: wd5
@@ -2431,7 +2431,7 @@
   slug: gehc
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: gehc
   workday_site: gehc_externalsite
   workday_dc: wd5
@@ -2442,7 +2442,7 @@
   slug: gevernova
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: gevernova
   workday_site: vernova_externalsite
   workday_dc: wd5
@@ -2467,7 +2467,7 @@
   slug: generac
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: generac
   workday_site: external
   workday_dc: wd5
@@ -2478,7 +2478,7 @@
   slug: gdit
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: gdit
   workday_site: external_career_site
   workday_dc: wd5
@@ -2509,7 +2509,7 @@
   slug: genesys
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: genesys
   workday_site: Genesys
   workday_dc: wd1
@@ -2520,7 +2520,7 @@
   slug: genmd
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2530,7 +2530,7 @@
   slug: gnw
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: gnw
   workday_site: GNW
   workday_dc: wd1
@@ -2563,7 +2563,7 @@
   slug: globalfoundries
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: globalfoundries
   workday_site: external
   workday_dc: wd1
@@ -2580,7 +2580,7 @@
   slug: grab
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Grant Thornton
   platform: recruitee
   slug: grantthornton
@@ -2592,7 +2592,7 @@
   slug: gritt
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2602,7 +2602,7 @@
   slug: group1001wd
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: group1001wd
   workday_site: careers
   workday_dc: wd5
@@ -2619,7 +2619,7 @@
   slug: gsk
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: gsk
   workday_site: gskcareers
   workday_dc: wd5
@@ -2630,7 +2630,7 @@
   slug: gumloop
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2646,7 +2646,7 @@
   slug: harman
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: harman
   workday_site: harman
   workday_dc: wd3
@@ -2657,7 +2657,7 @@
   slug: hcompany
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2667,7 +2667,7 @@
   slug: heliux
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2691,7 +2691,7 @@
   slug: heron-power
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2713,7 +2713,7 @@
   slug: fa-etqo-saasfaprod1
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: fa-etqo-saasfaprod1.fa.ocs.oraclecloud.com
   oracle_site: CX_1
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -2724,7 +2724,7 @@
   slug: hiverge
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2734,7 +2734,7 @@
   slug: homebase
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2762,18 +2762,18 @@
   slug: huggingface
   priority: normal
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Human Computer Lab
   platform: ashby
   slug: human-computer-lab
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2783,7 +2783,7 @@
   slug: fa-eqcd-saasfaprod1
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: fa-eqcd-saasfaprod1.fa.ocs.oraclecloud.com
   oracle_site: CX_1
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -2794,7 +2794,7 @@
   slug: huntsman
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: huntsman
   workday_site: huntsman
   workday_dc: wd1
@@ -2805,12 +2805,12 @@
   slug: hyperlight
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: IDEXX
   platform: workday
   slug: idexx
@@ -2835,7 +2835,7 @@
   slug: inbulkscorp
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Incident IQ
   platform: greenhouse
   slug: incidentiq
@@ -2847,13 +2847,13 @@
   slug: infinitequant
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: ING
   platform: workday
   slug: ing
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: ing
   workday_site: icsgblcor
   workday_dc: wd3
@@ -2888,7 +2888,7 @@
   slug: ifm-us
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -2904,7 +2904,7 @@
   slug: intel
   priority: normal
   source_of_record: openjobs
-  last_verified: *id006
+  last_verified: *id007
   workday_tenant: intel
   workday_site: External
   workday_dc: wd1
@@ -2913,13 +2913,13 @@
   slug: interco
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Interdigital
   platform: workday
   slug: interdigital
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: interdigital
   workday_site: InterDigital_Intern
   workday_dc: wd5
@@ -2930,7 +2930,7 @@
   slug: theirc
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: theirc
   workday_site: External_Careers
   workday_dc: wd1
@@ -2941,7 +2941,7 @@
   slug: interplay
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -2951,13 +2951,13 @@
   slug: intuitive
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Ivy Tech Community College
   platform: workday
   slug: ivytech
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: ivytech
   workday_site: ivy_tech_careers
   workday_dc: wd1
@@ -2968,13 +2968,13 @@
   slug: jadeglobal
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Jain Global
   platform: workday
   slug: jainglobal
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: jainglobal
   workday_site: ExternalSite
   workday_dc: wd5
@@ -2991,7 +2991,7 @@
   slug: jpmc
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: jpmc.fa.oraclecloud.com
   oracle_site: CX_1001
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -3008,7 +3008,7 @@
   slug: k-id
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3018,7 +3018,7 @@
   slug: kastle
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3028,7 +3028,7 @@
   slug: kbr
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: kbr
   workday_site: KBR_Careers
   workday_dc: wd5
@@ -3039,7 +3039,7 @@
   slug: kepler
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -3049,7 +3049,7 @@
   slug: keybank
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: keybank
   workday_site: External_Career_Site
   workday_dc: wd5
@@ -3070,7 +3070,7 @@
   slug: kirin
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3080,7 +3080,7 @@
   slug: kla
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: kla
   workday_site: AnnArbor
   workday_dc: wd1
@@ -3091,7 +3091,7 @@
   slug: kognitos
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3101,7 +3101,7 @@
   slug: kos.ai
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3117,13 +3117,13 @@
   slug: llnl
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Leidos
   platform: workday
   slug: leidos
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: leidos
   workday_site: External
   workday_dc: wd5
@@ -3140,7 +3140,7 @@
   slug: limetax
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3150,13 +3150,13 @@
   slug: linkedin3
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Logitech
   platform: workday
   slug: logitech
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: logitech
   workday_site: logitech
   workday_dc: wd5
@@ -3167,7 +3167,7 @@
   slug: lombardodier
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: lombardodier
   workday_site: lombard_odier_careers
   workday_dc: wd3
@@ -3190,7 +3190,7 @@
   slug: lplfinancial
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: lplfinancial
   workday_site: university
   workday_dc: wd1
@@ -3207,12 +3207,12 @@
   slug: luminance-1
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Lyft
   platform: greenhouse
   slug: lyft
@@ -3224,7 +3224,7 @@
   slug: mactores
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -3234,7 +3234,7 @@
   slug: magna
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: magna
   workday_site: magna
   workday_dc: wd3
@@ -3255,7 +3255,7 @@
   slug: magnetforensics
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -3265,7 +3265,7 @@
   slug: malt
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -3275,7 +3275,7 @@
   slug: manex
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3285,7 +3285,7 @@
   slug: mango
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: mango
   workday_site: mango_work_your_passion
   workday_dc: wd3
@@ -3296,7 +3296,7 @@
   slug: manh
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: manh
   workday_site: campus
   workday_dc: wd5
@@ -3307,7 +3307,7 @@
   slug: manulife
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: manulife
   workday_site: mfcjh_jobs
   workday_dc: wd3
@@ -3318,7 +3318,7 @@
   slug: mapjectscom
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Marina Bay Sands
   platform: workday
   slug: marinabaysands
@@ -3353,7 +3353,7 @@
   slug: mastercard
   priority: normal
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: mastercard
   workday_site: CUOReqSite
@@ -3365,7 +3365,7 @@
   slug: mastercard
   priority: normal
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: mastercard
   workday_site: CorporateCareers
@@ -3383,7 +3383,7 @@
   slug: maxima
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3399,7 +3399,7 @@
   slug: mckesson
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: mckesson
   workday_site: External_Careers
   workday_dc: wd3
@@ -3416,7 +3416,7 @@
   slug: medtronic
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: medtronic
   workday_site: medtroniccareers
   workday_dc: wd1
@@ -3443,7 +3443,7 @@
   slug: menasha
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: menasha
   workday_site: menashacorp
   workday_dc: wd12
@@ -3454,18 +3454,18 @@
   slug: mercari
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Mercedes-Benz Tech Innovation
   platform: workday
   slug: mercedesbenztechinnovation
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: mercedesbenztechinnovation
   workday_site: mbti_jobportal
   workday_dc: wd3
@@ -3476,7 +3476,7 @@
   slug: merklescience
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -3486,7 +3486,7 @@
   slug: meshy
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3504,7 +3504,7 @@
   slug: exa
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3524,13 +3524,13 @@
   slug: microchip
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Micron Technology
   platform: workday
   slug: micron
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: micron
   workday_site: External
   workday_dc: wd1
@@ -3541,7 +3541,7 @@
   slug: tigo
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: tigo
   workday_site: tigocareers
   workday_dc: wd103
@@ -3560,7 +3560,7 @@
   slug: mizuho
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: mizuho
   workday_site: Mizuho_Confidential
   workday_dc: wd1
@@ -3577,7 +3577,7 @@
   slug: modal
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3605,7 +3605,7 @@
   slug: monolithicpower
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: monolithicpower
   workday_site: MPS_Careers
   workday_dc: wd12
@@ -3654,7 +3654,7 @@
   slug: msd
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: msd
   workday_site: searchjobs
   workday_dc: wd5
@@ -3665,7 +3665,7 @@
   slug: mujin
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; bamboohr publishes no board name, so
@@ -3675,7 +3675,7 @@
   slug: multiplylabs
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -3685,7 +3685,7 @@
   slug: junior
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3707,7 +3707,7 @@
   slug: nationgraph
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3727,13 +3727,13 @@
   slug: nbcuniversal3
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Nelnet
   platform: workday
   slug: nelnet
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: nelnet
   workday_site: MyNelnet
   workday_dc: wd1
@@ -3744,7 +3744,7 @@
   slug: netflix
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: netflix
   workday_site: netflix
   workday_dc: wd108
@@ -3762,7 +3762,7 @@
   slug: ntst
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: ntst
   workday_site: careers
   workday_dc: wd1
@@ -3787,7 +3787,7 @@
   slug: newbalance
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: newbalance
   workday_site: careers
   workday_dc: wd1
@@ -3822,7 +3822,7 @@
   slug: nwis
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: nwis
   workday_site: NW
   workday_dc: wd12
@@ -3845,7 +3845,7 @@
   slug: alliance
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: alliance
   workday_site: nissanjobs
   workday_dc: wd3
@@ -3856,7 +3856,7 @@
   slug: fa-evmr-saasfaprod1
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: fa-evmr-saasfaprod1.fa.ocs.oraclecloud.com
   oracle_site: CX_1
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -3879,7 +3879,7 @@
   slug: northwesternmutual
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Notion
   platform: greenhouse
   slug: notion
@@ -3893,7 +3893,7 @@
   slug: novanta
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: novanta
   workday_site: Novanta-Careers
   workday_dc: wd5
@@ -3904,7 +3904,7 @@
   slug: ntt-data-aivista
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3914,7 +3914,7 @@
   slug: npx
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3924,7 +3924,7 @@
   slug: nvidia
   priority: normal
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: nvidia
   workday_site: NVIDIAExternalCareerSite
@@ -3948,12 +3948,12 @@
   slug: oceancomm
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Octaura
   platform: greenhouse
   slug: octaura
@@ -3965,7 +3965,7 @@
   slug: odin-dynamics
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -3987,7 +3987,7 @@
   slug: hctz
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: hctz.fa.us2.oraclecloud.com
   oracle_site: CX_1001
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -4010,7 +4010,7 @@
   slug: opusclip
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4036,18 +4036,18 @@
   slug: orion-health
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Oshkosh
   platform: workday
   slug: oshkoshcorporation
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: oshkoshcorporation
   workday_site: oshkosh
   workday_dc: wd5
@@ -4058,7 +4058,7 @@
   slug: output
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4068,7 +4068,7 @@
   slug: pg
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: pg
   workday_site: '1000'
   workday_dc: wd5
@@ -4079,7 +4079,7 @@
   slug: palantir
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Palo Alto Networks
   platform: smartrecruiters
   slug: paloaltonetworks2
@@ -4094,7 +4094,7 @@
   slug: partly.com
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4104,7 +4104,7 @@
   slug: patsnap
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -4138,7 +4138,7 @@
   slug: pear-vc
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4170,7 +4170,7 @@
   slug: periodic-labs
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4187,7 +4187,7 @@
   slug: talentmanagementsolution
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: talentmanagementsolution
   workday_site: Perseus-careers1
   workday_dc: wd3
@@ -4216,7 +4216,7 @@
   slug: phonely
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4226,7 +4226,7 @@
   slug: phonic
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4236,7 +4236,7 @@
   slug: pictonmahoney
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; bamboohr publishes no board name, so
@@ -4252,7 +4252,7 @@
   slug: plexus
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: plexus
   workday_site: plexus_careers
   workday_dc: wd504
@@ -4263,7 +4263,7 @@
   slug: pluralis-research
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4273,7 +4273,7 @@
   slug: plus-2
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -4283,7 +4283,7 @@
   slug: pluxee
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: pluxee
   workday_site: pluxee_career_site
   workday_dc: wd3
@@ -4294,7 +4294,7 @@
   slug: pnc
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: pnc
   workday_site: External
   workday_dc: wd5
@@ -4317,18 +4317,18 @@
   slug: pony-dot-ai
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Poshmark
   platform: ashby
   slug: poshmark
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4360,18 +4360,18 @@
   slug: pronexus-1
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Prysmian Group
   platform: workday
   slug: prysmiangroup
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: prysmiangroup
   workday_site: careers
   workday_dc: wd3
@@ -4388,7 +4388,7 @@
   slug: pwc
   priority: normal
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: pwc
   workday_site: Global_Experienced_Careers
@@ -4400,7 +4400,7 @@
   slug: pylon-labs
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4410,18 +4410,18 @@
   slug: quadric-dot-i-o-inc
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Quadrillion
   platform: ashby
   slug: quadrillion-labs
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4443,7 +4443,7 @@
   slug: quora
   priority: normal
   source_of_record: openjobs
-  last_verified: &id010 2026-08-11
+  last_verified: &id011 2026-08-11
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 5 job(s)'
 - name: Radix Trading
@@ -4457,7 +4457,7 @@
   slug: make-rain
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -4467,7 +4467,7 @@
   slug: rakuten
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: rakuten
   workday_site: kobo
   workday_dc: wd1
@@ -4478,7 +4478,7 @@
   slug: razer
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: razer
   workday_site: careers
   workday_dc: wd3
@@ -4502,7 +4502,7 @@
   slug: redbull
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Reddit
   platform: greenhouse
   slug: reddit
@@ -4526,7 +4526,7 @@
   slug: reonic
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4536,7 +4536,7 @@
   slug: reply
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -4546,35 +4546,35 @@
   slug: respecinc
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: ResponsiveAds
   platform: workable
   slug: responsiveads-inc
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: ReversingLabs
   platform: workable
   slug: reversinglabs
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Revise Robotics
   platform: ashby
   slug: reviserobotics
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4584,7 +4584,7 @@
   slug: rho
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4594,7 +4594,7 @@
   slug: rivianvw.tech
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4604,7 +4604,7 @@
   slug: tryroam
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4644,13 +4644,13 @@
   slug: rrsgroup
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Salesforce
   platform: workday
   slug: salesforce
   priority: normal
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: salesforce
   workday_site: External_Career_Site
@@ -4680,18 +4680,18 @@
   slug: fioneer
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Savannah River National Laboratory
   platform: oracle_cloud
   slug: ewvl
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: ewvl.fa.us8.oraclecloud.com
   oracle_site: CX_1
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -4736,18 +4736,18 @@
   slug: securityriskadvisors
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Sensata
   platform: workday
   slug: sensata
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: sensata
   workday_site: Sensata-Careers
   workday_dc: wd1
@@ -4758,7 +4758,7 @@
   slug: sentry
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4768,7 +4768,7 @@
   slug: serval
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4796,7 +4796,7 @@
   slug: shopback-2
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -4806,7 +4806,7 @@
   slug: sifive
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: sifive
   workday_site: sifivecareers
   workday_dc: wd1
@@ -4817,7 +4817,7 @@
   slug: lighting
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: lighting
   workday_site: jobs-and-careers
   workday_dc: wd3
@@ -4838,7 +4838,7 @@
   slug: simular
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4848,24 +4848,24 @@
   slug: singulier
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: SIXT
   platform: smartrecruiters
   slug: sixt
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Skydio
   platform: ashby
   slug: skydio
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4875,18 +4875,18 @@
   slug: skygig
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Snowflake
   platform: ashby
   slug: snowflake
   priority: normal
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 391 job(s)'
 - name: SoloPulse
@@ -4915,7 +4915,7 @@
   slug: soti
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: soti
   workday_site: SOTI-Next-Gen
   workday_dc: wd3
@@ -4932,7 +4932,7 @@
   slug: spacial
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -4948,7 +4948,7 @@
   slug: spotify
   priority: normal
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Squarepoint Capital
   platform: greenhouse
   slug: squarepointcapital
@@ -5000,7 +5000,7 @@
   slug: supabase
   priority: normal
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 57 job(s)'
 - name: Super.com (Ashby)
@@ -5008,7 +5008,7 @@
   slug: super.com
   priority: normal
   source_of_record: discover
-  last_verified: &id011 2026-08-14
+  last_verified: &id012 2026-08-14
   name_gate_exempt: true
   notes: '2026-08-14: board resolved from this employer''s own application URL in
     a feed posting; the older Lever row for the same employer stays disabled as a
@@ -5058,7 +5058,7 @@
   slug: tacit
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5074,7 +5074,7 @@
   slug: taktile
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5098,7 +5098,7 @@
   slug: tti
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: tti
   workday_site: tti_pe
   workday_dc: wd1
@@ -5109,18 +5109,18 @@
   slug: tecsys
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Teledyne
   platform: workday
   slug: flir
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: flir
   workday_site: flircareers
   workday_dc: wd1
@@ -5159,7 +5159,7 @@
   slug: the-exploration-company
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5169,7 +5169,7 @@
   slug: foresters
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: foresters
   workday_site: ForestersFinancialCareers
   workday_dc: wd3
@@ -5192,7 +5192,7 @@
   slug: thermofisher
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: thermofisher
   workday_site: ThermoFisherCareers
   workday_dc: wd5
@@ -5203,18 +5203,18 @@
   slug: thingtrax
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Thomson Reuters
   platform: workday
   slug: thomsonreuters
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: thomsonreuters
   workday_site: External_Career_Site
   workday_dc: wd5
@@ -5231,7 +5231,7 @@
   slug: tilderesearch
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5241,18 +5241,18 @@
   slug: tmeic-corporation-americas
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: TMX GROUP
   platform: workday
   slug: tmx
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: tmx
   workday_site: TMX_Careers
   workday_dc: wd3
@@ -5275,7 +5275,7 @@
   slug: ecnf
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: ecnf.fa.us2.oraclecloud.com
   oracle_site: CX
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -5298,7 +5298,7 @@
   slug: trimble
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: trimble
   workday_site: trimblecareers
   workday_dc: wd1
@@ -5315,7 +5315,7 @@
   slug: truist
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: truist
   workday_site: Careers
   workday_dc: wd1
@@ -5326,7 +5326,7 @@
   slug: tsc
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: tsc
   workday_site: TSC-Careers
   workday_dc: wd12
@@ -5343,13 +5343,13 @@
   slug: uber
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: UHY
   platform: workday
   slug: uhyus
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: uhyus
   workday_site: uhy
   workday_dc: wd12
@@ -5372,7 +5372,7 @@
   slug: uncountable
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5382,7 +5382,7 @@
   slug: galileo
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: galileo
   workday_site: galileo_career_site
   workday_dc: wd3
@@ -5393,7 +5393,7 @@
   slug: uasys
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: uasys
   workday_site: uasys
   workday_dc: wd5
@@ -5404,13 +5404,13 @@
   slug: universityofnevadareno
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: University of Rochester
   platform: workday
   slug: rochester
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: rochester
   workday_site: UR_Staff
   workday_dc: wd5
@@ -5421,7 +5421,7 @@
   slug: utaustin
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: utaustin
   workday_site: utstudent
   workday_dc: wd1
@@ -5438,7 +5438,7 @@
   slug: usnh
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: usnh
   workday_site: Careers
   workday_dc: wd5
@@ -5449,7 +5449,7 @@
   slug: valeo
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: valeo
   workday_site: valeo_jobs
   workday_dc: wd3
@@ -5460,7 +5460,7 @@
   slug: valstad
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5470,7 +5470,7 @@
   slug: vanderlande
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: vanderlande
   workday_site: careers
   workday_dc: wd3
@@ -5487,7 +5487,7 @@
   slug: veeda-labs
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5497,7 +5497,7 @@
   slug: veoliaenvironnementsa
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Vertiv
   platform: oracle_cloud
   slug: vertiv
@@ -5513,7 +5513,7 @@
   slug: vetsez
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; breezy publishes no board name, so
@@ -5523,7 +5523,7 @@
   slug: cgg
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: cgg
   workday_site: viridiencareers
   workday_dc: wd103
@@ -5540,13 +5540,13 @@
   slug: visa
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Vital Lyfe
   platform: ashby
   slug: vital-lyfe
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5556,7 +5556,7 @@
   slug: vitalant
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: vitalant
   workday_site: Careers
   workday_dc: wd12
@@ -5567,7 +5567,7 @@
   slug: vo2-group
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -5583,7 +5583,7 @@
   slug: voltus
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -5593,7 +5593,7 @@
   slug: vwhcapitalmanagementlp
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Walleye Capital
   platform: greenhouse
   slug: walleyecapital-external-students
@@ -5605,18 +5605,18 @@
   slug: wallstreetquants
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Warner Bros Games
   platform: workday
   slug: warnerbros
   priority: normal
   source_of_record: openjobs
-  last_verified: *id006
+  last_verified: *id007
   workday_tenant: warnerbros
   workday_site: global
   workday_dc: wd5
@@ -5625,18 +5625,18 @@
   slug: wati-dot-i-o
   priority: normal
   source_of_record: discover
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Wayfair
   platform: smartrecruiters
   slug: wayfair
   priority: normal
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Waymo
   platform: greenhouse
   slug: waymo
@@ -5648,7 +5648,7 @@
   slug: wf
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: wf
   workday_site: wellsfargojobs
   workday_dc: wd1
@@ -5659,7 +5659,7 @@
   slug: welocalize
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: welocalize
   workday_site: welocalize
   workday_dc: wd1
@@ -5670,13 +5670,13 @@
   slug: westerndigital
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: Wincent
   platform: ashby
   slug: wincent
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5686,7 +5686,7 @@
   slug: windborne-systems
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5696,7 +5696,7 @@
   slug: getwingapp
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -5706,7 +5706,7 @@
   slug: wingtra-2
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -5716,7 +5716,7 @@
   slug: wintermute-trading
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -5726,7 +5726,7 @@
   slug: emit
   priority: normal
   source_of_record: discover
-  last_verified: *id007
+  last_verified: *id008
   oracle_host: emit.fa.ca3.oraclecloud.com
   oracle_site: CX_2001
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
@@ -5737,7 +5737,7 @@
   slug: wtw
   priority: normal
   source_of_record: discover
-  last_verified: *id003
+  last_verified: *id004
 - name: X (Twitter)
   platform: workday
   slug: twitter
@@ -5763,7 +5763,7 @@
   slug: yotta
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5773,7 +5773,7 @@
   slug: younited
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -5795,7 +5795,7 @@
   slug: zello
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5805,7 +5805,7 @@
   slug: zendesk
   priority: normal
   source_of_record: discover
-  last_verified: *id005
+  last_verified: *id006
   workday_tenant: zendesk
   workday_site: zendesk
   workday_dc: wd1
@@ -5816,7 +5816,7 @@
   slug: zettabyte-space
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
@@ -5826,7 +5826,7 @@
   slug: zoox
   priority: normal
   source_of_record: discover
-  last_verified: *id004
+  last_verified: *id005
   name_gate_exempt: true
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
@@ -5836,7 +5836,7 @@
   slug: zuru
   priority: normal
   source_of_record: discover
-  last_verified: *id011
+  last_verified: *id012
   name_gate_exempt: true
   notes: '2026-08-14: board resolved from this employer''s own application URL in
     a feed posting; the older Lever row for the same employer stays disabled as a
@@ -5852,13 +5852,13 @@
   slug: acceldata
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Activate Games
   platform: bamboohr
   slug: activategames
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 41 job(s)'
 - name: Activision
@@ -5880,13 +5880,13 @@
   slug: addepar1
   priority: low
   source_of_record: openjobs
-  last_verified: &id012 2026-08-14
+  last_verified: &id013 2026-08-14
 - name: Adtran
   platform: workday
   slug: adtran
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: adtran
   workday_site: ADTRAN
@@ -5908,7 +5908,7 @@
   slug: adyen
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: AeroSpike
   platform: greenhouse
   slug: aerospike
@@ -5923,7 +5923,7 @@
   slug: aerovect
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 38 job(s)'
 - name: AGS - American Gaming Systems
@@ -5941,20 +5941,20 @@
   slug: airlabinc
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
   name_gate_exempt: true
 - name: Alpha Sense
   platform: greenhouse
   slug: alphasense
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Alphawave Semi
   platform: workday
   slug: alphawave
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: alphawave
   workday_site: Alphawave_External
@@ -5985,7 +5985,7 @@
   slug: aptiv
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: aptiv
   workday_site: APTIV_CAREERS
@@ -5996,7 +5996,7 @@
   slug: aristocrat
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: aristocrat
   workday_site: AristocratExternalCareersSite
@@ -6007,7 +6007,7 @@
   slug: artistsanimation
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
 - name: Atomic cartoons
@@ -6015,31 +6015,31 @@
   slug: atomiccartoons
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Avalanche Studios Group
   platform: lever
   slug: avalanchestudios
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Axon
   platform: greenhouse
   slug: axon
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Banyan Software
   platform: greenhouse
   slug: banyansoftware
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Barnstorm VFX
   platform: bamboohr
   slug: barnstormvfx
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 15 job(s)'
 - name: Beamdog
@@ -6055,7 +6055,7 @@
   slug: bb
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: bb
   workday_site: QNX
@@ -6066,37 +6066,37 @@
   slug: blueislestudios
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: bounteous
   platform: lever
   slug: bounteous
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Brain Hunter
   platform: smartrecruiters
   slug: brainhunter
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Brillio
   platform: lever
   slug: brillio-2
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Buckman
   platform: smartrecruiters
   slug: buckman
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Budge Studios
   platform: bamboohr
   slug: budge
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 4 job(s)'
 - name: Build Staff
@@ -6104,13 +6104,13 @@
   slug: buildstaffinc
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Cadence
   platform: workday
   slug: cadence
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: cadence
   workday_site: External_Careers
@@ -6121,7 +6121,7 @@
   slug: calix
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: calix
   workday_site: External
@@ -6132,13 +6132,13 @@
   slug: canonical
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Capco
   platform: greenhouse
   slug: capco
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Capcom
   platform: jobvite
   slug: capcomusa
@@ -6154,7 +6154,7 @@
   slug: cargurus
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Cerebras Systems
   platform: greenhouse
   slug: cerebrassystems
@@ -6168,7 +6168,7 @@
   slug: cerence
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: cerence
   workday_site: Cerence
@@ -6179,13 +6179,13 @@
   slug: chainguard
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Cineplex
   platform: workday
   slug: cineplex
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: cineplex
   workday_site: Cineplex
@@ -6196,7 +6196,7 @@
   slug: cloudchamberen
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Co Active Systems
   platform: greenhouse
   slug: coactivesystems
@@ -6218,18 +6218,18 @@
   slug: comeon-group
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: CommerceIQ
   platform: greenhouse
   slug: commerceiq
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Compulsion Games
   platform: bamboohr
   slug: compulsiongames
@@ -6243,31 +6243,31 @@
   slug: conga
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: CookUnity
   platform: greenhouse
   slug: cookunity
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Coupa
   platform: lever
   slug: coupa
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Critical mass
   platform: greenhouse
   slug: criticalmass
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Cubic corporation
   platform: workday
   slug: cubic
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: cubic
   workday_site: cubic_global_careers
@@ -6278,7 +6278,7 @@
   slug: darkslope
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: DataVisor
@@ -6286,18 +6286,18 @@
   slug: datavisor-jobs
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Decagon
   platform: ashby
   slug: decagon
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 128 job(s)'
 - name: deel.
@@ -6313,25 +6313,25 @@
   slug: dept
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Dialpad AI
   platform: greenhouse
   slug: dialpad
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Digital extremes
   platform: greenhouse
   slug: digitalextremes
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Diligent Corporation
   platform: greenhouse
   slug: diligentcorporation
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: DNEG
   platform: jobvite
   slug: double-negative-visual-effects
@@ -6347,13 +6347,13 @@
   slug: dontnod
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: DraftKings
   platform: workday
   slug: draftkings
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: draftkings
   workday_site: DraftKings
@@ -6364,13 +6364,13 @@
   slug: dnb
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: ElevenLabs
   platform: ashby
   slug: elevenlabs
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 238 job(s)'
 - name: Endava
@@ -6378,7 +6378,7 @@
   slug: endava
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Enverus
   platform: jobvite
   slug: drillinginfo
@@ -6394,30 +6394,30 @@
   slug: escape-velocity-entertainment-inc
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Ethernovia
   platform: greenhouse
   slug: ethernovia
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Evolution
   platform: smartrecruiters
   slug: evolution
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: extreme network
   platform: lever
   slug: extremenetworks
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Eyeline
   platform: lever
   slug: scanlinevfx
@@ -6431,7 +6431,7 @@
   slug: fanduel
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Felix & Paul Studios
   platform: bamboohr
   slug: felixandpaul
@@ -6445,7 +6445,7 @@
   slug: fico
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: fico
   workday_site: External
@@ -6456,7 +6456,7 @@
   slug: finalstrikegames
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: Findem
@@ -6464,13 +6464,13 @@
   slug: findem
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Flexera Software
   platform: workday
   slug: flexerasoftware
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: flexerasoftware
   workday_site: FlexeraSoftware
@@ -6481,7 +6481,7 @@
   slug: fluxon
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Fortra
   platform: greenhouse
   slug: fortra
@@ -6496,7 +6496,7 @@
   slug: foxfactory
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: foxfactory
   workday_site: FOX
@@ -6523,7 +6523,7 @@
   slug: fullcircle
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 13 job(s)'
 - name: Game Mode One
@@ -6531,7 +6531,7 @@
   slug: gamemodeone
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 4 job(s)'
 - name: Gardens Interactive
@@ -6539,7 +6539,7 @@
   slug: gardens
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 3 job(s)'
 - name: Gigamon
@@ -6557,13 +6557,13 @@
   slug: gitlab
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: Globalization Partners
   platform: greenhouse
   slug: globalizationpartners
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
   name_gate_exempt: true
   notes: '2026-08-08: board publishes the name ''G-P''; the name gate rejects this
     caption, and the board is confirmed correct'
@@ -6572,7 +6572,7 @@
   slug: glossgenius
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
   name_gate_exempt: true
   notes: '2026-08-08: board publishes the name ''Genius AI''; the name gate rejects
     this caption, and the board is confirmed correct'
@@ -6581,19 +6581,19 @@
   slug: goatgroup
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: GoDaddy
   platform: greenhouse
   slug: godaddy
   priority: low
   source_of_record: openjobs
-  last_verified: *id012
+  last_verified: *id013
 - name: GoMotive
   platform: greenhouse
   slug: gomotive
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
   name_gate_exempt: true
   notes: '2026-08-08: board publishes the name ''Motive''; the name gate rejects this
     caption, and the board is confirmed correct'
@@ -6602,13 +6602,13 @@
   slug: groupon
   priority: low
   source_of_record: openjobs
-  last_verified: &id014 2026-08-11
+  last_verified: &id015 2026-08-11
 - name: Guru Studio
   platform: bamboohr
   slug: gurustudio
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
 - name: Halcyon
@@ -6616,13 +6616,13 @@
   slug: halcyon
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Haleon
   platform: workday
   slug: gsknch
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: gsknch
   workday_site: GSKCareers
@@ -6633,7 +6633,7 @@
   slug: harvey
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 388 job(s)'
 - name: Hasbro
@@ -6641,19 +6641,19 @@
   slug: hasbro
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Haven Studios Inc
   platform: greenhouse
   slug: haven
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Hawkeye Innovations
   platform: ashby
   slug: hawkeyeinnovations
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 35 job(s)'
 - name: HB studios
@@ -6667,30 +6667,30 @@
   slug: high-voltage-software
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Highdive
   platform: greenhouse
   slug: highdive
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Highspot
   platform: lever
   slug: highspot
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Hitachi
   platform: smartrecruiters
   slug: hitachisolutions
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Hololabs
   platform: bamboohr
   slug: hololabs
@@ -6704,7 +6704,7 @@
   slug: hp
   priority: low
   source_of_record: openjobs
-  last_verified: *id006
+  last_verified: *id007
   workday_tenant: hp
   workday_site: ExternalCareerSite
   workday_dc: wd5
@@ -6721,7 +6721,7 @@
   slug: iconcreative
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 25 job(s)'
 - name: ideogram
@@ -6729,7 +6729,7 @@
   slug: ideogram
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 6 job(s)'
 - name: IGG
@@ -6737,7 +6737,7 @@
   slug: igg
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 6 job(s)'
 - name: Illumina
@@ -6745,7 +6745,7 @@
   slug: illumina
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: illumina
   workday_site: illumina-careers
@@ -6756,7 +6756,7 @@
   slug: imageengine
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 17 job(s)'
 - name: Interactive Brokers
@@ -6780,13 +6780,13 @@
   slug: ion
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Iron Mountain
   platform: workday
   slug: ironmountain
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: ironmountain
   workday_site: iron-mountain-jobs
@@ -6807,7 +6807,7 @@
   slug: issgovernance
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: issgovernance
   workday_site: ISScareers
@@ -6818,42 +6818,42 @@
   slug: jsheldllc
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Jam City
   platform: lever
   slug: jamcity
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Kabam
   platform: lever
   slug: kabam
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Keywords Studios
   platform: workable
   slug: keywords-intl1
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: KRAFTON Montréal Studio
   platform: greenhouse
   slug: studiokraftonboard
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Lambda
   platform: ashby
   slug: lambda
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 67 job(s)'
 - name: LangChain
@@ -6861,7 +6861,7 @@
   slug: langchain
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 101 job(s)'
 - name: Larian Studios
@@ -6869,7 +6869,7 @@
   slug: larian
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: LBC Studios
   platform: bamboohr
   slug: lbcstudiosca
@@ -6893,7 +6893,7 @@
   slug: economicmodeling
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Lilt
   platform: ashby
   slug: lilt
@@ -6907,12 +6907,12 @@
   slug: liquid-development
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Litmus
   platform: greenhouse
   slug: litmus46
@@ -6926,7 +6926,7 @@
   slug: lseg
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: lseg
   workday_site: Careers
@@ -6954,7 +6954,7 @@
   slug: lumeto
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: Maersk
@@ -6962,7 +6962,7 @@
   slug: maersk
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: maersk
   workday_site: Maersk_Careers
@@ -6974,7 +6974,7 @@
   slug: magicschool
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 1 job(s)'
 - name: Marsh McLennan
@@ -6982,7 +6982,7 @@
   slug: mmc
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: mmc
   workday_site: MMC
@@ -6994,7 +6994,7 @@
   slug: marvell
   priority: low
   source_of_record: openjobs
-  last_verified: *id006
+  last_verified: *id007
   workday_tenant: marvell
   workday_site: MarvellCareers
   workday_dc: wd1
@@ -7003,13 +7003,13 @@
   slug: masterclass
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Match Group
   platform: lever
   slug: matchgroup
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Mavericks VFX
   platform: bamboohr
   slug: mavericksvfx
@@ -7040,19 +7040,19 @@
   slug: mercury
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: META4
   platform: smartrecruiters
   slug: meta4
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Minecast
   platform: workday
   slug: mimecast
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: mimecast
   workday_site: Mimecast-Careers
@@ -7071,25 +7071,25 @@
   slug: miratech1
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Mistplay
   platform: lever
   slug: mistplay
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: MixMob
   platform: smartrecruiters
   slug: mixmob
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Morning Star
   platform: workday
   slug: morningstar
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: morningstar
   workday_site: Americas
@@ -7101,7 +7101,7 @@
   slug: motorolasolutions
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: motorolasolutions
   workday_site: Careers
@@ -7113,13 +7113,13 @@
   slug: mozilla
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Mythic Talent
   platform: bamboohr
   slug: mythictalent
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
 - name: Nagarro
@@ -7127,13 +7127,13 @@
   slug: nagarro1
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Nasdaq
   platform: workday
   slug: nasdaq
   priority: low
   source_of_record: openjobs
-  last_verified: *id006
+  last_verified: *id007
   workday_tenant: nasdaq
   workday_site: Global_External_Site
   workday_dc: wd1
@@ -7169,42 +7169,42 @@
   slug: neteasegames
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Netomi
   platform: lever
   slug: netomi
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Newrich Network
   platform: workable
   slug: newrich-network
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Next Level Business Services
   platform: smartrecruiters
   slug: nextlevelbusinessservicesinc2
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: NielsenIQ
   platform: smartrecruiters
   slug: nielseniq
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Nium
   platform: lever
   slug: nium
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: nubank
   platform: greenhouse
   slug: nubank
@@ -7219,13 +7219,13 @@
   slug: nvizziocreations
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: NXP
   platform: workday
   slug: nxp
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: nxp
   workday_site: careers
@@ -7253,7 +7253,7 @@
   slug: olg
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: olg
   workday_site: Careers
@@ -7290,7 +7290,7 @@
   slug: optiv
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: optiv
   workday_site: Optiv_Careers
@@ -7302,13 +7302,13 @@
   slug: penninteractive
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: pentair
   platform: workday
   slug: pentair
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: pentair
   workday_site: Pentair_Careers
@@ -7320,13 +7320,13 @@
   slug: peoplecanfly
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Philips
   platform: workday
   slug: philips
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: philips
   workday_site: jobs-and-careers
@@ -7338,7 +7338,7 @@
   slug: plugpower
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: plugpower
   workday_site: Plug_Power_Inc
@@ -7350,7 +7350,7 @@
   slug: pluralsight
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: pluralsight
   workday_site: Careers
@@ -7379,7 +7379,7 @@
   slug: puzzle-cats
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
     the slug folds to the caption and the board returned 1 job(s)'
 - name: QS Quacquarelli Symonds
@@ -7403,7 +7403,7 @@
   slug: quince
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
   name_gate_exempt: true
 - name: Rackspace Technology
   platform: lever
@@ -7418,7 +7418,7 @@
   slug: ramp
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 128 job(s)'
 - name: RAPP
@@ -7426,13 +7426,13 @@
   slug: rapp
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Red Barrels
   platform: bamboohr
   slug: redbarrels
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: reflector entertainment
@@ -7448,7 +7448,7 @@
   slug: relicentertainment
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: Reltio
@@ -7456,13 +7456,13 @@
   slug: reltio
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Remote
   platform: greenhouse
   slug: remotecom
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Resolver
   platform: jobvite
   slug: resolver
@@ -7478,7 +7478,7 @@
   slug: rocket
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: rocket
   workday_site: rocket_careers
@@ -7490,13 +7490,13 @@
   slug: rockstargames
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Rolls-Royce
   platform: workday
   slug: rollsroyce
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: rollsroyce
   workday_site: professional
@@ -7508,13 +7508,13 @@
   slug: rovio-2
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Ruselle Investments
   platform: workday
   slug: russell
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: russell
   workday_site: russellinvestments
@@ -7526,19 +7526,19 @@
   slug: rushstreetinteractive
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Safari AI
   platform: greenhouse
   slug: safariai
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Sailpoint
   platform: workday
   slug: sailpoint
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: sailpoint
   workday_site: SailPoint
@@ -7550,13 +7550,13 @@
   slug: sandboxvr
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: SandboxAQ
   platform: ashby
   slug: sandboxaq
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 33 job(s)'
 - name: Saviynt
@@ -7564,13 +7564,13 @@
   slug: saviynt
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Scientific Games
   platform: workday
   slug: sglottery
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: sglottery
   workday_site: ScientificGamesExternalCareers
@@ -7582,13 +7582,13 @@
   slug: scopely
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Semtech
   platform: workday
   slug: semtech
   priority: low
   source_of_record: openjobs
-  last_verified: *id006
+  last_verified: *id007
   workday_tenant: semtech
   workday_site: SemtechCareers
   workday_dc: wd1
@@ -7597,13 +7597,13 @@
   slug: shyftlabs
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: SideFX
   platform: bamboohr
   slug: sidefx
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
 - name: Sierra
@@ -7611,7 +7611,7 @@
   slug: sierra
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 191 job(s)'
 - name: Signal Space Lab
@@ -7628,13 +7628,13 @@
   slug: sikaag
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Silicon Labs
   platform: workday
   slug: silabs
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: silabs
   workday_site: SiliconlabsCareers
@@ -7646,7 +7646,7 @@
   slug: simcorp
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: simcorp
   workday_site: SimCorp_Jobs
@@ -7658,35 +7658,35 @@
   slug: sitetracker
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: skybox labs
   platform: lever
   slug: skyboxlabs
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Smoking Gun Interactive
   platform: workable
   slug: smoking-gun-interactive-1
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Snowed In Studios
   platform: workable
   slug: snowed-in-studios-3
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Snyk
   platform: greenhouse
   slug: snyk
@@ -7700,13 +7700,13 @@
   slug: sofarsounds
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Sony Pictures Entertainment
   platform: workday
   slug: spe
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: spe
   workday_site: SonyPicturesEntertainment
@@ -7718,13 +7718,13 @@
   slug: spauldingridge
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Sprinkler
   platform: workday
   slug: sprinklr
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: sprinklr
   workday_site: careers
@@ -7736,12 +7736,12 @@
   slug: square-enix
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Squeeze Studio
   platform: recruitee
   slug: squeezestudio
@@ -7753,7 +7753,7 @@
   slug: ss8
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: storytq
   platform: workable
   slug: jobs
@@ -7767,7 +7767,7 @@
   slug: substack
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 12 job(s)'
 - name: Super.com
@@ -7783,7 +7783,7 @@
   slug: supercell
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 40 job(s)'
 - name: Survay Monkey
@@ -7800,13 +7800,13 @@
   slug: swordhealth
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Synechron
   platform: workday
   slug: synechron
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: synechron
   workday_site: SynechronCareers
@@ -7818,13 +7818,13 @@
   slug: syngentagroup
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: TAG
   platform: workday
   slug: tag
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: tag
   workday_site: Tag_Careers
@@ -7845,13 +7845,13 @@
   slug: temporaltechnologies
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Tencent
   platform: workday
   slug: tencent
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: tencent
   workday_site: Tencent_Careers
@@ -7863,7 +7863,7 @@
   slug: thales
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: thales
   workday_site: Careers
@@ -7889,13 +7889,13 @@
   slug: theorchard
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: The Walt Disney Company
   platform: workday
   slug: disney
   priority: low
   source_of_record: openjobs
-  last_verified: *id009
+  last_verified: *id010
   recheck_after: *id001
   workday_tenant: disney
   workday_site: disneycareer
@@ -7914,7 +7914,7 @@
   slug: tier-9-game-studios-ltd
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
     the slug folds to the caption and the board returned 1 job(s)'
 - name: Tonic DNA
@@ -7922,13 +7922,13 @@
   slug: tonicdna1
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Toppan MErril
   platform: workday
   slug: toppanmerrill
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: toppanmerrill
   workday_site: Toppan_Merrill
@@ -7948,7 +7948,7 @@
   slug: trackvfx
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: TransPerfect
   platform: recruitee
   slug: tgs
@@ -7962,7 +7962,7 @@
   slug: transunion
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: transunion
   workday_site: TransUnion
@@ -7974,7 +7974,7 @@
   slug: trekbikes
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: trekbikes
   workday_site: TREK
@@ -7986,7 +7986,7 @@
   slug: trellix
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: trellix
   workday_site: EnterpriseCareers
@@ -7998,7 +7998,7 @@
   slug: trendmicro
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: trendmicro
   workday_site: External
@@ -8010,19 +8010,19 @@
   slug: tripledotstudios
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: TTC Global
   platform: greenhouse
   slug: ttcglobal
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Turbulent
   platform: breezy
   slug: turbulent
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
     the slug folds to the caption and the board returned 4 job(s)'
 - name: TVH
@@ -8030,7 +8030,7 @@
   slug: tvh
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: tvh
   workday_site: JobsatTVH
@@ -8042,24 +8042,24 @@
   slug: twocircles
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Udemy
   platform: greenhouse
   slug: udemy
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Uken Games
   platform: bamboohr
   slug: uken
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 3 job(s)'
 - name: Unilever
@@ -8067,7 +8067,7 @@
   slug: unilever
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: unilever
   workday_site: Unilever_Experienced_Professionals
@@ -8079,7 +8079,7 @@
   slug: unisys
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: unisys
   workday_site: External
@@ -8091,13 +8091,13 @@
   slug: upgrade
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: upwork
   platform: greenhouse
   slug: upwork
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: USE Insider
   platform: lever
   slug: useinsider
@@ -8121,24 +8121,24 @@
   slug: veeamsoftware
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Velan Studios
   platform: workable
   slug: velanstudios
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: Vertx Inc.
   platform: workday
   slug: vertexinc
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: vertexinc
   workday_site: VertexInc
@@ -8150,19 +8150,19 @@
   slug: vgw
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Vidsy
   platform: lever
   slug: vidsy
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Voldex
   platform: ashby
   slug: voldex
   priority: low
   source_of_record: openjobs
-  last_verified: *id010
+  last_verified: *id011
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 7 job(s)'
 - name: Walmart
@@ -8183,24 +8183,24 @@
   slug: waveapps
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: We are social
   platform: workable
   slug: we-are-social-1
   priority: low
   source_of_record: openjobs
+  paused_until: *id003
   enabled: false
-  notes: '2026-08-14: parked until 2026-08-18 after two 429s in one day, the second
-    after only 7 requests. A rate block cannot express this - RateState clamps blocked_until
-    to 24h from updated_at - so the pause lives here. Re-enable on 2026-08-18; the
-    conservative tier''s 10h refresh window then holds it to about 88 requests a day,
-    under the ~150 where it complained'
+  notes: '2026-08-14: paused until 2026-08-18 after two 429s in one day, the second
+    after only 7 requests. paused_until resumes it automatically; the conservative
+    tier''s 10h refresh window then holds it to about 88 requests a day, under the
+    ~150 where it complained'
 - name: WebFX
   platform: lever
   slug: webfx
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: WebTech Corporation
   platform: workday
   slug: wabtec
@@ -8228,7 +8228,7 @@
   slug: wildbrain
   priority: low
   source_of_record: openjobs
-  last_verified: *id003
+  last_verified: *id004
 - name: Wind River
   platform: jobvite
   slug: windriver
@@ -8252,7 +8252,7 @@
   slug: wk
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: wk
   workday_site: External
@@ -8264,25 +8264,25 @@
   slug: wongdoody
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Workato
   platform: greenhouse
   slug: workato
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Xsolla
   platform: lever
   slug: xsolla
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Yahoo
   platform: workday
   slug: ouryahoo
   priority: low
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: *id006
   recheck_after: *id001
   workday_tenant: ouryahoo
   workday_site: careers
@@ -8302,7 +8302,7 @@
   slug: zeeco
   priority: low
   source_of_record: openjobs
-  last_verified: *id008
+  last_verified: *id009
 - name: Ziff Davis
   platform: jobvite
   slug: ziffdavis
@@ -8318,7 +8318,7 @@
   slug: zinnia
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
 - name: Zuru
   platform: lever
   slug: zuru

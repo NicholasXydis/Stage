@@ -24,10 +24,14 @@ class Company:
     name_gate_exempt: bool = False
     notes: str | None = None
     recheck_after: date | None = None
+    paused_until: date | None = None
     custom: CustomBoard | None = None
 
     def due_for_recheck(self, today: date) -> bool:
         return self.recheck_after is not None and self.recheck_after <= today
+
+    def pause_elapsed(self, today: date) -> bool:
+        return self.paused_until is not None and self.paused_until <= today
 
     @property
     def registry_key(self) -> str:

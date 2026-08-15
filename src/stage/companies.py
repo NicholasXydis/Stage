@@ -3,7 +3,8 @@ import os
 import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from datetime import date
+from dataclasses import replace
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -182,6 +183,7 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
         rate_profile=_optional_str(row, "rate_profile"),
         last_verified=_parse_date(row, "last_verified", index),
         recheck_after=_parse_date(row, "recheck_after", index),
+        paused_until=_parse_date(row, "paused_until", index),
         source_of_record=source_of_record,
         workday_tenant=_optional_str(row, "workday_tenant"),
         workday_site=_optional_str(row, "workday_site"),
@@ -223,6 +225,8 @@ def _registry_row(company: Company) -> dict[str, Any]:
         row["last_verified"] = company.last_verified
     if company.recheck_after is not None:
         row["recheck_after"] = company.recheck_after
+    if company.paused_until is not None:
+        row["paused_until"] = company.paused_until
     for key in (
         "workday_tenant",
         "workday_site",
@@ -327,8 +331,9 @@ def write_registry(companies: Sequence[Company], path: Path | None = None) -> Pa
         return _write_registry(companies, target)
 
 
-def load_companies(path: Path | None = None) -> tuple[Company, ...]:
+def load_companies(path: Path | None = None, today: date | None = None) -> tuple[Company, ...]:
     source = path or registry_path()
+    moment = today or datetime.now(UTC).date()
     if not source.exists():
         raise RegistryError(f"registry not found at {source}")
 
@@ -355,8 +360,14 @@ def load_companies(path: Path | None = None) -> tuple[Company, ...]:
                 f"companies.yaml entry {index}: duplicate board {board_label(company)}"
             )
         seen.add(key)
-        companies.append(company)
+        companies.append(_resume_if_due(company, moment))
     return tuple(companies)
+
+
+def _resume_if_due(company: Company, today: date) -> Company:
+    if company.paused_until is None or not company.pause_elapsed(today):
+        return company
+    return replace(company, enabled=True, paused_until=None)
 
 
 def update_registry[T](

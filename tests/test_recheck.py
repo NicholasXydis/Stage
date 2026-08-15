@@ -136,3 +136,74 @@ async def test_doctor_without_a_registry_reports_nothing_due(db_path: Path) -> N
 def test_the_shipped_registry_carries_structured_dates_not_only_prose() -> None:
     dated = [row for row in load_companies() if row.recheck_after is not None]
     assert len(dated) >= 50, f"only {len(dated)} rows carry a machine-readable expiry"
+
+
+def _paused(name: str, until: date | None) -> Company:
+    return Company(
+        name=name,
+        platform=Platform.GREENHOUSE,
+        slug=name.lower(),
+        enabled=False,
+        notes="paused after a rate limit",
+        paused_until=until,
+    )
+
+
+def test_a_pause_holds_until_its_date_then_lets_go() -> None:
+    row = _paused("Paused", date(2026, 8, 18))
+    assert not row.pause_elapsed(date(2026, 8, 17))
+    assert row.pause_elapsed(date(2026, 8, 18)), "the date itself counts as elapsed"
+    assert row.pause_elapsed(date(2026, 12, 25))
+
+
+def test_a_row_with_no_pause_is_never_resumed() -> None:
+    assert not _paused("Parked", None).pause_elapsed(date(2099, 1, 1)), (
+        "a permanently parked row must never resume by itself"
+    )
+
+
+def test_the_loader_resumes_a_paused_row_once_its_date_arrives(tmp_path: Path) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_paused("Paused", date(2026, 8, 18))], target)
+
+    before = load_companies(target, today=date(2026, 8, 17))[0]
+    after = load_companies(target, today=date(2026, 8, 18))[0]
+
+    assert not before.enabled and before.paused_until == date(2026, 8, 18)
+    assert after.enabled, "a pause is a promise to resume, not a note somebody has to action"
+    assert after.paused_until is None, "an elapsed pause is cleared so a write-back cannot re-park"
+
+
+def test_a_pause_never_resumes_a_row_parked_without_one(tmp_path: Path) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_paused("Dead", None)], target)
+    assert not load_companies(target, today=date(2099, 1, 1))[0].enabled
+
+
+def test_recheck_after_does_not_resume_anything(tmp_path: Path) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_company("Parked", date(2026, 10, 1))], target)
+    row = load_companies(target, today=date(2027, 1, 1))[0]
+    assert not row.enabled, (
+        "recheck_after asks a human to look; only paused_until resumes a row on its own"
+    )
+    assert row.recheck_after == date(2026, 10, 1)
+
+
+def test_the_pause_round_trips_through_the_registry(tmp_path: Path) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_paused("Paused", date(2026, 8, 18))], target)
+    row = load_companies(target, today=date(2026, 8, 1))[0]
+    assert row.paused_until == date(2026, 8, 18)
+    assert row.notes, "the prose reason survives beside the structured date"
+
+
+def test_the_shipped_registry_resumes_workable_on_the_eighteenth() -> None:
+    from stage.domain import Platform as _Platform
+
+    def workable(when: date) -> int:
+        rows = load_companies(today=when)
+        return sum(1 for row in rows if row.platform is _Platform.WORKABLE and row.enabled)
+
+    assert workable(date(2026, 8, 17)) == 0, "Workable stays out while it is rate limited"
+    assert workable(date(2026, 8, 18)) > 0, "and comes back on its own, with no action from anyone"
