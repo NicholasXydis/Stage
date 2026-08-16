@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from stage.domain import (
     QuarantineFilters,
     RejectionReason,
     RoleCategory,
+    SourceSignals,
 )
 from stage.services.maintenance import rescreen
 from stage.storage import open_repository
@@ -181,7 +183,12 @@ async def test_rescreen_never_rewrites_a_stored_classification(db_path: Path) ->
         SourceBatch(
             source="simplify",
             run_started_at=NOW,
-            jobs=(_job("simplify:feed:1", "Summer Intern", role=RoleCategory.QUANT),),
+            jobs=(
+                replace(
+                    _job("simplify:feed:1", "Summer Intern", role=RoleCategory.QUANT),
+                    signals=SourceSignals(category="Quant"),
+                ),
+            ),
         )
     )
     store._conn.execute("UPDATE jobs SET term = 'summer-2027' WHERE id = 'simplify:feed:1'")
@@ -195,7 +202,7 @@ async def test_rescreen_never_rewrites_a_stored_classification(db_path: Path) ->
     store = SqliteRepository.connect(db_path)
     row = store._conn.execute("SELECT term, role FROM jobs WHERE id = 'simplify:feed:1'").fetchone()
     assert (row["term"], row["role"]) == ("summer-2027", RoleCategory.QUANT.value), (
-        "SourceSignals are not stored, so re-deriving term or role would lose the feed fields"
+        "re-deriving term or role from a thin title would lose what the feed published"
     )
     store.close()
 

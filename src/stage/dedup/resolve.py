@@ -47,6 +47,22 @@ def resolve_duplicates(
             job_id = parent[job_id]
         return job_id
 
+    order = {job.id: index for index, job in enumerate(jobs)}
+
+    def union(left_id: str, right_id: str) -> None:
+        left_root, right_root = find(left_id), find(right_id)
+        if left_root == right_root:
+            return
+        if order[right_root] < order[left_root]:
+            left_root, right_root = right_root, left_root
+        parent[right_root] = left_root
+        boards[left_root] |= boards[right_root]
+        sources[left_root] |= sources[right_root]
+
+    for job in jobs:
+        if job.duplicate_of and job.duplicate_of in parent:
+            union(job.id, job.duplicate_of)
+
     touched = {job.id for job in incoming}
     for index, left in enumerate(jobs):
         for right in jobs[index + 1 :]:

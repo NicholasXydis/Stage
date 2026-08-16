@@ -29,6 +29,7 @@ from stage.domain import (
     RemoteScope,
     RoleCategory,
     SourceRunStats,
+    SourceSignals,
     SourceVisit,
     SyncOutcome,
     SyncRun,
@@ -90,6 +91,8 @@ _JOB_COLUMNS = (
     "work_auth_flag",
     "degree_requirement",
     "compensation",
+    "employment_type",
+    "source_category",
     "status",
     "first_seen",
     "last_seen",
@@ -116,6 +119,8 @@ _UPDATE_ON_CONFLICT = (
     "work_auth_flag = excluded.work_auth_flag",
     "degree_requirement = excluded.degree_requirement",
     "compensation = excluded.compensation",
+    "employment_type = excluded.employment_type",
+    "source_category = excluded.source_category",
     "status = excluded.status",
     "last_seen = excluded.last_seen",
     "source_posted_at = excluded.source_posted_at",
@@ -274,6 +279,10 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         work_auth_flag=bool(row["work_auth_flag"]),
         degree_requirement=DegreeRequirement(row["degree_requirement"]),
         compensation=row["compensation"],
+        signals=SourceSignals(
+            employment_type=row["employment_type"],
+            category=row["source_category"],
+        ),
         status=JobStatus(row["status"]),
         first_seen=_require_datetime(row["first_seen"], "first_seen"),
         last_seen=_require_datetime(row["last_seen"], "last_seen"),
@@ -303,6 +312,8 @@ def _job_to_params(job: Job) -> tuple[Any, ...]:
         int(job.work_auth_flag),
         job.degree_requirement.value,
         job.compensation,
+        job.signals.employment_type,
+        job.signals.category,
         job.status.value,
         _to_text(job.first_seen),
         _to_text(job.last_seen),
@@ -474,9 +485,15 @@ class SqliteRepository:
             )
             return 0
         pairs = [
-            (str(link.duplicate_id), str(link.canonical_id))  # type: ignore[attr-defined]
-            for link in links
+            (duplicate, canonical)
+            for duplicate, canonical in (
+                (str(link.duplicate_id), str(link.canonical_id))  # type: ignore[attr-defined]
+                for link in links
+            )
+            if board_of(duplicate, duplicate) != board_of(canonical, canonical)
         ]
+        if not pairs:
+            return 0
         duplicates = {duplicate for duplicate, _ in pairs}
         canonicals = {canonical for _, canonical in pairs}
         self._conn.executemany(

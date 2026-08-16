@@ -18,6 +18,8 @@ CREATE TABLE jobs (
     degree_requirement  TEXT NOT NULL DEFAULT 'unknown',
     work_auth_flag      INTEGER NOT NULL DEFAULT 0,
     compensation        TEXT,
+    employment_type     TEXT NOT NULL DEFAULT '',
+    source_category     TEXT NOT NULL DEFAULT '',
     status              TEXT NOT NULL DEFAULT 'open',
     duplicate_of        TEXT,
     first_seen          TEXT NOT NULL,

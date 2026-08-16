@@ -53,7 +53,7 @@ def applied_versions(conn: sqlite3.Connection) -> tuple[int, ...]:
     return tuple(int(row[0]) for row in rows)
 
 
-BASELINE_COLUMNS = frozenset({"company_fold"})
+BASELINE_COLUMNS = frozenset({"company_fold", "employment_type", "source_category"})
 BASELINE_TABLES = frozenset({"coverage_classifications", "workday_crawls", "workday_crawl_seen"})
 
 
