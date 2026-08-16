@@ -224,13 +224,6 @@ def test_folding_makes_accents_irrelevant_to_matching(accented: str, plain: str)
     assert resolve_location(accented) == resolve_location(plain)
 
 
-def test_evidence_names_what_matched() -> None:
-    resolved = resolve_location("Montréal, QC, Canada")
-    assert "montreal" in resolved.evidence
-    assert "canada" in resolved.evidence
-    assert resolve_location("N/A").evidence == ()
-
-
 def test_location_lexicon_stays_out_of_the_company_namespace() -> None:
     from stage.lexicon import generic_company_tokens, location_lexicon
 

@@ -437,6 +437,18 @@ swe:
   - ingénieur d'applications logicielles aérospatiales
   - logiciel de mission
   - logiciels et jeux
+  - algorithm
+  - compiler
+  - member of technical staff
+  - web app
+  - web application
+  - application web
+  - system engineer
+  - blockchain
+  - chaine de blocs
+  - ingenieur systemes
+  - web development
+  - algorithme
 security:
   - security engineer
   - security engineering
@@ -711,6 +723,7 @@ security:
   - secure cloud platform
   - ia pour la sécurité réseau et l orchestration
   - plateforme infonuagique sécurisée
+  - it security
 data:
   - analytics
   - visualization engineer
@@ -1189,6 +1202,25 @@ ml-ai:
   - ia pour le raisonnement scientifique
   - modèles du monde vidéo
   - imagerie infrarouge et algorithmes
+  - ai agent
+  - agent ia
+  - ai solutions
+  - solutions ia
+  - ai builder
+  - ai integration
+  - integration ia
+  - ml model
+  - modele d apprentissage automatique
+  - ml scientist
+  - ml ai
+  - ai r and d engineering
+  - ingenierie r et d ia
+  - apprentissage par renforcement
+  - 3d vision
+  - vision 3d
+  - model shaping
+  - agent systems
+  - systemes d agents
 quant:
   - quantitative
   - quantitative researcher
@@ -1400,6 +1432,8 @@ quant:
   - methodes numeriques
   - mathematiques computationnelles
   - recherche algorithmique
+  - quant risk
+  - risque quantitatif
 infra:
   - cloud services
   - cloud operations
@@ -1696,151 +1730,10 @@ infra:
   - ai for intent based networking
   - ingénierie de bases de données
   - ia pour les réseaux pilotés par intention
-hardware:
-  - hardware engineer
-  - hardware engineering
-  - asic
-  - fpga
-  - rtl design
-  - verification engineer
-  - silicon engineer
-  - chip design
-  - vlsi
-  - analog design
-  - digital design
-  - analog ic design
-  - digital ic design
-  - conception de circuits intégrés analogiques
-  - conception de circuits intégrés numériques
-  - pcb
-  - signal integrity
-  - semiconductor
-  - genie electrique
-  - ingénieur matériel
-  - conception de circuits
-  - microélectronique
-  - electrical engineer
-  - electrical engineering
-  - ingénieur électrique
-  - computer engineer
-  - computer hardware engineer
-  - computer systems engineer
-  - hardware systems engineer
-  - hardware software integration
-  - hardware validation
-  - hardware verification
-  - design verification
-  - formal verification
-  - physical design
-  - cpu architecture
-  - computer architecture
-  - processor architecture
-  - data movement architecture
-  - silicon engineering
-  - gpu driver engineer
-  - board support package engineer
-  - bsp developer
-  - avionics software
-  - aerospace software engineer
-  - medical device software
-  - electronics engineer
-  - electrical and electronics engineer
-  - network hardware engineer
-  - telecommunications hardware engineer
-  - ingenieur electronique
-  - ingenieure electronique
-  - genie electronique
-  - ingenierie electronique
-  - conception electronique
-  - fpga developer
-  - fpga verification
-  - asic verification
-  - digital verification
-  - semiconductor software
-  - digital signal processor
-  - gpu software engineer
-  - ingenieur logiciel gpu
-  - quantum hardware
-  - photonics engineer
-  - developpeur fpga
-  - verification fpga
-  - verification asic
-  - verification numerique
-  - logiciel de semiconducteurs
-  - processeur de signal numerique
-  - materiel quantique
-  - ingenieur photonique
-  - ingenieure photonique
-  - hardware design engineer
-  - logic design engineer
-  - soc engineer
-  - system on chip
-  - soc verification
-  - soc architecture
-  - design for test
-  - dft engineer
-  - testbench engineer
-  - emulation engineer
-  - chip validation engineer
-  - post silicon validation
-  - silicon validation
-  - analog modeling and testing
-  - chip simulation software
-  - robotic hardware
-  - developpement materiel
-  - static timing analysis
-  - physical verification
-  - synthesis engineer
-  - eda engineer
-  - electronic design automation
-  - ai accelerator engineer
-  - accelerator architecture
-  - gpu architecture
-  - hardware security engineer
-  - rf systems engineer
-  - ingenieur conception materielle
-  - ingenieure conception materielle
-  - ingenieur conception logique
-  - ingenieure conception logique
-  - ingenieur soc
-  - ingenieure soc
-  - systeme sur puce
-  - verification soc
-  - architecture soc
-  - conception pour les tests
-  - ingenieur dft
-  - ingenieure dft
-  - ingenieur banc de test
-  - ingenieure banc de test
-  - ingenieur emulation
-  - ingenieure emulation
-  - ingenieur validation de puce
-  - ingenieure validation de puce
-  - validation post silicium
-  - analyse temporelle statique
-  - verification physique
-  - ingenieur synthese
-  - ingenieure synthese
-  - ingenieur eda
-  - ingenieure eda
-  - automatisation de la conception electronique
-  - ingenieur accelerateur ia
-  - ingenieure accelerateur ia
-  - architecture accelerateur
-  - architecture gpu
-  - ingenieur securite materielle
-  - ingenieure securite materielle
-  - ingenieur systemes rf
-  - ingenieure systemes rf
-
-  - ml compiler
-  - ai accelerator software
-  - computer aided manufacturing
-  - compilateur aa
-  - logiciel d accelerateur ia
-  - fabrication assistee par ordinateur
-  - mechatronic systems and ai design
-  - systèmes mécatroniques et conception ia
+  - cloud solution
+  - solution infonuagique
+  - ai infra
+  - infrastructure ia
 embedded:
   - controls engineering
   - automation and controls
@@ -2046,6 +1939,7 @@ embedded:
   - logiciel d automatisation de laboratoire
   - ai for functional avionics
   - ia pour l avionique fonctionnelle
+  - robotics
 general-cs:
   - computer science
   - computer engineering
@@ -2069,9 +1963,6 @@ source_categories:
   swe:
     - Software
     - Software Engineering
-  hardware:
-    - Hardware
-    - Hardware Engineering
   quant:
     - Quant
     - Quantitative Finance

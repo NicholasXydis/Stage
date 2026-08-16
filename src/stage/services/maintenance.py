@@ -119,7 +119,6 @@ def _reclassifications(
         screen_degree_scope,
         screen_is_cs_role,
         screen_is_internship,
-        screen_location,
     )
     from stage.classify.scope import to_quarantined
     from stage.normalize import resolve_location
@@ -137,8 +136,7 @@ def _reclassifications(
         )
         candidates.append(candidate)
         rejection = (
-            screen_location(candidate, location.evidence)
-            or screen_is_internship(candidate)
+            screen_is_internship(candidate)
             or screen_degree_scope(candidate)
             or screen_is_cs_role(candidate)
         )

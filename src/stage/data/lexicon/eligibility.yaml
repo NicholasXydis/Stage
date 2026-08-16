@@ -83,7 +83,6 @@ degree_list_tokens:
   - bachelor s
   - bs
   - bsc
-  - ba
   - beng
   - undergraduate
   - undergrad
@@ -226,6 +225,31 @@ excluded_titles:
   - avant vente
   - consultant en solutions
 
+  - mechanical engineering
+  - mechanical engineer
+  - chemical engineering
+  - chemical engineer
+  - biochemical
+  - civil engineering
+  - civil engineer
+  - materials engineering
+  - materials engineer
+  - electrical engineering
+  - electrical engineer
+  - cnc
+  - machining
+  - machinist
+  - machine park
+  - genie mecanique
+  - genie chimique
+  - genie civil
+  - genie electrique
+  - thermal
+  - human resources
+  - ressources humaines
+  - accounting
+  - comptabilite
+  - sales and trading
 technical_title_exceptions:
   - vehicle software engineer diagnostic user interface
   - fullstack c engineer intern vehicle user interface
@@ -249,3 +273,34 @@ technical_title_exceptions:
   - developpeuse
   - genie logiciel
   - developpement logiciel
+  - embedded software
+undergraduate_tokens:
+  - bachelor
+  - bachelors
+  - bachelor s
+  - bs
+  - bsc
+  - beng
+  - b eng
+  - undergraduate
+  - undergrad
+  - ug
+  - licence
+  - baccalaureat
+  - bac 3
+graduate_title_tokens:
+  - masters
+  - master s
+  - msc
+  - ms
+  - m eng
+  - mba
+  - master student
+  - master thesis
+  - graduate student
+  - grad student
+  - postgraduate
+  - mastere
+  - bac 5
+  - etudiant a la maitrise
+  - memoire de maitrise

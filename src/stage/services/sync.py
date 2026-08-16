@@ -11,7 +11,6 @@ from stage.classify import (
     screen_degree_scope,
     screen_is_cs_role,
     screen_is_internship,
-    screen_location,
     to_quarantined,
 )
 from stage.dedup import resolve_duplicates
@@ -228,8 +227,7 @@ def normalize_batch(jobs: Sequence[Job]) -> tuple[tuple[Job, ...], tuple[Quarant
             work_auth_flag=eligibility.work_auth_flag,
         )
         rejection = (
-            screen_location(normalized, location.evidence)
-            or screen_is_internship(normalized)
+            screen_is_internship(normalized)
             or screen_degree_scope(normalized)
             or screen_is_cs_role(normalized)
         )

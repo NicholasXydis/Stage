@@ -109,11 +109,11 @@
       }
     },
     {
-      "id": "hardware-en",
+      "id": "firmware-en",
       "input": {
         "source": "greenhouse",
         "company": "AMD",
-        "title_raw": "FPGA Design Intern",
+        "title_raw": "Firmware Engineer Intern",
         "location_raw": "Markham, ON, Canada",
         "signals": {}
       },
@@ -122,8 +122,8 @@
         "location": "canada",
         "remote_scope": null,
         "term": "unknown",
-        "role": "hardware",
-        "language": "unknown"
+        "role": "embedded",
+        "language": "en"
       }
     },
     {
@@ -217,11 +217,11 @@
       }
     },
     {
-      "id": "embedded-fr",
+      "id": "firmware-fr",
       "input": {
         "source": "greenhouse",
         "company": "CAE",
-        "title_raw": "Stagiaire — logiciel embarqué",
+        "title_raw": "Stagiaire en micrologiciel embarqué",
         "location_raw": "Saint-Laurent, QC, Canada",
         "signals": {}
       },
@@ -381,10 +381,12 @@
         "signals": {}
       },
       "expected": {
-        "kept": false,
-        "reason": "unknown-location",
-        "matched_phrase": "remote",
-        "location": "unknown"
+        "kept": true,
+        "location": "unknown",
+        "remote_scope": "remote-unspecified",
+        "term": "unknown",
+        "role": "swe",
+        "language": "en"
       }
     },
     {
@@ -626,11 +628,11 @@
       }
     },
     {
-      "id": "hardware-en-full",
+      "id": "firmware-en-full",
       "input": {
         "source": "greenhouse",
         "company": "NVIDIA",
-        "title_raw": "Hardware Engineering Intern, Summer 2027",
+        "title_raw": "Firmware Engineer Intern, Summer 2027",
         "location_raw": "Santa Clara, CA, USA",
         "signals": {}
       },
@@ -639,7 +641,7 @@
         "location": "usa",
         "remote_scope": null,
         "term": "summer-2027",
-        "role": "hardware",
+        "role": "embedded",
         "language": "en"
       }
     },
@@ -680,11 +682,11 @@
       }
     },
     {
-      "id": "hardware-fr",
+      "id": "embedded-fr",
       "input": {
         "source": "greenhouse",
         "company": "CAE",
-        "title_raw": "Stagiaire en génie électrique",
+        "title_raw": "Stagiaire en logiciel embarqué",
         "location_raw": "Montréal, QC, Canada",
         "signals": {}
       },
@@ -693,7 +695,7 @@
         "location": "montreal",
         "remote_scope": null,
         "term": "unknown",
-        "role": "hardware",
+        "role": "embedded",
         "language": "fr"
       }
     }

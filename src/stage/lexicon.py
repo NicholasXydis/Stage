@@ -157,7 +157,6 @@ ROLE_CATEGORIES: tuple[str, ...] = (
     "ml-ai",
     "quant",
     "infra",
-    "hardware",
     "embedded",
     "general-cs",
 )
@@ -214,6 +213,8 @@ class EligibilityLexicon:
     phd_required: frozenset[str]
     phd_title_tokens: frozenset[str]
     degree_list_tokens: frozenset[str]
+    undergraduate_tokens: frozenset[str]
+    graduate_title_tokens: frozenset[str]
 
 
 @lru_cache(maxsize=1)
@@ -236,6 +237,8 @@ def eligibility_lexicon() -> EligibilityLexicon:
         phd_required=_folded_phrases(payload, "phd_required", source),
         phd_title_tokens=_folded_phrases(payload, "phd_title_tokens", source),
         degree_list_tokens=_folded_phrases(payload, "degree_list_tokens", source),
+        undergraduate_tokens=_folded_phrases(payload, "undergraduate_tokens", source),
+        graduate_title_tokens=_folded_phrases(payload, "graduate_title_tokens", source),
     )
 
 

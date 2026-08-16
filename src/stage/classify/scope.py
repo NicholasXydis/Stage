@@ -1,23 +1,12 @@
 from dataclasses import dataclass
 
-from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
+from stage.domain import Job, QuarantinedJob, RejectionReason
 
 
 @dataclass(frozen=True, slots=True)
 class Rejection:
     reason: RejectionReason
     matched_phrase: str
-
-
-def screen_location(job: Job, evidence: tuple[str, ...] = ()) -> Rejection | None:
-    if job.location is not LocationBucket.UNKNOWN:
-        return None
-    if job.remote_scope is None:
-        return None
-    return Rejection(
-        reason=RejectionReason.UNKNOWN_LOCATION,
-        matched_phrase=", ".join(evidence) or "remote is not a location",
-    )
 
 
 def screen_is_internship(job: Job) -> Rejection | None:

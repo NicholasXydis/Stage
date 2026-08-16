@@ -263,7 +263,7 @@ def test_a_phd_mention_that_is_not_a_requirement_is_kept(body: str) -> None:
         "Software Engineering Intern",
         "Stagiaire en génie logiciel",
         "Machine Learning Intern",
-        "Data Science Intern - Master's or PhD",
+        "Data Science Intern - Bachelor's, Master's or PhD",
     ],
 )
 def test_a_title_naming_a_lower_degree_beside_the_doctorate_is_kept(title: str) -> None:

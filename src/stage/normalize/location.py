@@ -13,7 +13,6 @@ _FIELD_SPLIT = re.compile(r"[,\-]+")
 class ResolvedLocation:
     bucket: LocationBucket = LocationBucket.UNKNOWN
     remote_scope: RemoteScope | None = None
-    evidence: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,7 +22,6 @@ class _Segment:
     usa: bool
     international: bool
     remote: bool
-    evidence: tuple[str, ...]
 
 
 class _PhraseIndex:
@@ -86,7 +84,7 @@ def _code_hits(segment: str, lexicon: LocationLexicon) -> tuple[bool, bool]:
 def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
     folded = fold(segment)
     if not folded:
-        return _Segment(False, False, False, False, False, ())
+        return _Segment(False, False, False, False, False)
     hits = _index().hits(folded)
     found = {category for category, _ in hits}
     international_phrases = {
@@ -131,7 +129,6 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
         usa=usa,
         international=international,
         remote="remote" in found,
-        evidence=tuple(sorted(phrase for _, phrase in hits)),
     )
 
 
@@ -164,7 +161,6 @@ def resolve_location(raw: str) -> ResolvedLocation:
     if not segments:
         return ResolvedLocation()
 
-    evidence = tuple(sorted({phrase for segment in segments for phrase in segment.evidence}))
     scope = _scope(segments)
 
     if any(segment.montreal for segment in segments):
@@ -178,4 +174,4 @@ def resolve_location(raw: str) -> ResolvedLocation:
     else:
         bucket = LocationBucket.UNKNOWN
 
-    return ResolvedLocation(bucket=bucket, remote_scope=scope, evidence=evidence)
+    return ResolvedLocation(bucket=bucket, remote_scope=scope)

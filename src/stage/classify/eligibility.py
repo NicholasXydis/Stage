@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from stage.classify.role import classify_role
 from stage.classify.scope import Rejection
-from stage.domain import DegreeRequirement, Job, RejectionReason, RoleCategory
+from stage.domain import DegreeRequirement, Job, RejectionReason
 from stage.lexicon import eligibility_lexicon, fold
 
 _ORDER = ("phd", "masters", "bachelors")
@@ -75,9 +75,13 @@ def screen_degree_scope(job: Job) -> Rejection | None:
 
     title = fold(job.title_raw)
     token = _hit(title, lexicon.phd_title_tokens)
-    if not token or _hit(title, lexicon.degree_list_tokens):
-        return None
-    return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=token)
+    if token and not _hit(title, lexicon.degree_list_tokens):
+        return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=token)
+
+    graduate = _hit(title, lexicon.graduate_title_tokens) or token
+    if graduate and not _hit(title, lexicon.undergraduate_tokens):
+        return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=graduate)
+    return None
 
 
 def screen_is_cs_role(job: Job) -> Rejection | None:
@@ -94,7 +98,7 @@ def screen_is_cs_role(job: Job) -> Rejection | None:
     if phrase:
         return Rejection(reason=RejectionReason.NOT_A_CS_ROLE, matched_phrase=phrase)
 
-    if title_verdict.matched or job.role is not RoleCategory.UNKNOWN:
+    if title_verdict.matched:
         return None
     return Rejection(
         reason=RejectionReason.UNKNOWN_CS_ROLE,
