@@ -23,7 +23,7 @@
   slug: coveofr
   priority: high
   source_of_record: discover
-  last_verified: &id014 2026-08-08
+  last_verified: &id015 2026-08-08
   name_gate_exempt: true
   notes: '2026-08-08: board publishes the name ''Coveo Solutions''; the name gate
     rejects this caption, and the board is confirmed correct'
@@ -662,6 +662,15 @@
   workday_dc: wd103
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Arevon
+  platform: greenhouse
+  slug: arevonenergyimpltest
+  priority: normal
+  source_of_record: discover
+  last_verified: 2026-08-15
+  notes: '2026-08-15: seen in feed postings but absent from the registry; discover
+    matched greenhouse/arevonenergyimpltest with 12 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
 - name: Argmax
   platform: greenhouse
   slug: argmax
@@ -1458,6 +1467,16 @@
   workday_facet: workerSubType:3cd342d9804f01e3bd250104bb00c80e
   notes: '2026-08-13: official Workday endpoint verified; its Intern (Fixed Term)
     facet has 26 listings.'
+- name: Chicago Trading Company
+  platform: greenhouse
+  slug: chicagotradingcampus
+  priority: normal
+  source_of_record: discover
+  last_verified: &id011 2026-08-15
+  name_gate_exempt: true
+  notes: '2026-08-15: token taken from the employer''s own apply URL in feed postings;
+    the board publishes the name ''CTC Campus - Website'' (CTC = Chicago Trading Company,
+    a campus board), so the name gate rejects a correct caption'
 - name: CIBC (campus)
   platform: workday
   slug: cibc
@@ -4443,7 +4462,7 @@
   slug: quora
   priority: normal
   source_of_record: openjobs
-  last_verified: &id011 2026-08-11
+  last_verified: &id012 2026-08-11
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 5 job(s)'
 - name: Radix Trading
@@ -4791,6 +4810,16 @@
   priority: normal
   source_of_record: discover
   last_verified: *id002
+- name: Shift Technology
+  platform: greenhouse
+  slug: shifttechnology
+  priority: normal
+  source_of_record: discover
+  last_verified: *id011
+  notes: '2026-08-15: board verified live — 29 postings, Paris-centred insurance-fraud
+    AI including Data Science internships. The feed label ''Shift Technologies'' was
+    a variant of the real name; caption corrected rather than exempted, so the name
+    gate passes on its own'
 - name: ShopBack
   platform: lever
   slug: shopback-2
@@ -4860,6 +4889,16 @@
   priority: normal
   source_of_record: discover
   last_verified: *id004
+- name: SK Hynix Memory Solution
+  platform: greenhouse
+  slug: skhynixmemorysolutionsamericainc
+  priority: normal
+  source_of_record: discover
+  last_verified: *id011
+  name_gate_exempt: true
+  notes: '2026-08-15: token taken from the employer''s own apply URL in feed postings;
+    the board publishes the name ''SK hynix memory solutions America Inc.'', so the
+    name gate rejects a correct caption'
 - name: Skydio
   platform: ashby
   slug: skydio
@@ -4886,7 +4925,7 @@
   slug: snowflake
   priority: normal
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 391 job(s)'
 - name: SoloPulse
@@ -5000,7 +5039,7 @@
   slug: supabase
   priority: normal
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 57 job(s)'
 - name: Super.com (Ashby)
@@ -5008,7 +5047,7 @@
   slug: super.com
   priority: normal
   source_of_record: discover
-  last_verified: &id012 2026-08-14
+  last_verified: &id013 2026-08-14
   name_gate_exempt: true
   notes: '2026-08-14: board resolved from this employer''s own application URL in
     a feed posting; the older Lever row for the same employer stays disabled as a
@@ -5836,7 +5875,7 @@
   slug: zuru
   priority: normal
   source_of_record: discover
-  last_verified: *id012
+  last_verified: *id013
   name_gate_exempt: true
   notes: '2026-08-14: board resolved from this employer''s own application URL in
     a feed posting; the older Lever row for the same employer stays disabled as a
@@ -5858,7 +5897,7 @@
   slug: activategames
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 41 job(s)'
 - name: Activision
@@ -5880,7 +5919,7 @@
   slug: addepar1
   priority: low
   source_of_record: openjobs
-  last_verified: &id013 2026-08-14
+  last_verified: &id014 2026-08-14
 - name: Adtran
   platform: workday
   slug: adtran
@@ -5908,7 +5947,7 @@
   slug: adyen
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: AeroSpike
   platform: greenhouse
   slug: aerospike
@@ -5923,7 +5962,7 @@
   slug: aerovect
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 38 job(s)'
 - name: AGS - American Gaming Systems
@@ -5948,7 +5987,7 @@
   slug: alphasense
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Alphawave Semi
   platform: workday
   slug: alphawave
@@ -6007,7 +6046,7 @@
   slug: artistsanimation
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
 - name: Atomic cartoons
@@ -6015,7 +6054,7 @@
   slug: atomiccartoons
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Avalanche Studios Group
   platform: lever
   slug: avalanchestudios
@@ -6027,19 +6066,19 @@
   slug: axon
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Banyan Software
   platform: greenhouse
   slug: banyansoftware
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Barnstorm VFX
   platform: bamboohr
   slug: barnstormvfx
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 15 job(s)'
 - name: Beamdog
@@ -6096,7 +6135,7 @@
   slug: budge
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 4 job(s)'
 - name: Build Staff
@@ -6132,13 +6171,13 @@
   slug: canonical
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Capco
   platform: greenhouse
   slug: capco
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Capcom
   platform: jobvite
   slug: capcomusa
@@ -6154,7 +6193,7 @@
   slug: cargurus
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Cerebras Systems
   platform: greenhouse
   slug: cerebrassystems
@@ -6179,7 +6218,7 @@
   slug: chainguard
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Cineplex
   platform: workday
   slug: cineplex
@@ -6196,7 +6235,7 @@
   slug: cloudchamberen
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Co Active Systems
   platform: greenhouse
   slug: coactivesystems
@@ -6229,7 +6268,7 @@
   slug: commerceiq
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Compulsion Games
   platform: bamboohr
   slug: compulsiongames
@@ -6243,13 +6282,13 @@
   slug: conga
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: CookUnity
   platform: greenhouse
   slug: cookunity
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Coupa
   platform: lever
   slug: coupa
@@ -6261,7 +6300,7 @@
   slug: criticalmass
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Cubic corporation
   platform: workday
   slug: cubic
@@ -6278,7 +6317,7 @@
   slug: darkslope
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: DataVisor
@@ -6297,7 +6336,7 @@
   slug: decagon
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 128 job(s)'
 - name: deel.
@@ -6313,25 +6352,25 @@
   slug: dept
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Dialpad AI
   platform: greenhouse
   slug: dialpad
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Digital extremes
   platform: greenhouse
   slug: digitalextremes
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Diligent Corporation
   platform: greenhouse
   slug: diligentcorporation
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: DNEG
   platform: jobvite
   slug: double-negative-visual-effects
@@ -6370,7 +6409,7 @@
   slug: elevenlabs
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 238 job(s)'
 - name: Endava
@@ -6405,7 +6444,7 @@
   slug: ethernovia
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Evolution
   platform: smartrecruiters
   slug: evolution
@@ -6431,7 +6470,7 @@
   slug: fanduel
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Felix & Paul Studios
   platform: bamboohr
   slug: felixandpaul
@@ -6456,7 +6495,7 @@
   slug: finalstrikegames
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: Findem
@@ -6481,7 +6520,7 @@
   slug: fluxon
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Fortra
   platform: greenhouse
   slug: fortra
@@ -6523,7 +6562,7 @@
   slug: fullcircle
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 13 job(s)'
 - name: Game Mode One
@@ -6531,7 +6570,7 @@
   slug: gamemodeone
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 4 job(s)'
 - name: Gardens Interactive
@@ -6539,7 +6578,7 @@
   slug: gardens
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 3 job(s)'
 - name: Gigamon
@@ -6557,13 +6596,13 @@
   slug: gitlab
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: Globalization Partners
   platform: greenhouse
   slug: globalizationpartners
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
   name_gate_exempt: true
   notes: '2026-08-08: board publishes the name ''G-P''; the name gate rejects this
     caption, and the board is confirmed correct'
@@ -6572,7 +6611,7 @@
   slug: glossgenius
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
   name_gate_exempt: true
   notes: '2026-08-08: board publishes the name ''Genius AI''; the name gate rejects
     this caption, and the board is confirmed correct'
@@ -6581,19 +6620,19 @@
   slug: goatgroup
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: GoDaddy
   platform: greenhouse
   slug: godaddy
   priority: low
   source_of_record: openjobs
-  last_verified: *id013
+  last_verified: *id014
 - name: GoMotive
   platform: greenhouse
   slug: gomotive
   priority: low
   source_of_record: openjobs
-  last_verified: *id014
+  last_verified: *id015
   name_gate_exempt: true
   notes: '2026-08-08: board publishes the name ''Motive''; the name gate rejects this
     caption, and the board is confirmed correct'
@@ -6602,13 +6641,13 @@
   slug: groupon
   priority: low
   source_of_record: openjobs
-  last_verified: &id015 2026-08-11
+  last_verified: &id016 2026-08-11
 - name: Guru Studio
   platform: bamboohr
   slug: gurustudio
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
 - name: Halcyon
@@ -6616,7 +6655,7 @@
   slug: halcyon
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Haleon
   platform: workday
   slug: gsknch
@@ -6633,7 +6672,7 @@
   slug: harvey
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 388 job(s)'
 - name: Hasbro
@@ -6641,19 +6680,19 @@
   slug: hasbro
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Haven Studios Inc
   platform: greenhouse
   slug: haven
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Hawkeye Innovations
   platform: ashby
   slug: hawkeyeinnovations
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 35 job(s)'
 - name: HB studios
@@ -6678,7 +6717,7 @@
   slug: highdive
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Highspot
   platform: lever
   slug: highspot
@@ -6721,7 +6760,7 @@
   slug: iconcreative
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 25 job(s)'
 - name: ideogram
@@ -6729,7 +6768,7 @@
   slug: ideogram
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 6 job(s)'
 - name: IGG
@@ -6737,7 +6776,7 @@
   slug: igg
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 6 job(s)'
 - name: Illumina
@@ -6756,7 +6795,7 @@
   slug: imageengine
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 17 job(s)'
 - name: Interactive Brokers
@@ -6847,13 +6886,13 @@
   slug: studiokraftonboard
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Lambda
   platform: ashby
   slug: lambda
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 67 job(s)'
 - name: LangChain
@@ -6861,7 +6900,7 @@
   slug: langchain
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 101 job(s)'
 - name: Larian Studios
@@ -6954,7 +6993,7 @@
   slug: lumeto
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: Maersk
@@ -6974,7 +7013,7 @@
   slug: magicschool
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 1 job(s)'
 - name: Marsh McLennan
@@ -7003,7 +7042,7 @@
   slug: masterclass
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Match Group
   platform: lever
   slug: matchgroup
@@ -7040,7 +7079,7 @@
   slug: mercury
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: META4
   platform: smartrecruiters
   slug: meta4
@@ -7113,13 +7152,13 @@
   slug: mozilla
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Mythic Talent
   platform: bamboohr
   slug: mythictalent
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
 - name: Nagarro
@@ -7169,7 +7208,7 @@
   slug: neteasegames
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Netomi
   platform: lever
   slug: netomi
@@ -7302,7 +7341,7 @@
   slug: penninteractive
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: pentair
   platform: workday
   slug: pentair
@@ -7379,7 +7418,7 @@
   slug: puzzle-cats
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
     the slug folds to the caption and the board returned 1 job(s)'
 - name: QS Quacquarelli Symonds
@@ -7403,7 +7442,7 @@
   slug: quince
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
   name_gate_exempt: true
 - name: Rackspace Technology
   platform: lever
@@ -7418,7 +7457,7 @@
   slug: ramp
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 128 job(s)'
 - name: RAPP
@@ -7426,13 +7465,13 @@
   slug: rapp
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Red Barrels
   platform: bamboohr
   slug: redbarrels
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: reflector entertainment
@@ -7448,7 +7487,7 @@
   slug: relicentertainment
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
 - name: Reltio
@@ -7456,13 +7495,13 @@
   slug: reltio
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Remote
   platform: greenhouse
   slug: remotecom
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Resolver
   platform: jobvite
   slug: resolver
@@ -7490,7 +7529,7 @@
   slug: rockstargames
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Rolls-Royce
   platform: workday
   slug: rollsroyce
@@ -7526,13 +7565,13 @@
   slug: rushstreetinteractive
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Safari AI
   platform: greenhouse
   slug: safariai
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Sailpoint
   platform: workday
   slug: sailpoint
@@ -7556,7 +7595,7 @@
   slug: sandboxaq
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 33 job(s)'
 - name: Saviynt
@@ -7582,7 +7621,7 @@
   slug: scopely
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Semtech
   platform: workday
   slug: semtech
@@ -7603,7 +7642,7 @@
   slug: sidefx
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
 - name: Sierra
@@ -7611,7 +7650,7 @@
   slug: sierra
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 191 job(s)'
 - name: Signal Space Lab
@@ -7718,7 +7757,7 @@
   slug: spauldingridge
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Sprinkler
   platform: workday
   slug: sprinklr
@@ -7753,7 +7792,7 @@
   slug: ss8
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: storytq
   platform: workable
   slug: jobs
@@ -7767,7 +7806,7 @@
   slug: substack
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 12 job(s)'
 - name: Super.com
@@ -7783,7 +7822,7 @@
   slug: supercell
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 40 job(s)'
 - name: Survay Monkey
@@ -7845,7 +7884,7 @@
   slug: temporaltechnologies
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Tencent
   platform: workday
   slug: tencent
@@ -7889,7 +7928,7 @@
   slug: theorchard
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: The Walt Disney Company
   platform: workday
   slug: disney
@@ -7914,7 +7953,7 @@
   slug: tier-9-game-studios-ltd
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
     the slug folds to the caption and the board returned 1 job(s)'
 - name: Tonic DNA
@@ -8010,19 +8049,19 @@
   slug: tripledotstudios
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: TTC Global
   platform: greenhouse
   slug: ttcglobal
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Turbulent
   platform: breezy
   slug: turbulent
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
     the slug folds to the caption and the board returned 4 job(s)'
 - name: TVH
@@ -8053,13 +8092,13 @@
   slug: udemy
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Uken Games
   platform: bamboohr
   slug: uken
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 3 job(s)'
 - name: Unilever
@@ -8091,13 +8130,13 @@
   slug: upgrade
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: upwork
   platform: greenhouse
   slug: upwork
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: USE Insider
   platform: lever
   slug: useinsider
@@ -8121,7 +8160,7 @@
   slug: veeamsoftware
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Velan Studios
   platform: workable
   slug: velanstudios
@@ -8150,7 +8189,7 @@
   slug: vgw
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Vidsy
   platform: lever
   slug: vidsy
@@ -8162,7 +8201,7 @@
   slug: voldex
   priority: low
   source_of_record: openjobs
-  last_verified: *id011
+  last_verified: *id012
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 7 job(s)'
 - name: Walmart
@@ -8264,13 +8303,13 @@
   slug: wongdoody
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Workato
   platform: greenhouse
   slug: workato
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Xsolla
   platform: lever
   slug: xsolla
@@ -8318,7 +8357,7 @@
   slug: zinnia
   priority: low
   source_of_record: openjobs
-  last_verified: *id015
+  last_verified: *id016
 - name: Zuru
   platform: lever
   slug: zuru
