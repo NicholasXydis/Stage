@@ -41,6 +41,13 @@ class CompanyFailed:
 
 
 @dataclass(frozen=True, slots=True)
+class CompanyDeferred:
+    source: str
+    company: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
 class CompanyUnchanged:
     source: str
     company: str
@@ -177,6 +184,7 @@ SyncEvent = (
     | CompanyFinished
     | CompanyUnchanged
     | CompanyFailed
+    | CompanyDeferred
     | PlannedRequest
     | BucketPlan
     | RequestLogged

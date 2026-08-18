@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 from stage.domain import (
     BucketPlan,
     CandidateSkipped,
+    CompanyDeferred,
     CompanyFailed,
     CompanyFinished,
     CompanyUnchanged,
@@ -895,6 +896,11 @@ async def render_sync(
                 console.print(
                     f"  [red]fail[/red] {sanitize(company):<28} "
                     f"{summary(error, 60)}  {elapsed:>7.0f}ms"
+                )
+            case CompanyDeferred(company=company):
+                console.print(
+                    f"  [yellow]budget[/yellow] {sanitize(company):<26} "
+                    f"{'not attempted, deferred to the next run':>40}"
                 )
             case SourceFailed(source=source, error=error):
                 failures.append((source, source, error))

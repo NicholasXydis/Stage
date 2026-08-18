@@ -269,9 +269,13 @@ async def test_a_tripped_ceiling_is_reported_not_swallowed(
     async with open_repository(db_path) as repository:
         events = await _run_sync(repository, boards, run_time)
 
+    from stage.domain import CompanyDeferred
+
     failures = [event for event in events if isinstance(event, CompanyFailed)]
-    assert len(failures) == 2
-    assert all("ceiling" in failure.error for failure in failures)
+    deferred = [event for event in events if isinstance(event, CompanyDeferred)]
+    assert not failures, "a ceiling we imposed says nothing about the board behind it"
+    assert len(deferred) == 2
+    assert all("ceiling" in event.reason for event in deferred)
 
     finished = events[-1]
     assert isinstance(finished, SyncFinished)

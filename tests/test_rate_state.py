@@ -627,3 +627,32 @@ def test_a_rejection_still_outlives_the_run_that_saw_it() -> None:
 
     settled = budget.settle("boards-api.greenhouse.io", datetime(2026, 8, 7, tzinfo=UTC))
     assert settled.min_interval_override == pytest.approx(0.75), "a rejection persists"
+
+
+def test_the_stride_is_jittered_so_requests_do_not_land_on_a_metronome() -> None:
+    import random
+
+    from stage.http.client import STRIDE_JITTER_FRACTION, HostBudget, HttpClient
+    from stage.http.profiles import RatePosture
+
+    budget = HostBudget(posture=RatePosture(concurrency=1, min_interval_s=1.0))
+    client = HttpClient(allowed_hosts=frozenset({"x.example"}), rng=random.Random(7))
+    paced = [client._paced(budget) for _ in range(60)]
+
+    assert len(set(paced)) > 1, "a fixed stride is a metronome and this must vary"
+    assert min(paced) >= budget.stride, "jitter may only delay a request, never send it early"
+    ceiling = budget.stride * (1 + STRIDE_JITTER_FRACTION)
+    assert max(paced) <= ceiling, "and it stays inside the configured fraction"
+
+
+def test_jitter_can_be_switched_off_for_a_deterministic_test() -> None:
+    import random
+
+    from stage.http.client import HostBudget, HttpClient
+    from stage.http.profiles import RatePosture
+
+    budget = HostBudget(posture=RatePosture(concurrency=1, min_interval_s=1.0))
+    client = HttpClient(allowed_hosts=frozenset({"x.example"}), rng=random.Random(7), jitter=False)
+
+    paced = {client._paced(budget) for _ in range(10)}
+    assert paced == {budget.stride}, "jitter off means exactly the configured stride"

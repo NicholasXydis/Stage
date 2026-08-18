@@ -17,6 +17,7 @@ from stage.dedup import resolve_duplicates
 from stage.domain import (
     BucketPlan,
     Company,
+    CompanyDeferred,
     CompanyFailed,
     CompanyFinished,
     CompanyStarted,
@@ -54,6 +55,7 @@ from stage.domain import (
 from stage.http import (
     CEILING_BACKSTOP,
     HostBudget,
+    HostBudgetExceededError,
     HttpClient,
     RatePosture,
     ValidatorCache,
@@ -84,10 +86,9 @@ class NoSourcesSelectedError(Exception):
 def _bucket_postures(
     grouped: Mapping[str, tuple[Adapter, list[Company]]], feeds: Mapping[str, FeedAdapter]
 ) -> dict[str, RatePosture]:
-    claims: list[tuple[frozenset[str], str, RatePosture]] = [
+    claims: list[tuple[tuple[str, ...], RatePosture]] = [
         (
-            adapter.hosts,
-            adapter.bucket_key,
+            _adapter_buckets(adapter, companies),
             resolve(
                 adapter.rate_profile, [company.rate_profile for company in companies]
             ).sized_for(len(companies), _reserve_for(adapter)),
@@ -95,12 +96,13 @@ def _bucket_postures(
         for adapter, companies in grouped.values()
     ]
     claims.extend(
-        (feed.hosts, feed.bucket_key, resolve(feed.rate_profile, [])) for feed in feeds.values()
+        (_bucket_keys(feed.hosts, feed.bucket_key), resolve(feed.rate_profile, []))
+        for feed in feeds.values()
     )
 
     postures: dict[str, RatePosture] = {}
-    for hosts, bucket_key, posture in claims:
-        for bucket in _bucket_keys(hosts, bucket_key):
+    for keys, posture in claims:
+        for bucket in keys:
             stored = postures.get(bucket)
             postures[bucket] = posture if stored is None else stored.strictest(posture)
     return postures
@@ -108,6 +110,12 @@ def _bucket_postures(
 
 def _bucket_keys(hosts: frozenset[str], bucket_key: str) -> tuple[str, ...]:
     return (bucket_key,) if bucket_key else tuple(sorted(hosts))
+
+
+def _adapter_buckets(adapter: Adapter, companies: Sequence[Company]) -> tuple[str, ...]:
+    if adapter.bucket_key:
+        return (adapter.bucket_key,)
+    return tuple(sorted(adapter.hosts_for(companies) or adapter.hosts))
 
 
 def _reserve_for(adapter: Adapter) -> int:
@@ -248,7 +256,7 @@ async def _fetch_company(
     crawls: Mapping[str, WorkdayCrawl],
     page_budget: int,
     final_workday_pass: bool,
-) -> tuple[Company, FetchResult | None, str, float]:
+) -> tuple[Company, FetchResult | None, str, float, bool]:
     started = time.perf_counter()
     try:
         if isinstance(adapter, WorkdayAdapter):
@@ -278,10 +286,13 @@ async def _fetch_company(
                 )
         else:
             result = await adapter.fetch(company, client, now, facets, details)
+    except HostBudgetExceededError as exc:
+        elapsed = (time.perf_counter() - started) * 1000
+        return company, None, f"{type(exc).__name__}: {exc}", elapsed, False
     except Exception as exc:
         elapsed = (time.perf_counter() - started) * 1000
-        return company, None, f"{type(exc).__name__}: {exc}", elapsed
-    return company, result, "", (time.perf_counter() - started) * 1000
+        return company, None, f"{type(exc).__name__}: {exc}", elapsed, True
+    return company, result, "", (time.perf_counter() - started) * 1000, True
 
 
 def _keepable_validators(cache: ValidatorCache, skip_urls: set[str]) -> tuple[HttpValidator, ...]:
@@ -463,9 +474,10 @@ async def _run_company_source(
     force_refresh: bool,
     spent_today: Mapping[str, int],
     has_history: bool,
+    deferred_sources: list[str],
 ) -> AsyncIterator[SyncEvent]:
     source_name = adapter.name
-    buckets = _bucket_keys(adapter.hosts, adapter.bucket_key)
+    buckets = _adapter_buckets(adapter, companies)
     block = _active_block(rate_state, buckets, run_started_at)
     if block is not None:
         blocked_sources.append(source_name)
@@ -604,6 +616,7 @@ async def _run_company_source(
     workday_crawls: list[WorkdayCrawlStep] = []
     detail_outcomes: list[DetailFetch] = []
     errors = 0
+    deferred_boards = 0
     successful_results = False
 
     async with HttpClient(
@@ -634,11 +647,15 @@ async def _run_company_source(
         for company in ordered:
             yield CompanyStarted(source=source_name, company=company.name)
 
-        for company, result, error, elapsed in await asyncio.gather(*pending):
+        for company, result, error, elapsed, attempted in await asyncio.gather(*pending):
             for record in _drain(client, source_name):
                 yield record
             board = _safe_board_key(adapter, company)
-            if result is None:
+            if result is None and not attempted:
+                skip_urls.update(_safe_plan(adapter, company)[0])
+                deferred_boards += 1
+                yield CompanyDeferred(source=source_name, company=company.name, reason=error)
+            elif result is None:
                 errors += 1
                 skip_urls.update(_safe_plan(adapter, company)[0])
                 visits.append(
@@ -713,12 +730,14 @@ async def _run_company_source(
         succeeded_any.append(True)
     if errors:
         failed.append(source_name)
+    if deferred_boards:
+        deferred_sources.append(source_name)
 
     elapsed_ms = (time.perf_counter() - source_clock) * 1000
     stats.append(
         replace(
             _stats(source_name, counts, errors, metrics, elapsed_ms),
-            deferred=len(rotation.deferred),
+            deferred=len(rotation.deferred) + deferred_boards,
         )
     )
     yield _finished(
@@ -993,6 +1012,7 @@ async def sync(
     failed_sources: list[str] = []
     succeeded_any: list[bool] = []
     blocked_sources: list[str] = []
+    deferred_sources: list[str] = []
 
     rate_state = await repository.load_rate_state()
     spent_today, has_history = await _spent_today(repository, run_started_at - timedelta(hours=24))
@@ -1021,6 +1041,7 @@ async def sync(
                 force_refresh,
                 spent_today,
                 has_history,
+                deferred_sources,
             ),
         )
         for name in sorted(grouped)
@@ -1070,7 +1091,7 @@ async def sync(
 
     if not succeeded_any and (failed_sources or blocked_sources):
         outcome_status = SyncOutcome.FAILURE
-    elif failed_sources or unroutable or blocked_sources:
+    elif failed_sources or unroutable or blocked_sources or deferred_sources:
         outcome_status = SyncOutcome.PARTIAL
     else:
         outcome_status = SyncOutcome.SUCCESS

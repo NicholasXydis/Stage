@@ -223,3 +223,44 @@ def test_two_databases_do_not_contend_for_one_lock(tmp_path: Path) -> None:
     assert first != second, "independent databases are independent runs"
     with single_run("sync", first), single_run("sync", second):
         pass
+
+
+@respx.mock
+async def test_our_own_exhausted_budget_is_never_recorded_as_a_board_failing(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import Company, CompanyDeferred, CompanyFailed, Platform
+    from stage.services import sync as sync_module
+    from stage.storage import open_repository
+
+    respx.get(url__regex=r"https://boards-api\.greenhouse\.io/.*").mock(
+        return_value=httpx.Response(200, json={"jobs": []})
+    )
+    monkeypatch.setattr(sync_module, "get_feeds", dict)
+    monkeypatch.setattr(sync_module, "_daily_allowance", lambda *_, **__: 1)
+
+    boards = [
+        Company(name=f"Board {index}", platform=Platform.GREENHOUSE, slug=f"board{index}")
+        for index in range(4)
+    ]
+    async with open_repository(db_path) as repository:
+        events = [
+            event
+            async for event in sync_module.sync(
+                repository, boards, sources=["greenhouse"], now_fn=lambda: NOW
+            )
+        ]
+        visits = {visit.board: visit for visit in await repository.all_visits()}
+
+    deferred = [event for event in events if isinstance(event, CompanyDeferred)]
+    failed = [event for event in events if isinstance(event, CompanyFailed)]
+    assert deferred, "a board the run declined to request must be reported as deferred"
+    assert not failed, "running out of our own budget is not evidence that a board failed"
+    starved = {event.company.lower().replace(" ", "") for event in deferred}
+    recorded = {board.split(":")[-1] for board in visits}
+    assert not (starved & recorded), (
+        "a board we never sent a request to must leave no visit row, or it reads as failing"
+    )
+    assert all(visit.consecutive_failures == 0 for visit in visits.values()), (
+        "our own budget running out must never count against a board's failure streak"
+    )

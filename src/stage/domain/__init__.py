@@ -42,6 +42,7 @@ from stage.domain.enums import (
 )
 from stage.domain.events import (
     BucketPlan,
+    CompanyDeferred,
     CompanyFailed,
     CompanyFinished,
     CompanyStarted,
@@ -134,6 +135,7 @@ __all__ = [
     "TITLE_FIELD",
     "CompanyVisit",
     "DetailFetch",
+    "CompanyDeferred",
     "CompanyFailed",
     "CompanyFinished",
     "CompanyStarted",
