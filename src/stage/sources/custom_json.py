@@ -1,12 +1,17 @@
-from collections.abc import Sequence
+import json
+import re
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, ClassVar
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
+from bs4 import BeautifulSoup
+from bs4.element import Tag
 from pydantic import BaseModel, ConfigDict
 
-from stage.domain import Company, CustomBoard, Job, Platform, board_key, job_id
+from stage.domain import Company, CustomBoard, Job, Platform, SourceSignals, board_key, job_id
 from stage.http import HttpClient
+from stage.http.client import HostBudgetExceededError
 from stage.sources import register
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
@@ -21,6 +26,13 @@ from stage.sources.base import (
 from stage.sources.platforms import dig
 
 MAX_ROWS = 5000
+MAX_EXTRACT_BYTES = 8 * 1024 * 1024
+MAX_RSS_ITEMS = 20000
+MAX_TOKEN_LEN = 256
+MAX_HTML_ROWS = 2000
+MAX_PAGES = 20
+PAGE_CEILING = 200
+_UNCHANGED = object()
 
 
 class CustomListing(BaseModel):
@@ -32,6 +44,8 @@ class CustomListing(BaseModel):
     url: str = ""
     description: str = ""
     department: str = ""
+    employment_type: str = ""
+    category: str = ""
 
 
 def _host(url: str) -> str:
@@ -45,11 +59,210 @@ def _rows(payload: Any, board: CustomBoard) -> Any:
     return dig(payload, board.jobs_path) if board.jobs_path else payload
 
 
+def _page_body(board: CustomBoard, index: int) -> dict[str, Any]:
+    body = dict(board.body)
+    if board.paginated:
+        body[board.page_param] = board.page_value(index)
+    return body
+
+
+def _page_url(board: CustomBoard, index: int) -> str:
+    if not board.paginated or board.posts:
+        return board.url
+    parts = urlsplit(board.url)
+    query = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)]
+    query = [(key, value) for key, value in query if key != board.page_param]
+    query.append((board.page_param, str(board.page_value(index))))
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
+def extract_object(text: str, marker: str) -> Any:
+    start = text.find(marker)
+    if start < 0:
+        return None
+    brace = text.find("{", start + len(marker))
+    if brace < 0 or len(text) - brace > MAX_EXTRACT_BYTES:
+        return None
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(brace, min(len(text), brace + MAX_EXTRACT_BYTES)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[brace : index + 1])
+                except ValueError:
+                    return None
+    return None
+
+
+def _tag_text(item: str, start: int) -> tuple[str, str, int] | None:
+    open_at = item.find("<", start)
+    if open_at < 0:
+        return None
+    close_at = item.find(">", open_at)
+    if close_at < 0:
+        return None
+    name = item[open_at + 1 : close_at].split()[0] if close_at > open_at + 1 else ""
+    if not name or name.startswith(("/", "?", "!")):
+        return "", "", close_at + 1
+    end = item.find(f"</{name}>", close_at)
+    if end < 0:
+        return "", "", close_at + 1
+    body = item[close_at + 1 : end]
+    if body.startswith("<![CDATA["):
+        body = body[9:].removesuffix("]]>")
+    return name, body.strip(), end + len(name) + 3
+
+
+def rss_items(text: str) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    cursor = 0
+    while len(rows) < MAX_RSS_ITEMS:
+        start = text.find("<item>", cursor)
+        if start < 0:
+            break
+        end = text.find("</item>", start)
+        if end < 0:
+            break
+        item = text[start + 6 : end]
+        cursor = end + 7
+        row: dict[str, str] = {}
+        at = 0
+        while True:
+            step = _tag_text(item, at)
+            if step is None:
+                break
+            name, body, at = step
+            if name and body:
+                row.setdefault(name, body)
+        if row:
+            rows.append(row)
+    return rows
+
+
+def sitemap_rows(text: str) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    cursor = 0
+    while len(rows) < MAX_RSS_ITEMS:
+        start = text.find("<url>", cursor)
+        if start < 0:
+            break
+        end = text.find("</url>", start)
+        if end < 0:
+            break
+        entry = text[start + 5 : end]
+        cursor = end + 6
+        loc = ""
+        at = 0
+        while True:
+            step = _tag_text(entry, at)
+            if step is None:
+                break
+            name, body, at = step
+            if name.endswith("loc") and body:
+                loc = body
+                break
+        if not loc:
+            continue
+        tail = loc.rstrip("/").rsplit("/", 1)[-1]
+        slug, _, ident = tail.rpartition("_")
+        if not slug:
+            slug, ident = tail, tail
+        rows.append(
+            {
+                "loc": loc,
+                "id": ident,
+                "slug": slug,
+                "title": slug.replace("-", " ").strip().title(),
+            }
+        )
+    return rows
+
+
+def _fingerprint(page: list[Any], board: CustomBoard) -> set[str]:
+    marks = set()
+    for entry in page:
+        projected = _project(entry, board)
+        mark = projected.get("id") or projected.get("title", "")
+        if mark:
+            marks.add(mark)
+    return marks
+
+
+def _slug_parts(url: str) -> tuple[str, str]:
+    tail = url.split("?", 1)[0].split("#", 1)[0].rstrip("/").rsplit("/", 1)[-1]
+    slug, _, ident = tail.rpartition("_")
+    if not slug:
+        slug, ident = tail, tail
+    return slug, ident
+
+
+def _html_value(block: Tag, selector: str, *, base: str = "") -> str:
+    mode = "text"
+    attr = ""
+    css = selector
+    for token, kind in (("::attr(", "attr"), ("::slug(", "slug"), ("::slugid(", "slugid")):
+        if token in selector:
+            css, _, rest = selector.partition(token)
+            attr = rest.rstrip(")")
+            mode = kind
+            break
+    if not css:
+        target: Tag | None = block
+    else:
+        target = block.select_one(css)
+    if target is None:
+        return ""
+    if mode == "text":
+        return collapse_whitespace(target.get_text(" ", strip=True))
+    raw = target.get(attr, "")
+    value = " ".join(raw) if isinstance(raw, list) else str(raw)
+    if not value:
+        return ""
+    if mode == "attr":
+        return urljoin(base, value) if base else value
+    slug, ident = _slug_parts(value)
+    return ident if mode == "slugid" else slug.replace("-", " ").strip().title()
+
+
+def html_rows(text: str, selector: str) -> list[Tag]:
+    soup = BeautifulSoup(text, "html.parser")
+    return soup.select(selector)[:MAX_HTML_ROWS]
+
+
 def _project(entry: Any, board: CustomBoard) -> dict[str, str]:
     projected: dict[str, str] = {}
-    for name in ("title", "id", "location", "url", "description", "department"):
+    for name in (
+        "title",
+        "id",
+        "location",
+        "url",
+        "description",
+        "department",
+        "employment_type",
+        "category",
+    ):
         path = board.mapped(name)
         if not path:
+            continue
+        if board.html and isinstance(entry, Tag):
+            base = board.url if name == "url" else ""
+            projected[name] = _html_value(entry, path, base=base)
             continue
         value = dig(entry, path)
         if isinstance(value, list):
@@ -69,7 +282,7 @@ class CustomJsonAdapter:
     bucket_key: ClassVar[str] = ""
     detail_budget: ClassVar[int] = 0
     rotation_slice: ClassVar[int] = 0
-    max_requests_per_company: ClassVar[int] = 1
+    max_requests_per_company: ClassVar[int] = PAGE_CEILING
 
     def board_key(self, company: Company) -> str:
         return board_key(self.name, company.slug)
@@ -85,7 +298,7 @@ class CustomJsonAdapter:
 
     def plan(self, company: Company) -> tuple[str, ...]:
         board = self._board(company)
-        return (board.url,)
+        return (_page_url(board, 0),)
 
     @staticmethod
     def _board(company: Company) -> CustomBoard:
@@ -105,18 +318,49 @@ class CustomJsonAdapter:
         details: Sequence[str] = (),
     ) -> FetchResult:
         board = self._board(company)
-        response = await client.get_json(board.url)
-        if response.not_modified:
-            return FetchResult(not_modified=True)
-
-        entries = _rows(response.payload, board)
-        if not isinstance(entries, list):
-            captured = capture_payload(self.name, company.slug, response.payload)
-            raise PayloadValidationError(
-                f"{self.name}/{company.slug}: jobs_path "
-                f"{board.jobs_path or '<root>'!r} is not a list; captured at {captured}"
-            )
-        truncated = len(entries) > MAX_ROWS
+        headers = {**board.headers, **await self._handshake(board, client)}
+        entries: list[Any] = []
+        truncated = False
+        stale_page = False
+        ignored_param = False
+        seen: set[str] = set()
+        pages = board.page_budget(MAX_PAGES, PAGE_CEILING)
+        for index in range(pages):
+            try:
+                payload = await self._page(company, board, client, index, headers)
+            except HostBudgetExceededError:
+                if index == 0:
+                    raise
+                truncated = True
+                break
+            if payload is _UNCHANGED:
+                if index == 0:
+                    return FetchResult(not_modified=True)
+                stale_page = True
+                break
+            page = _rows(payload, board)
+            if not isinstance(page, list):
+                if index:
+                    break
+                captured = capture_payload(self.name, company.slug, payload)
+                raise PayloadValidationError(
+                    f"{self.name}/{company.slug}: jobs_path "
+                    f"{board.jobs_path or '<root>'!r} is not a list; captured at {captured}"
+                )
+            fingerprint = _fingerprint(page, board)
+            if index and fingerprint and fingerprint <= seen:
+                ignored_param = True
+                break
+            seen |= fingerprint
+            entries.extend(page)
+            if not board.paginated or len(page) < board.page_size:
+                break
+            if len(entries) > MAX_ROWS:
+                truncated = True
+                break
+        else:
+            truncated = board.paginated
+        truncated = truncated or len(entries) > MAX_ROWS
         listings, dropped = validate_rows(
             CustomListing,
             [_project(entry, board) for entry in entries[:MAX_ROWS]],
@@ -132,12 +376,100 @@ class CustomJsonAdapter:
         dropped += unconvertible
         notes = [malformed_note(dropped)] if dropped else []
         if truncated:
-            notes.append(f"stopped at {MAX_ROWS} rows; the listing is incomplete")
+            notes.append(f"stopped at the {pages}-page or {MAX_ROWS}-row cap; incomplete")
+        if stale_page:
+            notes.append("a later page answered 304, so the walk ended on an unchanged page")
+        if ignored_param:
+            notes.append(
+                f"page {board.page_param!r} repeated the previous page, so the server ignores it; "
+                "the walk stopped rather than looping"
+            )
         return FetchResult(
             jobs=tuple(jobs),
             degraded="; ".join(note for note in notes if note),
-            authoritative=not (dropped or truncated),
+            authoritative=not (dropped or truncated or stale_page or ignored_param),
         )
+
+    async def _page(
+        self,
+        company: Company,
+        board: CustomBoard,
+        client: HttpClient,
+        index: int,
+        headers: Mapping[str, str],
+    ) -> Any:
+        if board.rss:
+            text = await client.get_text(_page_url(board, index), revalidate=index > 0)
+            if text.not_modified:
+                return _UNCHANGED
+            rows = rss_items(text.text)
+            if not rows:
+                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
+                raise PayloadValidationError(
+                    f"{self.name}/{company.slug}: no <item> elements in the feed; "
+                    f"captured at {captured}"
+                )
+            return rows
+        if board.embedded:
+            text = await client.get_text(_page_url(board, index), revalidate=index > 0)
+            if text.not_modified:
+                return _UNCHANGED
+            payload = extract_object(text.text, board.extract)
+            if payload is None:
+                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
+                raise PayloadValidationError(
+                    f"{self.name}/{company.slug}: no {board.extract!r} object in the page; "
+                    f"captured at {captured}"
+                )
+            return payload
+        if board.sitemap:
+            text = await client.get_text(_page_url(board, index), revalidate=index > 0)
+            if text.not_modified:
+                return _UNCHANGED
+            rows = sitemap_rows(text.text)
+            if not rows:
+                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
+                raise PayloadValidationError(
+                    f"{self.name}/{company.slug}: no <url> entries in the sitemap; "
+                    f"captured at {captured}"
+                )
+            return rows
+        if board.html:
+            text = await client.get_text(_page_url(board, index), revalidate=index > 0)
+            if text.not_modified:
+                return _UNCHANGED
+            blocks = html_rows(text.text, board.row_selector)
+            if not blocks and index == 0:
+                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
+                raise PayloadValidationError(
+                    f"{self.name}/{company.slug}: selector {board.row_selector!r} matched no "
+                    f"rows; captured at {captured}"
+                )
+            return blocks
+        response = (
+            await client.post_json(board.url, body=_page_body(board, index), extra_headers=headers)
+            if board.posts
+            else await client.get_json(_page_url(board, index), revalidate=index > 0)
+        )
+        return _UNCHANGED if response.not_modified else response.payload
+
+    @staticmethod
+    async def _handshake(board: CustomBoard, client: HttpClient) -> dict[str, str]:
+        if not board.handshakes:
+            return {}
+        page = await client.get_text(board.handshake_url)
+        found = re.search(board.token_pattern, page.text)
+        if found is None or not found.groups():
+            raise PayloadValidationError(
+                f"custom_json: no token matched {board.token_pattern!r} at {board.handshake_url}"
+            )
+        token = found.group(1)[:MAX_TOKEN_LEN]
+        parts = urlsplit(board.handshake_url)
+        return {
+            board.token_header: token,
+            "Referer": board.handshake_url,
+            "Origin": f"{parts.scheme}://{parts.netloc}",
+        }
 
     def _to_job(
         self, company: Company, board: CustomBoard, listing: CustomListing, now: datetime
@@ -156,4 +488,8 @@ class CustomJsonAdapter:
             location_raw=collapse_whitespace(listing.location),
             first_seen=now,
             last_seen=now,
+            signals=SourceSignals(
+                employment_type=listing.employment_type,
+                category=listing.category or listing.department,
+            ),
         )

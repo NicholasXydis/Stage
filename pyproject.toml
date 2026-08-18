@@ -5,6 +5,7 @@ description = "Aggregates CS internship postings (Canada/US, EN + FR) into a loc
 requires-python = ">=3.12,<3.15"
 license = { text = "MIT" }
 dependencies = [
+    "beautifulsoup4>=4.15.0",
     "fpdf2>=2.8.4",
     "httpx>=0.28.1",
     "platformdirs>=4.3.6",

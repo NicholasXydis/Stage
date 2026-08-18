@@ -1,5 +1,6 @@
 import importlib
 import os
+import re
 import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
@@ -96,6 +97,17 @@ def _oracle_fields(
         raise RegistryError(f"companies.yaml entry {index}: {exc}") from exc
 
 
+def _custom_int(raw: dict[str, Any], name: str, index: int) -> int:
+    value = raw.get(name, 0)
+    if value in (None, ""):
+        return 0
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.{name} must be a non-negative integer"
+        )
+    return value
+
+
 def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> CustomBoard | None:
     raw = row.get("custom")
     if raw is None:
@@ -137,8 +149,80 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
             raise RegistryError(
                 f"companies.yaml entry {index}: custom.fields[{key!r}] must be a non-empty string"
             )
+    method = str(raw.get("method", "GET") or "GET").upper()
+    if method not in ("GET", "POST"):
+        raise RegistryError(f"companies.yaml entry {index}: custom.method must be GET or POST")
+    body = raw.get("body", {})
+    if not isinstance(body, dict):
+        raise RegistryError(f"companies.yaml entry {index}: custom.body must be a mapping")
+    headers_raw = raw.get("headers", {})
+    if not isinstance(headers_raw, dict):
+        raise RegistryError(f"companies.yaml entry {index}: custom.headers must be a mapping")
+    headers: dict[str, str] = {}
+    for key, value in headers_raw.items():
+        if not isinstance(value, str) or not value.strip():
+            raise RegistryError(
+                f"companies.yaml entry {index}: custom.headers[{key!r}] must be a non-empty string"
+            )
+        headers[str(key)] = value
+    fmt = str(raw.get("format", "json") or "json").lower()
+    if fmt not in ("json", "rss", "html", "sitemap"):
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.format must be json, rss, html or sitemap"
+        )
+    row_selector = str(raw.get("row_selector", "") or "")
+    if fmt == "html" and not row_selector:
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.format html needs custom.row_selector"
+        )
+    extract = str(raw.get("extract", "") or "")
+    handshake_url = ""
+    if raw.get("handshake_url"):
+        checked = public_https_url(str(raw["handshake_url"]))
+        if checked is None:
+            raise RegistryError(
+                f"companies.yaml entry {index}: custom.handshake_url must be a public https address"
+            )
+        handshake_url = checked
+    token_pattern = str(raw.get("token_pattern", "") or "")
+    token_header = str(raw.get("token_header", "") or "")
+    if handshake_url and not (token_pattern and token_header):
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.handshake_url needs token_pattern and "
+            "token_header"
+        )
+    if token_pattern:
+        try:
+            re.compile(token_pattern)
+        except re.error as exc:
+            raise RegistryError(
+                f"companies.yaml entry {index}: custom.token_pattern is not a valid regex: {exc}"
+            ) from exc
+    page_param = str(raw.get("page_param", "") or "")
+    paging = {
+        name: _custom_int(raw, name, index)
+        for name in ("page_size", "page_start", "page_step", "max_pages")
+    }
+    if page_param and paging["page_size"] < 1:
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.page_param needs a positive custom.page_size"
+        )
     return CustomBoard(
         url=url,
+        method=method,
+        fmt=fmt,
+        row_selector=row_selector,
+        headers=headers,
+        extract=extract,
+        handshake_url=handshake_url,
+        token_pattern=token_pattern,
+        token_header=token_header,
+        body=body,
+        page_param=page_param,
+        page_size=paging["page_size"],
+        page_start=paging["page_start"],
+        page_step=paging["page_step"],
+        max_pages=paging["max_pages"],
         jobs_path=str(raw.get("jobs_path", "") or ""),
         fields={key: value.strip() for key, value in mapping.items()},
         url_template=str(raw.get("url_template", "") or ""),
@@ -248,11 +332,36 @@ def _registry_row(company: Company) -> dict[str, Any]:
         row["notes"] = company.notes
     if company.custom is not None:
         block: dict[str, Any] = {"url": company.custom.url}
+        if company.custom.posts:
+            block["method"] = "POST"
+            if company.custom.body:
+                block["body"] = dict(company.custom.body)
+        if company.custom.headers:
+            block["headers"] = dict(company.custom.headers)
+        if company.custom.rss or company.custom.html or company.custom.sitemap:
+            block["format"] = company.custom.fmt
+        if company.custom.row_selector:
+            block["row_selector"] = company.custom.row_selector
+        if company.custom.extract:
+            block["extract"] = company.custom.extract
+        if company.custom.handshake_url:
+            block["handshake_url"] = company.custom.handshake_url
+            block["token_pattern"] = company.custom.token_pattern
+            block["token_header"] = company.custom.token_header
         if company.custom.jobs_path:
             block["jobs_path"] = company.custom.jobs_path
         block["fields"] = dict(company.custom.fields)
         if company.custom.url_template:
             block["url_template"] = company.custom.url_template
+        if company.custom.page_param:
+            block["page_param"] = company.custom.page_param
+            block["page_size"] = company.custom.page_size
+            if company.custom.page_start:
+                block["page_start"] = company.custom.page_start
+            if company.custom.page_step:
+                block["page_step"] = company.custom.page_step
+            if company.custom.max_pages:
+                block["max_pages"] = company.custom.max_pages
         row["custom"] = block
     return row
 

@@ -20,12 +20,13 @@ from stage.http.cache import ValidatorCache
 from stage.http.profiles import RatePosture
 
 USER_AGENT = "stage-cli/0.1.0 (+https://github.com/NicholasXydis/stage; internship aggregator)"
-MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 MAX_RETRY_AFTER_S = 60.0
 MAX_INTERVAL_S = 10.0
 MIN_TIGHTEN_FLOOR_S = 0.25
 MAX_ATTEMPTS = 3
 JITTER_MAX_S = 0.5
+STRIDE_JITTER_FRACTION = 0.35
 RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 BLOCKING_STATUSES = frozenset({401, 403})
 BLOCKED_COOLDOWN_S = 1800.0
@@ -89,6 +90,13 @@ class RetryableStatusError(HttpError):
 class JsonResponse:
     status: int
     payload: Any
+    not_modified: bool
+
+
+@dataclass(frozen=True, slots=True)
+class TextResponse:
+    status: int
+    text: str
     not_modified: bool
 
 
@@ -350,13 +358,19 @@ class HttpClient:
                 "requests for this run"
             )
 
+    def _paced(self, budget: HostBudget) -> float:
+        stride = budget.stride
+        if not self._jitter or stride <= 0:
+            return stride
+        return stride + self._rng.uniform(0.0, stride * STRIDE_JITTER_FRACTION)
+
     async def _reserve(self, bucket: str, budget: HostBudget) -> None:
         async with budget.gate:
             self._refuse(bucket, budget, count=True)
             budget.requests += 1
             now = time.monotonic()
             wait = budget.next_allowed_at - now
-            budget.next_allowed_at = max(now, budget.next_allowed_at) + budget.stride
+            budget.next_allowed_at = max(now, budget.next_allowed_at) + self._paced(budget)
         if wait > 0:
             await asyncio.sleep(wait)
         try:
@@ -449,6 +463,8 @@ class HttpClient:
         method: str = "GET",
         body: Any = None,
         revalidate: bool = False,
+        decode: str = "json",
+        extra_headers: Mapping[str, str] | None = None,
     ) -> JsonResponse:
         if attempt > 1:
             budget.metrics.retries += 1
@@ -456,6 +472,8 @@ class HttpClient:
         target = request_url(url, params)
         key = str(target)
         headers = self._cache.conditional_headers(key) if method == "GET" and not revalidate else {}
+        if extra_headers:
+            headers = {**headers, **dict(extra_headers)}
         try:
             async with budget.semaphore:
                 await self._reserve(bucket, budget)
@@ -548,7 +566,7 @@ class HttpClient:
             raise HttpStatusError(bucket, response)
         budget.breaker.record_success()
 
-        payload = json.loads(content)
+        payload = content.decode("utf-8", "replace") if decode == "text" else json.loads(content)
         if method == "GET":
             self._cache.record(key, response.headers, datetime.now(UTC))
         return JsonResponse(status=response.status_code, payload=payload, not_modified=False)
@@ -562,8 +580,18 @@ class HttpClient:
     ) -> JsonResponse:
         return await self._request("GET", url, params=params, revalidate=revalidate)
 
-    async def post_json(self, url: str, *, body: Any) -> JsonResponse:
-        return await self._request("POST", url, body=body)
+    async def post_json(
+        self, url: str, *, body: Any, extra_headers: Mapping[str, str] | None = None
+    ) -> JsonResponse:
+        return await self._request("POST", url, body=body, extra_headers=extra_headers)
+
+    async def get_text(self, url: str, *, revalidate: bool = False) -> TextResponse:
+        response = await self._request("GET", url, decode="text", revalidate=revalidate)
+        return TextResponse(
+            status=response.status,
+            text="" if response.payload is None else str(response.payload),
+            not_modified=response.not_modified,
+        )
 
     async def _request(
         self,
@@ -573,6 +601,8 @@ class HttpClient:
         params: dict[str, str] | None = None,
         body: Any = None,
         revalidate: bool = False,
+        decode: str = "json",
+        extra_headers: Mapping[str, str] | None = None,
     ) -> JsonResponse:
         bucket, budget = self._authorize(url)
 
@@ -599,6 +629,15 @@ class HttpClient:
             with wrapped:
                 attempt += 1
                 return await self._attempt(
-                    bucket, budget, url, params, attempt, method, body, revalidate
+                    bucket,
+                    budget,
+                    url,
+                    params,
+                    attempt,
+                    method,
+                    body,
+                    revalidate,
+                    decode,
+                    extra_headers,
                 )
         raise HttpError(f"{bucket} exhausted retries for {url}")
