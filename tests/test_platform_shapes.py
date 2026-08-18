@@ -130,3 +130,14 @@ def test_oracle_target_refuses_hosts_or_sites_that_could_rewrite_requests() -> N
     ):
         with pytest.raises(SlugRejectedError):
             oracle_target(host, site)
+
+
+def test_the_greenhouse_api_host_resolves_like_the_board_host() -> None:
+    from stage.sources.platforms import identify_url
+
+    api = identify_url("https://api.greenhouse.io/v1/boards/robinhood/jobs")
+    assert api is not None, "an api.greenhouse.io URL is a greenhouse board, not an unknown site"
+    assert (api.platform.value, api.slug) == ("greenhouse", "robinhood")
+    board = identify_url("https://boards.greenhouse.io/robinhood")
+    assert board is not None
+    assert board.slug == api.slug, "both greenhouse hosts must name the same board"

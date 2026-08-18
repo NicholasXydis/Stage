@@ -184,3 +184,10 @@ def test_embedded_software_and_the_new_phrases_survive(title: str, expected: str
     assert classify_role(title, "").role.value == expected, (
         f"{title} is software a CS undergraduate can hold"
     )
+
+
+def test_power_systems_engineering_is_electrical_not_software() -> None:
+    rejected = screen_is_cs_role(_job("Internship: Power Systems Engineering - Kitchener"))
+    assert rejected is not None, "power systems engineering is electrical work, not a CS role"
+    kept = screen_is_cs_role(_job("Intern - Artificial Intelligence for Power System Operations"))
+    assert kept is None, "naming a CS role must still rescue a title that also names a discipline"

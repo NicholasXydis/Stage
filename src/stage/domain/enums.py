@@ -71,6 +71,7 @@ class Platform(StrEnum):
     ICIMS = "icims"
     AVATURE = "avature"
     PHENOM = "phenom"
+    EIGHTFOLD = "eightfold"
     COLLAGE = "collage"
     CUSTOM_JSON = "custom_json"
 

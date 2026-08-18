@@ -198,12 +198,24 @@ def test_the_pause_round_trips_through_the_registry(tmp_path: Path) -> None:
     assert row.notes, "the prose reason survives beside the structured date"
 
 
-def test_the_shipped_registry_resumes_workable_on_the_eighteenth() -> None:
-    from stage.domain import Platform as _Platform
+def test_a_paused_row_returns_on_its_own_date_and_not_before(tmp_path: Path) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_paused("Paused", date(2026, 8, 18))], target)
 
-    def workable(when: date) -> int:
-        rows = load_companies(today=when)
-        return sum(1 for row in rows if row.platform is _Platform.WORKABLE and row.enabled)
+    def enabled(when: date) -> int:
+        return sum(1 for row in load_companies(target, today=when) if row.enabled)
 
-    assert workable(date(2026, 8, 17)) == 0, "Workable stays out while it is rate limited"
-    assert workable(date(2026, 8, 18)) > 0, "and comes back on its own, with no action from anyone"
+    assert enabled(date(2026, 8, 17)) == 0, "a paused row stays out for every day before its date"
+    assert enabled(date(2026, 8, 18)) == 1, "and comes back on its own, with no action from anyone"
+
+
+def test_resuming_a_row_clears_the_date_so_a_write_back_cannot_re_park_it(tmp_path: Path) -> None:
+    target = tmp_path / "companies.yaml"
+    write_registry([_paused("Paused", date(2026, 8, 18))], target)
+    resumed = load_companies(target, today=date(2026, 8, 18))
+    assert resumed[0].paused_until is None, "the elapsed date is cleared on the way out"
+
+    write_registry(list(resumed), target)
+    again = load_companies(target, today=date(2026, 8, 1))
+    assert again[0].enabled, "a write-back of resumed rows keeps them enabled, never re-parks them"
+    assert again[0].paused_until is None, "and the spent pause does not come back to life"

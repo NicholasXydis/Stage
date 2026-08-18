@@ -50,13 +50,11 @@ def test_every_workday_registry_row_passes_validation_today() -> None:
     missing = [row.name for row in rows if not (row.workday_tenant and row.workday_dc)]
     assert not missing, f"rows with no tenant or datacenter: {missing}"
 
-    no_site = [row.name for row in rows if not row.workday_site]
-    for row in rows:
-        if row.name in no_site:
-            continue
-        workday_target(row.workday_tenant or "", row.workday_site or "", row.workday_dc or "")
+    unaddressable = [row.name for row in rows if not row.workday_site]
+    assert not unaddressable, f"an unaddressable row must be dropped, not kept: {unaddressable}"
 
-    assert len(no_site) == 2, "tenant, site and datacenter cannot be derived from a name"
+    for row in rows:
+        workday_target(row.workday_tenant or "", row.workday_site or "", row.workday_dc or "")
 
 
 @pytest.mark.parametrize(

@@ -229,3 +229,12 @@ def test_location_lexicon_stays_out_of_the_company_namespace() -> None:
 
     assert "montreal" in location_lexicon().montreal
     assert "montreal" not in generic_company_tokens()
+
+
+def test_an_ambiguous_province_name_needs_canadian_corroboration() -> None:
+    assert resolve_location("Moncton, New Brunswick, Canada").bucket is LocationBucket.CANADA
+    assert resolve_location("Fredericton, New Brunswick").bucket is LocationBucket.CANADA
+    assert resolve_location("Nouveau-Brunswick, Canada").bucket is LocationBucket.CANADA
+    assert resolve_location("New Brunswick, New Jersey, United States").bucket is (
+        LocationBucket.USA
+    ), "an explicit country must outrank a province name that is also a US city"

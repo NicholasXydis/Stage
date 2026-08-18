@@ -211,7 +211,14 @@ PROBES_BY_PLATFORM: MappingProxyType[Platform, PlatformProbe] = MappingProxyType
 )
 
 URL_ONLY_PLATFORMS: frozenset[Platform] = frozenset(
-    {Platform.WORKDAY, Platform.PERSONIO, Platform.TEAMTAILOR, Platform.JOBVITE, Platform.JOIN}
+    {
+        Platform.WORKDAY,
+        Platform.PERSONIO,
+        Platform.TEAMTAILOR,
+        Platform.JOBVITE,
+        Platform.JOIN,
+        Platform.EIGHTFOLD,
+    }
 )
 
 
@@ -237,6 +244,7 @@ URL_PATTERNS: tuple[UrlPattern, ...] = (
             "boards.eu.greenhouse.io",
             "job-boards.eu.greenhouse.io",
             "boards-api.greenhouse.io",
+            "api.greenhouse.io",
         ),
         path_pattern=_path(rf"^/(?:v1/boards/)?(?:{_LOCALE}/)?(?P<slug>[^/?#]+)"),
     ),
@@ -315,6 +323,10 @@ URL_PATTERNS: tuple[UrlPattern, ...] = (
     UrlPattern(
         platform=Platform.NJOYN,
         host_pattern=re.compile(r"^(?P<slug>[a-z0-9][a-z0-9-]*)\.njoyn\.com$"),
+    ),
+    UrlPattern(
+        platform=Platform.EIGHTFOLD,
+        host_pattern=re.compile(r"^(?P<slug>[a-z0-9][a-z0-9-]*)\.eightfold\.ai$"),
     ),
 )
 
@@ -398,6 +410,26 @@ def _vanity_slug(host: str) -> str | None:
 _EXPERIENCE_PATH = re.compile(r"^/[a-z]{2}_[A-Za-z]{2}/[A-Za-z0-9_-]+/[A-Za-z0-9_-]+", re.I)
 
 
+def _eightfold(url: str, host: str, path: str) -> PlatformCandidate | None:
+    from urllib.parse import parse_qs, urlsplit
+
+    if host.endswith(".eightfold.ai"):
+        return PlatformCandidate(platform=Platform.EIGHTFOLD, slug=host.split(".")[0])
+    if not path.lower().startswith("/careers"):
+        return None
+    try:
+        query = parse_qs(urlsplit(url if "//" in url else f"https://{url}").query)
+    except ValueError:
+        return None
+    domains = query.get("domain") or ()
+    if not domains:
+        return None
+    slug = _vanity_slug(domains[0].lower())
+    if slug is None:
+        return None
+    return PlatformCandidate(platform=Platform.EIGHTFOLD, slug=slug)
+
+
 def _experience_layer(host: str, path: str) -> PlatformCandidate | None:
     if not _EXPERIENCE_PATH.match(path):
         return None
@@ -431,6 +463,10 @@ def identify_url(url: str) -> PlatformCandidate | None:
     if split is None:
         return None
     host, path = split
+
+    eightfold = _eightfold(url, host, path)
+    if eightfold is not None:
+        return eightfold
 
     workday = _workday(host, path)
     if workday is not None:

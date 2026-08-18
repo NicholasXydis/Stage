@@ -101,6 +101,7 @@ canada_cities:
 
 canada_ambiguous:
   - London
+  - New Brunswick
   - Hamilton
   - Kingston
   - Windsor
@@ -131,7 +132,6 @@ canada_regions:
   - British Columbia
   - Colombie-Britannique
   - Manitoba
-  - New Brunswick
   - Nouveau-Brunswick
   - Newfoundland
   - Newfoundland and Labrador
