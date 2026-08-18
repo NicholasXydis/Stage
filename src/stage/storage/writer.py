@@ -168,6 +168,12 @@ class AsyncRepository:
     async def company_counts(self) -> dict[str, dict[str, int]]:
         return await self._writer.run(lambda repository: repository.company_counts())
 
+    async def quarantine_company_counts(self) -> dict[str, dict[str, int]]:
+        return await self._writer.run(lambda repository: repository.quarantine_company_counts())
+
+    async def quarantine_company_reasons(self) -> dict[str, dict[str, int]]:
+        return await self._writer.run(lambda repository: repository.quarantine_company_reasons())
+
     async def company_apply_urls(self, companies: Sequence[str]) -> dict[str, tuple[str, ...]]:
         return await self._writer.run(lambda repository: repository.company_apply_urls(companies))
 

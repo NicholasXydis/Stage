@@ -43,6 +43,8 @@ class UnregisteredCompany:
     company: str
     sources: tuple[str, ...]
     postings: int
+    quarantined: int = 0
+    posts_internships: bool = False
 
 
 @dataclass(frozen=True, slots=True)

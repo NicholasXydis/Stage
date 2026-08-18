@@ -1394,8 +1394,8 @@ async def _adopt_unregistered(
     from stage.services.coverage import coverage
     from stage.services.discover import (
         adopt_unregistered,
-        direct_companies_from_apply_urls,
         probe_companies,
+        select_unregistered,
         verify_registry,
     )
     from stage.storage import open_repository
@@ -1403,11 +1403,18 @@ async def _adopt_unregistered(
     rows = load_companies(registry)
     async with open_repository(_database(db)) as repository:
         report = await coverage(repository, rows, unregistered=True)
-        names = [entry.company for entry in report.unregistered][:limit]
-        apply_urls = await repository.company_apply_urls(names)
-    direct = direct_companies_from_apply_urls(apply_urls, platforms=platforms, excluded=excluded)
-    direct_names = {company.name for company in direct}
-    names = [] if direct_only else [name for name in names if name not in direct_names]
+        ranked = [entry.company for entry in report.unregistered]
+        apply_urls = await repository.company_apply_urls(ranked)
+    direct_rows, name_rows = select_unregistered(
+        ranked,
+        apply_urls,
+        limit=limit,
+        direct_only=direct_only,
+        platforms=platforms,
+        excluded=excluded,
+    )
+    direct = list(direct_rows)
+    names = list(name_rows)
     if not names and not direct:
         console.print(plain("No unregistered employers to probe. Run stage sync first."))
         return False

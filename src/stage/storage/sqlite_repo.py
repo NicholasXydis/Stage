@@ -1144,26 +1144,64 @@ class SqliteRepository:
             counts.setdefault(str(row["company"]), {})[str(row["source"])] = int(row["total"])
         return counts
 
+    def quarantine_company_counts(self) -> dict[str, dict[str, int]]:
+        rows = self._conn.execute(
+            "SELECT company, source, COUNT(*) AS total FROM quarantine GROUP BY company, source"
+        ).fetchall()
+        counts: dict[str, dict[str, int]] = {}
+        for row in rows:
+            counts.setdefault(str(row["company"]), {})[str(row["source"])] = int(row["total"])
+        return counts
+
+    def quarantine_company_reasons(self) -> dict[str, dict[str, int]]:
+        rows = self._conn.execute(
+            "SELECT company, reason, COUNT(*) AS total FROM quarantine GROUP BY company, reason"
+        ).fetchall()
+        reasons: dict[str, dict[str, int]] = {}
+        for row in rows:
+            reasons.setdefault(str(row["company"]), {})[str(row["reason"])] = int(row["total"])
+        return reasons
+
     def company_apply_urls(self, companies: Sequence[str]) -> dict[str, tuple[str, ...]]:
         wanted = {fold_company(company): company for company in companies}
         if not wanted:
             return {}
-        rows = self._conn.execute(
-            "SELECT company, company_fold, apply_url_raw FROM jobs "
+        collected: dict[str, list[str]] = {}
+        kept = self._conn.execute(
+            "SELECT company_fold, apply_url_raw FROM jobs "
             "WHERE duplicate_of IS NULL AND status = ? AND apply_url_raw <> '' "
             "ORDER BY last_seen DESC, apply_url_raw",
             (JobStatus.OPEN.value,),
         ).fetchall()
-        collected: dict[str, list[str]] = {}
-        for row in rows:
-            company = wanted.get(str(row["company_fold"]))
-            url = str(row["apply_url_raw"]).strip()
-            if company is None or not url:
-                continue
-            urls = collected.setdefault(company, [])
-            if url not in urls and len(urls) < 5:
-                urls.append(url)
+        for row in kept:
+            self._collect_apply_url(
+                collected, wanted, str(row["company_fold"]), str(row["apply_url_raw"])
+            )
+        rejected = self._conn.execute(
+            "SELECT company, apply_url_raw FROM quarantine "
+            "WHERE apply_url_raw IS NOT NULL AND apply_url_raw <> '' "
+            "ORDER BY last_seen DESC, apply_url_raw"
+        ).fetchall()
+        for row in rejected:
+            self._collect_apply_url(
+                collected, wanted, fold_company(str(row["company"])), str(row["apply_url_raw"])
+            )
         return {company: tuple(urls) for company, urls in collected.items()}
+
+    @staticmethod
+    def _collect_apply_url(
+        collected: dict[str, list[str]],
+        wanted: dict[str, str],
+        company_fold: str,
+        apply_url: str,
+    ) -> None:
+        company = wanted.get(company_fold)
+        url = apply_url.strip()
+        if company is None or not url:
+            return
+        urls = collected.setdefault(company, [])
+        if url not in urls and len(urls) < 5:
+            urls.append(url)
 
     def coverage_classifications(self) -> list[CoverageClassification]:
         rows = self._conn.execute(

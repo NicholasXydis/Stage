@@ -9,6 +9,7 @@ from stage.domain import (
     CoverageClassification,
     CoverageRow,
     CoverageState,
+    RejectionReason,
     SourceVisit,
     UnregisteredCompany,
     coverage_state,
@@ -96,9 +97,20 @@ def _registry_rows(
     return tuple(sorted(rows, key=lambda row: (row.state.value, row.company.lower())))
 
 
+INTERNSHIP_EVIDENCE_REASONS = frozenset(
+    {
+        RejectionReason.OUT_OF_SCOPE_DEGREE.value,
+        RejectionReason.NOT_A_CS_ROLE.value,
+        RejectionReason.UNKNOWN_CS_ROLE.value,
+    }
+)
+
+
 def _unregistered(
     companies: Sequence[Company],
     seen: dict[str, dict[str, int]],
+    rejected: dict[str, dict[str, int]],
+    reasons: dict[str, dict[str, int]],
     classifications: Sequence[CoverageClassification],
 ) -> tuple[UnregisteredCompany, ...]:
     exact_names = {name_tokens(company.name) for company in companies}
@@ -108,7 +120,7 @@ def _unregistered(
             index.setdefault(token, []).append(company.name)
 
     unknown: list[UnregisteredCompany] = []
-    for name, sources in seen.items():
+    for name in {**rejected, **seen}:
         tokens = name_tokens(name)
         if tokens in exact_names:
             continue
@@ -119,14 +131,32 @@ def _unregistered(
             continue
         if any(name_matches(entry.company, name) for entry in classifications):
             continue
+        sources = seen.get(name, {})
+        rejections = reasons.get(name, {})
         unknown.append(
             UnregisteredCompany(
                 company=name,
-                sources=tuple(sorted(sources)),
+                sources=tuple(sorted(sources or rejected.get(name, {}))),
                 postings=sum(sources.values()),
+                quarantined=sum(rejected.get(name, {}).values()),
+                posts_internships=any(
+                    count > 0
+                    for reason, count in rejections.items()
+                    if reason in INTERNSHIP_EVIDENCE_REASONS
+                ),
             )
         )
-    return tuple(sorted(unknown, key=lambda row: (-row.postings, row.company.lower())))
+    return tuple(
+        sorted(
+            unknown,
+            key=lambda row: (
+                -row.postings,
+                not row.posts_internships,
+                -row.quarantined,
+                row.company.lower(),
+            ),
+        )
+    )
 
 
 async def coverage(
@@ -143,10 +173,16 @@ async def coverage(
     visits = {(visit.source, visit.board): visit for visit in await repository.all_visits()}
 
     seen = await repository.company_counts() if unregistered else {}
+    rejected = await repository.quarantine_company_counts() if unregistered else {}
+    reasons = await repository.quarantine_company_reasons() if unregistered else {}
     classifications = await repository.coverage_classifications()
     return CoverageReport(
         rows=_registry_rows(enabled, postings, visits, moment, stale_after_days),
-        unregistered=_unregistered(companies, seen, classifications) if unregistered else (),
+        unregistered=(
+            _unregistered(companies, seen, rejected, reasons, classifications)
+            if unregistered
+            else ()
+        ),
         classifications=tuple(classifications),
         enabled=len(enabled),
         disabled=len(companies) - len(enabled),

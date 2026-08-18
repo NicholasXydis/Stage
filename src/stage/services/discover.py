@@ -236,6 +236,24 @@ def direct_companies_from_apply_urls(
     return tuple(direct)
 
 
+def select_unregistered(
+    ranked: Sequence[str],
+    apply_urls: Mapping[str, Sequence[str]],
+    *,
+    limit: int,
+    direct_only: bool,
+    platforms: Sequence[Platform] | None = None,
+    excluded: Sequence[Platform] | None = None,
+) -> tuple[tuple[Company, ...], tuple[str, ...]]:
+    order = {name: index for index, name in enumerate(ranked)}
+    direct = direct_companies_from_apply_urls(apply_urls, platforms=platforms, excluded=excluded)
+    ordered = tuple(sorted(direct, key=lambda company: order.get(company.name, len(order))))[:limit]
+    if direct_only:
+        return ordered, ()
+    taken = {company.name for company in ordered}
+    return ordered, tuple(name for name in ranked if name not in taken)[:limit]
+
+
 def is_routable(platform: Platform) -> bool:
     from stage.sources import adapter_for_platform
 
