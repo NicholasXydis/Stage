@@ -27,7 +27,6 @@ from stage.domain import (
     HttpValidator,
     Job,
     PlannedRequest,
-    Priority,
     QuarantinedJob,
     RateState,
     RequestLogged,
@@ -507,7 +506,7 @@ async def _run_company_source(
         [
             RotationMember(
                 key=company.registry_key,
-                always=company.priority is Priority.HIGH and not is_workday,
+                always=False,
             )
             for company in companies
         ],

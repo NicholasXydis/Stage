@@ -13,7 +13,6 @@ from stage.domain import (
     Platform,
     PlatformCandidate,
     PlatformProbed,
-    Priority,
     ProbeResult,
     ProbeVerdict,
     RequestLogged,
@@ -265,14 +264,12 @@ def to_company(
     candidate: PlatformCandidate,
     *,
     verified_on: date | None = None,
-    priority: Priority = Priority.NORMAL,
 ) -> Company:
     routable = is_routable(candidate.platform)
     return Company(
         name=name,
         platform=candidate.platform,
         slug=candidate.slug,
-        priority=priority,
         enabled=routable and verified_on is not None,
         source_of_record=SourceOfRecord.DISCOVER,
         last_verified=verified_on,

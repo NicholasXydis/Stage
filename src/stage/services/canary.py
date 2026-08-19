@@ -7,7 +7,6 @@ from stage.domain import (
     CompanyFinished,
     CompanyUnchanged,
     Platform,
-    Priority,
 )
 from stage.storage import AsyncRepository
 
@@ -56,7 +55,7 @@ def select_probes(
     chosen: dict[Platform, Company] = {}
     for company in sorted(
         (entry for entry in companies if entry.enabled),
-        key=lambda entry: (entry.priority is not Priority.HIGH, entry.registry_key),
+        key=lambda entry: entry.registry_key,
     ):
         if company.platform in exclude:
             continue

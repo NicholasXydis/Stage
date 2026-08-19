@@ -1,5 +1,5 @@
 from stage.companies import load_companies
-from stage.domain import Company, Platform, Priority
+from stage.domain import Company, Platform
 from stage.services.canary import AKAMAI_PLATFORMS, BoardProbe, CanaryReport, select_probes
 
 
@@ -38,14 +38,14 @@ def test_a_disabled_row_is_never_probed() -> None:
     assert [company.slug for company in selected] == ["on"]
 
 
-def test_selection_is_deterministic_and_prefers_a_high_priority_row() -> None:
+def test_selection_is_deterministic_whatever_order_the_rows_arrive_in() -> None:
     companies = [
-        _company(Platform.GREENHOUSE, "zulu", priority=Priority.HIGH),
+        _company(Platform.GREENHOUSE, "zulu"),
         _company(Platform.GREENHOUSE, "alpha"),
     ]
     first, _ = select_probes(companies)
     second, _ = select_probes(list(reversed(companies)))
-    assert [company.slug for company in first] == ["zulu"]
+    assert [company.slug for company in first] == ["alpha"]
     assert first == second, "selection must not vary between runs"
 
 

@@ -76,12 +76,6 @@ class Platform(StrEnum):
     CUSTOM_JSON = "custom_json"
 
 
-class Priority(StrEnum):
-    HIGH = "high"
-    NORMAL = "normal"
-    LOW = "low"
-
-
 class SourceOfRecord(StrEnum):
     OPENJOBS = "openjobs"
     DISCOVER = "discover"

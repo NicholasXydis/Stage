@@ -9,7 +9,6 @@ from stage.domain import (
     Company,
     PlannedRequest,
     Platform,
-    Priority,
     RotationMember,
     SourceRotated,
     SourceStarted,
@@ -157,7 +156,7 @@ async def test_a_workday_dry_run_touches_every_enabled_board_within_budget(db_pa
     )
 
 
-async def test_a_workday_priority_cannot_bypass_fair_rotation(db_path: Path) -> None:
+async def test_no_workday_row_can_bypass_fair_rotation(db_path: Path) -> None:
     from stage.services.sync import sync
 
     companies = [
@@ -168,7 +167,6 @@ async def test_a_workday_priority_cannot_bypass_fair_rotation(db_path: Path) -> 
             workday_tenant=f"tenant-{index:03d}",
             workday_site="External",
             workday_dc="wd3",
-            priority=Priority.HIGH if index == WorkdayAdapter.rotation_slice else Priority.NORMAL,
         )
         for index in range(WorkdayAdapter.rotation_slice + 1)
     ]

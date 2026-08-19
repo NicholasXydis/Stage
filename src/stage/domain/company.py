@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from stage.domain.custom_board import CustomBoard
-from stage.domain.enums import Platform, Priority, SourceOfRecord
+from stage.domain.enums import Platform, SourceOfRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,7 +10,6 @@ class Company:
     name: str
     platform: Platform
     slug: str
-    priority: Priority = Priority.NORMAL
     enabled: bool = True
     rate_profile: str | None = None
     last_verified: date | None = None

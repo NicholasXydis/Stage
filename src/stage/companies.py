@@ -17,7 +17,6 @@ from stage.domain import (
     Company,
     CustomBoard,
     Platform,
-    Priority,
     SourceOfRecord,
     public_https_url,
 )
@@ -238,14 +237,6 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
             f"companies.yaml entry {index}: unknown platform {platform_value!r}"
         ) from exc
 
-    priority_value = row.get("priority", Priority.NORMAL.value)
-    try:
-        priority = Priority(priority_value)
-    except ValueError as exc:
-        raise RegistryError(
-            f"companies.yaml entry {index}: unknown priority {priority_value!r}"
-        ) from exc
-
     record_value = row.get("source_of_record", SourceOfRecord.MANUAL.value)
     try:
         source_of_record = SourceOfRecord(record_value)
@@ -262,7 +253,6 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
         name=_require_str(row, "name", index),
         platform=platform,
         slug=_require_str(row, "slug", index),
-        priority=priority,
         enabled=enabled,
         rate_profile=_optional_str(row, "rate_profile"),
         last_verified=_parse_date(row, "last_verified", index),
@@ -302,7 +292,6 @@ def _registry_row(company: Company) -> dict[str, Any]:
         "name": company.name,
         "platform": company.platform.value,
         "slug": company.slug,
-        "priority": company.priority.value,
         "source_of_record": company.source_of_record.value,
     }
     if company.last_verified is not None:
@@ -374,8 +363,7 @@ def registry_entry_yaml(company: Company) -> str:
 
 
 def _registry_payload(companies: Sequence[Company]) -> str:
-    order = {Priority.HIGH: 0, Priority.NORMAL: 1, Priority.LOW: 2}
-    ordered = sorted(companies, key=lambda item: (order[item.priority], item.name.lower()))
+    ordered = sorted(companies, key=lambda item: item.name.lower())
     return yaml.safe_dump(
         [_registry_row(item) for item in ordered],
         sort_keys=False,

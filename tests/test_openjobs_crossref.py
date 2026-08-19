@@ -14,7 +14,7 @@ from stage.bootstrap.openjobs import (
     mine_country,
     to_registry_rows,
 )
-from stage.domain import Platform, Priority
+from stage.domain import Platform
 
 
 def test_the_shipped_seed_list_loads_and_prioritises_montreal() -> None:
@@ -22,7 +22,6 @@ def test_the_shipped_seed_list_loads_and_prioritises_montreal() -> None:
     assert len(seeds) > 150
     montreal = [seed for seed in seeds if seed.section == "montreal"]
     assert montreal
-    assert all(seed.priority is Priority.HIGH for seed in montreal)
     assert any(seed.name == "Eidos-Montréal" for seed in seeds)
 
 
@@ -33,7 +32,7 @@ def test_match_key_folds_accents_and_drops_legal_suffixes() -> None:
 
 
 def test_crossref_resolves_through_the_shared_url_table() -> None:
-    seeds = (Seed(name="Faire", section="canada", priority=Priority.HIGH),)
+    seeds = (Seed(name="Faire", section="canada"),)
     entries = (
         DatasetEntry(
             name="Faire",
@@ -73,12 +72,11 @@ def test_an_unrecognized_ats_link_is_reported_not_guessed() -> None:
     assert report.unrecognized == [(seeds[0], "https://acme.com/careers")]
 
 
-def test_emitted_rows_are_marked_openjobs_and_carry_the_seed_priority() -> None:
-    seeds = (Seed(name="Coveo", section="montreal", priority=Priority.HIGH),)
+def test_emitted_rows_are_marked_openjobs() -> None:
+    seeds = (Seed(name="Coveo", section="montreal"),)
     entries = (DatasetEntry(name="Coveo", ats_links=("https://jobs.ashbyhq.com/coveo",)),)
     rows = to_registry_rows(crossref(seeds, entries))
     assert "source_of_record: openjobs" in rows
-    assert "priority: high" in rows
     assert "platform: ashby" in rows
 
 
@@ -120,7 +118,7 @@ def test_every_ats_link_becomes_a_board_not_just_the_first() -> None:
 
 
 def test_a_division_with_its_own_board_is_resolved_under_its_parent_seed() -> None:
-    seeds = (Seed(name="Citadel", priority=Priority.NORMAL),)
+    seeds = (Seed(name="Citadel"),)
     entries = (
         DatasetEntry(name="Citadel", ats_links=("https://boards.greenhouse.io/citadel",)),
         DatasetEntry(

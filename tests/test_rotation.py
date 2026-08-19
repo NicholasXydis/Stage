@@ -14,7 +14,6 @@ from stage.domain import (
     CompanyFinished,
     PlannedRequest,
     Platform,
-    Priority,
     RateState,
     RotationMember,
     SourceRotated,
@@ -70,7 +69,7 @@ def test_consecutive_runs_walk_the_whole_ring_without_repeating_or_skipping() ->
     assert runs <= 3, "82 tenants at 40 a run must close the cycle in three runs"
 
 
-def test_high_priority_members_are_covered_every_run_and_never_rotate() -> None:
+def test_always_members_are_covered_every_run_and_never_rotate() -> None:
     members = _members(10, always={"tenant-00", "tenant-09"})
     seen_always = []
     cursor = ""
@@ -185,37 +184,6 @@ async def test_the_cursor_survives_the_process_and_the_next_run_covers_the_rest(
     assert cursor_two == "greenhouse:t3"
     assert set(first + second + third) == {company.name for company in companies}
     assert "tenant-04" in third and "tenant-00" in third, "the ring wraps rather than stalling"
-
-
-@respx.mock
-async def test_a_high_priority_registry_row_is_fetched_on_every_run(
-    db_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from stage.services import sync as sync_module
-
-    adapter = _CountingAdapter()
-    monkeypatch.setattr(sync_module, "adapter_for_platform", lambda _: adapter)
-    monkeypatch.setattr(sync_module, "get_feeds", dict)
-    respx.get(url__regex=r"https://boards-api\.greenhouse\.io/.*").mock(
-        return_value=httpx.Response(200, json={"jobs": []})
-    )
-    companies = [
-        replace(company, priority=Priority.HIGH) if company.name == "tenant-04" else company
-        for company in _registry(5)
-    ]
-
-    seen: list[set[str]] = []
-    for offset in range(3):
-        when = NOW + timedelta(hours=offset * 5)
-        async with open_repository(db_path) as repository:
-            fetched: set[str] = set()
-            async for event in sync_module.sync(repository, companies, now_fn=_at(when)):
-                if isinstance(event, CompanyFinished):
-                    fetched.add(event.company)
-            seen.append(fetched)
-
-    assert all("tenant-04" in run for run in seen)
-    assert all(len(run) == 2 for run in seen), "the always-on row counts against the budget"
 
 
 @respx.mock
@@ -628,7 +596,7 @@ async def test_each_run_gets_fresh_budgets_so_a_second_sync_is_not_pre_spent(
     assert spent == [2], "the second run's ceiling starts from zero, not from the first's"
 
 
-def test_high_priority_members_come_out_of_the_slice_never_on_top_of_it() -> None:
+def test_always_members_come_out_of_the_slice_never_on_top_of_it() -> None:
     members = _members(82, always={"tenant-00", "tenant-81"})
     budget = 40
     cursor = ""

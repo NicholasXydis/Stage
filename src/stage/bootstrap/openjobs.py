@@ -9,7 +9,7 @@ from typing import Any
 
 import yaml
 
-from stage.domain import Platform, PlatformCandidate, Priority
+from stage.domain import Platform, PlatformCandidate
 from stage.lexicon import company_legal_suffixes, division_qualifiers, fold
 from stage.sources.platforms import identify_url
 
@@ -20,7 +20,6 @@ SEED_PATH = Path(__file__).resolve().parents[1] / "data" / "seed_companies.yaml"
 class Seed:
     name: str
     section: str = "other"
-    priority: Priority = Priority.NORMAL
     note: str | None = None
 
 
@@ -122,7 +121,6 @@ def load_seeds(path: Path = SEED_PATH) -> tuple[Seed, ...]:
             Seed(
                 name=row["name"],
                 section=str(row.get("section", "other")),
-                priority=Priority(row.get("priority", Priority.NORMAL.value)),
                 note=str(note) if note is not None else None,
             )
         )
@@ -255,7 +253,6 @@ def to_registry_rows(report: CrossReference) -> str:
                     name=item.display_name,
                     platform=item.candidate.platform,
                     slug=item.candidate.slug,
-                    priority=item.seed.priority,
                     enabled=routable,
                     source_of_record=SourceOfRecord.OPENJOBS,
                     workday_tenant=item.candidate.workday_tenant,
@@ -303,7 +300,6 @@ def mined_registry_rows(found: Sequence[tuple[DatasetEntry, PlatformCandidate]])
                     name=entry.name,
                     platform=candidate.platform,
                     slug=candidate.slug,
-                    priority=Priority.NORMAL,
                     enabled=routable,
                     source_of_record=SourceOfRecord.OPENJOBS,
                     workday_tenant=candidate.workday_tenant,
