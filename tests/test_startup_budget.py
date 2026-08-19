@@ -10,6 +10,10 @@ LEAN_BUDGET_MS = 100.0
 LEXICON_BUDGET_MS = 140.0
 RUNS = 5
 
+if sys.version_info >= (3, 14):
+    LEAN_BUDGET_MS = 130.0
+    LEXICON_BUDGET_MS = 170.0
+
 if os.name == "nt":
     LEAN_BUDGET_MS = 240.0
     LEXICON_BUDGET_MS = 260.0

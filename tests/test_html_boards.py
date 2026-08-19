@@ -44,6 +44,20 @@ SHOPIFY = CustomBoard(
 )
 
 
+LIGHTSPEED = CustomBoard(
+    url="https://www.lightspeedhq.com/careers/openings/",
+    fmt="html",
+    row_selector="li.job",
+    fields={
+        "title": "span.job-title",
+        "location": "span.job-office",
+        "department": "span.job-dept",
+        "id": "a::slugid(href)",
+        "url": "a::attr(href)",
+    },
+)
+
+
 def _rows(name: str, board: CustomBoard) -> list[dict[str, str]]:
     text = (FIXTURES / name).read_text(encoding="utf-8")
     return [_project(block, board) for block in html_rows(text, board.row_selector)]
@@ -99,7 +113,7 @@ def test_a_sitemap_yields_a_title_and_id_derived_from_each_url() -> None:
 
 def test_a_sitemap_entry_without_a_trailing_id_still_keeps_its_slug() -> None:
     rows = sitemap_rows(
-        '<urlset><url><loc>https://example.test/careers/lead-designer</loc></url></urlset>'
+        "<urlset><url><loc>https://example.test/careers/lead-designer</loc></url></urlset>"
     )
     assert rows[0]["title"] == "Lead Designer", rows
     assert rows[0]["id"] == "lead-designer", rows
@@ -107,6 +121,16 @@ def test_a_sitemap_entry_without_a_trailing_id_still_keeps_its_slug() -> None:
 
 def test_a_document_with_no_url_entries_yields_no_rows() -> None:
     assert sitemap_rows("<urlset></urlset>") == [], "sitemap parser invented rows"
+
+
+def test_the_lightspeed_selectors_still_match_its_saved_page() -> None:
+    rows = _rows("lightspeed_openings.html", LIGHTSPEED)
+    assert len(rows) == 3, "Lightspeed row selector stopped matching its saved page"
+    for row in rows:
+        assert row["title"], "a Lightspeed row lost its title"
+        assert row["location"], "a Lightspeed row lost its office"
+        assert len(row["id"]) == 36, f"Lightspeed id is not the posting uuid: {row['id']!r}"
+        assert row["url"].startswith("https://www.lightspeedhq.com/careers/job/"), row["url"]
 
 
 def test_a_selector_that_matches_nothing_returns_no_rows_rather_than_guessing() -> None:
@@ -134,6 +158,7 @@ def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
         ("BlackRock", BLACKROCK),
         ("National Bank of Canada", NBC),
         ("Shopify", SHOPIFY),
+        ("Lightspeed", LIGHTSPEED),
     ):
         company: Company = rows[name]
         assert company.platform is Platform.CUSTOM_JSON, f"{name} left custom_json"

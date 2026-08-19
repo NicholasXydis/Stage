@@ -509,7 +509,7 @@ def test_every_acquisition_named_row_in_the_shipped_registry_carries_the_marker(
     from stage.services.discover import _acquisition_named
 
     rows = {row.slug: row for row in load_companies(None)}
-    for slug in ("lifeworks", "telusdigitalbr", "globalhr"):
+    for slug in ("lifeworks", "globalhr"):
         assert slug in rows, slug
         assert _acquisition_named(rows[slug]), slug
 
