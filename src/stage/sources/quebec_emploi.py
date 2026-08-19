@@ -46,7 +46,7 @@ class QuebecEmploiPage(BaseModel):
 @register_feed
 class QuebecEmploiFeed:
     name: ClassVar[str] = "quebec-emploi"
-    rate_profile: ClassVar[str] = "conservative"
+    rate_profile: ClassVar[str] = "paginated"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = "quebec-emploi"
 

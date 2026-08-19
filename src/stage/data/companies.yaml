@@ -1404,7 +1404,7 @@
     page_size: 10
     page_start: 1
     page_step: 1
-    max_pages: 30
+    max_pages: 32
 - name: Blackstar Computers
   platform: ashby
   slug: blackstar
@@ -2942,12 +2942,21 @@
     matched greenhouse/dmgmedia with 50 job(s) and the board named itself, so it is
     polled directly instead of secondhand'
 - name: DNEG
-  platform: jobvite
+  platform: custom_json
   slug: double-negative-visual-effects
-  source_of_record: openjobs
-  enabled: false
-  notes: No route found across its own _next/data, the page body, 9 JS bundles and
-    a 483-URL sitemap.
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'The jobvite board is server-rendered, so the listing is read as html from /search?nl=1
+    rather than through an API that does not exist.'
+  custom:
+    url: https://jobs.jobvite.com/double-negative-visual-effects/search?nl=1
+    format: html
+    row_selector: li.mb1
+    fields:
+      title: div.jv-job-list-name
+      location: div.jv-job-list-location
+      id: 'a.jv-job-item::slugid(href)'
+      url: 'a.jv-job-item::attr(href)'
 - name: Docebo
   platform: ashby
   slug: docebo

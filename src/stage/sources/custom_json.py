@@ -277,7 +277,7 @@ def _project(entry: Any, board: CustomBoard) -> dict[str, str]:
 class CustomJsonAdapter:
     name: ClassVar[str] = "custom_json"
     platform: ClassVar[Platform] = Platform.CUSTOM_JSON
-    rate_profile: ClassVar[str] = "conservative"
+    rate_profile: ClassVar[str] = "paginated"
     hosts: ClassVar[frozenset[str]] = frozenset()
     bucket_key: ClassVar[str] = ""
     detail_budget: ClassVar[int] = 0

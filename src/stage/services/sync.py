@@ -137,10 +137,11 @@ async def _spent_today(repository: AsyncRepository, since: datetime) -> tuple[di
     return spent, seen_any
 
 
-def _daily_allowance(posture: RatePosture, spent: int, has_history: bool) -> int:
+def _daily_allowance(posture: RatePosture, spent: int, has_history: bool, buckets: int = 1) -> int:
     if not has_history:
         return posture.max_requests_per_run
-    cap = min(CEILING_BACKSTOP * 2, posture.max_requests_per_run * DAILY_RUNS)
+    span = max(1, buckets)
+    cap = min(CEILING_BACKSTOP * 2, posture.max_requests_per_run * DAILY_RUNS) * span
     return max(0, min(posture.max_requests_per_run, cap - spent))
 
 
@@ -503,13 +504,7 @@ async def _run_company_source(
         if visit.source == source_name
     }
     rotation = rotate(
-        [
-            RotationMember(
-                key=company.registry_key,
-                always=False,
-            )
-            for company in companies
-        ],
+        [RotationMember(key=company.registry_key) for company in companies],
         cursor=stored.rotation_cursor if stored is not None else "",
         budget=adapter.rotation_slice,
     )
@@ -541,7 +536,9 @@ async def _run_company_source(
     base = postures.get(rotation_bucket) or resolve(
         adapter.rate_profile, [company.rate_profile for company in ordered]
     )
-    allowance = _daily_allowance(base, spent_today.get(source_name, 0), has_history)
+    allowance = _daily_allowance(
+        base, spent_today.get(source_name, 0), has_history, buckets=len(buckets)
+    )
     posture = replace(base, max_requests_per_run=allowance)
     if workday_adapter is not None:
         facets = await repository.load_workday_facets()

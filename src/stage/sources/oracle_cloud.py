@@ -48,7 +48,7 @@ class OraclePage(BaseModel):
 class OracleCloudAdapter:
     name: ClassVar[str] = "oracle_cloud"
     platform: ClassVar[Platform] = Platform.ORACLE_CLOUD
-    rate_profile: ClassVar[str] = "conservative"
+    rate_profile: ClassVar[str] = "paginated"
     hosts: ClassVar[frozenset[str]] = frozenset()
     bucket_key: ClassVar[str] = "oracle_cloud"
     detail_budget: ClassVar[int] = 0

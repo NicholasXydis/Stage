@@ -855,8 +855,9 @@ async def render_sync(
                 )
             case SourceCapped() as capped:
                 console.print(
-                    f"  [yellow]capped[/yellow] — {capped.spent} spent on {capped.bucket} in 24h, "
-                    f"so this run may use {capped.allowance} of {capped.ceiling}"
+                    f"  [yellow]capped[/yellow] — {capped.spent} spent by {capped.source} in 24h "
+                    f"across its buckets, so this run may use "
+                    f"{capped.allowance} of {capped.ceiling} per bucket"
                 )
             case SourceFresh() as fresh:
                 console.print(

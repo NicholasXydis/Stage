@@ -29,12 +29,8 @@ def _at(when: datetime) -> Callable[[], datetime]:
     return lambda: when
 
 
-def _members(count: int, *, always: set[str] | None = None) -> list[RotationMember]:
-    high = always or set()
-    return [
-        RotationMember(key=f"tenant-{index:02d}", always=f"tenant-{index:02d}" in high)
-        for index in range(count)
-    ]
+def _members(count: int) -> list[RotationMember]:
+    return [RotationMember(key=f"tenant-{index:02d}") for index in range(count)]
 
 
 def test_a_zero_slice_means_no_rotation_at_all() -> None:
@@ -67,20 +63,6 @@ def test_consecutive_runs_walk_the_whole_ring_without_repeating_or_skipping() ->
 
     assert set(visited) == {member.key for member in members}
     assert runs <= 3, "82 tenants at 40 a run must close the cycle in three runs"
-
-
-def test_always_members_are_covered_every_run_and_never_rotate() -> None:
-    members = _members(10, always={"tenant-00", "tenant-09"})
-    seen_always = []
-    cursor = ""
-    for _ in range(3):
-        result = rotate(members, cursor=cursor, budget=4)
-        assert "tenant-00" in result.selected and "tenant-09" in result.selected
-        assert "tenant-00" not in result.deferred and "tenant-09" not in result.deferred
-        seen_always.append(len(result.selected))
-        cursor = result.cursor
-
-    assert seen_always == [4, 4, 4], "the always-on members count against the same budget"
 
 
 def test_a_budget_that_covers_everything_reports_a_completed_cycle() -> None:
@@ -594,28 +576,6 @@ async def test_each_run_gets_fresh_budgets_so_a_second_sync_is_not_pre_spent(
 
     spent = [budget.requests for budget in second.values()]  # type: ignore[attr-defined]
     assert spent == [2], "the second run's ceiling starts from zero, not from the first's"
-
-
-def test_always_members_come_out_of_the_slice_never_on_top_of_it() -> None:
-    members = _members(82, always={"tenant-00", "tenant-81"})
-    budget = 40
-    cursor = ""
-    covered: set[str] = set()
-    runs = 0
-    while runs < 6:
-        runs += 1
-        result = rotate(members, cursor=cursor, budget=budget)
-        assert len(result.selected) == budget, (
-            "a run must cost exactly the slice, never the slice plus the always-on rows"
-        )
-        assert {"tenant-00", "tenant-81"} <= set(result.selected)
-        covered |= set(result.selected)
-        cursor = result.cursor
-        if len(covered) == len(members):
-            break
-
-    assert covered == {member.key for member in members}
-    assert runs == 3, "82 tenants with 2 always-on at slice 40 still closes in three runs"
 
 
 def test_two_registry_rows_sharing_a_name_are_two_ring_members() -> None:

@@ -264,3 +264,31 @@ async def test_our_own_exhausted_budget_is_never_recorded_as_a_board_failing(
     assert all(visit.consecutive_failures == 0 for visit in visits.values()), (
         "our own budget running out must never count against a board's failure streak"
     )
+
+
+def test_the_daily_cap_spans_every_bucket_a_source_fetches() -> None:
+    from stage.http.profiles import profile
+    from stage.services.sync import DAILY_RUNS, _daily_allowance
+
+    posture = profile("conservative")
+    per_bucket = posture.max_requests_per_run
+    spent = per_bucket * DAILY_RUNS * 3
+
+    single = _daily_allowance(posture, spent, True, buckets=1)
+    assert single == 0, "one bucket's own daily cap must still bind"
+
+    spread = _daily_allowance(posture, spent, True, buckets=40)
+    assert spread == per_bucket, (
+        "a source spanning many hosts must not charge every bucket's spend to one budget"
+    )
+
+
+def test_a_single_bucket_source_is_unchanged_by_the_span() -> None:
+    from stage.http.profiles import profile
+    from stage.services.sync import _daily_allowance
+
+    posture = profile("broad")
+    spent = posture.max_requests_per_run
+    assert _daily_allowance(posture, spent, True) == _daily_allowance(
+        posture, spent, True, buckets=1
+    ), "the default must behave exactly as a one-bucket source"
