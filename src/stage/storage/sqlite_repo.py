@@ -523,6 +523,29 @@ class SqliteRepository:
                 tuple(chunk),
             )
 
+    def _reseat_inverted_links(self) -> int:
+        rows = self._conn.execute(
+            "SELECT d.id AS duplicate, d.source AS duplicate_source, c.id AS canonical, "
+            "c.source AS canonical_source FROM jobs d JOIN jobs c ON d.duplicate_of = c.id"
+        ).fetchall()
+        swapped = 0
+        for row in rows:
+            duplicate, canonical = str(row["duplicate"]), str(row["canonical"])
+            if source_rank(str(row["duplicate_source"]), duplicate) >= source_rank(
+                str(row["canonical_source"]), canonical
+            ):
+                continue
+            self._conn.execute(
+                "UPDATE jobs SET duplicate_of = ? WHERE duplicate_of = ? AND id != ?",
+                (duplicate, canonical, duplicate),
+            )
+            self._conn.execute("UPDATE jobs SET duplicate_of = NULL WHERE id = ?", (duplicate,))
+            self._conn.execute(
+                "UPDATE jobs SET duplicate_of = ? WHERE id = ?", (duplicate, canonical)
+            )
+            swapped += 1
+        return swapped
+
     def _promote_orphaned_duplicates(self, purged: Sequence[str]) -> int:
         doomed = set(purged)
         clusters: dict[str, list[tuple[int, str]]] = {}
@@ -579,7 +602,8 @@ class SqliteRepository:
                 (JobStatus.OPEN.value, open_cutoff, JobStatus.CLOSED.value, closed_cutoff),
             ).fetchall()
             ids = [str(row["id"]) for row in rows]
-            promoted = self._promote_orphaned_duplicates(ids)
+            reseated = self._reseat_inverted_links()
+            promoted = self._promote_orphaned_duplicates(ids) + reseated
             if not ids:
                 return PurgeResult(promoted=promoted)
             conn.executemany(

@@ -369,3 +369,63 @@ def test_a_link_the_matcher_no_longer_produces_is_cleared(db_path: Path) -> None
         "clearing stale links must not unlink a pair that still matches"
     )
     repository.close()
+
+
+def test_purge_reseats_a_stored_link_whose_duplicate_outranks_its_canonical(
+    db_path: Path,
+) -> None:
+    repository = SqliteRepository.connect(db_path)
+    repository.apply_source_batch(
+        SourceBatch(
+            source="seed",
+            run_started_at=NOW,
+            jobs=(
+                _job("greenhouse:acme:1", "greenhouse", NOW),
+                _job("simplify:acme:2", "simplify", NOW),
+            ),
+        )
+    )
+    repository._conn.execute(
+        "UPDATE jobs SET duplicate_of = ? WHERE id = ?",
+        ("simplify:acme:2", "greenhouse:acme:1"),
+    )
+    repository._conn.commit()
+
+    repository.purge(NOW)
+
+    survivors = {
+        str(row["id"]): row["duplicate_of"]
+        for row in repository._conn.execute("SELECT id, duplicate_of FROM jobs")
+    }
+    assert survivors["greenhouse:acme:1"] is None, (
+        "the better-ranked board must become canonical when a stale link inverts them"
+    )
+    assert survivors["simplify:acme:2"] == "greenhouse:acme:1", survivors
+    repository.close()
+
+
+def test_purge_leaves_a_correctly_ordered_link_alone(db_path: Path) -> None:
+    repository = SqliteRepository.connect(db_path)
+    repository.apply_source_batch(
+        SourceBatch(
+            source="seed",
+            run_started_at=NOW,
+            jobs=(
+                _job("greenhouse:acme:1", "greenhouse", NOW),
+                _job("simplify:acme:2", "simplify", NOW),
+            ),
+        )
+    )
+    repository._conn.execute(
+        "UPDATE jobs SET duplicate_of = ? WHERE id = ?",
+        ("greenhouse:acme:1", "simplify:acme:2"),
+    )
+    repository._conn.commit()
+
+    repository.purge(NOW)
+
+    row = repository._conn.execute(
+        "SELECT duplicate_of FROM jobs WHERE id = ?", ("simplify:acme:2",)
+    ).fetchone()
+    assert row["duplicate_of"] == "greenhouse:acme:1", "a correct link must not be flipped"
+    repository.close()

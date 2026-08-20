@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -296,7 +297,8 @@ def test_the_gildan_jsonld_still_matches_its_saved_page() -> None:
     for row in rows:
         assert row["title"], "a Gildan row lost its title"
         assert row["id"], "a Gildan row lost its requisition id"
-        assert "icims.com" in row["url"] or "dayforce" in row["url"], row["url"]
+        host = urlsplit(row["url"]).hostname or ""
+        assert host == "icims.com" or host.endswith((".icims.com", ".dayforcehcm.com")), host
         assert row["location"], "a Gildan row lost its location"
 
 
