@@ -356,3 +356,20 @@ def test_a_mapped_field_holding_an_object_becomes_a_readable_location() -> None:
     assert _project(entry, board)["location"] == "Montréal, Quebec, CA", (
         "an object location must flatten, or the resolver reads a python dict repr"
     )
+
+
+def test_no_enabled_board_sends_every_posting_to_the_same_apply_url() -> None:
+    from stage.companies import load_companies
+
+    generic = [
+        company.name
+        for company in load_companies()
+        if company.enabled
+        and company.custom is not None
+        and not company.custom.mapped("url")
+        and "{id}" not in company.custom.url_template
+    ]
+
+    assert not generic, (
+        f"these boards fall back to the listing endpoint as every posting's apply url: {generic}"
+    )

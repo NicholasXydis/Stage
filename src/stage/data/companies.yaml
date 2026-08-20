@@ -3369,7 +3369,7 @@
       id: jobPostingId
       description: jobDescription
       location: postingLocations.0.formattedAddress
-    url_template: https://jobs.dayforcehcm.com/en-CA/eic/CANDIDATEPORTAL
+    url_template: https://jobs.dayforcehcm.com/en-CA/eic/CANDIDATEPORTAL/jobs/{id}
     page_param: paginationStart
     page_size: 25
     page_step: 25
@@ -5231,7 +5231,7 @@
       id: jobPostingId
       description: jobDescription
       location: postingLocations.0.formattedAddress
-    url_template: https://jobs.dayforcehcm.com/en-CA/ibgllc/CANDIDATEPORTAL
+    url_template: https://jobs.dayforcehcm.com/en-CA/ibgllc/CANDIDATEPORTAL/jobs/{id}
     page_param: paginationStart
     page_size: 25
     page_step: 25
@@ -6443,6 +6443,8 @@
       title: title
       id: id
       location: location
+      department: departmentName
+    url_template: https://miro.com/careers/vacancy/{id}/
 - name: Mistplay
   platform: lever
   slug: mistplay
@@ -8125,7 +8127,7 @@
       id: jobPostingId
       description: jobDescription
       location: postingLocations.0.formattedAddress
-    url_template: https://jobs.dayforcehcm.com/en-CA/ref/CANDIDATEPORTAL
+    url_template: https://jobs.dayforcehcm.com/en-CA/ref/CANDIDATEPORTAL/jobs/{id}
     page_param: paginationStart
     page_size: 25
     page_step: 25
@@ -10516,8 +10518,8 @@
   slug: vidyard
   source_of_record: discover
   enabled: false
-  notes: Browser-discovered endpoint whose payload did not validate against the captured
-    jobs_path.
+  notes: 'The kula.ai payload names offices rather than postings and carries no per-job
+    url, so every posting would apply to the listing endpoint; parked until recaptured.'
   custom:
     url: https://careers.kula.ai/api/internal/ats_job_posts?accountName=vidyard&page=1&type=ats_job_post.index&items=99
     jobs_path: data.ats_job.offices
