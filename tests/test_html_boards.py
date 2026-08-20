@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from stage.domain import Company, CustomBoard, Platform
-from stage.sources.custom_json import _project, html_rows, sitemap_rows
+from stage.sources.custom_json import _project, html_rows, jsonld_rows, sitemap_rows
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -55,6 +55,61 @@ LIGHTSPEED = CustomBoard(
         "id": "a::slugid(href)",
         "url": "a::attr(href)",
     },
+)
+
+
+TWOSIGMA = CustomBoard(
+    url="https://careers.twosigma.com/careers/OpenRoles/?listFilterMode=1&jobRecordsPerPage=10",
+    fmt="html",
+    row_selector="article.article--result",
+    fields={
+        "title": "h3.article__header__text__title a",
+        "id": "h3.article__header__text__title a::slugid(href)",
+        "url": "h3.article__header__text__title a::attr(href)",
+        "location": "div.article__header__content__text > span.paragraph_inner-span",
+        "department": "div.article__header__content__sub-text > span.paragraph_inner-span",
+        "employment_type": (
+            "div.article__header__content__sub-text > span.paragraph_inner-span:nth-of-type(2)"
+        ),
+    },
+    page_param="jobOffset",
+    page_size=10,
+    page_step=10,
+    max_pages=12,
+)
+
+
+GILDAN = CustomBoard(
+    url="https://gildancorp.com/en/careers/open-positions/",
+    fmt="jsonld",
+    fields={
+        "title": "title",
+        "id": "identifier.value",
+        "url": "url",
+        "location": "jobLocation.name",
+        "description": "description",
+        "employment_type": "employmentType",
+        "category": "jobCategory",
+    },
+    page_param="page",
+    page_size=10,
+    page_start=1,
+    page_step=1,
+    max_pages=10,
+)
+
+
+LOBLAW = CustomBoard(
+    url="https://careers.loblaw.ca/jobs",
+    fmt="html",
+    row_selector=".results-list__item",
+    fields={
+        "title": ".results-list__item-title--link",
+        "id": ".results-list__item-title--link::attr(href)",
+        "url": ".results-list__item-title--link::attr(href)",
+        "location": ".results-list__item-street--label",
+    },
+    authoritative=False,
 )
 
 
@@ -138,6 +193,79 @@ def test_a_selector_that_matches_nothing_returns_no_rows_rather_than_guessing() 
     assert html_rows(text, "li.does-not-exist") == [], "a dead selector invented rows"
 
 
+def test_the_two_sigma_selectors_still_match_its_saved_page() -> None:
+    rows = _rows("twosigma_openroles.html", TWOSIGMA)
+    assert len(rows) == 3, "Two Sigma row selector stopped matching its saved page"
+    for row in rows:
+        assert row["title"], "a Two Sigma row lost its title"
+        assert row["id"].isdigit(), f"Two Sigma id is not a job id: {row['id']!r}"
+        assert "/careers/JobDetail/" in row["url"], row["url"]
+        assert row["location"], "a Two Sigma row lost its location"
+        assert row["department"], "a Two Sigma row lost its function"
+
+
+def test_two_sigma_keeps_location_and_function_in_separate_fields() -> None:
+    rows = _rows("twosigma_openroles.html", TWOSIGMA)
+    for row in rows:
+        assert row["location"] != row["department"], (
+            "the location and function spans share a class, so a loose selector merges them"
+        )
+
+
+def _jsonld(name: str, board: CustomBoard) -> list[dict[str, str]]:
+    text = (FIXTURES / name).read_text(encoding="utf-8")
+    return [_project(entry, board) for entry in jsonld_rows(text)]
+
+
+def test_the_gildan_jsonld_still_matches_its_saved_page() -> None:
+    rows = _jsonld("gildan_openpositions.html", GILDAN)
+    assert len(rows) == 3, "Gildan ld+json stopped yielding its JobPosting blocks"
+    for row in rows:
+        assert row["title"], "a Gildan row lost its title"
+        assert row["id"], "a Gildan row lost its requisition id"
+        assert "icims.com" in row["url"] or "dayforce" in row["url"], row["url"]
+        assert row["location"], "a Gildan row lost its location"
+
+
+def test_gildan_ignores_the_organization_and_breadcrumb_blocks() -> None:
+    rows = _jsonld("gildan_openpositions.html", GILDAN)
+    titles = [row["title"] for row in rows]
+
+    assert "Gildan" not in titles, (
+        "the Organization block was read as a posting, so the first ld+json script wins"
+    )
+
+
+def test_gildan_carries_the_body_its_visible_cards_omit() -> None:
+    rows = _jsonld("gildan_openpositions.html", GILDAN)
+
+    assert any(row["description"] for row in rows), (
+        "ld+json was chosen over selectors for the body; losing it removes the reason"
+    )
+
+
+def test_gildan_ids_stay_distinct_across_its_two_backing_boards() -> None:
+    rows = _jsonld("gildan_openpositions.html", GILDAN)
+    assert len({row["id"] for row in rows}) == len(rows), (
+        "Gildan mixes icims requisition numbers with dayforce ids, and they must not collide"
+    )
+
+
+def test_the_loblaw_selectors_still_match_its_saved_page() -> None:
+    rows = _rows("loblaw_jobs.html", LOBLAW)
+    assert len(rows) == 3, "Loblaw row selector stopped matching its saved page"
+    for row in rows:
+        assert row["title"], "a Loblaw row lost its title"
+        assert row["location"], "a Loblaw row lost its location"
+
+
+def test_every_loblaw_row_carries_a_distinct_id() -> None:
+    rows = _rows("loblaw_jobs.html", LOBLAW)
+    assert len({row["id"] for row in rows}) == len(rows), (
+        "Loblaw posting ids collapsed, so every posting would share one job_id"
+    )
+
+
 @pytest.mark.parametrize(
     "board,name",
     [(BLACKROCK, "blackrock_search.html"), (NBC, "nbc_search.html")],
@@ -159,6 +287,9 @@ def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
         ("National Bank of Canada", NBC),
         ("Shopify", SHOPIFY),
         ("Lightspeed", LIGHTSPEED),
+        ("Two Sigma", TWOSIGMA),
+        ("Gildan", GILDAN),
+        ("Loblaw", LOBLAW),
     ):
         company: Company = rows[name]
         assert company.platform is Platform.CUSTOM_JSON, f"{name} left custom_json"
