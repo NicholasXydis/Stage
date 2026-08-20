@@ -278,9 +278,25 @@ def test_every_shipped_source_is_ranked_so_none_falls_below_the_feeds() -> None:
     from stage.domain import SOURCE_PRIORITY as RANKED
 
     shipped = {
-        "greenhouse", "lever", "smartrecruiters", "ashby", "workday", "workable", "bamboohr",
-        "recruitee", "breezy", "collage", "oracle_cloud", "custom_json", "quebec-emploi",
-        "simplify", "vanshb03", "speedyapply", "zshah101", "hanzili", "negar",
+        "greenhouse",
+        "lever",
+        "smartrecruiters",
+        "ashby",
+        "workday",
+        "workable",
+        "bamboohr",
+        "recruitee",
+        "breezy",
+        "collage",
+        "oracle_cloud",
+        "custom_json",
+        "quebec-emploi",
+        "simplify",
+        "vanshb03",
+        "speedyapply",
+        "zshah101",
+        "hanzili",
+        "negar",
         "northwestern-quant",
     }
     missing = sorted(shipped - set(RANKED))

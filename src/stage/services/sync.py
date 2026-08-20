@@ -130,9 +130,7 @@ def _plan_bounds(
         for bucket in _adapter_buckets(adapter, [company]):
             members[bucket] = members.get(bucket, 0) + 1
             worst[bucket] = worst.get(bucket, 0) + page_budgets.get(company.registry_key, 0)
-    bounds = [
-        (bucket, source, members[bucket], worst[bucket]) for bucket in sorted(members)
-    ]
+    bounds = [(bucket, source, members[bucket], worst[bucket]) for bucket in sorted(members)]
     if detail_budget and bounds:
         bucket, name, count, total = bounds[0]
         bounds[0] = (bucket, name, count, total + detail_budget)
