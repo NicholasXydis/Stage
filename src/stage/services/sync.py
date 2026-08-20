@@ -117,6 +117,28 @@ def _adapter_buckets(adapter: Adapter, companies: Sequence[Company]) -> tuple[st
     return tuple(sorted(adapter.hosts_for(companies) or adapter.hosts))
 
 
+def _plan_bounds(
+    adapter: Adapter,
+    source: str,
+    companies: Sequence[Company],
+    page_budgets: Mapping[str, int],
+    detail_budget: int,
+) -> list[tuple[str, str, int, int]]:
+    members: dict[str, int] = {}
+    worst: dict[str, int] = {}
+    for company in companies:
+        for bucket in _adapter_buckets(adapter, [company]):
+            members[bucket] = members.get(bucket, 0) + 1
+            worst[bucket] = worst.get(bucket, 0) + page_budgets.get(company.registry_key, 0)
+    bounds = [
+        (bucket, source, members[bucket], worst[bucket]) for bucket in sorted(members)
+    ]
+    if detail_budget and bounds:
+        bucket, name, count, total = bounds[0]
+        bounds[0] = (bucket, name, count, total + detail_budget)
+    return bounds
+
+
 def _reserve_for(adapter: Adapter) -> int:
     return getattr(adapter, "retry_reserve", 0) + adapter.detail_budget
 
@@ -586,8 +608,15 @@ async def _run_company_source(
     detail_queue = await repository.detail_queue(source_name, detail_budget)
 
     if dry_run:
-        worst_case = sum(page_budgets.values()) + (detail_budget if is_workday else 0)
-        plan_bounds.append((rotation_bucket, source_name, len(ordered), worst_case))
+        plan_bounds.extend(
+            _plan_bounds(
+                adapter,
+                source_name,
+                ordered,
+                page_budgets,
+                detail_budget if is_workday else 0,
+            )
+        )
         async for event in _plan_company_source(adapter, ordered, seed):
             yield event
         yield SourceFinished(
