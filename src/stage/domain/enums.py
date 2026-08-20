@@ -72,6 +72,7 @@ class Platform(StrEnum):
     AVATURE = "avature"
     PHENOM = "phenom"
     EIGHTFOLD = "eightfold"
+    CORNERSTONE = "cornerstone"
     COLLAGE = "collage"
     CUSTOM_JSON = "custom_json"
 

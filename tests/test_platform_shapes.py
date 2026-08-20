@@ -141,3 +141,20 @@ def test_the_greenhouse_api_host_resolves_like_the_board_host() -> None:
     board = identify_url("https://boards.greenhouse.io/robinhood")
     assert board is not None
     assert board.slug == api.slug, "both greenhouse hosts must name the same board"
+
+
+def test_a_cornerstone_career_site_resolves_to_its_tenant() -> None:
+    candidate = identify_url("https://cn360.csod.com/ux/ats/careersite/6/home?c=cn360&lang=en-US")
+
+    assert candidate is not None, "a csod.com careers URL was read as an unknown platform"
+    assert candidate.platform is Platform.CORNERSTONE, candidate.platform
+    assert candidate.slug == "cn360", candidate.slug
+
+
+def test_the_number_in_a_cornerstone_path_is_not_the_search_site_id() -> None:
+    candidate = identify_url("https://cn360.csod.com/ux/ats/careersite/6/home")
+
+    assert candidate is not None
+    assert candidate.slug == "cn360", (
+        "the path number is the career site page, not a slug, so it must never become the tenant"
+    )

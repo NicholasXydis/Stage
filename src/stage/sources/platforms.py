@@ -328,6 +328,10 @@ URL_PATTERNS: tuple[UrlPattern, ...] = (
         platform=Platform.EIGHTFOLD,
         host_pattern=re.compile(r"^(?P<slug>[a-z0-9][a-z0-9-]*)\.eightfold\.ai$"),
     ),
+    UrlPattern(
+        platform=Platform.CORNERSTONE,
+        host_pattern=re.compile(r"^(?P<slug>[a-z0-9][a-z0-9-]*)\.csod\.com$"),
+    ),
 )
 
 _RESERVED_PATH_SEGMENTS = frozenset({"jobs", "job", "careers", "search", "embed", "api", "v1"})
