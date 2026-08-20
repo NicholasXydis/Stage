@@ -1,3 +1,4 @@
+import dataclasses
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -271,3 +272,84 @@ def _job(
         location=LocationBucket.USA,
         status=status,
     )
+
+
+def test_every_shipped_source_is_ranked_so_none_falls_below_the_feeds() -> None:
+    from stage.domain import SOURCE_PRIORITY as RANKED
+
+    shipped = {
+        "greenhouse", "lever", "smartrecruiters", "ashby", "workday", "workable", "bamboohr",
+        "recruitee", "breezy", "collage", "oracle_cloud", "custom_json", "quebec-emploi",
+        "simplify", "vanshb03", "speedyapply", "zshah101", "hanzili", "negar",
+        "northwestern-quant",
+    }
+    missing = sorted(shipped - set(RANKED))
+
+    assert not missing, f"unranked sources tie below every feed: {missing}"
+
+
+def test_a_direct_employer_board_outranks_every_community_feed() -> None:
+    from stage.domain import SOURCE_PRIORITY as RANKED
+
+    feeds = ("simplify", "vanshb03", "speedyapply", "zshah101", "hanzili", "negar")
+    worst_direct = max(
+        RANKED.index(name)
+        for name in ("greenhouse", "workday", "custom_json", "oracle_cloud", "workable", "bamboohr")
+    )
+    best_feed = min(RANKED.index(name) for name in feeds)
+
+    assert worst_direct < best_feed, (
+        "a feed would win the canonical row over the employer's own board"
+    )
+
+
+def test_a_link_the_matcher_no_longer_produces_is_cleared(db_path: Path) -> None:
+    repository = SqliteRepository.connect(db_path)
+    pair_a = _job("greenhouse:acme:1", "greenhouse", NOW)
+    feed_a = _job("simplify:acme:2", "simplify", NOW)
+    pair_b = dataclasses.replace(
+        _job("greenhouse:acme:3", "greenhouse", NOW),
+        title_raw="Data Engineer Intern",
+        title_normalized="data engineer intern",
+    )
+    feed_b = dataclasses.replace(
+        _job("simplify:acme:4", "simplify", NOW),
+        title_raw="Data Engineer Intern",
+        title_normalized="data engineer intern",
+    )
+    repository.apply_source_batch(
+        SourceBatch(
+            source="seed",
+            run_started_at=NOW,
+            jobs=(pair_a, feed_a, pair_b, feed_b),
+            resolve_duplicates=resolve_duplicates,
+        )
+    )
+    linked = repository._conn.execute(
+        "SELECT COUNT(*) FROM jobs WHERE duplicate_of IS NOT NULL"
+    ).fetchone()[0]
+    assert linked == 2, "the feed rows were never linked, so the test proves nothing"
+
+    renamed = dataclasses.replace(
+        feed_a, title_raw="Principal Analog IC Architect", title_normalized="principal analog ic"
+    )
+    repository.apply_source_batch(
+        SourceBatch(
+            source="simplify",
+            run_started_at=NOW,
+            jobs=(renamed, feed_b),
+            resolve_duplicates=resolve_duplicates,
+        )
+    )
+
+    stale = repository._conn.execute(
+        "SELECT duplicate_of FROM jobs WHERE id = ?", ("simplify:acme:2",)
+    ).fetchone()[0]
+    assert stale is None, "a stale link survived, so it can never repoint when priority changes"
+    kept = repository._conn.execute(
+        "SELECT duplicate_of FROM jobs WHERE id = ?", ("simplify:acme:4",)
+    ).fetchone()[0]
+    assert kept == "greenhouse:acme:3", (
+        "clearing stale links must not unlink a pair that still matches"
+    )
+    repository.close()

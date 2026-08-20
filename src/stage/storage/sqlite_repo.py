@@ -495,6 +495,7 @@ class SqliteRepository:
         if not pairs:
             return 0
         duplicates = {duplicate for duplicate, _ in pairs}
+        self._clear_stale_links(jobs, duplicates)
         canonicals = {canonical for _, canonical in pairs}
         self._conn.executemany(
             "UPDATE jobs SET duplicate_of = ? WHERE id = ?",
@@ -511,6 +512,16 @@ class SqliteRepository:
                 (canonical, duplicate, canonical),
             )
         return len(duplicates)
+
+    def _clear_stale_links(self, jobs: Sequence[Job], linked: set[str]) -> None:
+        stale = [job.id for job in jobs if job.id not in linked]
+        for chunk in self._chunked(stale):
+            placeholders = ", ".join("?" * len(chunk))
+            self._conn.execute(
+                f"UPDATE jobs SET duplicate_of = NULL WHERE id IN ({placeholders}) "
+                "AND duplicate_of IS NOT NULL",
+                tuple(chunk),
+            )
 
     def _promote_orphaned_duplicates(self, purged: Sequence[str]) -> int:
         doomed = set(purged)

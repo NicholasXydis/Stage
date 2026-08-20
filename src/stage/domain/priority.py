@@ -4,9 +4,21 @@ SOURCE_PRIORITY: tuple[str, ...] = (
     "smartrecruiters",
     "ashby",
     "workday",
+    "workable",
+    "bamboohr",
+    "recruitee",
+    "breezy",
+    "collage",
+    "oracle_cloud",
+    "custom_json",
+    "quebec-emploi",
     "simplify",
     "vanshb03",
     "speedyapply",
+    "zshah101",
+    "hanzili",
+    "negar",
+    "northwestern-quant",
 )
 
 
