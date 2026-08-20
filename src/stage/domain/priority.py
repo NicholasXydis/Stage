@@ -12,6 +12,8 @@ SOURCE_PRIORITY: tuple[str, ...] = (
     "oracle_cloud",
     "custom_json",
     "quebec-emploi",
+    "jobbank",
+    "themuse",
     "simplify",
     "vanshb03",
     "speedyapply",
