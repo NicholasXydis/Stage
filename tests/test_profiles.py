@@ -13,6 +13,7 @@ def test_the_documented_tiers_exist() -> None:
         "conservative",
         "workday",
         "feeds",
+        "jobbank",
         "discovery",
     }
 
@@ -135,3 +136,12 @@ def test_every_shipped_platform_ceiling_covers_its_enabled_board_count() -> None
         assert ceiling >= boards, (
             f"{adapter.name}: {boards} boards against a ceiling of {ceiling} truncates every run"
         )
+
+
+def test_the_job_bank_tier_honours_the_crawl_delay_its_robots_file_asks_for() -> None:
+    posture = PROFILES["jobbank"]
+
+    assert posture.min_interval_s >= 5.0, (
+        "jobbank.gc.ca publishes Crawl-delay: 5, and that interval is why we may crawl it"
+    )
+    assert posture.concurrency == 1, "a crawl delay means one request at a time, not two in flight"

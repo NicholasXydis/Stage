@@ -58,6 +58,14 @@ FEEDS = RatePosture(
     concurrency=2, min_interval_s=0.5, max_requests_per_run=20, refresh_interval_h=0.0
 )
 
+JOBBANK = RatePosture(
+    concurrency=1,
+    min_interval_s=5.0,
+    max_requests_per_run=120,
+    refresh_interval_h=0.0,
+    requests_per_board=1,
+)
+
 DISCOVERY = RatePosture(
     concurrency=1, min_interval_s=1.0, max_requests_per_run=60, refresh_interval_h=0.0
 )
@@ -71,6 +79,7 @@ PROFILES: MappingProxyType[str, RatePosture] = MappingProxyType(
         "conservative": CONSERVATIVE,
         "workday": WORKDAY,
         "feeds": FEEDS,
+        "jobbank": JOBBANK,
         "discovery": DISCOVERY,
     }
 )
