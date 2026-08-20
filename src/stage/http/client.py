@@ -20,6 +20,7 @@ from stage.http.cache import ValidatorCache
 from stage.http.profiles import RatePosture
 
 USER_AGENT = "stage-cli/0.1.0 (+https://github.com/NicholasXydis/stage; internship aggregator)"
+TEXT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 MAX_RETRY_AFTER_S = 60.0
 MAX_INTERVAL_S = 10.0
@@ -586,7 +587,13 @@ class HttpClient:
         return await self._request("POST", url, body=body, extra_headers=extra_headers)
 
     async def get_text(self, url: str, *, revalidate: bool = False) -> TextResponse:
-        response = await self._request("GET", url, decode="text", revalidate=revalidate)
+        response = await self._request(
+            "GET",
+            url,
+            decode="text",
+            revalidate=revalidate,
+            extra_headers={"Accept": TEXT_ACCEPT},
+        )
         return TextResponse(
             status=response.status,
             text="" if response.payload is None else str(response.payload),
