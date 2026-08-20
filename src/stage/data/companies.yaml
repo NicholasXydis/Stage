@@ -672,6 +672,28 @@
   slug: appian
   source_of_record: discover
   last_verified: *id003
+- name: Apple
+  platform: custom_json
+  slug: apple
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'No API; the Students/Internships search page embeds every record in window.__staticRouterHydrationData.
+    Scoped to Apple''s own internships team because the full board is thousands of roles.'
+  custom:
+    url: https://jobs.apple.com/en-ca/search?team=internships-STDNT-INTRN
+    extract: window.__staticRouterHydrationData
+    jobs_path: loaderData.search.searchResults
+    url_template: https://jobs.apple.com/en-ca/details/{id}
+    fields:
+      title: postingTitle
+      id: id
+      location: locations.0.name
+      description: jobSummary
+    page_param: page
+    page_size: 20
+    page_start: 1
+    page_step: 1
+    max_pages: 10
 - name: Applied Intuition
   platform: ashby
   slug: applied
@@ -946,6 +968,22 @@
   slug: atoms
   source_of_record: discover
   last_verified: *id003
+- name: ATS Automation
+  platform: custom_json
+  slug: atsautomation
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: SuccessFactors RMK; /rss.xml carries the whole board (210 items against 164 on its own search page).
+  custom:
+    url: https://jobs.atsautomation.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Atura Power
   platform: bamboohr
   slug: aturapower
@@ -1821,6 +1859,22 @@
   workday_facet: workerSubType:2c9712637fee1027395fffa4ae951d8f
   notes: '2026-08-13: official Workday endpoint verified; its temporary intern facet
     has 16 listings.'
+- name: Canada Life
+  platform: custom_json
+  slug: canadalife
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: SuccessFactors RMK; /rss.xml holds 109 items against 90 on its search page, and covers Great-West Lifeco rows.
+  custom:
+    url: https://jobs.canadalife.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Canadian Solar
   platform: workday
   slug: canadiansolar
@@ -1977,6 +2031,24 @@
   workday_dc: wd10
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Celestica
+  platform: custom_json
+  slug: celestica
+  source_of_record: discover
+  last_verified: 2026-08-19
+  enabled: false
+  notes: SuccessFactors RMK; /rss.xml matches its search page exactly at 1,114 items, but
+    that is 12.3MB a refresh, so the row is parked on storage cost rather than reachability.
+  custom:
+    url: https://careers.celestica.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Celonis
   platform: greenhouse
   slug: celonis
@@ -2187,6 +2259,48 @@
   workday_dc: wd3
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (6 posting(s), 0 kept)'
+- name: Circle K (corporate)
+  platform: custom_json
+  slug: circlek-phenom
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Phenom POST /widgets, keyword-scoped because the unfiltered board is 10,536 store postings; its category facet drops the one co-op.
+  custom:
+    url: https://workwithus.circlek.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: global
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: intern co-op stagiaire student
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 100
+    max_pages: 3
 - name: Circleback
   platform: ashby
   slug: circleback
@@ -2252,6 +2366,36 @@
   workday_dc: wd108
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Citadel
+  platform: custom_json
+  slug: citadel
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'Cloudflare serves only the sitemap to our client, and it is a strict subset —
+    52 of the 77 the site lists — so the row is declared non-authoritative and never closes.'
+  custom:
+    url: https://www.citadel.com/career-sitemap.xml
+    format: sitemap
+    authoritative: false
+    fields:
+      title: title
+      id: id
+      url: loc
+- name: Citadel Securities
+  platform: custom_json
+  slug: citadelsecurities
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Same Cloudflare posture as Citadel; the sitemap carries 84 of the 107 the site
+    lists, so this row is non-authoritative too and never closes.
+  custom:
+    url: https://www.citadelsecurities.com/career-sitemap.xml
+    format: sitemap
+    authoritative: false
+    fields:
+      title: title
+      id: id
+      url: loc
 - name: Citigroup
   platform: workday
   slug: citi
@@ -2367,6 +2511,48 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: CN
+  platform: custom_json
+  slug: cn
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Cornerstone; the career page hands every visitor a JWT, and careerSiteId 1 is the union of its sites 3, 4 and 5.
+  custom:
+    url: https://us.api.csod.com/rec-job-search/external/jobs
+    method: POST
+    handshake_url: https://cn360.csod.com/ux/ats/careersite/6/home?c=cn360&lang=en-US
+    token_pattern: '"token":"([A-Za-z0-9._-]+)"'
+    token_header: Authorization
+    token_prefix: 'Bearer '
+    body:
+      careerSiteId: 1
+      careerSitePageId: 1
+      pageNumber: 1
+      pageSize: 25
+      cultureId: 1
+      cultureName: en-US
+      searchText: ''
+      states: []
+      countryCodes: []
+      cities: []
+      placeID: ''
+      radius: null
+      postingsWithinDays: null
+      customFieldCheckboxKeys: []
+      customFieldDropdowns: []
+      customFieldRadios: []
+    jobs_path: data.requisitions
+    fields:
+      title: displayJobTitle
+      id: requisitionId
+      location: locations
+      description: externalDescription
+    url_template: https://cn360.csod.com/ux/ats/careersite/6/home/requisition/{id}?c=cn360
+    page_param: pageNumber
+    page_size: 25
+    page_start: 1
+    page_step: 1
+    max_pages: 8
 - name: CNO Financial Group
   platform: workday
   slug: cnoinc
@@ -2629,6 +2815,22 @@
   notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
     tried returns HTML, including the documented search and REST paths, so there is
     no credential-free JSON to build a shared adapter on.'
+- name: CPKC
+  platform: custom_json
+  slug: cpkc
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: SuccessFactors RMK; /rss.xml returned 230 postings, the same Google-jobs shape as Bombardier.
+  custom:
+    url: https://careers.cpr.ca/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Creatify Lab
   platform: ashby
   slug: creatify
@@ -4069,6 +4271,28 @@
   notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
     api/secret'' and the careers host 302s, confirming it is credentialed and keyed
     on an internal companyId rather than this slug.'
+- name: Gildan
+  platform: custom_json
+  slug: gildan
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: The page publishes its whole listing as schema.org JobPosting blocks, which carry the body and employment type its visible cards do not.
+  custom:
+    url: https://gildancorp.com/en/careers/open-positions/
+    format: jsonld
+    fields:
+      title: title
+      id: identifier.value
+      url: url
+      location: jobLocation.name
+      description: description
+      employment_type: employmentType
+      category: jobCategory
+    page_param: page
+    page_size: 10
+    page_start: 1
+    page_step: 1
+    max_pages: 10
 - name: Gilead
   platform: workday
   slug: gilead
@@ -4143,6 +4367,39 @@
   slug: godaddy
   source_of_record: openjobs
   last_verified: *id007
+- name: Goldman Sachs
+  platform: custom_json
+  slug: goldmansachs
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'Public GraphQL gateway, introspection open; experiences CAMPUS is the publisher''s
+    own early-careers scope. Detail route /roles/[roleId] read from the app build manifest.'
+  custom:
+    url: https://api-higher.gs.com/gateway/api/v1/graphql
+    method: POST
+    body:
+      query: 'query($i:RoleSearchQueryInput!){roleSearch(searchQueryInput:$i){totalCount
+        items{roleId jobTitle division descriptionHtml lastPostedDate locations{city
+        state country}}}}'
+      variables:
+        i:
+          page:
+            pageSize: 250
+            pageNumber: 0
+          experiences:
+          - CAMPUS
+    jobs_path: data.roleSearch.items
+    url_template: https://higher.gs.com/roles/{id}
+    fields:
+      title: jobTitle
+      id: roleId
+      location: locations.0.city
+      description: descriptionHtml
+      department: division
+    page_param: variables.i.page.pageNumber
+    page_size: 250
+    page_step: 1
+    max_pages: 6
 - name: GoMotive
   platform: greenhouse
   slug: gomotive
@@ -4623,6 +4880,38 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Hydro One
+  platform: custom_json
+  slug: hydroone
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: SuccessFactors RMK; /rss.xml returned all 18 postings its search page reports.
+  custom:
+    url: https://jobs.hydroone.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Hydro-Québec
+  platform: custom_json
+  slug: hydroquebec
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; /rss.xml carries the whole French board, including its collegial and university stage postings.
+  custom:
+    url: https://emploi.hydroquebec.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Hypercubic
   platform: ashby
   slug: hypercubic
@@ -5537,6 +5826,23 @@
   enabled: false
   notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
     Re-probed 2026-08-14 and still dead.'
+- name: Loblaw
+  platform: custom_json
+  slug: loblaw
+  source_of_record: discover
+  last_verified: 2026-08-19
+  enabled: false
+  notes: 296 pages of retail whose pagination is a path rather than a parameter, and no category facet is honoured, so the volume is not worth the two CS roles.
+  custom:
+    url: https://careers.loblaw.ca/jobs
+    format: html
+    row_selector: .results-list__item
+    authoritative: false
+    fields:
+      title: .results-list__item-title--link
+      id: .results-list__item-title--link::attr(href)
+      url: .results-list__item-title--link::attr(href)
+      location: .results-list__item-street--label
 - name: Logitech
   platform: workday
   slug: logitech
@@ -8001,6 +8307,29 @@
   name_gate_exempt: true
   notes: '2026-08-18: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (70 job(s))'
+- name: Rivian
+  platform: custom_json
+  slug: rivian
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: iCIMS career-site (careers-home) JSON API, which is a different contract from
+    the icims.com boards that serve only HTML.
+  custom:
+    url: https://careers.rivian.com/api/jobs?limit=100&internal=false
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      url: data.apply_url
+      location: data.full_location
+      description: data.description
+      department: data.category
+      employment_type: data.employment_type
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 15
 - name: Rivian and Volkswagen Group Technologies
   platform: ashby
   slug: rivianvw.tech
@@ -8054,6 +8383,13 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Rocket Lab
+  platform: greenhouse
+  slug: rocketlab
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'Careers page is SilverStripe, but its position slugs carry Greenhouse job ids;
+    the board names itself Rocket Lab Corporation.'
 - name: Rockstar Games
   platform: greenhouse
   slug: rockstargames
@@ -8185,6 +8521,16 @@
   slug: samsara
   source_of_record: discover
   last_verified: *id003
+- name: Samsung Electronics
+  platform: workday
+  slug: samsungelectronics
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'Verified by CXS probe: 668 postings, and the tenant advertises an Intern(Empl.)
+    worker subtype. Distinct board from greenhouse/samsungsemiconductor.'
+  workday_tenant: sec
+  workday_site: Samsung_Careers
+  workday_dc: wd3
 - name: Samsung Semiconductor
   platform: greenhouse
   slug: samsungsemiconductor
@@ -8202,6 +8548,22 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 33 job(s)'
+- name: SAP
+  platform: custom_json
+  slug: sap
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'jobs.sap.com/sitemap.xml is a Google-jobs RSS feed, not a sitemap; it carries
+    the Montreal iXp internships in both English and French.'
+  custom:
+    url: https://jobs.sap.com/sitemap.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
 - name: SAP Fioneer
   platform: workable
   slug: fioneer
@@ -8700,6 +9062,16 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active systems-engineering internship application verifies
     the public Lever board.'
+- name: Sony Global
+  platform: workday
+  slug: sonyglobal
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'sonyjobs.com only iframes this tenant. Verified by CXS probe: 94 postings,
+    Intern (Fixed Term) advertised. Parent of the existing Sony Interactive rows.'
+  workday_tenant: sonyglobal
+  workday_site: SonyGlobalCareers
+  workday_dc: wd1
 - name: Sony Interactive Entertainment
   platform: greenhouse
   slug: siei
@@ -8916,6 +9288,15 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 6 posting(s), 1 kept after
     the CS-internship screens'
+- name: Suncor Energy
+  platform: workday
+  slug: suncor
+  source_of_record: discover
+  last_verified: 2026-08-19
+  workday_tenant: suncor
+  workday_site: Suncor_External
+  workday_dc: wd1
+  notes: Coordinates taken from the employer's own careers URL; the unfiltered board is 44 postings, so no facet is pinned.
 - name: Supabase
   platform: ashby
   slug: supabase
@@ -9434,20 +9815,26 @@
   platform: custom_json
   slug: tiktok
   source_of_record: discover
-  paused_until: 2026-08-20
-  enabled: false
-  notes: The listing API sits on api.lifeattiktok.com, a different host from the careers
-    page; paused after throttling, so enable and watch one sync rather than re-probing.
+  last_verified: 2026-08-20
+  notes: The listing needs the website-path and accept-language headers its own bundle sends; recruit type 202 is the publisher's Intern facet, so no keyword is used.
   custom:
     url: https://api.lifeattiktok.com/api/v1/public/supplier/search/job/posts
     method: POST
-    body:
-      keyword: intern
-      limit: 10
-      offset: 0
     headers:
       Referer: https://lifeattiktok.com/
       Origin: https://lifeattiktok.com
+      website-path: tiktok
+      accept-language: en-US
+    body:
+      keyword: ''
+      limit: 100
+      offset: 0
+      recruitment_id_list:
+      - '202'
+      job_category_id_list: []
+      location_code_list: []
+      subject_id_list: []
+      tag_id_list: []
     jobs_path: data.job_post_list
     fields:
       title: title
@@ -9457,8 +9844,9 @@
       category: job_category.en_name
     url_template: https://lifeattiktok.com/search/{id}
     page_param: offset
-    page_size: 10
-    max_pages: 20
+    page_size: 100
+    page_step: 100
+    max_pages: 14
 - name: Tilde Research
   platform: ashby
   slug: tilderesearch
@@ -9734,6 +10122,28 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Two Sigma
+  platform: custom_json
+  slug: twosigma
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'Avature /feed/ is a hard 20 items with no offset parameter, so the HTML listing
+    is read instead; jobOffset pages it, and the whole board is 54 roles so it is unfiltered.'
+  custom:
+    url: https://careers.twosigma.com/careers/OpenRoles/?listFilterMode=1&jobRecordsPerPage=10
+    format: html
+    row_selector: article.article--result
+    fields:
+      title: h3.article__header__text__title a
+      id: h3.article__header__text__title a::slugid(href)
+      url: h3.article__header__text__title a::attr(href)
+      location: div.article__header__content__text > span.paragraph_inner-span
+      department: div.article__header__content__sub-text > span.paragraph_inner-span
+      employment_type: div.article__header__content__sub-text > span.paragraph_inner-span:nth-of-type(2)
+    page_param: jobOffset
+    page_size: 10
+    page_step: 10
+    max_pages: 12
 - name: Two Six Technologies
   platform: greenhouse
   slug: twosixtechnologies
@@ -9951,6 +10361,16 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Vanguard
+  platform: workday
+  slug: vanguard
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: 'vanguardjobs.com is a Findly shell whose detail pages name the real tenant.
+    Verified by CXS probe: 494 postings.'
+  workday_tenant: vanguard
+  workday_site: vanguard_external
+  workday_dc: wd5
 - name: Vanta
   platform: ashby
   slug: vanta
