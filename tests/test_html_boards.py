@@ -99,6 +99,79 @@ GILDAN = CustomBoard(
 )
 
 
+TALENTBREW_FIELDS = {
+    "title": "h2",
+    "id": "a::attr(data-job-id)",
+    "url": "a::attr(href)",
+    "location": ".job-location",
+    "category": ".job-category",
+}
+
+L3HARRIS = CustomBoard(
+    url="https://careers.l3harris.com/en/search-jobs",
+    fmt="html",
+    row_selector="#search-results-list li",
+    fields=TALENTBREW_FIELDS,
+    page_param="p",
+    page_size=1,
+    page_start=1,
+    page_step=1,
+    max_pages=12,
+)
+
+DISNEY = CustomBoard(
+    url="https://www.disneycareers.com/en/search-jobs/internship/391/1",
+    fmt="html",
+    row_selector="#search-results-list li",
+    fields=TALENTBREW_FIELDS,
+    page_param="p",
+    page_size=1,
+    page_start=1,
+    page_step=1,
+    max_pages=12,
+)
+
+
+SFRMK_SEARCH = CustomBoard(
+    url="https://careers.ey.com/search/?q=internship",
+    fmt="html",
+    row_selector="tr.data-row",
+    authoritative=False,
+    fields={
+        "title": "a.jobTitle-link",
+        "id": "a.jobTitle-link::slugid(href)",
+        "url": "a.jobTitle-link::attr(href)",
+        "location": ".jobLocation",
+    },
+    page_param="startrow",
+    page_size=25,
+    page_step=25,
+    max_pages=8,
+)
+
+
+PUBLICIS = CustomBoard(
+    url="https://careers.publicissapient.com/job-details-sitemap",
+    fmt="html",
+    row_selector='.careersJobsSitemap a[href*="job-details/"]',
+    fields={"title": "::slug(href)", "id": "::attr(href)", "url": "::attr(href)"},
+)
+
+
+PARSONS = CustomBoard(
+    url="https://jobs.parsons.com/career-search",
+    fmt="html",
+    row_selector=".career20_top-wrapper",
+    authoritative=False,
+    fields={
+        "title": ".heading-style-h4",
+        "category": ".tag",
+        "id": 'a[data-action="view_job"]::attr(href)',
+        "url": 'a[data-action="view_job"]::attr(href)',
+    },
+)
+
+
 LOBLAW = CustomBoard(
     url="https://careers.loblaw.ca/jobs",
     fmt="html",
@@ -266,6 +339,70 @@ def test_every_loblaw_row_carries_a_distinct_id() -> None:
     )
 
 
+def test_the_parsons_selectors_still_match_its_saved_page() -> None:
+    rows = _rows("parsons_search.html", PARSONS)
+    assert len(rows) == 3, "Parsons row selector stopped matching its saved page"
+    for row in rows:
+        assert row["title"], "a Parsons row lost its title"
+        assert "/jobs/" in row["url"], row["url"]
+    assert len({row["id"] for row in rows}) == len(rows), "Parsons posting ids collapsed"
+
+
+def test_parsons_keeps_its_title_out_of_the_category_tag() -> None:
+    for row in _rows("parsons_search.html", PARSONS):
+        assert row["title"] != row["category"], (
+            "the title and the category tag share a wrapper, so a loose selector merges them"
+        )
+
+
+def test_publicis_derives_its_title_from_the_href_not_the_anchor_text() -> None:
+    rows = _rows("publicissapient_sitemap.html", PUBLICIS)
+    assert len(rows) == 3, "the Publicis sitemap selector stopped matching its saved page"
+    for row in rows:
+        assert "careers.publicissapient.com" not in row["title"], (
+            "the anchor text is the url itself, so the title must come from the slug"
+        )
+        assert "/job-details/" in row["url"], row["url"]
+    assert len({row["id"] for row in rows}) == len(rows), "Publicis posting ids collapsed"
+
+
+def test_the_successfactors_search_selectors_still_match_their_saved_page() -> None:
+    rows = _rows("sfrmk_search.html", SFRMK_SEARCH)
+    assert len(rows) == 3, "the SuccessFactors search row selector stopped matching"
+    for row in rows:
+        assert row["title"], "a SuccessFactors search row lost its title"
+        assert row["id"].isdigit(), f"id is not a posting number: {row['id']!r}"
+        assert "/job/" in row["url"], row["url"]
+        assert row["location"], "a SuccessFactors search row lost its location"
+
+
+def test_the_successfactors_search_board_is_declared_partial() -> None:
+    from stage.companies import load_companies
+
+    rows = {c.name: c for c in load_companies()}
+    for name in ("EY", "Capgemini"):
+        board = rows[name].custom
+        assert board is not None and not board.authoritative, (
+            f"{name} is a keyword slice of a larger board and must not close what it cannot see"
+        )
+
+
+@pytest.mark.parametrize(
+    "board,name",
+    [(L3HARRIS, "l3harris_search.html"), (DISNEY, "disney_search.html")],
+)
+def test_the_talentbrew_selectors_still_match_their_saved_pages(
+    board: CustomBoard, name: str
+) -> None:
+    rows = _rows(name, board)
+    assert len(rows) == 3, f"{name}: the talentbrew row selector stopped matching"
+    for row in rows:
+        assert row["title"], f"{name}: a row lost its title"
+        assert row["id"].isdigit(), f"{name}: id is not a talentbrew job id: {row['id']!r}"
+        assert "/job/" in row["url"], row["url"]
+        assert row["location"], f"{name}: a row lost its location"
+
+
 @pytest.mark.parametrize(
     "board,name",
     [(BLACKROCK, "blackrock_search.html"), (NBC, "nbc_search.html")],
@@ -290,6 +427,10 @@ def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
         ("Two Sigma", TWOSIGMA),
         ("Gildan", GILDAN),
         ("Loblaw", LOBLAW),
+        ("Parsons", PARSONS),
+        ("L3Harris", L3HARRIS),
+        ("Disney", DISNEY),
+        ("Publicis Sapient", PUBLICIS),
     ):
         company: Company = rows[name]
         assert company.platform is Platform.CUSTOM_JSON, f"{name} left custom_json"
@@ -300,3 +441,40 @@ def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
         assert dict(company.custom.fields) == dict(board.fields), (
             f"{name} field selectors drifted from the ones these fixtures pin"
         )
+
+
+def test_job_bank_keeps_only_postings_the_board_itself_flags() -> None:
+    from stage.sources.jobbank import declared_term, field, posting_id
+
+    text = (FIXTURES / "jobbank_search.html").read_text(encoding="utf-8")
+    rows = html_rows(text, "article")
+    assert len(rows) == 3, "the Job Bank article selector stopped matching its saved page"
+    for row in rows:
+        assert posting_id(row).isdigit(), f"id is not a posting number: {posting_id(row)!r}"
+        assert field(row, ".noctitle"), "a Job Bank row lost its title"
+        assert field(row, ".business"), "a Job Bank row lost its employer"
+        assert declared_term(row), "a Job Bank row lost the badge that makes it an internship"
+
+
+def test_job_bank_never_builds_an_apply_url_from_the_session_bearing_href() -> None:
+    from stage.sources.jobbank import POSTING, posting_id
+
+    text = (FIXTURES / "jobbank_search.html").read_text(encoding="utf-8")
+    row = html_rows(text, "article")[0]
+    built = POSTING.format(id=posting_id(row))
+
+    assert "jsessionid" not in built, (
+        "the href carries a rotating jsessionid, so the url must be rebuilt from the numeric id"
+    )
+    assert built.endswith(posting_id(row)), built
+
+
+def test_the_muse_query_covers_the_intended_cities() -> None:
+    from stage.sources.themuse import LOCATIONS, TheMuseFeed
+
+    url = TheMuseFeed()._url(1)
+
+    assert url.count("location=") == len(LOCATIONS), "a location was dropped from the query"
+    assert "level=Internship" in url, "the internship level filter left the query"
+    for city in ("Montreal", "Toronto", "New%20York%20City", "San%20Francisco"):
+        assert city in url, f"{city} missing from the Muse query"
