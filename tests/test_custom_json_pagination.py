@@ -173,3 +173,67 @@ def test_registry_headers_round_trip(tmp_path: Path) -> None:
     back = load_companies(target)[0]
     assert back.custom is not None
     assert dict(back.custom.headers) == dict(board.headers), "headers survive the round trip"
+
+
+def test_an_object_wrapped_in_a_js_string_literal_is_unescaped_before_parsing() -> None:
+    from stage.sources.custom_json import extract_object
+
+    page = (
+        'window.__hydration = JSON.parse("{\\"loaderData\\":{\\"results\\":'
+        '[{\\"title\\":\\"Intern\\"}]}}");'
+    )
+    parsed = extract_object(page, "window.__hydration")
+
+    assert parsed == {"loaderData": {"results": [{"title": "Intern"}]}}, (
+        "escaped quotes inside a JS string literal must not be read as JSON string boundaries"
+    )
+
+
+def test_a_raw_object_still_wins_when_a_later_json_parse_call_appears() -> None:
+    from stage.sources.custom_json import extract_object
+
+    page = 'window.data = {"a": 1}; other = JSON.parse("{\\"b\\": 2}");'
+
+    assert extract_object(page, "window.data") == {"a": 1}, (
+        "the wrapper only applies when JSON.parse precedes the first brace"
+    )
+
+
+def test_a_dotted_page_parameter_walks_into_the_posted_body() -> None:
+    from stage.sources.custom_json import _page_body
+
+    board = CustomBoard(
+        url="https://api.example.test/graphql",
+        method="POST",
+        body={"query": "q", "variables": {"i": {"page": {"pageSize": 250, "pageNumber": 0}}}},
+        page_param="variables.i.page.pageNumber",
+        page_size=250,
+        page_step=1,
+        fields={"title": "jobTitle"},
+    )
+    second = _page_body(board, 1)
+
+    assert second["variables"]["i"]["page"]["pageNumber"] == 1
+    assert second["variables"]["i"]["page"]["pageSize"] == 250, "siblings must survive the walk"
+    assert board.body["variables"]["i"]["page"]["pageNumber"] == 0, "the registry body is shared"
+
+
+def test_a_board_declared_incomplete_never_claims_authority() -> None:
+    company = _company(authoritative=False)
+    client = _Client([_rows(3)])
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert len(result.jobs) == 3, "a partial listing still ingests the rows it does carry"
+    assert not result.authoritative, "a listing known to be a subset must never close what it omits"
+
+
+def test_a_complete_board_still_claims_authority() -> None:
+    company = _company()
+    client = _Client([_rows(3)])
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert result.authoritative, "the declared flag must not disturb an ordinary complete fetch"

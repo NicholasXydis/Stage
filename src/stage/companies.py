@@ -165,9 +165,10 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
             )
         headers[str(key)] = value
     fmt = str(raw.get("format", "json") or "json").lower()
-    if fmt not in ("json", "rss", "html", "sitemap"):
+    if fmt not in ("json", "rss", "html", "sitemap", "jsonld"):
         raise RegistryError(
-            f"companies.yaml entry {index}: custom.format must be json, rss, html or sitemap"
+            f"companies.yaml entry {index}: custom.format must be json, rss, html, sitemap "
+            "or jsonld"
         )
     row_selector = str(raw.get("row_selector", "") or "")
     if fmt == "html" and not row_selector:
@@ -185,6 +186,7 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
         handshake_url = checked
     token_pattern = str(raw.get("token_pattern", "") or "")
     token_header = str(raw.get("token_header", "") or "")
+    token_prefix = str(raw.get("token_prefix", "") or "")
     if handshake_url and not (token_pattern and token_header):
         raise RegistryError(
             f"companies.yaml entry {index}: custom.handshake_url needs token_pattern and "
@@ -216,7 +218,9 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
         handshake_url=handshake_url,
         token_pattern=token_pattern,
         token_header=token_header,
+        token_prefix=token_prefix,
         body=body,
+        authoritative=_require_bool(raw, "authoritative", index, default=True),
         page_param=page_param,
         page_size=paging["page_size"],
         page_start=paging["page_start"],
@@ -327,8 +331,10 @@ def _registry_row(company: Company) -> dict[str, Any]:
                 block["body"] = dict(company.custom.body)
         if company.custom.headers:
             block["headers"] = dict(company.custom.headers)
-        if company.custom.rss or company.custom.html or company.custom.sitemap:
+        if company.custom.fmt != "json":
             block["format"] = company.custom.fmt
+        if not company.custom.authoritative:
+            block["authoritative"] = False
         if company.custom.row_selector:
             block["row_selector"] = company.custom.row_selector
         if company.custom.extract:
@@ -337,6 +343,8 @@ def _registry_row(company: Company) -> dict[str, Any]:
             block["handshake_url"] = company.custom.handshake_url
             block["token_pattern"] = company.custom.token_pattern
             block["token_header"] = company.custom.token_header
+            if company.custom.token_prefix:
+                block["token_prefix"] = company.custom.token_prefix
         if company.custom.jobs_path:
             block["jobs_path"] = company.custom.jobs_path
         block["fields"] = dict(company.custom.fields)

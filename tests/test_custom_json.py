@@ -250,3 +250,109 @@ def test_a_url_that_is_not_a_web_address_gets_no_skeleton() -> None:
     console = Console(width=120, no_color=True, force_terminal=False, record=True)
     _show_custom_skeleton(console, "javascript:alert(1)", "Nope")
     assert console.export_text().strip() == ""
+
+
+HANDSHAKE_BOARD = CustomBoard(
+    url="https://api.example.test/search",
+    method="POST",
+    handshake_url="https://board.example.test/home",
+    token_pattern='"token":"([A-Za-z0-9._-]+)"',
+    token_header="Authorization",
+    token_prefix="Bearer ",
+    jobs_path="data.rows",
+    fields={"id": "reqId", "title": "name"},
+)
+
+
+def _handshake_client() -> HttpClient:
+    return HttpClient(
+        allowed_hosts=frozenset({"api.example.test", "board.example.test"}),
+        posture=RatePosture(min_interval_s=0.0),
+        cache=ValidatorCache(),
+    )
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_a_handshake_token_is_sent_with_its_scheme_prefix() -> None:
+    respx.get("https://board.example.test/home").mock(
+        return_value=httpx.Response(200, text='var ctx={"token":"abc.def.ghi"};')
+    )
+    rows = {"data": {"rows": [{"reqId": "1", "name": "Intern"}]}}
+    route = respx.post("https://api.example.test/search").mock(
+        return_value=httpx.Response(200, json=rows)
+    )
+    adapter = CustomJsonAdapter()
+    async with _handshake_client() as client:
+        result = await adapter.fetch(_company(HANDSHAKE_BOARD), client, NOW)
+
+    assert [job.title_raw for job in result.jobs] == ["Intern"]
+    assert route.calls.last.request.headers["Authorization"] == "Bearer abc.def.ghi", (
+        "a bearer token sent without its scheme is refused as unauthorized"
+    )
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_a_handshake_without_a_prefix_sends_the_bare_token() -> None:
+    board = CustomBoard(
+        url=HANDSHAKE_BOARD.url,
+        method="POST",
+        handshake_url=HANDSHAKE_BOARD.handshake_url,
+        token_pattern=HANDSHAKE_BOARD.token_pattern,
+        token_header="x-csrf-token",
+        jobs_path="data.rows",
+        fields={"id": "reqId", "title": "name"},
+    )
+    respx.get("https://board.example.test/home").mock(
+        return_value=httpx.Response(200, text='{"token":"plain-token"}')
+    )
+    rows = {"data": {"rows": [{"reqId": "1", "name": "Intern"}]}}
+    route = respx.post("https://api.example.test/search").mock(
+        return_value=httpx.Response(200, json=rows)
+    )
+    adapter = CustomJsonAdapter()
+    async with _handshake_client() as client:
+        await adapter.fetch(_company(board), client, NOW)
+
+    assert route.calls.last.request.headers["x-csrf-token"] == "plain-token", (
+        "the csrf boards that predate token_prefix must keep sending a bare token"
+    )
+
+
+def test_an_rss_value_arrives_with_its_entities_decoded() -> None:
+    from stage.sources.custom_json import rss_items
+
+    feed = (
+        "<rss><channel><item><title>Property &amp; Tax Specialist</title>"
+        "<link>https://board.test/job/Property-&amp;-Tax/9</link>"
+        "<g:id>9</g:id></item></channel></rss>"
+    )
+    rows = rss_items(feed)
+
+    assert rows[0]["title"] == "Property & Tax Specialist", "an entity reached the stored title"
+    assert rows[0]["link"] == "https://board.test/job/Property-&-Tax/9", (
+        "an unescaped entity in an apply url sends the user to a different address"
+    )
+
+
+def test_a_cdata_body_is_left_exactly_as_the_publisher_wrote_it() -> None:
+    from stage.sources.custom_json import rss_items
+
+    feed = "<rss><item><description><![CDATA[<p>Stage &amp; co-op</p>]]></description></item></rss>"
+
+    assert rss_items(feed)[0]["description"] == "<p>Stage &amp; co-op</p>", (
+        "cdata is already literal, so unescaping it twice corrupts the body"
+    )
+
+
+def test_a_mapped_field_holding_an_object_becomes_a_readable_location() -> None:
+    from stage.sources.custom_json import _project
+
+    board = CustomBoard(url="https://x.test/j", fields={"title": "name", "location": "locations"})
+    place = {"city": "Montréal", "state": "Quebec", "country": "CA"}
+    entry = {"name": "Intern", "locations": [place]}
+
+    assert _project(entry, board)["location"] == "Montréal, Quebec, CA", (
+        "an object location must flatten, or the resolver reads a python dict repr"
+    )

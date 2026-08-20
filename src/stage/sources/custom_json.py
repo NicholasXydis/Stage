@@ -2,6 +2,7 @@ import json
 import re
 from collections.abc import Mapping, Sequence
 from datetime import datetime
+from html import unescape
 from typing import Any, ClassVar
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
@@ -28,10 +29,11 @@ from stage.sources.platforms import dig
 MAX_ROWS = 5000
 MAX_EXTRACT_BYTES = 8 * 1024 * 1024
 MAX_RSS_ITEMS = 20000
-MAX_TOKEN_LEN = 256
+MAX_TOKEN_LEN = 4096
 MAX_HTML_ROWS = 2000
 MAX_PAGES = 20
 PAGE_CEILING = 200
+_JSON_PARSE = 'JSON.parse("'
 _UNCHANGED = object()
 
 
@@ -61,8 +63,15 @@ def _rows(payload: Any, board: CustomBoard) -> Any:
 
 def _page_body(board: CustomBoard, index: int) -> dict[str, Any]:
     body = dict(board.body)
-    if board.paginated:
-        body[board.page_param] = board.page_value(index)
+    if not board.paginated:
+        return body
+    parts = board.page_param.split(".")
+    branch: dict[str, Any] = body
+    for part in parts[:-1]:
+        nested = branch.get(part)
+        branch[part] = dict(nested) if isinstance(nested, Mapping) else {}
+        branch = branch[part]
+    branch[parts[-1]] = board.page_value(index)
     return body
 
 
@@ -76,11 +85,31 @@ def _page_url(board: CustomBoard, index: int) -> str:
     return urlunsplit(parts._replace(query=urlencode(query)))
 
 
+def _js_string_object(text: str, quote: int) -> Any:
+    limit = min(len(text), quote + MAX_EXTRACT_BYTES)
+    index = quote + 1
+    while index < limit:
+        char = text[index]
+        if char == "\\":
+            index += 2
+            continue
+        if char == '"':
+            try:
+                return json.loads(json.loads(text[quote : index + 1]))
+            except ValueError:
+                return None
+        index += 1
+    return None
+
+
 def extract_object(text: str, marker: str) -> Any:
     start = text.find(marker)
     if start < 0:
         return None
     brace = text.find("{", start + len(marker))
+    wrapped = text.find(_JSON_PARSE, start + len(marker))
+    if wrapped >= 0 and (brace < 0 or wrapped < brace):
+        return _js_string_object(text, wrapped + len(_JSON_PARSE) - 1)
     if brace < 0 or len(text) - brace > MAX_EXTRACT_BYTES:
         return None
     depth = 0
@@ -125,8 +154,8 @@ def _tag_text(item: str, start: int) -> tuple[str, str, int] | None:
         return "", "", close_at + 1
     body = item[close_at + 1 : end]
     if body.startswith("<![CDATA["):
-        body = body[9:].removesuffix("]]>")
-    return name, body.strip(), end + len(name) + 3
+        return name, body[9:].removesuffix("]]>").strip(), end + len(name) + 3
+    return name, unescape(body).strip(), end + len(name) + 3
 
 
 def rss_items(text: str) -> list[dict[str, str]]:
@@ -152,6 +181,46 @@ def rss_items(text: str) -> list[dict[str, str]]:
                 row.setdefault(name, body)
         if row:
             rows.append(row)
+    return rows
+
+
+def _job_postings(block: str) -> list[dict[str, Any]]:
+    try:
+        payload = json.loads(block)
+    except ValueError:
+        return []
+    pending = [payload]
+    found: list[dict[str, Any]] = []
+    while pending and len(found) < MAX_HTML_ROWS:
+        entry = pending.pop()
+        if isinstance(entry, list):
+            pending.extend(entry)
+        elif isinstance(entry, dict):
+            graph = entry.get("@graph")
+            if isinstance(graph, list):
+                pending.extend(graph)
+            if entry.get("@type") == "JobPosting":
+                found.append(entry)
+    return found
+
+
+def jsonld_rows(text: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    cursor = 0
+    while len(rows) < MAX_HTML_ROWS:
+        start = text.find("<script", cursor)
+        if start < 0:
+            break
+        opened = text.find(">", start)
+        if opened < 0:
+            break
+        head = text[start:opened]
+        closed = text.find("</script>", opened)
+        if closed < 0:
+            break
+        if "application/ld+json" in head:
+            rows.extend(_job_postings(text[opened + 1 : min(closed, opened + MAX_EXTRACT_BYTES)]))
+        cursor = closed + 9
     return rows
 
 
@@ -245,6 +314,13 @@ def html_rows(text: str, selector: str) -> list[Tag]:
     return soup.select(selector)[:MAX_HTML_ROWS]
 
 
+def _scalar(value: Any) -> str:
+    if isinstance(value, Mapping):
+        parts = [str(item) for item in value.values() if isinstance(item, str | int | float)]
+        return ", ".join(part for part in parts if part)
+    return str(value)
+
+
 def _project(entry: Any, board: CustomBoard) -> dict[str, str]:
     projected: dict[str, str] = {}
     for name in (
@@ -266,8 +342,8 @@ def _project(entry: Any, board: CustomBoard) -> dict[str, str]:
             continue
         value = dig(entry, path)
         if isinstance(value, list):
-            value = " / ".join(str(item) for item in value if item)
-        projected[name] = "" if value is None else str(value)
+            value = " / ".join(_scalar(item) for item in value if item)
+        projected[name] = "" if value is None else _scalar(value)
     if not projected.get("id"):
         projected["id"] = projected.get("url") or projected.get("title", "")
     return projected
@@ -291,9 +367,10 @@ class CustomJsonAdapter:
         found = set()
         for company in companies:
             if company.custom is not None:
-                host = _host(company.custom.url)
-                if host:
-                    found.add(host)
+                for candidate in (company.custom.url, company.custom.handshake_url):
+                    host = _host(candidate)
+                    if host:
+                        found.add(host)
         return frozenset(found)
 
     def plan(self, company: Company) -> tuple[str, ...]:
@@ -387,7 +464,8 @@ class CustomJsonAdapter:
         return FetchResult(
             jobs=tuple(jobs),
             degraded="; ".join(note for note in notes if note),
-            authoritative=not (dropped or truncated or stale_page or ignored_param),
+            authoritative=board.authoritative
+            and not (dropped or truncated or stale_page or ignored_param),
         )
 
     async def _page(
@@ -422,6 +500,18 @@ class CustomJsonAdapter:
                     f"captured at {captured}"
                 )
             return payload
+        if board.jsonld:
+            text = await client.get_text(_page_url(board, index), revalidate=index > 0)
+            if text.not_modified:
+                return _UNCHANGED
+            rows = jsonld_rows(text.text)
+            if not rows and index == 0:
+                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
+                raise PayloadValidationError(
+                    f"{self.name}/{company.slug}: no JobPosting in any ld+json block; "
+                    f"captured at {captured}"
+                )
+            return rows
         if board.sitemap:
             text = await client.get_text(_page_url(board, index), revalidate=index > 0)
             if text.not_modified:
@@ -466,7 +556,7 @@ class CustomJsonAdapter:
         token = found.group(1)[:MAX_TOKEN_LEN]
         parts = urlsplit(board.handshake_url)
         return {
-            board.token_header: token,
+            board.token_header: f"{board.token_prefix}{token}",
             "Referer": board.handshake_url,
             "Origin": f"{parts.scheme}://{parts.netloc}",
         }

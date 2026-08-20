@@ -38,8 +38,10 @@ class CustomBoard:
     handshake_url: str = ""
     token_pattern: str = ""
     token_header: str = ""
+    token_prefix: str = ""
     body: Mapping[str, Any] = field(default_factory=lambda: _EMPTY_BODY)
     headers: Mapping[str, str] = field(default_factory=lambda: _EMPTY)
+    authoritative: bool = True
 
     def mapped(self, name: str) -> str:
         return self.fields.get(name, "")
@@ -59,6 +61,10 @@ class CustomBoard:
     @property
     def sitemap(self) -> bool:
         return self.fmt == "sitemap"
+
+    @property
+    def jsonld(self) -> bool:
+        return self.fmt == "jsonld"
 
     @property
     def handshakes(self) -> bool:
