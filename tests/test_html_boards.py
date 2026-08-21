@@ -662,3 +662,25 @@ def test_nutanix_reads_its_own_feed_rather_than_the_sitemap() -> None:
     assert board.item_tag == "job", (
         "the feed wraps rows in <job>, so a default <item> scan finds nothing"
     )
+
+
+def test_a_sitemap_segment_keeps_a_subdivision_code_uppercase() -> None:
+    from stage.normalize import resolve_location
+
+    loc = "https://sandia.jobs/albuquerque-nm/intern-rd-graduate/ABC123/job/"
+    row = sitemap_rows(f"<urlset><url><loc>{loc}</loc></url></urlset>")[0]
+
+    assert row["path4_title"] == "Albuquerque NM", row["path4_title"]
+    assert resolve_location(row["path4_title"]).bucket.value == "usa", (
+        "the resolver needs the uppercase code, so title-casing the whole segment loses the state"
+    )
+
+
+def test_only_a_trailing_subdivision_code_is_uppercased() -> None:
+    for loc, segment, expected in (
+        ("https://x.test/job/rio-de-janeiro/analyst/1/2", "path4_title", "Rio De Janeiro"),
+        ("https://x.test/job/seongnam-si/manager/1/2", "path4_title", "Seongnam Si"),
+        ("https://x.test/job/livermore-ca/postdoc/1/2", "path4_title", "Livermore CA"),
+    ):
+        row = sitemap_rows(f"<urlset><url><loc>{loc}</loc></url></urlset>")[0]
+        assert row[segment] == expected, f"{loc} -> {row[segment]!r}"

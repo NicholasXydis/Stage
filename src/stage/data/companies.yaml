@@ -280,6 +280,13 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 11 posting(s), 2 kept after
     the CS-internship screens'
+- name: Agility Robotics
+  platform: greenhouse
+  slug: agilityrobotics
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the greenhouse board names itself Agility
+    Robotics.'
 - name: Agropur
   platform: workday
   slug: agropur
@@ -1219,6 +1226,27 @@
   slug: axq
   source_of_record: discover
   last_verified: *id003
+- name: BAE Systems
+  platform: custom_json
+  slug: baesystems
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: WordPress career site; the public wp/v2 jobs post type is the listing
+    contract. Its location taxonomy is not the first embedded group, so the path names it
+    rather than counting.'
+  custom:
+    url: https://jobsearch.baesystems.com/wp-json/wp/v2/jobs?per_page=100&_embed=wp%3Aterm
+    fields:
+      title: title.rendered
+      id: id
+      url: link
+      location: _embedded.wp:term[0.taxonomy=location].0.name
+      department: _embedded.wp:term[0.taxonomy=area-of-work].0.name
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
 - name: Baker Hughes
   platform: workday
   slug: bakerhughes
@@ -2867,6 +2895,14 @@
   slug: commerceiq
   source_of_record: openjobs
   last_verified: *id007
+- name: Commonwealth Fusion Systems
+  platform: lever
+  slug: cfsenergy
+  source_of_record: discover
+  last_verified: 2026-08-20
+  name_gate_exempt: true
+  notes: '2026-08-20: the owner supplied this exact lever board URL, which is the provenance
+    lever cannot give because it publishes no board name; 66 postings.'
 - name: Composio
   platform: ashby
   slug: composio
@@ -4190,6 +4226,20 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (8 job(s))'
+- name: Firefly Aerospace
+  platform: custom_json
+  slug: fireflyspace
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: ClearCompany tenant. fireflyaerospace.clearcompany.com answers 200 with
+    an empty body, the careers page renders its listing client-side, and its WordPress install
+    has no job post type. Needs a captured request.'
+  custom:
+    url: https://fireflyspace.com/careers/
+    fields:
+      title: title
+      id: id
 - name: Firetiger
   platform: ashby
   slug: firetiger
@@ -4329,6 +4379,23 @@
   workday_dc: wd10
   notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Ford Motor
+  platform: custom_json
+  slug: ford
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: TalentBrew site whose listing is client-side; /sitemap.xml lists all
+    830 postings on one consistent seven-segment url shape.'
+  custom:
+    url: https://www.careers.ford.com/sitemap.xml
+    format: sitemap
+    row_filter: /job/
+    authoritative: false
+    fields:
+      title: path3_title
+      id: path1
+      url: loc
+      location: path4_title
 - name: Formlabs
   platform: greenhouse
   slug: formlabs
@@ -4639,6 +4706,22 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (13 job(s))'
+- name: General Motors
+  platform: custom_json
+  slug: gm
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the Beamery listing is client-side, but /sitemap.xml carries 872 English
+    job urls whose requisition id precedes the slug.'
+  custom:
+    url: https://search-careers.gm.com/sitemap.xml
+    format: sitemap
+    row_filter: /en/jobs/jr-
+    authoritative: false
+    fields:
+      title: path1_title
+      id: path2
+      url: loc
 - name: Generation West Virginia
   platform: workable
   slug: generation-west-virginia-1
@@ -5214,6 +5297,17 @@
   slug: honehealth
   source_of_record: discover
   last_verified: *id003
+- name: Honeywell
+  platform: oracle_cloud
+  slug: honeywell
+  source_of_record: discover
+  last_verified: 2026-08-20
+  oracle_host: ibqbjb.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  oracle_keyword: ''
+  notes: '2026-08-20: careers.honeywell.com is a Phenom shell over this Oracle tenant. Walked
+    unfiltered because keyword=internship returns 11 where the French stage returns 33, so
+    no one keyword spans the board; 1,307 rows complete, 34 of them Canadian.'
 - name: Hong Leong Bank
   platform: workday
   slug: hlb
@@ -5934,6 +6028,30 @@
     page_param: start
     page_size: 10
     max_pages: 20
+- name: Johns Hopkins APL
+  platform: custom_json
+  slug: jhuapl
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: iCIMS careers-home site, the same contract as the AMD row; 356 postings
+    with full bodies.'
+  custom:
+    url: https://careers.jhuapl.edu/api/jobs?limit=100
+    jobs_path: jobs
+    url_template: https://careers.jhuapl.edu/jobs/{id}
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
 - name: Johnson & Johnson
   platform: workday
   slug: jj
@@ -6454,6 +6572,26 @@
       id: .results-list__item-title--link::attr(href)
       url: .results-list__item-title--link::attr(href)
       location: .results-list__item-street--label
+- name: Lockheed Martin
+  platform: custom_json
+  slug: lockheedmartin
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Eightfold fixes the page at 10, so the whole 1,252-position board would cost
+    126 requests a refresh. Filtered to the owner''s query=internship instead, which stops on a short
+    page and so costs one request while Lockheed has no interns posted.'
+  custom:
+    url: https://lockheedmartin.eightfold.ai/api/pcsx/search?domain=lockheedmartin.com&query=internship&sort_by=relevance
+    jobs_path: data.positions
+    url_template: https://lockheedmartin.eightfold.ai/careers/job/{id}
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    page_param: start
+    page_size: 10
+    max_pages: 30
 - name: Logitech
   platform: workday
   slug: logitech
@@ -6485,6 +6623,22 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Los Alamos National Laboratory
+  platform: custom_json
+  slug: lanl
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the search page is client-side; /jobs-site.xml lists all 505 postings,
+    with the slug ahead of a uuid.'
+  custom:
+    url: https://lanl.jobs/jobs-site.xml
+    format: sitemap
+    row_filter: /jobdetails/
+    authoritative: false
+    fields:
+      title: path2_title
+      id: path1
+      url: loc
 - name: Louisiana Blue
   platform: workday
   slug: bcbsla
@@ -7167,6 +7321,50 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active applied-science internship application verifies
     the public Ashby board.'
+- name: MITRE
+  platform: custom_json
+  slug: mitre
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: its Workday CXS site answers 200 with total=0, so the Phenom widget
+    behind careers.mitre.org is the real listing; fetched unfiltered because keywords drops
+    titles.'
+  custom:
+    url: https://careers.mitre.org/widgets
+    method: POST
+    body:
+      lang: en_us
+      deviceType: desktop
+      country: us
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 10
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 10
+    max_pages: 40
 - name: Mitsubishi Heavy Industries
   platform: custom_json
   slug: mhi
@@ -7867,6 +8065,12 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (14 job(s))'
+- name: Nuro
+  platform: greenhouse
+  slug: nuro
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the greenhouse board names itself Nuro.'
 - name: Nutanix
   platform: custom_json
   slug: nutanix
@@ -8314,6 +8518,15 @@
   slug: palantir
   source_of_record: discover
   last_verified: *id010
+- name: Palantir
+  platform: lever
+  slug: palantir
+  source_of_record: discover
+  last_verified: 2026-08-20
+  name_gate_exempt: true
+  notes: '2026-08-20: sibling of the smartrecruiters row, which carries 10 postings to this
+    board''s 308; adopted on apply-url provenance already in the corpus, since lever publishes
+    no name.'
 - name: Palo Alto Networks
   platform: custom_json
   slug: paloaltonetworks
@@ -8669,6 +8882,12 @@
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
     with postings, but this platform publishes no board name, so provenance is the
     evidence rather than a name match.'
+- name: Planet Labs
+  platform: greenhouse
+  slug: planetlabs
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the greenhouse board names itself Planet.'
 - name: Plexus
   platform: workday
   slug: plexus
@@ -9131,6 +9350,13 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched greenhouse/readystate with 1 job(s) and the board named itself, so it
     is polled directly instead of secondhand'
+- name: Recursion
+  platform: greenhouse
+  slug: recursionpharmaceuticals
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the greenhouse embed names this token and
+    the board names itself Recursion.'
 - name: Red Barrels
   platform: bamboohr
   slug: redbarrels
@@ -9203,6 +9429,13 @@
   last_verified: *id002
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Relativity Space
+  platform: greenhouse
+  slug: relativity
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reached from the owner''s RippleMatch link; the greenhouse board names
+    itself Relativity Space.'
 - name: relic entertainment
   platform: bamboohr
   slug: relicentertainment
@@ -9621,6 +9854,23 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 33 job(s)'
+- name: Sandia National Laboratories
+  platform: custom_json
+  slug: sandia
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: NLx-hosted board with no json contract; /sitemaps/jobs_1.xml lists its
+    postings on the same six-segment shape as the Siemens row.'
+  custom:
+    url: https://sandia.jobs/sitemaps/jobs_1.xml
+    format: sitemap
+    row_filter: /job/?$
+    authoritative: false
+    fields:
+      title: path3_title
+      id: path2
+      url: loc
+      location: path4_title
 - name: SAP
   platform: custom_json
   slug: sap
@@ -9653,6 +9903,14 @@
   workday_site: Saputo_External_Careers
   workday_dc: wd5
   notes: '2026-08-17: verified by scratch sync, 120 postings returned. Montreal HQ.'
+- name: Saronic
+  platform: ashby
+  slug: saronic
+  source_of_record: discover
+  last_verified: 2026-08-20
+  name_gate_exempt: true
+  notes: '2026-08-20: the owner supplied this exact ashby board URL, which is the provenance
+    ashby cannot give because it publishes no board name; 225 postings.'
 - name: Savannah River National Laboratory
   platform: oracle_cloud
   slug: ewvl
@@ -10038,6 +10296,20 @@
   notes: '2026-08-15: token taken from the employer''s own apply URL in feed postings;
     the board publishes the name ''SK hynix memory solutions America Inc.'', so the
     name gate rejects a correct caption'
+- name: Skild AI
+  platform: custom_json
+  slug: skildai
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the careers page is 14KB of shell with no listing, no ATS host, no sitemap
+    jobs, and no greenhouse, ashby or lever board under any spelling of the name. Needs a
+    captured request.'
+  custom:
+    url: https://www.skild.ai/career
+    fields:
+      title: title
+      id: id
 - name: skybox labs
   platform: lever
   slug: skyboxlabs

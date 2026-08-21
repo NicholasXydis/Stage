@@ -98,3 +98,11 @@ async def test_oracle_does_not_close_jobs_after_hitting_its_page_cap(
 
     assert not result.authoritative
     assert "page cap" in result.degraded
+
+
+def test_the_page_cap_covers_the_largest_unfiltered_board() -> None:
+    from stage.sources.oracle_cloud import MAX_PAGES, PAGE_SIZE
+
+    assert MAX_PAGES * PAGE_SIZE >= 1306, (
+        "Honeywell walks unfiltered at 1,306 rows and would truncate below this cap"
+    )

@@ -20,7 +20,7 @@ from stage.sources.platforms import oracle_target
 
 PATH = "/hcmRestApi/resources/latest/recruitingCEJobRequisitions"
 PAGE_SIZE = 100
-MAX_PAGES = 10
+MAX_PAGES = 16
 KEYWORD = "internship"
 
 

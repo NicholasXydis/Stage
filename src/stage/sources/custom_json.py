@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 from stage.domain import Company, CustomBoard, Job, Platform, SourceSignals, board_key, job_id
 from stage.http import HttpClient
 from stage.http.client import HostBudgetExceededError
+from stage.lexicon import fold, location_lexicon
 from stage.sources import register
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
@@ -227,6 +228,18 @@ def jsonld_rows(text: str) -> list[dict[str, Any]]:
     return rows
 
 
+def _segment_title(part: str) -> str:
+    words = part.replace("-", " ").split()
+    if not words:
+        return ""
+    lexicon = location_lexicon()
+    titled = [word.title() for word in words]
+    tail = fold(words[-1])
+    if len(tail) == 2 and (tail in lexicon.usa_codes or tail in lexicon.canada_codes):
+        titled[-1] = tail.upper()
+    return " ".join(titled).strip()
+
+
 def sitemap_rows(text: str) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     cursor = 0
@@ -266,7 +279,7 @@ def sitemap_rows(text: str) -> list[dict[str, str]]:
         ]
         for offset, part in enumerate(reversed(segments[-MAX_PATH_SEGMENTS:]), start=1):
             row[f"path{offset}"] = part
-            row[f"path{offset}_title"] = part.replace("-", " ").strip().title()
+            row[f"path{offset}_title"] = _segment_title(part)
         rows.append(row)
     return rows
 
