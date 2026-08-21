@@ -776,6 +776,15 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (78 job(s))'
+- name: Apollo Global Management
+  platform: workday
+  slug: athene
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: athene
+  workday_site: Apollo_Careers
+  workday_dc: wd5
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL; 67 postings.'
 - name: Appian
   platform: greenhouse
   slug: appian
@@ -1258,6 +1267,35 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 120 posting(s), 1 kept after
     the CS-internship screens'
+- name: Bambus
+  platform: custom_json
+  slug: bambus
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: a Salesforce Experience site that ships no listing markup and names
+    no endpoint; it needs a captured request.'
+  custom:
+    url: https://bambusdev.my.site.com/s/
+    fields:
+      title: title
+      id: id
+- name: Bank of America
+  platform: custom_json
+  slug: bankofamerica
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the campus board is tal.net and server-renders its table. Row hrefs
+    carry a rotating xf- session token, so the apply url is rebuilt from data-oppid, as on
+    the Job Bank row.'
+  custom:
+    url: https://bankcampuscareers.tal.net/vx/lang-en-GB/mobile-0/brand-4/candidate/jobboard/vacancy/2/adv/
+    format: html
+    row_selector: tr.search_res
+    url_template: https://bankcampuscareers.tal.net/vx/lang-en-GB/mobile-0/brand-4/candidate/so/pm/1/pl/2/opp/{id}/en-GB
+    fields:
+      title: ::attr(data-title)
+      id: ::attr(data-oppid)
 - name: Bank of China USA
   platform: icims
   slug: bocusa
@@ -1680,6 +1718,24 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active Rust-development internship application verifies
     the public Ashby board.'
+- name: Bloomberg
+  platform: custom_json
+  slug: bloomberg
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Avature board on the same listFilterMode markup the Two Sigma row pins;
+    walked unfiltered because its facet ids are opaque.'
+  custom:
+    url: https://bloomberg.avature.net/careers/SearchJobs/?listFilterMode=1&jobRecordsPerPage=12
+    format: html
+    row_selector: article.article--result
+    fields:
+      title: h3.article__header__text__title a
+      url: h3.article__header__text__title a::attr(href)
+      location: div.article__header__content__text > span.paragraph_inner-span
+    page_param: jobOffset
+    page_size: 12
+    max_pages: 40
 - name: Blue Cross Blue Shield of Michigan
   platform: oracle_cloud
   slug: ejko
@@ -2211,6 +2267,15 @@
   notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
     1 jobs and needs-a-manual-check, the expected verdict where the platform publishes
     no board name; token equals the company name'
+- name: Carlyle Group
+  platform: workday
+  slug: carlyle
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: carlyle
+  workday_site: Carlyle
+  workday_dc: wd1
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL; 80 postings.'
 - name: Carnegie Mellon University
   platform: workday
   slug: cmu
@@ -4051,6 +4116,20 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (1 job(s))'
+- name: Evercore
+  platform: custom_json
+  slug: evercore
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: its tal.net tenant answers every board url with an oleeoProtect altcha
+    challenge titled Quick Check Needed. That is a CAPTCHA, so it is a policy boundary, not
+    a gap.'
+  custom:
+    url: https://evercore.tal.net/vx/lang-en-GB/mobile-0/appcentre-ext/brand-6/candidate/jobboard/vacancy/2/adv/
+    fields:
+      title: title
+      id: id
 - name: Everpure
   platform: greenhouse
   slug: purestorage
@@ -4186,6 +4265,16 @@
   workday_site: External
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Fidelity Canada
+  platform: workday
+  slug: fil
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: fil
+  workday_site: fidelitycanada
+  workday_dc: wd3
+  notes: '2026-08-20: the Canadian Fidelity board, distinct from the American Fidelity row;
+    146 postings.'
 - name: Field AI
   platform: lever
   slug: field-ai
@@ -4229,17 +4318,28 @@
 - name: Firefly Aerospace
   platform: custom_json
   slug: fireflyspace
-  enabled: false
   source_of_record: discover
   last_verified: 2026-08-20
-  notes: '2026-08-20: ClearCompany tenant. fireflyaerospace.clearcompany.com answers 200 with
-    an empty body, the careers page renders its listing client-side, and its WordPress install
-    has no job post type. Needs a captured request.'
+  notes: '2026-08-20: owner-captured ClearCompany request. The board id is the path, the visible
+    site renders from it client-side, and location already carries the uppercase subdivision
+    code.'
   custom:
-    url: https://fireflyspace.com/careers/
+    url: https://careers-api.clearcompany.com/v1/00ed92c3-5bfb-7bfb-456d-4d9d77fef9a5?pageSize=25&source=CJB-0
+    headers:
+      Origin: https://fireflyspace.com
+      Referer: https://fireflyspace.com/
+    jobs_path: results
     fields:
-      title: title
+      title: positionTitle
       id: id
+      url: applyLink
+      location: location
+      description: description
+      department: departmentName
+    page_param: pageIndex
+    page_size: 25
+    page_step: 1
+    max_pages: 20
 - name: Firetiger
   platform: ashby
   slug: firetiger
@@ -4984,6 +5084,20 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Group One Trading
+  platform: custom_json
+  slug: grouponetrading
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: ApplicantPro tenant, identity confirmed from its own job pages. Its
+    sitemap holds 444 urls but only three postings and no titles, and the listing renders
+    client-side.'
+  custom:
+    url: https://group1.applicantpro.com/jobs/
+    fields:
+      title: title
+      id: id
 - name: Groupe Dynamite
   platform: custom_json
   slug: groupe-dynamite
@@ -5135,6 +5249,13 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (22 job(s))'
+- name: Headlands Technologies
+  platform: greenhouse
+  slug: headlandstechnologiesllc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the board names itself Headlands Technologies
+    LLC.'
 - name: HealthCorps
   platform: workable
   slug: healthcorpsorg
@@ -5995,6 +6116,19 @@
   slug: janestreet
   source_of_record: openjobs
   last_verified: *id003
+- name: Jefferies
+  platform: custom_json
+  slug: jefferies
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: same oleeoProtect altcha challenge as the Evercore row; the Bank of
+    America tenant on the same platform does not challenge us, so this is tenant configuration.'
+  custom:
+    url: https://jefferies.tal.net/vx/lang-en-GB/mobile-0/appcentre-ext/brand-4/candidate/jobboard/vacancy/2/adv/
+    fields:
+      title: title
+      id: id
 - name: JetBrains
   platform: greenhouse
   slug: jetbrains
@@ -6225,6 +6359,14 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (39 job(s))'
+- name: KKR
+  platform: greenhouse
+  slug: staged
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the token reads like a staging board, but greenhouse names it Student
+    Careers at KKR and it carries nine real 2027 internships, so the caption is the evidence,
+    not the slug.'
 - name: KLA
   platform: workday
   slug: kla
@@ -6434,6 +6576,16 @@
   notes: '2026-08-16: seen in feed postings but absent from the registry; discover
     matched smartrecruiters/laxir1 with 10 job(s) and the board named itself, so it
     is polled directly instead of secondhand'
+- name: Lazard
+  platform: oracle_cloud
+  slug: icbpjb
+  source_of_record: discover
+  last_verified: 2026-08-20
+  oracle_host: icbpjb.fa.ocs.oraclecloud.com
+  oracle_site: LazardStudentCareers
+  oracle_keyword: ''
+  notes: '2026-08-20: a student-only Oracle site, so the English keyword is pinned off and
+    the whole 94-row board is walked.'
 - name: LBC Studios
   platform: bamboohr
   slug: lbcstudiosca
@@ -7253,6 +7405,26 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Millennium Management
+  platform: custom_json
+  slug: millennium
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Eightfold tenant whose pcsx search is disabled, so the older apply/v2
+    listing is the contract, as on the NetApp row.'
+  custom:
+    url: https://mlp.eightfold.ai/api/apply/v2/jobs?domain=mlp.com&num=10
+    jobs_path: positions
+    fields:
+      title: name
+      id: id
+      url: canonicalPositionUrl
+      location: location
+      department: department
+      description: job_description
+    page_param: start
+    page_size: 10
+    max_pages: 30
 - name: Millicom
   platform: workday
   slug: tigo
@@ -7985,6 +8157,15 @@
   workday_dc: wd1
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (1 posting(s), 0 kept)'
+- name: Northern Trust
+  platform: workday
+  slug: ntrs
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: ntrs
+  workday_site: northerntrust
+  workday_dc: wd1
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL; 637 postings.'
 - name: Northrop Grumman
   platform: workday
   slug: ngc
@@ -8663,6 +8844,67 @@
   slug: pdtpartners
   source_of_record: discover
   last_verified: *id003
+- name: PEAK6
+  platform: custom_json
+  slug: peak6
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-captured Ongig request. The group_id index is multi-employer —
+    40 of its 67 rows are Apex Fintech — so it is filtered to the PEAK6 subdivisions; the
+    apply url template is the one the site''s own bundle builds.'
+  custom:
+    url: https://text-analyzer.ongig.com/api/external/v2/jobs/search
+    method: POST
+    headers:
+      Authorization: Bearer 1bb83b1b-7481-11df-bbeb-b11bb1cb11b4
+      Origin: https://peak6.com
+      Referer: https://peak6.com/
+    body:
+      query: ''
+      precision: 2
+      page:
+        size: 100
+        current: 1
+      filters:
+        all:
+        - any:
+          - live: 1
+        - any:
+          - group_id: 1767
+        - any:
+          - subdivision: PEAK6
+          - subdivision: PEAK6 Capital Management
+      result_fields:
+        title:
+          raw: {}
+        location:
+          raw: {}
+        req_id:
+          raw: {}
+        job_type:
+          raw: {}
+        content:
+          raw: {}
+        category:
+          raw: {}
+        url:
+          raw: {}
+        created_at:
+          raw: {}
+    jobs_path: results
+    url_template: https://peak6-prod.ongig.com/jobs/{id}
+    fields:
+      title: title.raw
+      id: url.raw
+      location: location.raw
+      description: content.raw
+      category: category.raw
+      employment_type: job_type.raw
+    page_param: page.current
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 10
 - name: Pear VC
   platform: ashby
   slug: pear-vc
@@ -9259,6 +9501,20 @@
   enabled: false
   notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
     of the right company; needs a human to open the board once'
+- name: Quantlab
+  platform: jobvite
+  slug: quantlab
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Jobvite, which answers 401 Invalid api/secret across every tenant we
+    have tried; the careers page loads its assets and nothing else.'
+- name: Qube Research and Technologies
+  platform: greenhouse
+  slug: quberesearchandtechnologies
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the board names itself Qube Research & Technologies.'
 - name: QuEra Computing
   platform: greenhouse
   slug: queracomputinginc
@@ -9780,6 +10036,15 @@
   slug: rushstreetinteractive
   source_of_record: openjobs
   last_verified: *id021
+- name: S&P Global
+  platform: workday
+  slug: spgi
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: spgi
+  workday_site: SPGI_Careers
+  workday_dc: wd5
+  notes: '2026-08-20: careers.spglobal.com is a shell over this Workday tenant; 300 postings.'
 - name: Safari AI
   platform: greenhouse
   slug: safariai
@@ -10297,19 +10562,12 @@
     the board publishes the name ''SK hynix memory solutions America Inc.'', so the
     name gate rejects a correct caption'
 - name: Skild AI
-  platform: custom_json
-  slug: skildai
-  enabled: false
+  platform: greenhouse
+  slug: skildai-careers
   source_of_record: discover
   last_verified: 2026-08-20
-  notes: '2026-08-20: the careers page is 14KB of shell with no listing, no ATS host, no sitemap
-    jobs, and no greenhouse, ashby or lever board under any spelling of the name. Needs a
-    captured request.'
-  custom:
-    url: https://www.skild.ai/career
-    fields:
-      title: title
-      id: id
+  notes: '2026-08-20: owner-captured request named the board token; the careers page guesses
+    would never have found it, and greenhouse names the board Skild AI.'
 - name: skybox labs
   platform: lever
   slug: skyboxlabs
@@ -11376,6 +11634,19 @@
   slug: trackvfx
   source_of_record: openjobs
   last_verified: *id015
+- name: Tradebot
+  platform: custom_json
+  slug: tradebot
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the careers page renders client-side and its sitemap holds a single
+    url, so there is no listing to read.'
+  custom:
+    url: https://www.tradebot.com/careers
+    fields:
+      title: title
+      id: id
 - name: Tradeweb
   platform: oracle_cloud
   slug: ecnf
@@ -11943,6 +12214,13 @@
   workday_dc: wd1
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Verition Group
+  platform: greenhouse
+  slug: veritiongroupllc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the board names itself Verition Group LLC
+    and carries 2027 internships.'
 - name: Vertiv
   platform: oracle_cloud
   slug: vertiv
@@ -12338,6 +12616,26 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Wolverine Trading
+  platform: custom_json
+  slug: wolverinetrading
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-captured request; wolve.com renders a Pinpoint board whose postings.json
+    carries the whole listing with full bodies.'
+  custom:
+    url: https://wolve.pinpointhq.com/postings.json
+    headers:
+      Origin: https://www.wolve.com
+      Referer: https://www.wolve.com/
+    jobs_path: data
+    fields:
+      title: title
+      id: id
+      url: url
+      location: location.name
+      description: description
+      employment_type: employment_type_text
 - name: WongDoody
   platform: greenhouse
   slug: wongdoody

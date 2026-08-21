@@ -224,3 +224,88 @@ def test_a_text_fetch_asks_for_html_rather_than_json() -> None:
     assert "text/html" in accept, (
         f"a text fetch asked for {accept!r}; job bank answers 500 to an application/json Accept"
     )
+
+
+def _espresso_row(identifier: str, slug: str, title: str, employer: str, badge: str) -> str:
+    return (
+        f'<div class="job_index-content_list_item" id="{identifier}" data-slug="{slug}">'
+        f'<h2 class="job_index-content_list_item-title">{title}</h2>'
+        f'<p class="job_index-content_list_item-company">{employer}</p>'
+        f'<div class="job-location-info" data-city="Montreal" data-province="Québec">Montreal</div>'
+        f'<div class="job_index-content_list_item_infos">'
+        f'<p class="job_index-content_list_item_infos-type">{badge}</p></div>'
+        f"</div>"
+    )
+
+
+@respx.mock
+def test_espresso_keeps_only_stage_badged_rows_and_files_them_by_employer() -> None:
+    from stage.sources.espresso import SEARCH as ESPRESSO_SEARCH
+    from stage.sources.espresso import EspressoJobsFeed
+
+    page = _page(
+        _espresso_row("111", "dev-stage-acme", "Stagiaire developpement", "Acme Inc", "Stage"),
+        _espresso_row("222", "vendeur-retail", "Vendeur", "Retail Co", "Permanent à temps plein"),
+    )
+    respx.get(url__startswith=ESPRESSO_SEARCH).mock(return_value=httpx.Response(200, text=page))
+
+    async def run() -> None:
+        async with _client(EspressoJobsFeed.hosts) as client:
+            result = await EspressoJobsFeed().fetch(client, NOW)
+        titles = {job.title_raw for job in result.jobs}
+        assert titles == {"Stagiaire developpement"}, (
+            "an unbadged row was kept, so the board's own type is not deciding"
+        )
+        job = next(iter(result.jobs))
+        assert job.company == "Acme Inc", "an aggregator must file each posting under its employer"
+        assert job.location_raw == "Montreal, Québec, Canada", job.location_raw
+        assert "/emploi/111/dev-stage-acme" in job.apply_url_raw, job.apply_url_raw
+        assert "appliquer" not in job.apply_url_raw, "robots disallows the apply endpoint"
+        assert not result.authoritative, "a keyword slice must never be authoritative"
+
+    asyncio.run(run())
+
+
+@respx.mock
+def test_espresso_treats_a_later_page_404_as_the_end_of_that_walk() -> None:
+    from stage.sources.espresso import SEARCH as ESPRESSO_SEARCH
+    from stage.sources.espresso import EspressoJobsFeed
+
+    full = _page(
+        *(
+            _espresso_row(str(n), f"slug-{n}", f"Stagiaire {n}", f"Employer {n}", "Stage")
+            for n in range(21)
+        )
+    )
+    respx.get(url__startswith=ESPRESSO_SEARCH).mock(
+        side_effect=lambda request: (
+            httpx.Response(200, text=full)
+            if "page_no=1" in str(request.url)
+            else httpx.Response(404, text="not found")
+        )
+    )
+
+    async def run() -> None:
+        async with _client(EspressoJobsFeed.hosts) as client:
+            result = await EspressoJobsFeed().fetch(client, NOW)
+        assert len(result.jobs) == 21, "a first page that filled should still be kept"
+        assert "404" in result.degraded, result.degraded
+
+    asyncio.run(run())
+
+
+@respx.mock
+def test_espresso_raises_when_no_query_returns_a_row_at_all() -> None:
+    from stage.sources.espresso import SEARCH as ESPRESSO_SEARCH
+    from stage.sources.espresso import EspressoJobsFeed
+
+    respx.get(url__startswith=ESPRESSO_SEARCH).mock(
+        return_value=httpx.Response(200, text="<html><body>redesigned</body></html>")
+    )
+
+    async def run() -> None:
+        async with _client(EspressoJobsFeed.hosts) as client:
+            with pytest.raises(PayloadValidationError, match="changed shape"):
+                await EspressoJobsFeed().fetch(client, NOW)
+
+    asyncio.run(run())
