@@ -31,6 +31,8 @@ MAX_EXTRACT_BYTES = 8 * 1024 * 1024
 MAX_RSS_ITEMS = 20000
 MAX_TOKEN_LEN = 4096
 MAX_HTML_ROWS = 2000
+
+MAX_PATH_SEGMENTS = 8
 MAX_PAGES = 20
 PAGE_CEILING = 200
 _JSON_PARSE = 'JSON.parse("'
@@ -158,18 +160,19 @@ def _tag_text(item: str, start: int) -> tuple[str, str, int] | None:
     return name, unescape(body).strip(), end + len(name) + 3
 
 
-def rss_items(text: str) -> list[dict[str, str]]:
+def rss_items(text: str, tag: str = "item") -> list[dict[str, str]]:
+    opening, closing = f"<{tag}>", f"</{tag}>"
     rows: list[dict[str, str]] = []
     cursor = 0
     while len(rows) < MAX_RSS_ITEMS:
-        start = text.find("<item>", cursor)
+        start = text.find(opening, cursor)
         if start < 0:
             break
-        end = text.find("</item>", start)
+        end = text.find(closing, start)
         if end < 0:
             break
-        item = text[start + 6 : end]
-        cursor = end + 7
+        item = text[start + len(opening) : end]
+        cursor = end + len(closing)
         row: dict[str, str] = {}
         at = 0
         while True:
@@ -252,14 +255,19 @@ def sitemap_rows(text: str) -> list[dict[str, str]]:
         slug, _, ident = tail.rpartition("_")
         if not slug:
             slug, ident = tail, tail
-        rows.append(
-            {
-                "loc": loc,
-                "id": ident,
-                "slug": slug,
-                "title": slug.replace("-", " ").strip().title(),
-            }
-        )
+        row = {
+            "loc": loc,
+            "id": ident,
+            "slug": slug,
+            "title": slug.replace("-", " ").strip().title(),
+        }
+        segments = [
+            part for part in loc.split("?", 1)[0].split("#", 1)[0].rstrip("/").split("/") if part
+        ]
+        for offset, part in enumerate(reversed(segments[-MAX_PATH_SEGMENTS:]), start=1):
+            row[f"path{offset}"] = part
+            row[f"path{offset}_title"] = part.replace("-", " ").strip().title()
+        rows.append(row)
     return rows
 
 
@@ -480,7 +488,7 @@ class CustomJsonAdapter:
             text = await client.get_text(_page_url(board, index), revalidate=index > 0)
             if text.not_modified:
                 return _UNCHANGED
-            rows = rss_items(text.text)
+            rows = rss_items(text.text, board.item_tag)
             if not rows:
                 captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
                 raise PayloadValidationError(
@@ -517,6 +525,9 @@ class CustomJsonAdapter:
             if text.not_modified:
                 return _UNCHANGED
             rows = sitemap_rows(text.text)
+            if board.row_filter:
+                keep = re.compile(board.row_filter)
+                rows = [row for row in rows if keep.search(row.get("loc", ""))]
             if not rows:
                 captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
                 raise PayloadValidationError(
@@ -567,15 +578,16 @@ class CustomJsonAdapter:
         apply_url = listing.url
         if not apply_url and board.url_template:
             apply_url = board.url_template.format(id=listing.id)
+        title = collapse_whitespace(strip_html(listing.title)) or listing.title
         return Job(
             id=job_id(self.name, company.slug, listing.id),
             source=self.name,
             company=company.name,
-            title_raw=listing.title,
-            title_normalized=collapse_whitespace(listing.title),
+            title_raw=title,
+            title_normalized=collapse_whitespace(title),
             apply_url_raw=apply_url or board.url,
             description=collapse_whitespace(strip_html(listing.description)),
-            location_raw=collapse_whitespace(listing.location),
+            location_raw=collapse_whitespace(strip_html(listing.location)),
             first_seen=now,
             last_seen=now,
             signals=SourceSignals(

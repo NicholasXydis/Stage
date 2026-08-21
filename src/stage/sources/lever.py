@@ -7,6 +7,7 @@ from stage.domain import Company, Job, Platform, SourceSignals, job_id
 from stage.sources import register
 from stage.sources._text import collapse_whitespace
 from stage.sources.base import BoardAdapter
+from stage.sources.platforms import safe_cased_slug
 
 BASE_URL = "https://api.lever.co/v0/postings/{slug}"
 HOST = "api.lever.co"
@@ -52,6 +53,7 @@ class LeverAdapter(BoardAdapter):
     base_url: ClassVar[str] = BASE_URL
     query: ClassVar[tuple[tuple[str, str], ...]] = (("mode", "json"),)
     row_model: ClassVar[type[BaseModel]] = LeverPosting
+    slug_validator = safe_cased_slug
 
     def to_job(self, company: Company, row: Any, now: datetime) -> Job:
         posted = datetime.fromtimestamp(row.createdAt / 1000, tz=UTC) if row.createdAt else None

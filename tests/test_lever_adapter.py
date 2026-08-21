@@ -8,6 +8,7 @@ from stage.domain import Company, Platform
 from stage.http import HttpClient, profile
 from stage.sources import get_adapter
 from stage.sources.base import PayloadValidationError
+from stage.sources.lever import LeverAdapter
 
 ENDPOINT = "https://api.lever.co/v0/postings/acme"
 
@@ -127,3 +128,21 @@ async def test_a_non_list_payload_is_drift_not_an_empty_board(
     async with _client() as client:
         with pytest.raises(PayloadValidationError, match="expected a JSON list"):
             await adapter.fetch(acme_lever, client, run_time)
+
+
+def test_a_capitalised_board_token_reaches_lever_unchanged() -> None:
+    adapter = LeverAdapter()
+    company = Company(name="Potloc", platform=Platform.LEVER, slug="Potloc")
+    assert adapter.url_for(company) == "https://api.lever.co/v0/postings/Potloc", (
+        "lever board tokens are case-sensitive — lowercasing one turns a live board into a 404"
+    )
+
+
+def test_a_lever_token_that_could_escape_the_path_is_still_refused() -> None:
+    from stage.sources.platforms import SlugRejectedError
+
+    adapter = LeverAdapter()
+    for token in ("../etc", "a b", "Pot_loc"):
+        company = Company(name="X", platform=Platform.LEVER, slug=token)
+        with pytest.raises(SlugRejectedError):
+            adapter.url_for(company)

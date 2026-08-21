@@ -70,12 +70,12 @@ class OracleCloudAdapter:
 
     def params_for(self, company: Company, offset: int) -> dict[str, str]:
         _, site = oracle_target(company.oracle_host or "", company.oracle_site or "")
+        keyword = KEYWORD if company.oracle_keyword is None else company.oracle_keyword.strip()
+        narrowed = f",keyword={keyword}" if keyword else ""
         return {
             "onlyData": "true",
             "expand": "requisitionList",
-            "finder": (
-                f"findReqs;siteNumber={site},keyword={KEYWORD},offset={offset},limit={PAGE_SIZE}"
-            ),
+            "finder": (f"findReqs;siteNumber={site}{narrowed},offset={offset},limit={PAGE_SIZE}"),
         }
 
     def plan(self, company: Company) -> tuple[str, ...]:

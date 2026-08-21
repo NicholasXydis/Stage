@@ -13,6 +13,7 @@ SOURCE_PRIORITY: tuple[str, ...] = (
     "custom_json",
     "quebec-emploi",
     "jobbank",
+    "espresso-jobs",
     "themuse",
     "simplify",
     "vanshb03",
