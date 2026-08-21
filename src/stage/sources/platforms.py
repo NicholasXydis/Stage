@@ -9,6 +9,7 @@ from stage.lexicon import fold
 
 SAFE_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 SAFE_PATH_SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,61}[a-z0-9])?$")
+SAFE_CASED_SLUG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,62}$")
 _LOCALE = r"[a-z]{2}(?:-[A-Za-z]{2})?"
 _WORKDAY_HOST = re.compile(r"^(?P<tenant>[a-z0-9][a-z0-9-]*)\.(?P<dc>wd\d+)\.myworkdayjobs\.com$")
 
@@ -27,6 +28,16 @@ def safe_slug(slug: str) -> str:
     return lowered
 
 
+def safe_cased_slug(slug: str) -> str:
+    stripped = slug.strip()
+    if not SAFE_CASED_SLUG.match(stripped):
+        raise SlugRejectedError(
+            f"{slug!r} is not a usable board token — it interpolates into a "
+            "request path, so letters, digits and hyphens only"
+        )
+    return stripped
+
+
 def safe_path_slug(slug: str) -> str:
     lowered = slug.strip().lower()
     if not SAFE_PATH_SLUG.match(lowered):
@@ -39,7 +50,7 @@ def safe_path_slug(slug: str) -> str:
 
 SAFE_WORKDAY_DC = re.compile(r"^wd\d{1,3}$")
 SAFE_WORKDAY_SITE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
-SAFE_ORACLE_HOST = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,62})\.)+oraclecloud\.com$")
+SAFE_ORACLE_HOST = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,62})\.)+[a-z]{2,24}$")
 SAFE_ORACLE_SITE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
@@ -90,8 +101,8 @@ def oracle_target(host: str, site: str) -> tuple[str, str]:
     safe_host = host.strip().lower()
     if not SAFE_ORACLE_HOST.match(safe_host):
         raise SlugRejectedError(
-            f"{host!r} is not a usable Oracle Cloud host — expected an oraclecloud.com "
-            "host because it interpolates into the request URL"
+            f"{host!r} is not a usable Oracle Cloud host — it interpolates into the request "
+            "URL, so it must be a dotted public hostname"
         )
     safe_site = site.strip()
     if not SAFE_ORACLE_SITE.match(safe_site):
@@ -252,6 +263,7 @@ URL_PATTERNS: tuple[UrlPattern, ...] = (
         platform=Platform.LEVER,
         hosts=("jobs.lever.co", "api.lever.co", "jobs.eu.lever.co"),
         path_pattern=_path(r"^/(?:v0/postings/)?(?P<slug>[^/?#]+)"),
+        slug_validator=safe_cased_slug,
     ),
     UrlPattern(
         platform=Platform.ASHBY,
@@ -502,23 +514,68 @@ def identify_url(url: str) -> PlatformCandidate | None:
     return _successfactors(host, path) or _experience_layer(host, path)
 
 
+MAX_PREDICATE_SCAN = 500
+
+
+def _path_segments(path: str) -> list[str]:
+    segments: list[str] = []
+    buffer = ""
+    depth = 0
+    for char in path:
+        if char == "[":
+            depth += 1
+            buffer += char
+        elif char == "]":
+            depth = max(0, depth - 1)
+            buffer += char
+        elif char == "." and depth == 0:
+            segments.append(buffer)
+            buffer = ""
+        else:
+            buffer += char
+    segments.append(buffer)
+    return segments
+
+
+def _matching_entry(current: Any, predicate: str) -> Any:
+    if not isinstance(current, list):
+        return None
+    field, sep, wanted = predicate.partition("=")
+    if not sep:
+        return None
+    field = field.strip()
+    wanted = wanted.strip()
+    for entry in current[:MAX_PREDICATE_SCAN]:
+        if dig(entry, field) == wanted:
+            return entry
+    return None
+
+
+def _step(current: Any, part: str) -> Any:
+    if isinstance(current, list):
+        if not part.isdigit():
+            return None
+        index = int(part)
+        return None if index >= len(current) else current[index]
+    if isinstance(current, dict):
+        return current.get(part) if part in current else None
+    return None
+
+
 def dig(payload: Any, path: str) -> Any:
     if path == "":
         return payload
     current = payload
-    for part in path.split("."):
-        if isinstance(current, list):
-            if not part.isdigit():
-                return None
-            index = int(part)
-            if index >= len(current):
-                return None
-            current = current[index]
-        elif isinstance(current, dict):
-            if part not in current:
-                return None
-            current = current[part]
-        else:
+    for part in _path_segments(path):
+        predicate = ""
+        if part.endswith("]") and "[" in part:
+            part, _, rest = part.partition("[")
+            predicate = rest[:-1]
+        if part:
+            current = _step(current, part)
+        if predicate:
+            current = _matching_entry(current, predicate)
+        if current is None:
             return None
     return current
 

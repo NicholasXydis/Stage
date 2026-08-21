@@ -125,11 +125,27 @@ def test_oracle_target_refuses_hosts_or_sites_that_could_rewrite_requests() -> N
         "jobsearch",
     )
     for host, site in (
-        ("evil.example", "jobsearch"),
         ("eeho.fa.us2.oraclecloud.com", "job/search"),
+        ("host.com/../wday", "jobsearch"),
+        ("host.com/path", "jobsearch"),
+        ("user@host.com", "jobsearch"),
+        ("host.com:8080", "jobsearch"),
+        ("host.com?x=1", "jobsearch"),
+        ("host .com", "jobsearch"),
+        ("localhost", "jobsearch"),
+        ("127.0.0.1", "jobsearch"),
+        ("-bad.com", "jobsearch"),
+        ("", "jobsearch"),
     ):
         with pytest.raises(SlugRejectedError):
             oracle_target(host, site)
+
+
+def test_oracle_target_allows_a_vanity_host_because_the_registry_authorises_it() -> None:
+    for host in ("careers.alithya.com", "enterpriseplatform.dell.com"):
+        assert oracle_target(host, "CX_1")[0] == host, (
+            "Oracle recruiting runs on vanity hosts, so the rule checks for request rewriting"
+        )
 
 
 def test_the_greenhouse_api_host_resolves_like_the_board_host() -> None:
