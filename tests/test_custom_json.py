@@ -373,3 +373,68 @@ def test_no_enabled_board_sends_every_posting_to_the_same_apply_url() -> None:
     assert not generic, (
         f"these boards fall back to the listing endpoint as every posting's apply url: {generic}"
     )
+
+
+def test_a_registry_row_with_an_invalid_row_filter_is_refused(tmp_path: Path) -> None:
+    from stage.companies import RegistryError, load_companies
+
+    registry = tmp_path / "companies.yaml"
+    registry.write_text(
+        "- name: Broken\n"
+        "  platform: custom_json\n"
+        "  slug: broken\n"
+        "  last_verified: 2026-08-20\n"
+        "  custom:\n"
+        "    url: https://example.test/sitemap.xml\n"
+        "    format: sitemap\n"
+        "    row_filter: '[unclosed'\n"
+        "    fields:\n"
+        "      title: path1_title\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RegistryError, match="row_filter"):
+        load_companies(registry)
+
+
+def test_a_path_can_name_a_list_entry_instead_of_counting_to_it() -> None:
+    from stage.sources.platforms import dig
+
+    payload = {
+        "_embedded": {
+            "wp:term": [
+                [{"taxonomy": "division", "name": "IT"}],
+                [{"taxonomy": "location", "name": "Montreal"}],
+            ]
+        }
+    }
+    named = dig(payload, "_embedded.wp:term[0.taxonomy=location].0.name")
+    counted = dig(payload, "_embedded.wp:term.0.0.name")
+
+    assert named == "Montreal", named
+    assert counted == "IT", "this is the silent swap a positional index allows"
+
+
+def test_a_predicate_that_matches_nothing_yields_no_value() -> None:
+    from stage.sources.platforms import dig
+
+    payload = {"terms": [{"kind": "a", "v": 1}]}
+    assert dig(payload, "terms[kind=zzz].v") is None, "a dead predicate must not fall back"
+
+
+def test_plain_paths_are_unchanged_by_predicate_support() -> None:
+    from stage.sources.platforms import dig
+
+    assert dig({"a": {"b": [1, 2, 3]}}, "a.b.2") == 3
+    assert dig({"a": "x"}, "a") == "x"
+    assert dig({"a": "x"}, "missing") is None
+    assert dig({"items": [{"id": "7"}]}, "items.0.id") == "7"
+
+
+def test_the_stingray_row_names_its_taxonomy_rather_than_indexing_it() -> None:
+    from stage.companies import load_companies
+
+    board = {company.name: company for company in load_companies()}["Stingray"].custom
+    assert board is not None
+    assert "taxonomy=location" in board.mapped("location"), (
+        "WordPress orders embedded taxonomies by registration, so the group must be named"
+    )

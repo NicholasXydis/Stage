@@ -270,3 +270,45 @@ def test_oracle_registry_rows_need_a_safe_host_and_site(tmp_path: Path) -> None:
     )
     with pytest.raises(RegistryError, match="oracle_host and oracle_site"):
         load_companies(path)
+
+
+def test_no_two_oracle_rows_poll_the_same_board() -> None:
+    from collections import Counter
+
+    from stage.companies import load_companies
+
+    boards = Counter(
+        (company.oracle_host, company.oracle_site)
+        for company in load_companies()
+        if company.platform is Platform.ORACLE_CLOUD
+    )
+    shared = {board: count for board, count in boards.items() if count > 1}
+    assert not shared, f"one Oracle board is polled by more than one row: {shared}"
+
+
+def test_no_two_workday_rows_poll_the_same_board() -> None:
+    from collections import Counter
+
+    from stage.companies import load_companies
+
+    boards = Counter(
+        (company.workday_tenant, company.workday_site, company.workday_dc)
+        for company in load_companies()
+        if company.platform is Platform.WORKDAY
+    )
+    shared = {board: count for board, count in boards.items() if count > 1}
+    assert not shared, f"one Workday board is polled by more than one row: {shared}"
+
+
+def test_no_two_custom_json_rows_share_one_listing_url() -> None:
+    from collections import Counter
+
+    from stage.companies import load_companies
+
+    urls = Counter(
+        company.custom.url
+        for company in load_companies()
+        if company.custom is not None and company.enabled
+    )
+    shared = {url: count for url, count in urls.items() if count > 1}
+    assert not shared, f"one listing url is polled by more than one row: {shared}"

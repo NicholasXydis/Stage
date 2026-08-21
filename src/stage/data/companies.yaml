@@ -123,10 +123,7 @@
   workday_site: External
   workday_dc: wd1
   enabled: false
-  notes: '2026-08-14: the CXS jobs endpoint answers 422 for every site candidate tried,
-    so the closure is tenant-wide rather than a wrong workday_site — this employer
-    does not serve a public Workday board; custom_json is the only route if its listings
-    are wanted'
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers 422 for this site, so the closed-contract verdict stands on a fresh measurement.'
 - name: Activision (Phenom)
   platform: custom_json
   slug: activision-phenom
@@ -196,9 +193,7 @@
   slug: cadent
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Adtran
   platform: workday
   slug: adtran
@@ -393,6 +388,20 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     lever publishes no board name, so provenance is the evidence (5 job(s))'
+- name: Akamai
+  platform: custom_json
+  slug: akamai
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: closed for good — jobs.akamai.com answers AkamaiGHost Access Denied
+    to the careers page, its Oracle CE endpoint, rss.xml and sitemap.xml alike; a wall, not
+    a handshake.'
+  custom:
+    url: https://jobs.akamai.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions
+    fields:
+      title: Title
+      id: Id
 - name: akqa
   platform: greenhouse
   slug: akqa
@@ -432,6 +441,16 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     lever publishes no board name, so provenance is the evidence (23 job(s))'
+- name: Alithya
+  platform: oracle_cloud
+  slug: alithya
+  source_of_record: discover
+  last_verified: 2026-08-20
+  oracle_host: careers.alithya.com
+  oracle_site: CX_1
+  oracle_keyword: ''
+  notes: '2026-08-20: bilingual Quebec board, so the English keyword is pinned off; unfiltered
+    it is 95 rows in one page.'
 - name: AlixPartners
   platform: greenhouse
   slug: alixpartners
@@ -557,6 +576,30 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: AMD
+  platform: custom_json
+  slug: amd
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: iCIMS careers-home site, a different contract from the icims.com listing
+    that was parked; /api/jobs returns full bodies and the board carries no intern facet.'
+  custom:
+    url: https://careers.amd.com/api/jobs?limit=100
+    jobs_path: jobs
+    url_template: https://careers.amd.com/jobs/{id}
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 16
 - name: Amentum
   platform: workday
   slug: pae
@@ -926,6 +969,24 @@
   workday_facet: workerSubType:f46aeba69a1910054d93a118bf5e0000
   notes: '2026-08-13: official Workday endpoint verified; its intern fixed-term facet
     has two listings.'
+- name: Arm
+  platform: custom_json
+  slug: arm
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: TalentBrew site with no json or rss; /sitemap.xml is the listing and
+    row_filter keeps only /job/ urls. A sitemap is a crawl artifact that can lag the board and
+    no independent count reconciles it, so it never closes; purge bounds the staleness at 14 days.'
+  custom:
+    url: https://careers.arm.com/sitemap.xml
+    format: sitemap
+    row_filter: /job/
+    authoritative: false
+    fields:
+      title: path3_title
+      id: path1
+      url: loc
+      location: path4_title
 - name: Arrowstreet Capital
   platform: workday
   slug: arrowstreetcapital
@@ -1174,9 +1235,7 @@
   slug: bocusa
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Banyan Software
   platform: greenhouse
   slug: banyansoftware
@@ -1647,6 +1706,20 @@
   workday_facet: company:99ba898c88ac011c8a873c01f2016c06
   notes: '2026-08-13: pinned to BMO''s verified Intern (Fixed Term) facet, so sync
     avoids its 1,180-role general board'
+- name: BMW Group
+  platform: custom_json
+  slug: bmwgroup
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: closed for good — the jobfinder renders client-side, its sitemap carries
+    only content pages, and the owner confirmed a DevTools capture finds no reusable listing
+    request.'
+  custom:
+    url: https://www.bmwgroup.jobs/en/jobfinder.html
+    fields:
+      title: title
+      id: id
 - name: Boeing
   platform: workday
   slug: boeing
@@ -1724,6 +1797,13 @@
   slug: botauto
   source_of_record: discover
   last_verified: *id003
+- name: Botpress
+  platform: workable
+  slug: botpress
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: careers-page ATS scan found the Workable embed; the widget account names
+    itself Botpress Technologies Inc.'
 - name: bounteous
   platform: lever
   slug: bounteous
@@ -2121,10 +2201,7 @@
   workday_site: CCICareers
   workday_dc: wd1
   enabled: false
-  notes: '2026-08-14: the CXS jobs endpoint answers 422 for every site candidate tried,
-    so the closure is tenant-wide rather than a wrong workday_site — this employer
-    does not serve a public Workday board; custom_json is the only route if its listings
-    are wanted'
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers 422 for this site, so the closed-contract verdict stands on a fresh measurement.'
 - name: Caterpillar Inc.
   platform: workday
   slug: cat
@@ -2174,10 +2251,9 @@
   platform: custom_json
   slug: celestica
   source_of_record: discover
-  last_verified: 2026-08-19
-  enabled: false
-  notes: SuccessFactors RMK; /rss.xml matches its search page exactly at 1,114 items, but
-    that is 12.3MB a refresh, so the row is parked on storage cost rather than reachability.
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reopened — parked on a 12.3MB refresh cost, but the ceiling is 32MB
+    and the Corning row ships 14.9MB; the feed matches its search page exactly at 1,151 items.'
   custom:
     url: https://careers.celestica.com/rss.xml
     format: rss
@@ -2324,7 +2400,7 @@
   workday_site: chegg
   workday_dc: wd5
   enabled: false
-  notes: Workday CXS answers 422 for every site candidate, so the closure is tenant-wide.
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers 422 for this site, so the closed-contract verdict stands on a fresh measurement.'
 - name: CHEP
   platform: workday
   slug: brambles
@@ -2893,6 +2969,23 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Corning
+  platform: custom_json
+  slug: corning
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: SuccessFactors RMK; /rss.xml carries all 1,131 postings in 15MB, under
+    the 32MB ceiling.'
+  custom:
+    url: https://corningjobs.corning.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Corpay
   platform: workday
   slug: corpay
@@ -2909,9 +3002,7 @@
   slug: cotiviti
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Couchbase
   platform: greenhouse
   slug: couchbaseinc
@@ -2960,9 +3051,7 @@
   slug: cpicardgroup
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: CPKC
   platform: custom_json
   slug: cpkc
@@ -2997,6 +3086,23 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (8 job(s))'
+- name: Credo Semiconductor
+  platform: custom_json
+  slug: credo
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: HiBob board whose api answers 406, but the employer''s own page server-renders
+    every row; the hrefs end in /apply so slugid would collapse them and id is left to the
+    url.'
+  custom:
+    url: https://credosemi.com/about-credo/careers/
+    format: html
+    row_selector: tr.job-main-row
+    fields:
+      title: td:nth-of-type(1)
+      department: td:nth-of-type(2)
+      location: td:nth-of-type(3)
+      url: a[href*="hibob.com/jobs/"]::attr(href)
 - name: Cresta
   platform: greenhouse
   slug: cresta
@@ -3007,6 +3113,22 @@
   slug: criticalmass
   source_of_record: openjobs
   last_verified: *id007
+- name: Croesus
+  platform: custom_json
+  slug: croesus
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Cezanne/Intervieweb board, server-rendered with no JSON or RSS contract,
+    so the page itself is the listing.'
+  custom:
+    url: https://cezanneondemand.intervieweb.it/croesus/en/career
+    format: html
+    row_selector: div.vacancy__header
+    fields:
+      title: div.vacancy__title h3
+      url: div.vacancy__title a::attr(href)
+      location: span.subtitle__informations[title="Location"]
+      category: span.subtitle__informations[title="Functional Area"]
 - name: Croix Bleue
   platform: workday
   slug: canassurance
@@ -3113,6 +3235,19 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
+- name: Dassault Systemes
+  platform: custom_json
+  slug: dassault-systemes
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: closed for good — no sitemap, no rss, no endpoint in any shipped bundle,
+    and the owner confirmed a DevTools capture finds no reusable listing request.'
+  custom:
+    url: https://www.3ds.com/careers/jobs
+    fields:
+      title: title
+      id: id
 - name: Databricks
   platform: greenhouse
   slug: databricks
@@ -3177,6 +3312,17 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active software-engineering internship application
     verifies the public Ashby board.'
+- name: Dell
+  platform: oracle_cloud
+  slug: dell
+  source_of_record: discover
+  last_verified: 2026-08-20
+  oracle_host: enterpriseplatform.dell.com
+  oracle_site: careers
+  oracle_keyword: ''
+  notes: '2026-08-20: Oracle recruiting on a vanity host; the adapter pages inside the finder,
+    which is the only offset Oracle honours, so this row now sees all 438 rather than the
+    first 200.'
 - name: Deloitte
   platform: custom_json
   slug: deloitte-ca
@@ -3433,6 +3579,20 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active machine-learning internship application verifies
     the public Ashby board.'
+- name: Druide informatique
+  platform: custom_json
+  slug: druide
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: closed for good — its only board is Workland, whose jobs service is
+    alive but names no public route; the owner confirmed a DevTools capture finds no reusable
+    request.'
+  custom:
+    url: https://atlas.workland.com/careers/druide/jobs
+    fields:
+      title: title
+      id: id
 - name: DRW
   platform: greenhouse
   slug: drweng
@@ -3495,9 +3655,7 @@
   slug: eastpennmanufacturing
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Eaton
   platform: custom_json
   slug: eaton
@@ -3574,12 +3732,27 @@
   last_verified: 2026-08-20
   notes: The employer's internships-only greenhouse board; it answered 200 with an empty roster on 2026-08-20.
 - name: Electronic Arts
-  platform: avature
+  platform: custom_json
   slug: ea
   source_of_record: discover
-  enabled: false
-  notes: '2026-08-14: no Avature adapter and too few rows to justify one; custom_json
-    is the route once the JSON request URL is captured from the careers page'
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reopened — the 2026-08-14 note said custom_json was the route once a
+    contract existed, and jobs.ea.com is the same Avature listFilterMode markup the Two Sigma
+    row pins.'
+  custom:
+    url: https://jobs.ea.com/en_US/careers/SearchJobs/?listFilterMode=1&jobRecordsPerPage=20
+    format: html
+    row_selector: article.article--result
+    fields:
+      title: h3.article__header__text__title a
+      id: h3.article__header__text__title a::slugid(href)
+      url: h3.article__header__text__title a::attr(href)
+      location: span.list-item-location
+      department: span.list-item-department
+      employment_type: span.list-item-workerType
+    page_param: jobOffset
+    page_size: 20
+    max_pages: 20
 - name: ElevenLabs
   platform: ashby
   slug: elevenlabs
@@ -3687,6 +3860,19 @@
   slug: epicgames
   source_of_record: openjobs
   last_verified: *id003
+- name: Epic Systems
+  platform: custom_json
+  slug: epic-systems
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: closed for good — an Avature tenant that does not serve the listFilterMode
+    markup, and the owner confirmed a DevTools capture finds no reusable listing request.'
+  custom:
+    url: https://careers.epic.com/jobs/
+    fields:
+      title: title
+      id: id
 - name: Epicor
   platform: workday
   slug: epicorsoftware
@@ -3705,10 +3891,7 @@
   workday_site: epricareers
   workday_dc: wd1
   enabled: false
-  notes: '2026-08-14: the CXS jobs endpoint answers 422 for every site candidate tried,
-    so the closure is tenant-wide rather than a wrong workday_site — this employer
-    does not serve a public Workday board; custom_json is the only route if its listings
-    are wanted'
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers 422 for this site, so the closed-contract verdict stands on a fresh measurement.'
 - name: Equativ
   platform: lever
   slug: equativ
@@ -3832,6 +4015,13 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (1 job(s))'
+- name: Everpure
+  platform: greenhouse
+  slug: purestorage
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: everpuredata.com embeds this board and greenhouse names it Everpure;
+    the purestorage token is the pre-rename one, so name and token differ legitimately.'
 - name: Evolution
   platform: smartrecruiters
   slug: evolution
@@ -3912,9 +4102,7 @@
   slug: fsg
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Faire
   platform: greenhouse
   slug: faire
@@ -4090,6 +4278,13 @@
   notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
     match the rest of the workable platform, which is parked until 2026-08-18 after
     two 429s in one day.'
+- name: Flinks
+  platform: workable
+  slug: flinks
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: careers-page ATS scan found the Workable embed; the widget account names
+    itself Flinks.'
 - name: Flipp
   platform: greenhouse
   slug: flipp
@@ -4291,6 +4486,29 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 3 job(s)'
+- name: Garmin
+  platform: custom_json
+  slug: garmin
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: iCIMS careers-home site, the same contract as the AMD row.'
+  custom:
+    url: https://careers.garmin.com/api/jobs?limit=100
+    jobs_path: jobs
+    url_template: https://careers.garmin.com/jobs/{id}
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
 - name: Gartner
   platform: workday
   slug: gartner
@@ -4411,9 +4629,7 @@
   slug: gdms
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: General Intuition &amp; Medal
   platform: ashby
   slug: generalintuition-medal
@@ -5196,6 +5412,61 @@
   enabled: false
   notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
     Re-probed 2026-08-14 and still dead.'
+- name: IBM
+  platform: custom_json
+  slug: ibm
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-captured search request; field_keyword_18 is IBM''s own Internship
+    facet and the aggregations were dropped because they only feed the facet sidebar.'
+  custom:
+    url: https://www-api.ibm.com/search/api/v2
+    method: POST
+    headers:
+      Origin: https://www.ibm.com
+      Referer: https://www.ibm.com/
+    body:
+      appId: careers
+      scopes:
+      - careers2
+      query:
+        bool:
+          must: []
+      post_filter:
+        term:
+          field_keyword_18: Internship
+      size: 30
+      sort:
+      - _score: desc
+      - pageviews: desc
+      lang: zz
+      localeSelector: {}
+      sm:
+        query: ''
+        lang: zz
+      _source:
+      - _id
+      - title
+      - url
+      - description
+      - language
+      - field_keyword_05
+      - field_keyword_08
+      - field_keyword_18
+      - field_keyword_19
+    jobs_path: hits.hits
+    fields:
+      title: _source.title
+      id: _id
+      url: _source.url
+      description: _source.description
+      location: _source.field_keyword_19
+      category: _source.field_keyword_08
+      employment_type: _source.field_keyword_18
+    page_param: from
+    page_size: 30
+    page_step: 30
+    max_pages: 12
 - name: Icon Creative
   platform: bamboohr
   slug: iconcreative
@@ -5218,10 +5489,7 @@
   workday_site: IDEXX
   workday_dc: wd1
   enabled: false
-  notes: '2026-08-14: the CXS jobs endpoint answers 422 for every site candidate tried,
-    so the closure is tenant-wide rather than a wrong workday_site — this employer
-    does not serve a public Workday board; custom_json is the only route if its listings
-    are wanted'
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers 422 for this site, so the closed-contract verdict stands on a fresh measurement.'
 - name: IDEXX (Phenom)
   platform: custom_json
   slug: idexx-phenom
@@ -5757,24 +6025,28 @@
     is the only verification a Workday tenant can have without an offline probe'
 - name: Keysight Technologies
   platform: custom_json
-  slug: keysight-technologies
+  slug: keysight
   source_of_record: discover
-  enabled: false
-  notes: Careers page resolves to icims, whose listing endpoints serve HTML rather
-    than JSON.
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reopened — the old row pointed at jobs.keysight.com; the iCIMS careers-home
+    site at careers.keysight.com answers /api/jobs with 606 postings and full bodies.'
   custom:
-    url: https://jobs.keysight.com/api/jobs?page=1&sortBy=relevance&descending=false&internal=false
+    url: https://careers.keysight.com/api/jobs?limit=100
     jobs_path: jobs
+    url_template: https://careers.keysight.com/jobs/{id}
     fields:
       title: data.title
       id: data.slug
-      location: data.city
+      location: data.full_location
       description: data.description
-      url: data.apply_url
+      employment_type: data.employment_type
       category: data.category
+      department: data.department
     page_param: page
-    page_size: 10
-    max_pages: 20
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 10
 - name: Keywords Studios
   platform: workable
   slug: keywords-intl1
@@ -5803,9 +6075,7 @@
   slug: kimley-horn
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Kion Group
   platform: workday
   slug: kiongroup
@@ -5974,6 +6244,25 @@
     page_start: 1
     page_step: 1
     max_pages: 12
+- name: Lam Research
+  platform: custom_json
+  slug: lamresearch
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Eightfold tenant read from the careers page; filter_paygrade is the
+    publisher''s own intern facet, the same shape as the Eaton row.'
+  custom:
+    url: https://lamresearch.eightfold.ai/api/pcsx/search?domain=lamresearch.com&query=&sort_by=relevance&filter_paygrade=intern%2Fapprentice
+    jobs_path: data.positions
+    url_template: https://lamresearch.eightfold.ai/careers/job/{id}
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    page_param: start
+    page_size: 10
+    max_pages: 20
 - name: Lambda
   platform: ashby
   slug: lambda
@@ -5998,6 +6287,15 @@
   slug: later
   source_of_record: discover
   last_verified: *id003
+- name: Lattice Semiconductor
+  platform: workday
+  slug: latticesemi
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: latticesemi
+  workday_site: latticesemiconductorscareers
+  workday_dc: wd5
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL, not guessed.'
 - name: LaunchDarkly
   platform: greenhouse
   slug: launchdarkly
@@ -6314,9 +6612,7 @@
   slug: magnera
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Magnet Forensics
   platform: lever
   slug: magnetforensics
@@ -6463,6 +6759,44 @@
   slug: matchgroup
   source_of_record: openjobs
   last_verified: *id015
+- name: MathWorks
+  platform: custom_json
+  slug: mathworks
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: closed for good — AkamaiGHost Access Denied on the careers search, rss.xml
+    and sitemap.xml from the first request; a policy wall, not a gate we may pass.'
+  custom:
+    url: https://www.mathworks.com/company/jobs/opportunities/search
+    fields:
+      title: title
+      id: id
+- name: Matrox
+  platform: custom_json
+  slug: matrox
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: UKG/UltiPro board named only by matrox.com/careers, which links this
+    exact board id; the search endpoint is POST-only.'
+  custom:
+    url: https://recruiting.ultipro.ca/MAT5002MARX/JobBoard/69a03e48-0d5a-46df-9cba-fbcc2c7a9dbc/JobBoardView/LoadSearchResults
+    method: POST
+    body:
+      opportunitySearch:
+        Top: 100
+        Skip: 0
+        QueryString: ''
+        OrderBy: []
+        Filters: []
+    jobs_path: opportunities
+    url_template: https://recruiting.ultipro.ca/MAT5002MARX/JobBoard/69a03e48-0d5a-46df-9cba-fbcc2c7a9dbc/OpportunityDetail?opportunityId={id}
+    fields:
+      title: Title
+      id: Id
+      location: Locations.0.Address.City
+      category: JobCategoryName
+      description: BriefDescription
 - name: Maven Securities
   platform: greenhouse
   slug: mavensecuritiesholdingltd
@@ -7034,9 +7368,7 @@
   slug: mpr
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: MSD
   platform: workday
   slug: msd
@@ -7218,6 +7550,41 @@
   notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
     api/secret'' and the careers host 302s, confirming it is credentialed and keyed
     on an internal companyId rather than this slug.'
+- name: nesto
+  platform: custom_json
+  slug: nesto
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Rippling ATS; the public board API is stable, unlike the _next/data
+    route whose build id changes on every deploy.'
+  custom:
+    url: https://api.rippling.com/platform/api/ats/v1/board/nesto/jobs
+    fields:
+      title: name
+      id: uuid
+      url: url
+      location: workLocation.label
+      department: department.label
+- name: NetApp
+  platform: custom_json
+  slug: netapp
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Eightfold tenant whose pcsx search is disabled, so the older apply/v2
+    listing is the contract; it carries no intern facet, so it is fetched unfiltered.'
+  custom:
+    url: https://netapp.eightfold.ai/api/apply/v2/jobs?domain=netapp.com&num=10
+    jobs_path: positions
+    fields:
+      title: name
+      id: id
+      url: canonicalPositionUrl
+      location: location
+      department: department
+      description: job_description
+    page_param: start
+    page_size: 10
+    max_pages: 30
 - name: NetEase Games
   platform: greenhouse
   slug: neteasegames
@@ -7500,19 +7867,44 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (14 job(s))'
+- name: Nutanix
+  platform: custom_json
+  slug: nutanix
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: its Google-jobs feed wraps rows in <job> rather than <item>, which item_tag
+    now reads; city is mapped alone because the feed splits city, state and country.'
+  custom:
+    url: https://careers.nutanix.com/en/jobs/xml/
+    format: rss
+    item_tag: job
+    fields:
+      title: title
+      id: apijobid
+      url: url
+      location: city
+      description: description
+      category: category
+      employment_type: jobtype
+      department: department
+- name: Nuvei
+  platform: workable
+  slug: nuvei
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: careers-page ATS scan found the Workable embed; the widget account names
+    itself Nuvei.'
 - name: NVIDIA
   platform: workday
   slug: nvidia
   source_of_record: openjobs
-  last_verified: *id005
+  last_verified: 2026-08-20
   recheck_after: 2026-10-01
   workday_tenant: nvidia
   workday_site: NVIDIAExternalCareerSite
   workday_dc: wd5
-  enabled: false
-  notes: '2026-08-14: given a fair attempt under the re-derived ceiling and it still
-    never answered — SlugRejectedError: registry row is missing workday_site — a Workday
-    tenant, site and datacenter cannot be gues'
+  notes: '2026-08-20: reopened — the old note recorded a SlugRejectedError, not a Workday
+    refusal; the CXS endpoint answers 200 with 2,000 postings on these coordinates.'
 - name: NVIDIA (Eightfold)
   platform: custom_json
   slug: nvidia-eightfold
@@ -7730,9 +8122,8 @@
   last_verified: *id016
   oracle_host: hctz.fa.us2.oraclecloud.com
   oracle_site: CX_1001
-  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
-    endpoint has no offline probe, and this host and site come from the employer''s
-    own application URL'
+  notes: '2026-08-14: host and site come from the employer''s own application URL, verified by a
+    real sync. 2026-08-20: the hctz tenant is onsemi, named by its own careers page title.'
 - name: Ontario Teachers' Pension Plan
   platform: workday
   slug: otppb
@@ -7955,6 +8346,30 @@
   workday_dc: wd12
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (2 posting(s), 0 kept)'
+- name: Panasonic North America
+  platform: custom_json
+  slug: panasonic-na
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: iCIMS careers-home site, the same contract as the AMD row; this is the
+    North American board only.'
+  custom:
+    url: https://careers.na.panasonic.com/api/jobs?limit=100
+    jobs_path: jobs
+    url_template: https://careers.na.panasonic.com/jobs/{id}
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
 - name: Parsons
   platform: custom_json
   slug: parsons
@@ -8097,9 +8512,7 @@
   slug: peraton
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Periodic Labs
   platform: ashby
   slug: periodic-labs
@@ -8130,9 +8543,7 @@
   slug: persistentsystems
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: Persona AI
   platform: ashby
   slug: persona.ai
@@ -8392,6 +8803,13 @@
   slug: postman
   source_of_record: openjobs
   last_verified: *id003
+- name: Potloc
+  platform: lever
+  slug: Potloc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: careers-page ATS scan found the lever board; the token is capitalised
+    and lever is case-sensitive, so the lowercase form answers 404.'
 - name: Pratt & Whitney Canada
   platform: workday
   slug: globalhr
@@ -8486,6 +8904,15 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 1 posting(s), 1 kept after
     the CS-internship screens'
+- name: PTC
+  platform: workday
+  slug: ptc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: ptc
+  workday_site: PTC
+  workday_dc: wd1
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL, not guessed.'
 - name: Publicis Groupe
   platform: smartrecruiters
   slug: publicisgroupe
@@ -8543,6 +8970,22 @@
   notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
     match the rest of the workable platform, which is parked until 2026-08-18 after
     two 429s in one day.'
+- name: Qorvo
+  platform: custom_json
+  slug: qorvo
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: SuccessFactors RMK; /rss.xml carries all 131 postings in 1.4MB.'
+  custom:
+    url: https://careers.qorvo.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: QS Quacquarelli Symonds
   platform: bamboohr
   slug: qs
@@ -9309,9 +9752,23 @@
   slug: sdsurf
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
+- name: Seagate
+  platform: custom_json
+  slug: seagate
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: SuccessFactors RMK; /rss.xml carries all 237 postings, 81 of them intern
+    terms.'
+  custom:
+    url: https://seagatecareers.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
 - name: Security Risk Advisors
   platform: workable
   slug: securityriskadvisors
@@ -9443,6 +9900,24 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
+- name: Siemens Digital Industries Software
+  platform: custom_json
+  slug: siemens-dis
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the Nuxt listing is client-side and no api answers, so /sitemaps/jobs_1.xml is
+    the contract; robots allows it. Its index names one jobs sitemap, but a sitemap can still lag the
+    board and nothing reconciles the count, so it never closes.'
+  custom:
+    url: https://jobs.sw.siemens.com/sitemaps/jobs_1.xml
+    format: sitemap
+    row_filter: /job/?$
+    authoritative: false
+    fields:
+      title: path3_title
+      id: path2
+      url: loc
+      location: path4_title
 - name: Sierra
   platform: ashby
   slug: sierra
@@ -9811,14 +10286,29 @@
   slug: sri
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs on its icims.com host is 404.'
 - name: SS8
   platform: greenhouse
   slug: ss8
   source_of_record: openjobs
   last_verified: *id021
+- name: SSENSE
+  platform: custom_json
+  slug: ssense
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Teamtailor vanity host; its own /jobs.rss carries the full board and
+    the channel names itself SSENSE.'
+  custom:
+    url: https://careers.ssense.com/jobs.rss
+    format: rss
+    fields:
+      title: title
+      id: guid
+      url: link
+      description: description
+      location: tt:locations
+      department: tt:department
 - name: Stability AI
   platform: greenhouse
   slug: stabilityai
@@ -9868,6 +10358,21 @@
   slug: scm
   source_of_record: discover
   last_verified: *id003
+- name: Stingray
+  platform: custom_json
+  slug: stingray
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: WordPress career site; wp/v2 job is the listing contract. The location path
+    names the taxonomy rather than indexing it, so a reordered _embed cannot silently swap in a
+    department.'
+  custom:
+    url: https://jobs.stingray.com/wp-json/wp/v2/job?per_page=100&_embed=wp%3Aterm
+    fields:
+      title: title.rendered
+      id: id
+      url: link
+      location: _embedded.wp:term[0.taxonomy=location].0.name
 - name: storytq
   platform: workable
   slug: jobs
@@ -9966,13 +10471,30 @@
     as a token that does not exist; re-check if the employer relaunches Re-probed
     2026-08-14 and still dead.'
 - name: Susquehanna International Group (SIG)
-  platform: icims
+  platform: custom_json
   slug: sig
   source_of_record: discover
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — every iCIMS listing endpoint
-    tried returns HTML, including the documented search and REST paths, so there is
-    no credential-free JSON to build a shared adapter on.'
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reopened — the iCIMS listing host is still closed, but this employer
+    also runs an iCIMS careers-home site at careers.sig.com whose /api/jobs answers with full
+    bodies.'
+  custom:
+    url: https://careers.sig.com/api/jobs?limit=100
+    jobs_path: jobs
+    url_template: https://careers.sig.com/jobs/{id}
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
 - name: Sweatpals
   platform: ashby
   slug: sweatpals
@@ -10013,6 +10535,24 @@
   slug: syngentagroup
   source_of_record: openjobs
   last_verified: *id010
+- name: Synopsys
+  platform: custom_json
+  slug: synopsys
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: TalentBrew site with no json or rss; /sitemap.xml is the listing and
+    row_filter keeps only /job/ urls. A sitemap is a crawl artifact that can lag the board and
+    no independent count reconciles it, so it never closes; purge bounds the staleness at 14 days.'
+  custom:
+    url: https://careers.synopsys.com/sitemap.xml
+    format: sitemap
+    row_filter: /job/
+    authoritative: false
+    fields:
+      title: path3_title
+      id: path1
+      url: loc
+      location: path4_title
 - name: Sysco
   platform: workday
   slug: sysco
@@ -10692,6 +11232,26 @@
   workday_dc: wd12
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: TSMC
+  platform: custom_json
+  slug: tsmc
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: switched off on cost, not reachability. Its 542 facet omits real internships,
+    so a correct row must walk all 719 rows in 72 requests per refresh, and the board yields no CS
+    internships today. Re-enable if TSMC starts posting software interns.'
+  custom:
+    url: https://careers.tsmc.com/en_US/careers/SearchJobs/?listFilterMode=1&jobRecordsPerPage=10
+    format: html
+    row_selector: article.article--result
+    fields:
+      title: h3.article__header__text__title a
+      url: h3.article__header__text__title a::attr(href)
+      location: div.article__header__content__text > span.paragraph_inner-span
+    page_param: jobOffset
+    page_size: 10
+    max_pages: 80
 - name: TTC Global
   platform: greenhouse
   slug: ttcglobal
@@ -11075,6 +11635,20 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (32 job(s))'
+- name: Vention
+  platform: custom_json
+  slug: vention
+  enabled: false
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: closed for good — the careers section hydrates from a request named
+    in no bundle, sitemap or turbo-stream, and the owner confirmed a DevTools capture finds
+    nothing.'
+  custom:
+    url: https://vention.com/careers
+    fields:
+      title: title
+      id: id
 - name: Veolia
   platform: smartrecruiters
   slug: veoliaenvironnementsa
@@ -11248,6 +11822,13 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Vooban
+  platform: greenhouse
+  slug: vooban
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the careers page answers 403 from CloudFront, but the greenhouse board
+    behind it is open and names itself Vooban.'
 - name: VWH Capital Management
   platform: smartrecruiters
   slug: vwhcapitalmanagementlp
@@ -11290,8 +11871,7 @@
   workday_site: WalmartExternal
   workday_dc: wd5
   enabled: false
-  notes: Workday CXS answers 422 tenant-wide, so the board is closed rather than the
-    site name wrong.
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers 422 for this site, so the closed-contract verdict stands on a fresh measurement.'
 - name: Warner Bros Games
   platform: workday
   slug: warnerbros
@@ -11547,10 +12127,7 @@
   workday_site: X
   workday_dc: wd5
   enabled: false
-  notes: '2026-08-14: the CXS jobs endpoint answers 422 for every site candidate tried,
-    so the closure is tenant-wide rather than a wrong workday_site — this employer
-    does not serve a public Workday board; custom_json is the only route if its listings
-    are wanted'
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers 422 for this site, so the closed-contract verdict stands on a fresh measurement.'
 - name: X-energy
   platform: workday
   slug: xenergy

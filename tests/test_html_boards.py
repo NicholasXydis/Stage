@@ -187,6 +187,19 @@ LOBLAW = CustomBoard(
 )
 
 
+CROESUS = CustomBoard(
+    url="https://cezanneondemand.intervieweb.it/croesus/en/career",
+    fmt="html",
+    row_selector="div.vacancy__header",
+    fields={
+        "title": "div.vacancy__title h3",
+        "url": "div.vacancy__title a::attr(href)",
+        "location": 'span.subtitle__informations[title="Location"]',
+        "category": 'span.subtitle__informations[title="Functional Area"]',
+    },
+)
+
+
 def _rows(name: str, board: CustomBoard) -> list[dict[str, str]]:
     text = (FIXTURES / name).read_text(encoding="utf-8")
     return [_project(block, board) for block in html_rows(text, board.row_selector)]
@@ -417,6 +430,39 @@ def test_every_html_row_carries_the_identity_the_pipeline_requires(
         assert row.get("id"), f"{name}: a row reached the pipeline without an id"
 
 
+def test_the_croesus_selectors_still_match_its_saved_page() -> None:
+    rows = _rows("croesus_career.html", CROESUS)
+    assert len(rows) == 3, "Croesus row selector stopped matching its saved page"
+    for row in rows:
+        assert row["title"], "a Croesus row lost its title"
+        assert "/croesus/jobs/" in row["url"], row["url"]
+        assert row["location"], "a Croesus row lost its location"
+
+
+def test_croesus_keeps_location_and_functional_area_in_separate_fields() -> None:
+    for row in _rows("croesus_career.html", CROESUS):
+        assert row["location"] != row["category"], (
+            "the location and functional-area spans share a class, so a loose selector merges them"
+        )
+
+
+def test_croesus_cannot_take_its_id_from_the_href_slug() -> None:
+    slugged = dict(CROESUS.fields) | {"id": "div.vacancy__title a::slugid(href)"}
+    rows = _rows(
+        "croesus_career.html",
+        CustomBoard(
+            url=CROESUS.url,
+            fmt="html",
+            row_selector=CROESUS.row_selector,
+            fields=slugged,
+        ),
+    )
+    idents = {row["id"] for row in rows}
+    assert idents == {"en"}, (
+        "every Croesus href ends in a locale segment, so slugid collapses the board onto one id"
+    )
+
+
 def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
     from stage.companies import load_companies
 
@@ -433,6 +479,7 @@ def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
         ("L3Harris", L3HARRIS),
         ("Disney", DISNEY),
         ("Publicis Sapient", PUBLICIS),
+        ("Croesus", CROESUS),
     ):
         company: Company = rows[name]
         assert company.platform is Platform.CUSTOM_JSON, f"{name} left custom_json"
@@ -480,3 +527,138 @@ def test_the_muse_query_covers_the_intended_cities() -> None:
     assert "level=Internship" in url, "the internship level filter left the query"
     for city in ("Montreal", "Toronto", "New%20York%20City", "San%20Francisco"):
         assert city in url, f"{city} missing from the Muse query"
+
+
+def test_espresso_keeps_only_the_postings_the_board_badges_as_stage() -> None:
+    from stage.sources.espresso import ROW_SELECTOR, badge, field
+
+    text = (FIXTURES / "espresso_search.html").read_text(encoding="utf-8")
+    rows = html_rows(text, ROW_SELECTOR)
+    assert len(rows) == 3, "the Espresso-Jobs row selector stopped matching its saved page"
+    badged = [row for row in rows if badge(row).lower() == "stage"]
+    assert len(badged) == 2, "the fixture must hold both badged and unbadged rows to be evidence"
+    for row in rows:
+        assert field(row, "h2.job_index-content_list_item-title"), "a row lost its title"
+        assert field(row, "p.job_index-content_list_item-company"), "a row lost its employer"
+
+
+def test_espresso_files_each_posting_under_its_own_employer() -> None:
+    from stage.sources.espresso import ROW_SELECTOR, field
+
+    text = (FIXTURES / "espresso_search.html").read_text(encoding="utf-8")
+    employers = {
+        field(row, "p.job_index-content_list_item-company") for row in html_rows(text, ROW_SELECTOR)
+    }
+    assert len(employers) > 1, (
+        "an aggregator must carry each posting's own employer, not one registry caption"
+    )
+
+
+def test_espresso_builds_its_apply_url_from_the_id_and_slug() -> None:
+    from stage.sources.espresso import POSTING, ROW_SELECTOR
+
+    row = html_rows((FIXTURES / "espresso_search.html").read_text(encoding="utf-8"), ROW_SELECTOR)[
+        0
+    ]
+    built = POSTING.format(id=row.get("id"), slug=row.get("data-slug"))
+
+    assert "/emploi/appliquer" not in built, (
+        "robots.txt disallows the apply endpoint, so the posting url must be built instead"
+    )
+    assert str(row.get("id")) in built and str(row.get("data-slug")) in built, built
+
+
+def test_espresso_reads_its_location_from_the_row_data_attributes() -> None:
+    from stage.sources.espresso import ROW_SELECTOR, where
+
+    text = (FIXTURES / "espresso_search.html").read_text(encoding="utf-8")
+    for row in html_rows(text, ROW_SELECTOR):
+        assert where(row).endswith("Canada"), where(row)
+
+
+def test_a_sitemap_names_each_path_segment_from_the_end() -> None:
+    loc = "https://careers.arm.com/job/cambridge/senior-tools-engineer/33099/98803698976"
+    row = sitemap_rows(f"<urlset><url><loc>{loc}</loc></url></urlset>")[0]
+
+    assert row["path1"] == "98803698976", "path1 must be the last segment"
+    assert row["path3"] == "senior-tools-engineer", row["path3"]
+    assert row["path3_title"] == "Senior Tools Engineer", row["path3_title"]
+    assert row["path4_title"] == "Cambridge", row["path4_title"]
+
+
+def test_a_sitemap_title_is_not_guessed_when_the_id_comes_last() -> None:
+    loc = "https://careers.arm.com/job/cambridge/senior-tools-engineer/33099/98803698976"
+    row = sitemap_rows(f"<urlset><url><loc>{loc}</loc></url></urlset>")[0]
+
+    assert row["title"] == "98803698976", (
+        "the default title takes the last segment, which is why these rows name a path segment"
+    )
+
+
+def test_the_sitemap_row_filter_drops_everything_that_is_not_a_posting() -> None:
+    from stage.companies import load_companies
+
+    rows = {company.name: company for company in load_companies()}
+    for name in ("Arm", "Synopsys", "Siemens Digital Industries Software"):
+        board = rows[name].custom
+        assert board is not None and board.row_filter, (
+            f"{name} reads a whole-site sitemap, so it needs a filter or it invents postings"
+        )
+        assert not board.authoritative, f"{name} is a sitemap slice and must never close postings"
+
+
+def test_the_sitemap_boards_name_a_segment_rather_than_trusting_the_default_title() -> None:
+    from stage.companies import load_companies
+
+    rows = {company.name: company for company in load_companies()}
+    for name in ("Arm", "Synopsys", "Siemens Digital Industries Software"):
+        board = rows[name].custom
+        assert board is not None
+        assert board.mapped("title").startswith("path"), (
+            f"{name} must name the path segment holding its title, not the trailing id"
+        )
+
+
+EA = CustomBoard(
+    url="https://jobs.ea.com/en_US/careers/SearchJobs/?listFilterMode=1&jobRecordsPerPage=20",
+    fmt="html",
+    row_selector="article.article--result",
+    fields={
+        "title": "h3.article__header__text__title a",
+        "id": "h3.article__header__text__title a::slugid(href)",
+        "url": "h3.article__header__text__title a::attr(href)",
+        "location": "span.list-item-location",
+        "department": "span.list-item-department",
+        "employment_type": "span.list-item-workerType",
+    },
+    page_param="jobOffset",
+    page_size=20,
+    max_pages=20,
+)
+
+
+def test_the_ea_selectors_still_match_its_saved_page() -> None:
+    rows = _rows("ea_searchjobs.html", EA)
+    assert len(rows) == 3, "the EA row selector stopped matching its saved page"
+    for row in rows:
+        assert row["title"], "an EA row lost its title"
+        assert row["id"].isdigit(), f"EA id is not the role id: {row['id']!r}"
+        assert "/JobDetail/" in row["url"], row["url"]
+        assert row["location"], "an EA row lost its location"
+
+
+def test_ea_keeps_location_department_and_worker_type_apart() -> None:
+    for row in _rows("ea_searchjobs.html", EA):
+        assert row["location"] != row["department"] != row["employment_type"], (
+            "the EA subtitle spans share a parent, so a loose selector merges them"
+        )
+
+
+def test_nutanix_reads_its_own_feed_rather_than_the_sitemap() -> None:
+    from stage.companies import load_companies
+
+    board = {company.name: company for company in load_companies()}["Nutanix"].custom
+    assert board is not None and board.rss, "Nutanix should read its feed, not its sitemap"
+    assert board.item_tag == "job", (
+        "the feed wraps rows in <job>, so a default <item> scan finds nothing"
+    )
