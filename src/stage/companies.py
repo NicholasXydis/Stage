@@ -46,6 +46,15 @@ def _optional_str(row: dict[str, Any], key: str) -> str | None:
     return value.strip() or None
 
 
+def _optional_pin(row: dict[str, Any], key: str) -> str | None:
+    value = row.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise RegistryError(f"companies.yaml: field {key!r} must be a string")
+    return value.strip()
+
+
 def _require_bool(row: dict[str, Any], key: str, index: int, *, default: bool) -> bool:
     value = row.get(key, default)
     if not isinstance(value, bool):
@@ -81,7 +90,7 @@ def _oracle_fields(
     host = _optional_str(row, "oracle_host")
     site = _optional_str(row, "oracle_site")
     if platform is not Platform.ORACLE_CLOUD:
-        if host is not None or site is not None:
+        if host is not None or site is not None or row.get("oracle_keyword") is not None:
             raise RegistryError(
                 f"companies.yaml entry {index}: Oracle fields only belong on platform oracle_cloud"
             )
@@ -199,6 +208,19 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
             raise RegistryError(
                 f"companies.yaml entry {index}: custom.token_pattern is not a valid regex: {exc}"
             ) from exc
+    item_tag = str(raw.get("item_tag", "item") or "item")
+    if not re.fullmatch(r"[A-Za-z_][\w.:-]{0,63}", item_tag):
+        raise RegistryError(
+            f"companies.yaml entry {index}: custom.item_tag must be an xml element name"
+        )
+    row_filter = str(raw.get("row_filter", "") or "")
+    if row_filter:
+        try:
+            re.compile(row_filter)
+        except re.error as exc:
+            raise RegistryError(
+                f"companies.yaml entry {index}: custom.row_filter is not a valid regex: {exc}"
+            ) from exc
     page_param = str(raw.get("page_param", "") or "")
     paging = {
         name: _custom_int(raw, name, index)
@@ -213,6 +235,8 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
         method=method,
         fmt=fmt,
         row_selector=row_selector,
+        row_filter=row_filter,
+        item_tag=item_tag,
         headers=headers,
         extract=extract,
         handshake_url=handshake_url,
@@ -269,6 +293,7 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
         workday_facet=_optional_str(row, "workday_facet"),
         oracle_host=oracle_host,
         oracle_site=oracle_site,
+        oracle_keyword=_optional_pin(row, "oracle_keyword"),
         name_gate_exempt=name_gate_exempt,
         notes=_optional_str(row, "notes"),
         custom=_custom_board(row, index, platform),
@@ -311,6 +336,7 @@ def _registry_row(company: Company) -> dict[str, Any]:
         "workday_facet",
         "oracle_host",
         "oracle_site",
+        "oracle_keyword",
     ):
         value = getattr(company, key)
         if value is not None:
@@ -337,6 +363,10 @@ def _registry_row(company: Company) -> dict[str, Any]:
             block["authoritative"] = False
         if company.custom.row_selector:
             block["row_selector"] = company.custom.row_selector
+        if company.custom.row_filter:
+            block["row_filter"] = company.custom.row_filter
+        if company.custom.item_tag != "item":
+            block["item_tag"] = company.custom.item_tag
         if company.custom.extract:
             block["extract"] = company.custom.extract
         if company.custom.handshake_url:

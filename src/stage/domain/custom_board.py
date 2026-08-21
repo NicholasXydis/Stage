@@ -35,6 +35,8 @@ class CustomBoard:
     fmt: str = "json"
     extract: str = ""
     row_selector: str = ""
+    row_filter: str = ""
+    item_tag: str = "item"
     handshake_url: str = ""
     token_pattern: str = ""
     token_header: str = ""

@@ -20,6 +20,7 @@ class Company:
     workday_facet: str | None = None
     oracle_host: str | None = None
     oracle_site: str | None = None
+    oracle_keyword: str | None = None
     name_gate_exempt: bool = False
     notes: str | None = None
     recheck_after: date | None = None
