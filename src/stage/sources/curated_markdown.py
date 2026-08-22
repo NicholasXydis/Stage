@@ -10,7 +10,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict
 
 from stage.domain import Job, SourceSignals, job_id
-from stage.http import HttpClient
+from stage.http import HttpClient, HttpStatusError, JsonResponse
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import FetchResult, NonEmptyStr, PayloadValidationError, capture_payload
 from stage.sources.feed import register_feed, upcoming_season_year
@@ -76,9 +76,23 @@ class _GitHubMarkdownFeed:
     def plan(self, now: datetime) -> tuple[str, ...]:
         raise NotImplementedError
 
+    async def _available(
+        self, client: HttpClient, urls: tuple[str, ...]
+    ) -> tuple[str, JsonResponse]:
+        missing: HttpStatusError | None = None
+        for url in urls:
+            try:
+                return url, await client.get_json(url)
+            except HttpStatusError as exc:
+                if exc.status != 404:
+                    raise
+                missing = exc
+        if missing is None:
+            raise PayloadValidationError(f"{self.name}: no feed url was planned")
+        raise missing
+
     async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
-        url = self.plan(now)[0]
-        response = await client.get_json(url)
+        url, response = await self._available(client, self.plan(now))
         if response.not_modified:
             return FetchResult(not_modified=True)
         text = self._decode(response.payload, url, now)
@@ -148,11 +162,10 @@ class NegarFeed(_GitHubMarkdownFeed):
     name: ClassVar[str] = "negar"
 
     def plan(self, now: datetime) -> tuple[str, ...]:
+        repository = "negarprh/Canadian-Tech-Internships-2026"
         return (
-            CONTENT_URL.format(
-                repository="negarprh/Canadian-Tech-Internships-2026",
-                path=f"README-{self.season_year(now)}.md",
-            ),
+            CONTENT_URL.format(repository=repository, path=f"README-{self.season_year(now)}.md"),
+            CONTENT_URL.format(repository=repository, path="README.md"),
         )
 
     def rows(self, text: str) -> tuple[list[Listing], int]:
