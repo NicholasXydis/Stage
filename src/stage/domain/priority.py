@@ -9,6 +9,7 @@ SOURCE_PRIORITY: tuple[str, ...] = (
     "recruitee",
     "breezy",
     "collage",
+    "jobvite",
     "oracle_cloud",
     "custom_json",
     "quebec-emploi",

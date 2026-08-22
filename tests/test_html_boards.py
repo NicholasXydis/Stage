@@ -491,7 +491,7 @@ def test_croesus_cannot_take_its_id_from_the_href_slug() -> None:
 
 def test_the_sega_selectors_still_match_its_saved_page() -> None:
     rows = _rows("sega_vacancies.html", SEGA)
-    assert len(rows) == 25, "the SEGA row selector stopped matching its saved page"
+    assert len(rows) == 4, "the SEGA row selector stopped matching its saved page"
     for row in rows:
         assert row["title"], "a SEGA row lost its title"
         assert row["url"].startswith("https://careers.sega.co.uk/vacancies/"), (

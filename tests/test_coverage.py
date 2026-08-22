@@ -73,7 +73,7 @@ COMPANIES = (
     Company(name="Empty", platform=Platform.GREENHOUSE, slug="empty"),
     Company(name="Broken", platform=Platform.GREENHOUSE, slug="broken"),
     Company(name="Unvisited", platform=Platform.GREENHOUSE, slug="unvisited"),
-    Company(name="Jobvite Only", platform=Platform.JOBVITE, slug="jobvite-only"),
+    Company(name="Avature Only", platform=Platform.AVATURE, slug="avature-only"),
     Company(name="Switched Off", platform=Platform.GREENHOUSE, slug="off", enabled=False),
 )
 
@@ -89,7 +89,7 @@ async def test_each_reason_for_zero_postings_is_a_separate_state(seeded: Path) -
         "Empty": CoverageState.EMPTY,
         "Broken": CoverageState.FAILING,
         "Unvisited": CoverageState.NEVER_REACHED,
-        "Jobvite Only": CoverageState.UNROUTABLE,
+        "Avature Only": CoverageState.UNROUTABLE,
     }
     assert (report.enabled, report.disabled) == (5, 1)
     assert [row.company for row in report.gaps] == ["Empty"]
