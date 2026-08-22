@@ -11,6 +11,7 @@ from stage.domain import (
     CoverageClassification,
     HttpValidator,
     IntegrityFinding,
+    IntegrityRepair,
     Job,
     JobFilters,
     PurgeResult,
@@ -134,6 +135,9 @@ class AsyncRepository:
 
     async def count_duplicates(self) -> int:
         return await self._writer.run(lambda repository: repository.count_duplicates())
+
+    async def repair_integrity(self) -> list[IntegrityRepair]:
+        return await self._writer.run(lambda repository: repository.repair_integrity())
 
     async def purge(self, now: datetime) -> PurgeResult:
         return await self._writer.run(lambda repository: repository.purge(now))

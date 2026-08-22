@@ -137,6 +137,13 @@ def classify_visit(
 
 
 @dataclass(frozen=True, slots=True)
+class IntegrityRepair:
+    check: str
+    repaired: int
+    detail: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class IntegrityFinding:
     check: str
     count: int

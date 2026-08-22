@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from stage.dedup import resolve_duplicates
-from stage.domain import Job, PurgeResult, QuarantinedJob, RateState, RoleCategory
+from stage.domain import IntegrityRepair, Job, PurgeResult, QuarantinedJob, RateState, RoleCategory
 from stage.storage import AsyncRepository, SourceBatch
 
 RESCREEN_LIMIT = 100_000
@@ -15,6 +15,10 @@ class RateStateView:
     cleared: int
     states: tuple[RateState, ...]
     validators_cleared: int = 0
+
+
+async def repair_integrity(repository: AsyncRepository) -> tuple[IntegrityRepair, ...]:
+    return tuple(await repository.repair_integrity())
 
 
 async def purge_expired(repository: AsyncRepository, *, now: datetime | None = None) -> PurgeResult:

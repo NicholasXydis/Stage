@@ -16,6 +16,7 @@ from stage.domain import (
     DegreeRequirement,
     HttpValidator,
     IntegrityFinding,
+    IntegrityRepair,
     Job,
     JobFilters,
     JobStatus,
@@ -385,6 +386,9 @@ def _quarantined_to_params(entry: QuarantinedJob) -> tuple[Any, ...]:
         _to_text(entry.first_seen),
         _to_text(entry.last_seen),
     )
+
+
+MAX_CHAIN_REPAIR_PASSES = 8
 
 
 class SqliteRepository:
@@ -1372,6 +1376,60 @@ class SqliteRepository:
             )
             for row in rows
         ]
+
+    def repair_integrity(self) -> list[IntegrityRepair]:
+        repairs = [
+            IntegrityRepair(
+                check="dangling duplicate links",
+                repaired=self._execute_repair(
+                    "UPDATE jobs SET duplicate_of = NULL WHERE duplicate_of IS NOT NULL "
+                    "AND duplicate_of NOT IN (SELECT id FROM jobs)"
+                ),
+                detail="the posting is visible again on its own",
+            ),
+            IntegrityRepair(
+                check="same-source merges",
+                repaired=self._execute_repair(
+                    "UPDATE jobs SET duplicate_of = NULL WHERE id IN ("
+                    "SELECT a.id FROM jobs a JOIN jobs b ON a.duplicate_of = b.id "
+                    "WHERE a.source = b.source)"
+                ),
+                detail="two rows from one source are two requisitions",
+            ),
+            IntegrityRepair(
+                check="duplicate chains",
+                repaired=self._repair_chains(),
+                detail="followers now point at the survivor",
+            ),
+            IntegrityRepair(
+                check="tombstoned rows re-ingested as new",
+                repaired=self._execute_repair(
+                    "UPDATE jobs SET first_seen = ("
+                    "SELECT t.first_seen FROM tombstones t WHERE t.id = jobs.id) "
+                    "WHERE id IN (SELECT j.id FROM jobs j JOIN tombstones t ON t.id = j.id "
+                    "WHERE j.first_seen > t.first_seen)"
+                ),
+                detail="the original first_seen is restored from the tombstone",
+            ),
+        ]
+        self._conn.commit()
+        return [repair for repair in repairs if repair.repaired]
+
+    def _execute_repair(self, sql: str) -> int:
+        return int(self._conn.execute(sql).rowcount or 0)
+
+    def _repair_chains(self) -> int:
+        repaired = 0
+        for _ in range(MAX_CHAIN_REPAIR_PASSES):
+            changed = self._execute_repair(
+                "UPDATE jobs SET duplicate_of = ("
+                "SELECT b.duplicate_of FROM jobs b WHERE b.id = jobs.duplicate_of) "
+                "WHERE duplicate_of IN (SELECT id FROM jobs WHERE duplicate_of IS NOT NULL)"
+            )
+            repaired += changed
+            if not changed:
+                break
+        return repaired
 
     def integrity_findings(self) -> list[IntegrityFinding]:
         checks = (

@@ -9,6 +9,7 @@ from stage.domain import (
     DetailFetch,
     HttpValidator,
     IntegrityFinding,
+    IntegrityRepair,
     Job,
     JobFilters,
     PurgeResult,
@@ -168,6 +169,8 @@ class Repository(Protocol):
 
     def all_visits(self) -> list[SourceVisit]:
         pass
+
+    def repair_integrity(self) -> list[IntegrityRepair]: ...
 
     def integrity_findings(self) -> list[IntegrityFinding]:
         pass
