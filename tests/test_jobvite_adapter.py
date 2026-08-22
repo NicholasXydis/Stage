@@ -10,7 +10,7 @@ from stage.domain import Company, Platform
 from stage.domain.priority import SOURCE_PRIORITY
 from stage.http import HttpClient, profile
 from stage.sources.base import FetchResult, PayloadValidationError
-from stage.sources.jobvite import JobviteAdapter
+from stage.sources.jobvite import JobviteAdapter, JobviteRow
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PAGE = (FIXTURES / "jobvite_resolver.html").read_text(encoding="utf-8")
@@ -34,11 +34,11 @@ def _adapter() -> JobviteAdapter:
     return JobviteAdapter()
 
 
-async def _fetch(body: str, *, status: int = 200) -> FetchResult:
+async def _fetch(body: str) -> FetchResult:
     adapter = _adapter()
     company = _company()
     respx.get(f"https://jobs.jobvite.com/{company.slug}/jobs").mock(
-        return_value=httpx.Response(status, text=body, headers={"Content-Type": "text/html"})
+        return_value=httpx.Response(200, text=body, headers={"Content-Type": "text/html"})
     )
     async with HttpClient(
         allowed_hosts=adapter.hosts, posture=profile(adapter.rate_profile), jitter=False
@@ -111,3 +111,24 @@ def test_every_enabled_jobvite_row_uses_a_tenant_the_adapter_can_reach() -> None
         assert adapter.url_for(company).startswith("https://jobs.jobvite.com/"), (
             f"{company.name} would leave the jobvite host"
         )
+
+
+@respx.mock
+async def test_an_unchanged_board_is_reported_as_unchanged_not_as_empty() -> None:
+    adapter = _adapter()
+    company = _company()
+    respx.get(f"https://jobs.jobvite.com/{company.slug}/jobs").mock(
+        return_value=httpx.Response(304)
+    )
+    async with HttpClient(
+        allowed_hosts=adapter.hosts, posture=profile(adapter.rate_profile), jitter=False
+    ) as client:
+        result = await adapter.fetch(company, client, datetime(2026, 8, 21, tzinfo=UTC))
+
+    assert result.not_modified, "a 304 board must not read as a board with no postings"
+    assert result.jobs == (), "an unchanged answer carries no rows"
+
+
+def test_a_posting_id_survives_a_query_string_on_the_href() -> None:
+    row = JobviteRow(title="Software Intern", url="https://jobs.jobvite.com/acme/job/oX1?src=rss")
+    assert row.posting_id() == "oX1", "a tracking parameter was folded into the posting id"

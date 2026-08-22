@@ -1,0 +1,48 @@
+- name: 10a Labs
+  platform: greenhouse
+  slug: 10alabs
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/10alabs with 19 job(s) and the board named itself, so it is
+    polled directly instead of secondhand'
+- name: 1Password
+  platform: ashby
+  slug: 1password
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    58 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: 1X
+  platform: ashby
+  slug: 1x
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (83 job(s))'
+- name: 2k vegas
+  platform: greenhouse
+  slug: 2kvegas
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+- name: 401 Auto
+  platform: bamboohr
+  slug: 401auto
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; bamboohr publishes no board name, so
+    the name gate cannot confirm it and provenance is the evidence (111 job(s))'
+- name: 42dot
+  platform: ashby
+  slug: 42dot
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (116 job(s))'
