@@ -49,19 +49,25 @@ class CanaryReport:
         return not (self.failures or self.empties)
 
 
+def _probe_key(company: Company) -> tuple[str, str]:
+    if company.platform is Platform.CUSTOM_JSON and company.custom is not None:
+        return (company.platform.value, company.custom.fmt)
+    return (company.platform.value, "")
+
+
 def select_probes(
     companies: Sequence[Company], *, exclude: frozenset[Platform] = AKAMAI_PLATFORMS
 ) -> tuple[list[Company], tuple[str, ...]]:
-    chosen: dict[Platform, Company] = {}
+    chosen: dict[tuple[str, str], Company] = {}
     for company in sorted(
         (entry for entry in companies if entry.enabled),
         key=lambda entry: entry.registry_key,
     ):
         if company.platform in exclude:
             continue
-        chosen.setdefault(company.platform, company)
+        chosen.setdefault(_probe_key(company), company)
     return (
-        [chosen[platform] for platform in sorted(chosen, key=lambda item: item.value)],
+        [chosen[key] for key in sorted(chosen)],
         tuple(sorted(platform.value for platform in exclude)),
     )
 

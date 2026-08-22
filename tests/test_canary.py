@@ -77,3 +77,20 @@ def test_a_failed_probe_fails_the_canary() -> None:
     )
     assert [probe.company for probe in report.failures] == ["Acme"]
     assert not report.passed
+
+
+def test_every_custom_json_format_gets_its_own_probe() -> None:
+    from stage.companies import load_companies
+
+    selected, _ = select_probes(load_companies())
+    formats = {
+        company.custom.fmt
+        for company in selected
+        if company.platform is Platform.CUSTOM_JSON and company.custom is not None
+    }
+    shipped = {
+        company.custom.fmt
+        for company in load_companies()
+        if company.enabled and company.platform is Platform.CUSTOM_JSON and company.custom
+    }
+    assert formats == shipped, f"custom_json formats with no probe: {sorted(shipped - formats)}"
