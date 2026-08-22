@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -14,6 +14,7 @@ from stage.domain import (
     UnregisteredCompany,
     coverage_state,
 )
+from stage.lexicon import fold
 from stage.services.discover import GENERIC_TOKENS, name_matches, name_tokens
 from stage.storage import AsyncRepository
 
@@ -23,6 +24,7 @@ class CoverageReport:
     rows: tuple[CoverageRow, ...]
     unregistered: tuple[UnregisteredCompany, ...]
     classifications: tuple[CoverageClassification, ...]
+    contradictions: tuple[tuple[CoverageClassification, str], ...]
     enabled: int
     disabled: int
     stale_after_days: int
@@ -159,6 +161,41 @@ def _unregistered(
     )
 
 
+REVIEW_STALE_DAYS = 30
+
+
+def _contradiction(
+    record: CoverageClassification,
+    registered: Mapping[str, Company],
+    moment: datetime,
+) -> str:
+    company = registered.get(fold(record.company))
+    if company is not None and company.enabled:
+        return f"the registry now polls it on {company.platform.value}"
+    if company is not None:
+        return f"a disabled {company.platform.value} row exists for it"
+    age = (moment - record.checked_on).days
+    if age >= REVIEW_STALE_DAYS:
+        return f"the verdict is {age} days old and nothing has re-derived it"
+    return ""
+
+
+def contradicted_reviews(
+    records: Sequence[CoverageClassification],
+    companies: Sequence[Company],
+    *,
+    now: datetime | None = None,
+) -> tuple[tuple[CoverageClassification, str], ...]:
+    moment = now or datetime.now(UTC)
+    registered = {fold(company.name): company for company in companies}
+    found = [
+        (record, reason)
+        for record in records
+        if (reason := _contradiction(record, registered, moment))
+    ]
+    return tuple(sorted(found, key=lambda pair: pair[0].company.casefold()))
+
+
 async def coverage(
     repository: AsyncRepository,
     companies: Sequence[Company],
@@ -177,6 +214,7 @@ async def coverage(
     reasons = await repository.quarantine_company_reasons() if unregistered else {}
     classifications = await repository.coverage_classifications()
     return CoverageReport(
+        contradictions=contradicted_reviews(classifications, companies, now=moment),
         rows=_registry_rows(enabled, postings, visits, moment, stale_after_days),
         unregistered=(
             _unregistered(companies, seen, rejected, reasons, classifications)
@@ -190,4 +228,4 @@ async def coverage(
     )
 
 
-__all__ = ["CoverageReport", "coverage"]
+__all__ = ["CoverageReport", "contradicted_reviews", "coverage"]
