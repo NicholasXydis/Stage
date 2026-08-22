@@ -200,6 +200,32 @@ CROESUS = CustomBoard(
 )
 
 
+SEGA = CustomBoard(
+    url="https://careers.sega.co.uk/vacancies",
+    fmt="html",
+    row_selector="div.job-summary.views-row",
+    fields={
+        "title": "div.views-field-title a",
+        "id": "div.views-field-title a::slugid(href)",
+        "url": "div.views-field-title a::attr(href)",
+        "location": "div.views-field-field-country",
+        "category": "div.views-field-field-department",
+        "description": "div.views-field-field-description-brief",
+    },
+)
+
+
+RENTEC = CustomBoard(
+    url="https://www.rentec.com/Careers.action?jobs=true",
+    fmt="html",
+    row_selector="div.flex-auto:not(.flex)",
+    fields={
+        "title": "a",
+        "url": "a::attr(href)",
+    },
+)
+
+
 def _rows(name: str, board: CustomBoard) -> list[dict[str, str]]:
     text = (FIXTURES / name).read_text(encoding="utf-8")
     return [_project(block, board) for block in html_rows(text, board.row_selector)]
@@ -463,6 +489,26 @@ def test_croesus_cannot_take_its_id_from_the_href_slug() -> None:
     )
 
 
+def test_the_sega_selectors_still_match_its_saved_page() -> None:
+    rows = _rows("sega_vacancies.html", SEGA)
+    assert len(rows) == 25, "the SEGA row selector stopped matching its saved page"
+    for row in rows:
+        assert row["title"], "a SEGA row lost its title"
+        assert row["url"].startswith("https://careers.sega.co.uk/vacancies/"), (
+            "a SEGA row lost its vacancy href"
+        )
+        assert row["id"], "a SEGA row lost the id its href slug carries"
+    assert any(row["location"] for row in rows), "SEGA rows lost the country field"
+
+
+def test_the_rentec_selectors_skip_the_footer_block_that_carries_no_role() -> None:
+    rows = _rows("rentec_careers.html", RENTEC)
+    assert len(rows) == 12, "the Renaissance Technologies row selector stopped matching"
+    for row in rows:
+        assert row["title"], "a Renaissance Technologies row lost its title"
+        assert "selectedPosition=" in row["url"], "a row lost the query param that identifies it"
+
+
 def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
     from stage.companies import load_companies
 
@@ -480,6 +526,8 @@ def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
         ("Disney", DISNEY),
         ("Publicis Sapient", PUBLICIS),
         ("Croesus", CROESUS),
+        ("SEGA Europe", SEGA),
+        ("Renaissance Technologies", RENTEC),
     ):
         company: Company = rows[name]
         assert company.platform is Platform.CUSTOM_JSON, f"{name} left custom_json"

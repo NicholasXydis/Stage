@@ -91,6 +91,9 @@
   slug: accenture
   source_of_record: discover
   last_verified: *id003
+  enabled: false
+  notes: '2026-08-21: the recruitee tenant answers with the Senior Marketer (Sample) demo
+    posting, so the board is a trial tenant and not this employer'
 - name: ACDS
   platform: lever
   slug: acds
@@ -210,9 +213,8 @@
   slug: asgllc
   source_of_record: openjobs
   enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  notes: '2026-08-21: re-checked on the server-rendered board as well;
+    the tenant redirects to Jobvite job-seeker support, so the board is gone'
 - name: Adyen
   platform: greenhouse
   slug: adyen
@@ -301,10 +303,9 @@
   platform: jobvite
   slug: agscareer
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/agscareer/jobs
+    server-renders all 15 postings, which is the contract this row polls'
 - name: Air Canada
   platform: custom_json
   slug: aircanada
@@ -354,6 +355,12 @@
   last_verified: *id002
   notes: smartrecruiters/transatat1 is the parent's board, approved by hand after
     the name fold failed.
+- name: Airbnb
+  platform: greenhouse
+  slug: airbnb
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the named Greenhouse board; live board verified.'
 - name: Airbus
   platform: workday
   slug: ag
@@ -409,6 +416,199 @@
     fields:
       title: Title
       id: Id
+- name: American Airlines
+  platform: custom_json
+  slug: americanairlines
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: SuccessFactors RMK whose /rss.xml is 1.2MB and carries all 117
+    postings with g:id, g:location and g:job_function'
+  custom:
+    url: https://jobs.aa.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Atlassian
+  platform: custom_json
+  slug: atlassian
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: first-party listings endpoint behind the careers page; it answers
+    250 rows whatever team filter is sent, so the slice is declared partial'
+  custom:
+    url: https://www.atlassian.com/endpoint/careers/listings
+    authoritative: false
+    fields:
+      title: title
+      id: id
+      url: applyUrl
+      location: locations.0
+      description: overview
+      category: category
+- name: Bandai Namco
+  platform: greenhouse
+  slug: bandainamco
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the board names itself Bandai Namco Entertainment America Inc.'
+- name: BeyondTrust
+  platform: greenhouse
+  slug: beyondtrust
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: both greenhouse and smartrecruiters answer under this name; greenhouse
+    carries 55 postings to the smartrecruiters board''s 2, so it is the live one'
+- name: Cirque du Soleil
+  platform: lever
+  slug: cirquedusoleil
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: lever publishes no board name, so the 81 bilingual postings were
+    read by hand and name the employer in their own text'
+- name: Clearco
+  platform: ashby
+  slug: clearco
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: ashby publishes no board name; the postings name Clearco in their
+    own text'
+- name: Darktrace
+  platform: workday
+  slug: darktrace
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: darktrace
+  workday_site: DarktaceExternal
+  workday_dc: wd3
+  notes: '2026-08-21: the site id is spelled DarktaceExternal by the employer and is
+    carried verbatim'
+- name: Fortinet
+  platform: oracle_cloud
+  slug: edel
+  source_of_record: discover
+  last_verified: 2026-08-21
+  oracle_host: edel.fa.us2.oraclecloud.com
+  oracle_site: CX_2001
+  notes: '2026-08-21: the tenant is opaque, so identity comes from the requisition detail,
+    which names Fortinet; 909 postings unfiltered'
+- name: Ludia
+  platform: bamboohr
+  slug: ludia
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: bamboohr publishes no board name; its postings carry Ludia in their
+    own bilingual titles'
+- name: Nintendo
+  platform: greenhouse
+  slug: nintendo
+  source_of_record: discover
+  last_verified: 2026-08-21
+- name: PepsiCo
+  platform: custom_json
+  slug: pepsico
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: keyword and category params are ignored but country is honoured,
+    so this row is the declared-partial Canadian slice of 328 rather than 2,802 rows'
+  custom:
+    url: https://www.pepsicojobs.com/api/jobs?country=Canada
+    authoritative: false
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      url: data.apply_url
+      location: data.full_location
+      description: data.description
+      category: data.category
+    page_param: page
+    page_size: 10
+    page_start: 1
+    page_step: 1
+    max_pages: 35
+- name: Renaissance Technologies
+  platform: custom_json
+  slug: rentec
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: server-rendered board of 12 roles; the id sits in a selectedPosition
+    query param rather than a path segment, so identity comes from the url'
+  custom:
+    url: https://www.rentec.com/Careers.action?jobs=true
+    format: html
+    row_selector: div.flex-auto:not(.flex)
+    fields:
+      title: a
+      url: a::attr(href)
+- name: Rodeo FX
+  platform: smartrecruiters
+  slug: rodeofx
+  source_of_record: discover
+  last_verified: 2026-08-21
+- name: Rubrik
+  platform: greenhouse
+  slug: rubrik
+  source_of_record: discover
+  last_verified: 2026-08-21
+- name: SAQ
+  platform: custom_json
+  slug: saq
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: SuccessFactors RMK; the French board publishes all 10 postings
+    through /rss.xml'
+  custom:
+    url: https://emploi.saq.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: SEGA Europe
+  platform: custom_json
+  slug: sega
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: Drupal careers site that server-renders all 25 vacancies with a
+    country and department field per row'
+  custom:
+    url: https://careers.sega.co.uk/vacancies
+    format: html
+    row_selector: div.job-summary.views-row
+    fields:
+      title: div.views-field-title a
+      id: div.views-field-title a::slugid(href)
+      url: div.views-field-title a::attr(href)
+      location: div.views-field-field-country
+      category: div.views-field-field-department
+      description: div.views-field-field-description-brief
+- name: Shell
+  platform: workday
+  slug: shell
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: shell
+  workday_site: shellcareers
+  workday_dc: wd3
+- name: Sophos
+  platform: lever
+  slug: sophos
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: lever publishes no board name; the 118 postings name Sophos in
+    their own text'
+- name: Tanium
+  platform: greenhouse
+  slug: tanium
+  source_of_record: discover
+  last_verified: 2026-08-21
 - name: akqa
   platform: greenhouse
   slug: akqa
@@ -509,10 +709,9 @@
   platform: jobvite
   slug: altamiracorps
   source_of_record: discover
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/altamiracorps/jobs
+    server-renders all 53 postings, which is the contract this row polls'
 - name: ALTEN
   platform: smartrecruiters
   slug: alten
@@ -572,7 +771,8 @@
   slug: amberstudiocareers
   source_of_record: openjobs
   enabled: false
-  notes: Jobvite markup carries job ids but no JSON or RSS on any path tried.
+  notes: '2026-08-21: re-checked on the server-rendered board as well;
+    the tenant answers but renders no jv-job-list table, so it is an empty or retired board'
 - name: Amcor
   platform: workday
   slug: amcor
@@ -731,10 +931,9 @@
   platform: jobvite
   slug: anthology
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/anthology/jobs
+    server-renders all 7 postings, which is the contract this row polls'
 - name: Anthropic
   platform: greenhouse
   slug: anthropic
@@ -1020,6 +1219,13 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 2 job(s)'
+- name: Asana
+  platform: greenhouse
+  slug: asana
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official early-career page identifies the live Asana Greenhouse board.'
+
 - name: ASM Global
   platform: workday
   slug: asmglobal
@@ -1120,6 +1326,13 @@
       location: g:location
       description: description
       category: g:job_function
+- name: Attentive
+  platform: greenhouse
+  slug: attentive
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page exposes the Attentive Greenhouse board API.'
+
 - name: Atura Power
   platform: bamboohr
   slug: aturapower
@@ -1176,6 +1389,9 @@
   slug: automation
   source_of_record: discover
   last_verified: *id003
+  enabled: false
+  notes: '2026-08-21: the recruitee tenant publishes Dutch-language field-service roles, so
+    the slug belongs to a different employer'
 - name: AutoScout24
   platform: greenhouse
   slug: autoscout24
@@ -1562,6 +1778,13 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (17 job(s))'
+- name: Betterment
+  platform: greenhouse
+  slug: betterment
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official current-openings page exposes the Betterment Greenhouse board.'
+
 - name: Bigblue
   platform: lever
   slug: bigblue
@@ -1711,6 +1934,13 @@
   slug: blinqlabs
   source_of_record: discover
   last_verified: *id010
+- name: Block
+  platform: greenhouse
+  slug: block
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page names the live Block Greenhouse board.'
+
 - name: Blockhouse
   platform: ashby
   slug: blockhouse
@@ -1839,6 +2069,28 @@
       url: link
       location: g:location
       description: description
+- name: Booking.com
+  platform: custom_json
+  slug: booking-com-jibe
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Jibe search API with the supplied internship keyword returned a live posting.'
+  custom:
+    url: https://jobs.booking.com/api/jobs?keywords=internship&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: full_location
+      url: canonical_url
+      description: data.description
+      employment_type: data.employment_type
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 2
+
 - name: Booz Allen
   platform: workday
   slug: bah
@@ -1944,6 +2196,13 @@
   notes: '2026-08-16: seen in feed postings but absent from the registry; discover
     matched greenhouse/brevium with 3 job(s) and the board named itself, so it is
     polled directly instead of secondhand'
+- name: Brex
+  platform: greenhouse
+  slug: brex
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live Brex Greenhouse board.'
+
 - name: Bridgewater Associates
   platform: greenhouse
   slug: bridgewater89
@@ -2198,10 +2457,9 @@
   platform: jobvite
   slug: capcomusa
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/capcomusa/jobs
+    server-renders all 2 postings, which is the contract this row polls'
 - name: Capgemini
   platform: custom_json
   slug: capgemini
@@ -2515,6 +2773,49 @@
   workday_facet: workerSubType:3cd342d9804f01e3bd250104bb00c80e
   notes: '2026-08-13: official Workday endpoint verified; its Intern (Fixed Term)
     facet has 26 listings.'
+- name: Chewy
+  platform: custom_json
+  slug: chewy-phenom
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Phenom POST /widgets returned the complete unfiltered board; applyUrl is direct.'
+  custom:
+    url: https://careers.chewy.com/widgets
+    method: POST
+    body:
+      lang: en_us
+      deviceType: desktop
+      country: us
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      employment_type: employmentType
+    page_param: from
+    page_size: 100
+    max_pages: 4
+
 - name: Chicago Trading Company
   platform: greenhouse
   slug: chicagotradingcampus
@@ -2557,6 +2858,56 @@
   workday_site: Cineplex
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Chime
+  platform: greenhouse
+  slug: chime
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Chime job pages link to the chime Greenhouse board; the live board returned 58 postings.'
+
+- name: Circle
+  platform: custom_json
+  slug: circle-phenom
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Phenom POST /widgets returned the complete unfiltered Circle board.'
+  custom:
+    url: https://careers.circle.com/widgets
+    method: POST
+    body:
+      lang: en_us
+      deviceType: desktop
+      country: us
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      employment_type: employmentType
+    page_param: from
+    page_size: 100
+    max_pages: 4
+
 - name: Circle K
   platform: workday
   slug: circlek
@@ -2745,6 +3096,13 @@
       location: location
       url: applyUrl
       category: department
+- name: Clay
+  platform: ashby
+  slug: claylabs
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official jobs page embeds the named Ashby board.'
+
 - name: CLEAResult
   platform: workday
   slug: clearesult
@@ -2986,6 +3344,13 @@
   notes: '2026-08-18: the human check this row was waiting for is done - the owner
     supplied compulsiongames.bamboohr.com/careers directly, which is the employer
     own board.'
+- name: Confluent
+  platform: ashby
+  slug: confluent
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the public Ashby board is named Confluent and returned live postings.'
+
 - name: conga
   platform: greenhouse
   slug: conga
@@ -3284,6 +3649,13 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (15 job(s))'
+- name: Cybereason
+  platform: greenhouse
+  slug: cybereason
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers markup exposes the Cybereason Greenhouse board.'
+
 - name: D. E. Shaw
   platform: custom_json
   slug: deshaw
@@ -3608,6 +3980,19 @@
   notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
     careers page and the board answered with postings, but ashby publishes no board
     name, so provenance is the evidence rather than a name match'
+- name: Docker
+  platform: ashby
+  slug: docker
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page embeds the named Docker Ashby board.'
+
+- name: DoorDash
+  platform: greenhouse
+  slug: doordashusa
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official job pages link to the doordashusa Greenhouse board; the live board returned 460 postings.'
 - name: Doctolib
   platform: greenhouse
   slug: doctolib
@@ -3658,6 +4043,13 @@
   workday_site: DraftKings
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Dragos
+  platform: greenhouse
+  slug: dragos
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied URL is the employer’s Greenhouse board and returned live postings.'
+
 - name: Draper
   platform: workday
   slug: draper
@@ -3668,6 +4060,13 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Dremio
+  platform: greenhouse
+  slug: dremio
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page embeds the Dremio Greenhouse board.'
+
 - name: Dropbox
   platform: greenhouse
   slug: dropbox
@@ -3945,9 +4344,8 @@
   slug: drillinginfo
   source_of_record: openjobs
   enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  notes: '2026-08-21: re-checked on the server-rendered board as well;
+    the tenant answers but renders no jv-job-list table, so it is an empty or retired board'
 - name: Epia Neuro
   platform: ashby
   slug: epianeuro
@@ -4163,6 +4561,33 @@
   workday_dc: wd108
   notes: Parked as never answering on wd5/private; it is live on wd108/search with
     141 postings.
+- name: eSentire
+  platform: custom_json
+  slug: esentire
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: 'Dayforce, reached by sending the /api/auth/csrf token as x-csrf-token.'
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/esentire/jobposting/search
+    method: POST
+    body:
+      clientNamespace: esentire
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/esentire/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
 - name: extreme network
   platform: lever
   slug: extremenetworks
@@ -4246,6 +4671,35 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched smartrecruiters/fanniemae1sb with 133 job(s) and the board named itself,
     so it is polled directly instead of secondhand'
+- name: Etsy
+  platform: custom_json
+  slug: etsy
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the official Etsy careers search server-renders 30 job cards per page; the existing HTML adapter returned 30 authoritative postings with stable detail URLs.'
+  custom:
+    url: https://careers.etsy.com/jobs/search?page=1&query=
+    format: html
+    row_selector: article.job-search-results-card-col
+    fields:
+      title: h3.job-search-results-card-title a
+      id: h3.job-search-results-card-title a::attr(href)
+      url: h3.job-search-results-card-title a::attr(href)
+      location: .job-component-location span
+      department: .job-component-department span
+    page_param: page
+    page_size: 30
+    page_start: 1
+    page_step: 1
+    max_pages: 5
+
+- name: Fastly
+  platform: greenhouse
+  slug: fastly
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live Fastly Greenhouse board.'
+
 - name: Felix & Paul Studios
   platform: bamboohr
   slug: felixandpaul
@@ -4315,6 +4769,13 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (8 job(s))'
+- name: Fireblocks
+  platform: greenhouse
+  slug: fireblocks
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official job markup carries Greenhouse posting identifiers; board identity verified.'
+
 - name: Firefly Aerospace
   platform: custom_json
   slug: fireflyspace
@@ -4909,10 +5370,9 @@
   platform: jobvite
   slug: gigamon
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/gigamon/jobs
+    server-renders all 28 postings, which is the contract this row polls'
 - name: Gildan
   platform: custom_json
   slug: gildan
@@ -4950,6 +5410,29 @@
   slug: ginkgobioworks
   source_of_record: discover
   last_verified: *id003
+- name: GitHub
+  platform: custom_json
+  slug: github-jibe
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official early-career Jibe API returned 92 public job records; canonical URLs are preserved.'
+  custom:
+    url: https://www.github.careers/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: full_location
+      url: data.meta_data.canonical_url
+      description: data.description
+      category: data.categories.0.name
+      employment_type: data.employment_type
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 2
+
 - name: gitlab
   platform: greenhouse
   slug: gitlab
@@ -5055,11 +5538,22 @@
   slug: google
   source_of_record: discover
   last_verified: *id003
+  enabled: false
+  notes: '2026-08-21: the recruitee tenant answers with the Senior Marketer (Sample) demo
+    posting, so it is not this employer; google.com/robots.txt disallows /about/careers/applications/jobs/results,
+    so no direct route exists'
 - name: Grab
   platform: smartrecruiters
   slug: grab
   source_of_record: discover
   last_verified: *id010
+- name: Grafana Labs
+  platform: greenhouse
+  slug: grafanalabs
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied URL is the employer’s Greenhouse board and returned live postings.'
+
 - name: Grant Thornton
   platform: recruitee
   slug: grantthornton
@@ -5553,6 +6047,13 @@
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
     endpoint has no offline probe, and this host and site come from the employer''s
     own application URL'
+- name: Huntress
+  platform: greenhouse
+  slug: huntress
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied URL is the employer’s Greenhouse board and returned live postings.'
+
 - name: Huntsman
   platform: workday
   slug: huntsman
@@ -6022,6 +6523,28 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     lever publishes no board name, so provenance is the evidence (11 job(s))'
+- name: Intuit
+  platform: custom_json
+  slug: intuit-avature
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied Avature facets returned two current co-op postings through the server-rendered listing.'
+  custom:
+    url: https://jobs.intuit.com/search-jobs?acm=9205024,9205760,9205744&alrpm=ALL&ascf=%5B%7B%22key%22%3A%22ALL%22%2C%22value%22%3A%22%22%7D%5D
+    format: html
+    row_selector: li[data-intuit-jobid]
+    fields:
+      title: h2
+      id: ::attr(data-intuit-jobid)
+      url: a.sr-item::attr(href)
+      location: span.job-location
+      category: ::attr(data-category)
+    page_param: p
+    page_size: 15
+    page_start: 1
+    page_step: 1
+    max_pages: 2
+
 - name: Intuitive Surgical
   platform: smartrecruiters
   slug: intuitive
@@ -6063,9 +6586,8 @@
   slug: isg-one
   source_of_record: openjobs
   enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  notes: '2026-08-21: re-checked on the server-rendered board as well;
+    the tenant redirects to its own /careers page, so the board moved off Jobvite'
 - name: ISS Stoxx
   platform: workday
   slug: issgovernance
@@ -6473,6 +6995,13 @@
   slug: studiokraftonboard
   source_of_record: openjobs
   last_verified: *id021
+- name: Kraken
+  platform: ashby
+  slug: kraken.com
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied URL is the employer’s Ashby board and returned live postings.'
+
 - name: Kyndryl
   platform: workday
   slug: kyndryl
@@ -6597,10 +7126,9 @@
   platform: jobvite
   slug: leadventure
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/leadventure/jobs
+    server-renders all 16 postings, which is the contract this row polls'
 - name: Leidos
   platform: workday
   slug: leidos
@@ -7009,6 +7537,13 @@
   workday_dc: wd501
   notes: '2026-08-13: official dedicated internship Workday board verified; it has
     ten listings and no broad-board crawl.'
+- name: Marqeta
+  platform: greenhouse
+  slug: marqeta
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live Marqeta Greenhouse board.'
+
 - name: Marsh McLennan
   platform: workday
   slug: mmc
@@ -7342,10 +7877,9 @@
   platform: jobvite
   slug: metropolitantransportationauthority
   source_of_record: discover
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/metropolitantransportationauthority/jobs
+    server-renders all 215 postings, which is the contract this row polls'
 - name: Microchip Technology
   platform: smartrecruiters
   slug: microchip
@@ -7435,7 +7969,7 @@
   workday_dc: wd103
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
-- name: Minecast
+- name: Mimecast
   platform: workday
   slug: mimecast
   source_of_record: openjobs
@@ -7916,10 +8450,9 @@
   platform: jobvite
   slug: ness
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/ness/jobs
+    server-renders all 34 postings, which is the contract this row polls'
 - name: nesto
   platform: custom_json
   slug: nesto
@@ -8526,6 +9059,13 @@
   notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
     as a token that does not exist; re-check if the employer relaunches Re-probed
     2026-08-14 and still dead.'
+- name: OpenAI
+  platform: ashby
+  slug: openai
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the public Ashby board is named OpenAI and returned live postings.'
+
 - name: Opendoor
   platform: greenhouse
   slug: opendoor
@@ -8694,6 +9234,13 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: PagerDuty
+  platform: greenhouse
+  slug: pagerduty
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live PagerDuty Greenhouse board.'
+
 - name: Palantir
   platform: smartrecruiters
   slug: palantir
@@ -8922,6 +9469,13 @@
   name_gate_exempt: true
   notes: '2026-08-18: token from this employer''s own apply URL, not slug guessing;
     lever publishes no board name, so provenance is the evidence (6 job(s))'
+- name: Peloton
+  platform: greenhouse
+  slug: peloton
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live Peloton Greenhouse board.'
+
 - name: Penn Interactive
   platform: greenhouse
   slug: penninteractive
@@ -9130,6 +9684,13 @@
   source_of_record: discover
   last_verified: 2026-08-20
   notes: '2026-08-20: owner-supplied careers URL; the greenhouse board names itself Planet.'
+- name: PlanetScale
+  platform: greenhouse
+  slug: planetscale
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page links directly to PlanetScale Greenhouse postings.'
+
 - name: Plexus
   platform: workday
   slug: plexus
@@ -9489,6 +10050,16 @@
     page_param: start
     page_size: 10
     max_pages: 20
+- name: Qualys
+  platform: workday
+  slug: qualys
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: qualys
+  workday_site: Careers
+  workday_dc: wd5
+  notes: '2026-08-21: supplied URL exposes the Workday tenant, site, and data center; endpoint returned live postings.'
+
 - name: Quantbot Technologies
   platform: greenhouse
   slug: quantbot-technologies
@@ -9504,11 +10075,11 @@
 - name: Quantlab
   platform: jobvite
   slug: quantlab
-  enabled: false
   source_of_record: discover
   last_verified: 2026-08-20
-  notes: '2026-08-20: Jobvite, which answers 401 Invalid api/secret across every tenant we
-    have tried; the careers page loads its assets and nothing else.'
+  enabled: false
+  notes: '2026-08-21: re-checked on the server-rendered board as well;
+    the tenant answers 403, so the board is closed to our client'
 - name: Qube Research and Technologies
   platform: greenhouse
   slug: quberesearchandtechnologies
@@ -9625,11 +10196,80 @@
   slug: redbull
   source_of_record: discover
   last_verified: *id010
+- name: Red Hat
+  platform: workday
+  slug: redhat
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: redhat
+  workday_site: jobs
+  workday_dc: wd5
+  notes: '2026-08-21: supplied URL exposes the Workday tenant, site, and data center; endpoint returned live postings.'
+
 - name: Reddit
   platform: greenhouse
   slug: reddit
   source_of_record: openjobs
   last_verified: *id003
+- name: Redis
+  platform: ashby
+  slug: redis
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the public Ashby board is named Redis and returned live postings.'
+
+- name: Retool
+  platform: custom_json
+  slug: retool
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the official Gem board used by Retool exposes a public GraphQL listing query; the existing POST adapter returned 34 postings with direct job URLs.'
+  custom:
+    url: https://jobs.gem.com/api/public/graphql
+    method: POST
+    headers:
+      Origin: https://jobs.gem.com
+      Referer: https://jobs.gem.com/retool
+    body:
+      query: |
+        query JobBoardList($boardId: String!) {
+          oatsExternalJobPostings(boardId: $boardId) {
+            jobPostings {
+              id
+              extId
+              title
+              locations {
+                id
+                name
+                city
+                isoCountry
+                isRemote
+                extId
+              }
+              job {
+                id
+                department {
+                  id
+                  name
+                  extId
+                }
+                locationType
+                employmentType
+              }
+            }
+          }
+        }
+      variables:
+        boardId: retool
+    jobs_path: data.oatsExternalJobPostings.jobPostings
+    url_template: https://jobs.gem.com/retool/{id}
+    fields:
+      title: title
+      id: extId
+      location: locations.0.name
+      department: job.department.name
+      employment_type: job.employmentType
+
 - name: Redwood Materials
   platform: greenhouse
   slug: redwoodmaterials
@@ -9761,10 +10401,9 @@
   platform: jobvite
   slug: resolver
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/resolver/jobs
+    server-renders all 12 postings, which is the contract this row polls'
 - name: RESPEC
   platform: smartrecruiters
   slug: respecinc
@@ -9830,6 +10469,13 @@
   source_of_record: discover
   last_verified: 2026-08-20
   notes: Its student-internships page refuses our client, but the native greenhouse board answers with 161 postings.
+- name: Ripple
+  platform: greenhouse
+  slug: ripple
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page exposes the live Ripple Greenhouse board.'
+
 - name: Rippling
   platform: custom_json
   slug: rippling
@@ -10333,6 +10979,12 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (46 job(s))'
+- name: SentinelOne
+  platform: greenhouse
+  slug: sentinellabs
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official jobs page exposes Greenhouse posting IDs; the sentinellabs board returned 212 live postings.'
 - name: Serval
   platform: ashby
   slug: serval
@@ -10512,9 +11164,8 @@
   slug: simaai
   source_of_record: discover
   enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  notes: '2026-08-21: re-checked on the server-rendered board as well;
+    the tenant redirects to its own /careers page, so the board moved off Jobvite'
 - name: Simcorp
   platform: workday
   slug: simcorp
@@ -10712,12 +11363,13 @@
   slug: siei
   source_of_record: openjobs
   last_verified: *id003
-- name: Sony Interactive Entertainment
+- name: PlayStation Global
   platform: greenhouse
   slug: sonyinteractiveentertainmentglobal
   source_of_record: openjobs
   last_verified: *id003
-  name_gate_exempt: true
+  notes: '2026-08-21: this board names itself PlayStation Global and shares no requisition
+    id with the siei board, so the two are separate boards rather than one duplicated caption'
 - name: Sony Pictures Entertainment
   platform: workday
   slug: spe
@@ -10763,6 +11415,9 @@
   slug: specter
   source_of_record: discover
   last_verified: *id003
+  enabled: false
+  notes: '2026-08-21: the recruitee tenant answers with the Senior Marketer (Sample) demo
+    posting, so the board is a trial tenant and not this employer'
 - name: Spiria
   platform: lever
   slug: spiria
@@ -10806,6 +11461,13 @@
   slug: squarepointcapital
   source_of_record: discover
   last_verified: *id003
+- name: Squarespace
+  platform: greenhouse
+  slug: squarespace
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official early-career page resolves to the live Squarespace Greenhouse board.'
+
 - name: Squeeze Studio
   platform: recruitee
   slug: squeezestudio
@@ -11573,6 +12235,13 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Toast
+  platform: greenhouse
+  slug: toast
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official early-career page resolves to the live Toast Greenhouse board.'
+
 - name: Together AI
   platform: greenhouse
   slug: togetherai
@@ -11978,6 +12647,16 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Unity
+  platform: workday
+  slug: unitytech
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: unitytech
+  workday_site: Unity
+  workday_dc: wd1
+  notes: '2026-08-21: official careers page links to Unity’s Workday board; endpoint returned live postings.'
+
 - name: Universidad IEU S.C.
   platform: workday
   slug: galileo
@@ -12122,10 +12801,9 @@
   platform: jobvite
   slug: varonis-internal
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/varonis-internal/jobs
+    server-renders all 60 postings, which is the contract this row polls'
 - name: Vast Space
   platform: greenhouse
   slug: vast
@@ -12482,6 +13160,29 @@
   notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
     39 jobs and needs-a-manual-check, the expected verdict where the platform publishes
     no board name; token equals the company name'
+- name: Weights & Biases
+  platform: custom_json
+  slug: weights-and-biases
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the official CoreWeave Weights & Biases page embeds the weights_and_biases Greenhouse API; the live board returned 15 postings.'
+  custom:
+    url: https://boards-api.greenhouse.io/v1/boards/weights_and_biases/jobs?content=true
+    jobs_path: jobs
+    fields:
+      title: title
+      id: id
+      location: location.name
+      url: absolute_url
+      description: content
+
+- name: Webflow
+  platform: greenhouse
+  slug: webflow
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page exposes the live Webflow Greenhouse board.'
+
 - name: WebFX
   platform: lever
   slug: webfx
@@ -12549,9 +13250,8 @@
   slug: windriver
   source_of_record: openjobs
   enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  notes: '2026-08-21: re-checked on the server-rendered board as well;
+    the tenant redirects to Jobvite job-seeker support, so the board is gone'
 - name: WindBorne Systems
   platform: ashby
   slug: windborne-systems
@@ -12598,6 +13298,20 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (28 job(s))'
+- name: Wise
+  platform: smartrecruiters
+  slug: wise
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Wise jobs page identifies its SmartRecruiters board; public API returned live postings.'
+
+- name: Wiz
+  platform: ashby
+  slug: wiz
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: public Ashby board is named Wiz; it currently returns no postings.'
+
 - name: Wizards of the Coast
   platform: greenhouse
   slug: wizardsofthecoast
@@ -12851,10 +13565,9 @@
   platform: jobvite
   slug: ziffdavis
   source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-14: probed for a public contract — the Jobvite API answers 401 ''Invalid
-    api/secret'' and the careers host 302s, confirming it is credentialed and keyed
-    on an internal companyId rather than this slug.'
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/ziffdavis/jobs
+    server-renders all 73 postings, which is the contract this row polls'
 - name: Zillow
   platform: workday
   slug: zillow
@@ -12870,6 +13583,28 @@
   slug: zinnia
   source_of_record: openjobs
   last_verified: *id021
+- name: Zoom
+  platform: custom_json
+  slug: zoom
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the official job search page server-renders its listings; the existing HTML route returned stable rows and page pagination.'
+  custom:
+    url: https://careers.zoom.us/jobs/search
+    format: html
+    row_selector: article.job-search-results-card-col
+    fields:
+      title: h3.job-search-results-card-title a
+      id: .job-component-requisition-identifier span
+      url: h3.job-search-results-card-title a::attr(href)
+      location: .job-component-location span
+      description: p.job-search-results-summary
+      category: .job-component-category span
+    page_param: page
+    page_size: 30
+    page_start: 1
+    page_step: 1
+    max_pages: 5
 - name: Zoox
   platform: lever
   slug: zoox
