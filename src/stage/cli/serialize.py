@@ -4,6 +4,7 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING, Protocol, cast
 
 if TYPE_CHECKING:
+    from stage.cli.schedule import ScheduleStatus
     from stage.services.canary import CanaryReport
     from stage.services.coverage import CoverageReport
     from stage.services.health import DoctorReport, StatsReport
@@ -143,6 +144,30 @@ def stats_to_json(report: "StatsReport") -> str:
             "quarantined": report.quarantined,
             "composition": report.composition,
             "runs": [asdict(run) for run in report.runs],
+        }
+    )
+
+
+def schedule_to_json(report: "ScheduleStatus") -> str:
+    return dump(
+        {
+            "backend": report.backend,
+            "log_dir": str(report.log_dir),
+            "actions": [
+                {
+                    "key": action.key,
+                    "label": action.label,
+                    "cadence": action.cadence,
+                    "time": action.time,
+                    "enabled": enabled,
+                    "installed": installed,
+                    "needs_update": (
+                        report.needs_update[index] if index < len(report.needs_update) else False
+                    ),
+                    "run": report.states[index] if index < len(report.states) else None,
+                }
+                for index, (action, enabled, installed) in enumerate(report.actions)
+            ],
         }
     )
 

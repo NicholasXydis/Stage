@@ -1,8 +1,10 @@
+import json
 import plistlib
 import re
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import TextIO
 
 import pytest
 from typer.testing import CliRunner
@@ -34,11 +36,10 @@ def test_windows_enable_replaces_only_stage_tasks_and_uses_the_packaged_runner(
     assert report.backend == "Windows Task Scheduler"
     assert all(entry[1] for entry in report.actions)
     created = [command for command in commands if "/Create" in command]
-    assert len(created) == 2
+    assert len(created) == len(schedule._ACTIONS)
     assert all("/XML" in command for command in created)
     assert {command[command.index("/TN") + 1] for command in created} == {
-        "Stage Sync",
-        "Stage Discover",
+        action.label for action in schedule._ACTIONS
     }
     sync_xml = schedule._windows_task_xml(schedule._ACTIONS[0]).decode("utf-16")
     discover_xml = schedule._windows_task_xml(schedule._ACTIONS[1]).decode("utf-16")
@@ -68,11 +69,11 @@ def test_windows_disable_only_deletes_stage_tasks(monkeypatch: pytest.MonkeyPatc
     report = schedule.disable()
 
     assert not any(entry[1] for entry in report.actions)
+    assert not any(report.needs_update), "a removed task cannot also need an update"
     deleted = [command for command in commands if "/Delete" in command]
     assert deleted == [
-        ("schtasks", "/Delete", "/TN", "Stage Sync", "/F"),
-        ("schtasks", "/Delete", "/TN", "Stage Discover", "/F"),
-    ]
+        ("schtasks", "/Delete", "/TN", action.label, "/F") for action in schedule._ACTIONS
+    ], "disable must delete every Stage-owned task and nothing else"
 
 
 def test_macos_enable_writes_launch_agents_at_the_configured_times(
@@ -139,14 +140,21 @@ def test_scheduled_sync_runs_sync_then_doctor_in_one_rotating_log(
 ) -> None:
     calls: list[tuple[str, ...]] = []
 
-    def invoke(arguments: Sequence[str]) -> int:
+    def invoke(
+        arguments: Sequence[str],
+        stream: TextIO,
+        *,
+        progress_path: Path | None = None,
+        heartbeat: Callable[[], None] | None = None,
+    ) -> int:
         calls.append(tuple(arguments))
         return 0
 
     monkeypatch.setattr(schedule, "_log_dir", lambda: tmp_path)
+    monkeypatch.setattr(schedule, "state_path", lambda action: tmp_path / f"{action}.json")
     monkeypatch.setattr(schedule, "_invoke_cli", invoke)
 
-    assert schedule.run_scheduled("sync") == 0
+    assert schedule.run_scheduled("sync", jitter_seconds=0) == 0
 
     assert calls == [("sync",), ("doctor",)]
     assert "exit code: 0" in (tmp_path / "scheduled-sync.log").read_text(encoding="utf-8")
@@ -157,14 +165,21 @@ def test_scheduled_discovery_uses_the_bounded_unregistered_review_workflow(
 ) -> None:
     calls: list[tuple[str, ...]] = []
 
-    def invoke(arguments: Sequence[str]) -> int:
+    def invoke(
+        arguments: Sequence[str],
+        stream: TextIO,
+        *,
+        progress_path: Path | None = None,
+        heartbeat: Callable[[], None] | None = None,
+    ) -> int:
         calls.append(tuple(arguments))
         return 0
 
     monkeypatch.setattr(schedule, "_log_dir", lambda: tmp_path)
+    monkeypatch.setattr(schedule, "state_path", lambda action: tmp_path / f"{action}.json")
     monkeypatch.setattr(schedule, "_invoke_cli", invoke)
 
-    assert schedule.run_scheduled("discover") == 0
+    assert schedule.run_scheduled("discover", jitter_seconds=0) == 0
 
     assert calls == [("discover", "--unregistered", "--limit", "40")]
 
@@ -182,6 +197,51 @@ def test_schedule_help_is_layered_and_classification_explains_required_evidence(
     assert {"enable", "status", "disable"} <= set(schedule_output.split())
     assert classify_help.exit_code == 0
     assert "Required unless --clear" in classify_output
+
+
+def test_schedule_status_json_includes_definition_and_run_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.cli.app import app
+
+    report = schedule.ScheduleStatus(
+        "Windows Task Scheduler",
+        tuple((action, True, action.cadence) for action in schedule._ACTIONS),
+        tmp_path,
+        (
+            {"phase": "finished", "outcome": "success", "exit_code": 0},
+            {"phase": "blocked", "error": "another run is active"},
+        ),
+        (False, True),
+    )
+    monkeypatch.setattr(schedule, "status", lambda: report)
+
+    result = CliRunner().invoke(app, ["schedule", "status", "--json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["actions"][0]["run"]["outcome"] == "success"
+    assert payload["actions"][1]["needs_update"] is True
+
+
+def test_schedule_status_watch_stops_for_a_blocked_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.cli.app import app
+
+    report = schedule.ScheduleStatus(
+        "Windows Task Scheduler",
+        ((schedule._ACTIONS[0], True, schedule._ACTIONS[0].cadence),),
+        tmp_path,
+        ({"phase": "blocked", "error": "another run holds the lock"},),
+        (False,),
+    )
+    monkeypatch.setattr(schedule, "status", lambda: report)
+
+    result = CliRunner().invoke(app, ["schedule", "status", "--watch"])
+
+    assert result.exit_code == 0
+    assert "another run holds the lock" in ANSI_ESCAPE.sub("", result.stdout)
 
 
 def test_the_sync_action_runs_every_six_hours() -> None:
@@ -256,3 +316,15 @@ def test_a_one_off_action_is_never_delayed() -> None:
     discover = next(action for action in _ACTIONS if action.key == "discover")
     _spread_load(discover, slept.append)
     assert slept == []
+
+
+def test_registry_verification_is_scheduled_and_never_writes() -> None:
+    verify = next(action for action in schedule._ACTIONS if action.key == "verify")
+    assert verify.cli_arguments == ("discover", "--verify"), (
+        "scheduled verification must stay report-only"
+    )
+    assert "--apply" not in verify.cli_arguments, "a scheduled run must never mutate the registry"
+    days = {action.systemd_day for action in schedule._ACTIONS if action.systemd_day}
+    assert len(days) == len({action.key for action in schedule._ACTIONS if action.systemd_day}), (
+        "two weekly actions on one day would stack their request budgets"
+    )

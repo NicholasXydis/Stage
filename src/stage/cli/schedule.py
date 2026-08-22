@@ -9,18 +9,26 @@ import sys
 import time
 import xml.etree.ElementTree as ElementTree
 from collections.abc import Callable, Sequence
-from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime
+from html import unescape
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import cast
+from typing import TextIO, cast
 
 from stage.cli.logfile import rotate
+from stage.cli.schedule_state import (
+    HEARTBEAT_INTERVAL_SECONDS,
+    ScheduleStateWriter,
+    read_state,
+    state_for_status,
+    state_path,
+)
 from stage.paths import data_dir
 
 SYNC_TIME = "00:00"
 DISCOVER_TIME = "10:30"
+VERIFY_TIME = "11:30"
 SYNC_EVERY_HOURS = 6
 MAX_JITTER_S = 1800
 
@@ -55,6 +63,8 @@ class ScheduleStatus:
     backend: str
     actions: tuple[tuple[ScheduledAction, bool, str], ...]
     log_dir: Path
+    states: tuple[dict[str, object] | None, ...] = ()
+    needs_update: tuple[bool, ...] = ()
 
 
 _ACTIONS = (
@@ -77,6 +87,17 @@ _ACTIONS = (
         windows_day="MON",
         launchd_weekday=1,
         systemd_day="Mon",
+    ),
+    ScheduledAction(
+        key="verify",
+        label="Stage Verify",
+        cadence="weekly on Wednesday",
+        time=VERIFY_TIME,
+        windows_schedule="WEEKLY",
+        cli_arguments=("discover", "--verify"),
+        windows_day="WED",
+        launchd_weekday=3,
+        systemd_day="Wed",
     ),
 )
 
@@ -109,10 +130,18 @@ def status() -> ScheduleStatus:
         "windows": (_windows_exists, "Windows Task Scheduler"),
         "macos": (_macos_exists, "macOS launchd"),
     }.get(backend, (_linux_exists, "Linux systemd user timers"))
-    states = tuple(
+    actions = tuple(
         (action, exists(action), _installed_cadence(action, backend)) for action in _ACTIONS
     )
-    return ScheduleStatus(label, states, _log_dir())
+    return ScheduleStatus(
+        label,
+        actions,
+        _log_dir(),
+        tuple(state_for_status(read_state(action.key)) for action in _ACTIONS),
+        tuple(
+            enabled and not _definition_matches(action, backend) for action, enabled, _ in actions
+        ),
+    )
 
 
 def _installed_cadence(action: ScheduledAction, backend: str) -> str:
@@ -165,28 +194,114 @@ def matches_definition(action: ScheduledAction, installed: str) -> bool:
     return not installed or action.cadence.startswith(installed)
 
 
-def run_scheduled(key: str) -> int:
+def _definition_matches(action: ScheduledAction, backend: str) -> bool:
+    if backend == "windows":
+        result = _execute(("schtasks", "/Query", "/TN", action.label, "/XML"))
+        if result.returncode != 0:
+            return False
+        command = re.search(r"<Command>([^<]*)</Command>", result.stdout)
+        arguments = re.search(r"<Arguments>([^<]*)</Arguments>", result.stdout)
+        expected = _command(action)
+        return bool(
+            command
+            and arguments
+            and unescape(command.group(1)) == expected[0]
+            and unescape(arguments.group(1)) == subprocess.list2cmdline(expected[1:])
+        )
+    if backend == "macos":
+        try:
+            payload = plistlib.loads(_launch_path(action).read_bytes())
+        except (OSError, plistlib.InvalidFileException):
+            return False
+        if not isinstance(payload, dict):
+            return False
+        log = str(_log_dir() / f"scheduled-{action.key}.log")
+        return (
+            payload.get("ProgramArguments") == list(_command(action))
+            and payload.get("StandardOutPath") == log
+            and payload.get("StandardErrorPath") == log
+            and payload.get("ProcessType") == "Background"
+        )
+    try:
+        service = (_systemd_dir() / f"{_systemd_name(action)}.service").read_text(encoding="utf-8")
+        timer = (_systemd_dir() / f"{_systemd_name(action)}.timer").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return (service, timer) == _systemd_units(action)
+
+
+def run_scheduled(
+    key: str,
+    *,
+    jitter_seconds: float | None = None,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> int:
     action = next((candidate for candidate in _ACTIONS if candidate.key == key), None)
     if action is None:
         raise ScheduleError(f"unknown scheduled action: {key}")
     path = _log_dir() / f"scheduled-{action.key}.log"
     rotate(path)
-    with path.open("a", encoding="utf-8") as stream:
-        stream.write(f"\n{action.label}\n")
-        with redirect_stdout(stream), redirect_stderr(stream):
-            exit_code = _invoke_cli(action.cli_arguments)
-            if action.key == "sync":
-                doctor_exit = _invoke_cli(("doctor",))
-                if doctor_exit:
-                    exit_code = doctor_exit
+    state = ScheduleStateWriter.start(action.key, path, destination=state_path(action.key))
+    delay = _jitter_seconds(action) if jitter_seconds is None else jitter_seconds
+    with path.open("a", encoding="utf-8", buffering=1) as stream:
+        stream.write(f"\n{action.label}\nTriggered: {_timestamp()}\n")
+        state.waiting(delay)
+        if delay:
+            stream.write(f"Waiting {round(delay)}s before work starts.\n")
+            _wait_for_start(delay, sleeper, state.heartbeat)
+        phase = "syncing" if action.key == "sync" else "discovering"
+        state.started(phase)
+        stream.write(f"Work started: {_timestamp()}\n")
+        sync_exit = _invoke_cli(
+            action.cli_arguments,
+            stream,
+            progress_path=state.path,
+            heartbeat=state.heartbeat,
+        )
+        doctor_exit: int | None = None
+        exit_code = sync_exit
+        if action.key == "sync" and not state.path_is_blocked:
+            state.checking()
+            stream.write("Running health check.\n")
+            doctor_exit = _invoke_cli(("doctor",), stream, heartbeat=state.heartbeat)
+            if doctor_exit:
+                exit_code = doctor_exit
+        state.complete(
+            sync_exit_code=sync_exit,
+            doctor_exit_code=doctor_exit,
+            exit_code=exit_code,
+        )
+        stream.write(f"Finished: {_timestamp()}\n")
         stream.write(f"exit code: {exit_code}\n")
     return exit_code
 
 
 def _spread_load(action: ScheduledAction, sleeper: Callable[[float], None] = time.sleep) -> None:
+    if action.repeat_hours is not None:
+        sleeper(_jitter_seconds(action))
+
+
+def _jitter_seconds(action: ScheduledAction) -> float:
     if action.repeat_hours is None:
-        return
-    sleeper(random.SystemRandom().uniform(0.0, float(MAX_JITTER_S)))
+        return 0.0
+    return random.SystemRandom().uniform(0.0, float(MAX_JITTER_S))
+
+
+def _wait_for_start(
+    delay_seconds: float,
+    sleeper: Callable[[float], None],
+    heartbeat: Callable[[], None],
+) -> None:
+    remaining = delay_seconds
+    while remaining > 0:
+        interval = min(HEARTBEAT_INTERVAL_SECONDS, remaining)
+        sleeper(interval)
+        remaining -= interval
+        heartbeat()
+
+
+def _timestamp() -> str:
+    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def main() -> None:
@@ -195,9 +310,6 @@ def main() -> None:
     run = commands.add_parser("run", help="run one configured action")
     run.add_argument("action", choices=[action.key for action in _ACTIONS])
     arguments = parser.parse_args()
-    action = next((candidate for candidate in _ACTIONS if candidate.key == arguments.action), None)
-    if action is not None:
-        _spread_load(action)
     raise SystemExit(run_scheduled(arguments.action))
 
 
@@ -213,7 +325,12 @@ def _backend() -> str:
 
 
 def _command(action: ScheduledAction) -> tuple[str, ...]:
-    return (sys.executable, "-m", "stage.cli.schedule", "run", action.key)
+    executable = sys.executable
+    if _backend() == "windows":
+        candidate = Path(executable).with_name("pythonw.exe")
+        if candidate.is_file():
+            executable = str(candidate)
+    return (executable, "-m", "stage.cli.schedule", "run", action.key)
 
 
 def _log_dir() -> Path:
@@ -222,13 +339,31 @@ def _log_dir() -> Path:
     return path
 
 
-def _invoke_cli(arguments: Sequence[str]) -> int:
-    completed = _execute((sys.executable, "-m", "stage", *arguments))
-    if completed.stdout:
-        print(completed.stdout, end="")
-    if completed.stderr:
-        print(completed.stderr, end="", file=sys.stderr)
-    return completed.returncode
+def _invoke_cli(
+    arguments: Sequence[str],
+    stream: TextIO,
+    *,
+    progress_path: Path | None = None,
+    heartbeat: Callable[[], None] | None = None,
+) -> int:
+    command = [sys.executable, "-u", "-m", "stage", *arguments]
+    if progress_path is not None:
+        command.extend(("--scheduled-progress", str(progress_path)))
+    try:
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=stream,
+            stderr=subprocess.STDOUT,
+        )
+    except OSError as error:
+        raise ScheduleError(f"unable to start scheduled command: {command[0]}") from error
+    while True:
+        try:
+            return int(process.wait(timeout=HEARTBEAT_INTERVAL_SECONDS))
+        except subprocess.TimeoutExpired:
+            if heartbeat is not None:
+                heartbeat()
 
 
 def _execute(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -410,9 +545,7 @@ def _systemd_argument(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _write_systemd_units(action: ScheduledAction) -> None:
-    root = _systemd_dir()
-    root.mkdir(parents=True, exist_ok=True)
+def _systemd_units(action: ScheduledAction) -> tuple[str, str]:
     name = _systemd_name(action)
     command = " ".join(_systemd_argument(value) for value in _command(action))
     service = (
@@ -432,6 +565,14 @@ def _write_systemd_units(action: ScheduledAction) -> None:
         "[Install]\n"
         "WantedBy=timers.target\n"
     )
+    return service, timer
+
+
+def _write_systemd_units(action: ScheduledAction) -> None:
+    root = _systemd_dir()
+    root.mkdir(parents=True, exist_ok=True)
+    name = _systemd_name(action)
+    service, timer = _systemd_units(action)
     for path, body in ((root / f"{name}.service", service), (root / f"{name}.timer", timer)):
         path.write_text(body, encoding="utf-8")
         path.chmod(0o600)
