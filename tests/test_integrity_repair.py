@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -44,7 +45,7 @@ async def test_a_dangling_duplicate_link_is_cleared_so_the_posting_reappears(
     async with open_repository(db_path) as repository:
         await _store(repository, [_job("a"), _job("b", source="lever", duplicate_of="a")])
 
-    with sqlite3.connect(db_path) as corrupt:
+    with closing(sqlite3.connect(db_path)) as corrupt:
         corrupt.execute("DELETE FROM jobs WHERE id = 'a'")
         corrupt.commit()
 
