@@ -1,0 +1,1369 @@
+- name: CACI
+  platform: smartrecruiters
+  slug: caci
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Caddi Workflow Automation
+  platform: workable
+  slug: trycaddi
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Cadence
+  platform: workday
+  slug: cadence
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-14
+  recheck_after: &id002 2026-10-01
+  workday_tenant: cadence
+  workday_site: External_Careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: CAE
+  platform: workday
+  slug: cae
+  source_of_record: openjobs
+  last_verified: 2026-08-03
+  workday_tenant: cae
+  workday_site: career
+  workday_dc: wd3
+- name: Calendly
+  platform: greenhouse
+  slug: calendly
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
+    probe that matched the company name on the returned board'
+- name: Calix
+  platform: workday
+  slug: calix
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: calix
+  workday_site: External
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Calpion/Plutus Health
+  platform: bamboohr
+  slug: calpionplutus
+  source_of_record: discover
+  last_verified: &id008 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; bamboohr publishes no board name, so
+    the name gate cannot confirm it and provenance is the evidence (20 job(s))'
+- name: CALSTART
+  platform: lever
+  slug: calstart
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active web-development internship application verifies
+    the public Lever board.'
+- name: Cambium Learning Group
+  platform: workday
+  slug: cambiumlearning
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+  workday_tenant: cambiumlearning
+  workday_site: camb
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Campbell Soup
+  platform: workday
+  slug: campbellsoup
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: campbellsoup
+  workday_site: externalcareers_globalsite
+  workday_dc: wd5
+  workday_facet: workerSubType:2c9712637fee1027395fffa4ae951d8f
+  notes: '2026-08-13: official Workday endpoint verified; its temporary intern facet
+    has 16 listings.'
+- name: Canada Life
+  platform: custom_json
+  slug: canadalife
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: SuccessFactors RMK; /rss.xml holds 109 items against 90 on its search page,
+    and covers Great-West Lifeco rows.
+  custom:
+    url: https://jobs.canadalife.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Canadian Solar
+  platform: workday
+  slug: canadiansolar
+  source_of_record: discover
+  last_verified: &id007 2026-08-16
+  workday_tenant: canadiansolar
+  workday_site: CanadianSolar
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 120 posting(s), 0 kept after
+    the CS-internship screens'
+- name: Canadian Tire Corporation, Limited
+  platform: workday
+  slug: canadiantirecorporation
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: canadiantirecorporation
+  workday_site: Enterprise_External_Careers_Site
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Canonical
+  platform: greenhouse
+  slug: canonical
+  source_of_record: openjobs
+  last_verified: &id004 2026-08-14
+- name: Canva
+  platform: smartrecruiters
+  slug: canva
+  source_of_record: openjobs
+  last_verified: &id005 2026-08-14
+- name: Capco
+  platform: greenhouse
+  slug: capco
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Capcom
+  platform: jobvite
+  slug: capcomusa
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/capcomusa/jobs
+    server-renders all 2 postings, which is the contract this row polls'
+- name: Capgemini
+  platform: custom_json
+  slug: capgemini
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; its /rss.xml is 55MB and ignores q, but the search page
+    honours q=internship and pages on startrow.
+  custom:
+    url: https://careers.capgemini.com/search/?q=internship&sortColumn=referencedate&sortDirection=desc
+    format: html
+    authoritative: false
+    row_selector: tr.data-row
+    fields:
+      title: a.jobTitle-link
+      id: a.jobTitle-link::slugid(href)
+      url: a.jobTitle-link::attr(href)
+      location: .jobLocation
+    page_param: startrow
+    page_size: 25
+    page_step: 25
+    max_pages: 8
+- name: Capital One
+  platform: workday
+  slug: capitalone
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: capitalone
+  workday_site: Capital_One
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: CapitaLand
+  platform: workday
+  slug: capitaland
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: capitaland
+  workday_site: capitalandinvestmentcareers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Capula
+  platform: workable
+  slug: capula-investment-management-ltd
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Car Gurus
+  platform: greenhouse
+  slug: cargurus
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Carbon Engineering Ltd.
+  platform: greenhouse
+  slug: carbon
+  source_of_record: discover
+  last_verified: &id009 2026-08-14
+- name: CarbonCure
+  platform: bamboohr
+  slug: carboncure
+  source_of_record: discover
+  last_verified: &id006 2026-08-17
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    1 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Carlyle Group
+  platform: workday
+  slug: carlyle
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: carlyle
+  workday_site: Carlyle
+  workday_dc: wd1
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL; 80 postings.'
+- name: Carnegie Mellon University
+  platform: workday
+  slug: cmu
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: cmu
+  workday_site: cmu
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (5 posting(s), 0 kept)'
+- name: Castleton Commodities International
+  platform: workday
+  slug: osv-cci
+  source_of_record: discover
+  workday_tenant: osv-cci
+  workday_site: CCICareers
+  workday_dc: wd1
+  enabled: false
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
+    422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: Caterpillar Inc.
+  platform: workday
+  slug: cat
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: cat
+  workday_site: CaterpillarCareers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Cavendish Farms
+  platform: oracle_cloud
+  slug: hcpd
+  source_of_record: manual
+  last_verified: 2026-08-13
+  oracle_host: hcpd.fa.ca2.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-13: public Oracle candidate JSON verified; Application Support Student/Intern
+    is a current technical posting'
+- name: CCC Intelligent Solutions
+  platform: workday
+  slug: cccis
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: cccis
+  workday_site: broadbean_external
+  workday_dc: wd1
+  workday_facet: JobFamily:7beb04681bea013d84093d38be01af9f
+  notes: '2026-08-13: official Workday endpoint verified; its Intern job-family facet
+    has two listings.'
+- name: CD Projekt Red
+  platform: smartrecruiters
+  slug: cdprojektred
+  source_of_record: openjobs
+  last_verified: *id005
+- name: CDPQ
+  platform: workday
+  slug: cdpq
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: cdpq
+  workday_site: CDPQ
+  workday_dc: wd10
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Celestica
+  platform: custom_json
+  slug: celestica
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reopened — parked on a 12.3MB refresh cost, but the ceiling
+    is 32MB and the Corning row ships 14.9MB; the feed matches its search page exactly
+    at 1,151 items.'
+  custom:
+    url: https://careers.celestica.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Celonis
+  platform: greenhouse
+  slug: celonis
+  source_of_record: discover
+  last_verified: &id011 2026-08-16
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/celonis with 254 job(s) and the board named itself, so it is
+    polled directly instead of secondhand'
+- name: Cenovus Energy
+  platform: workday
+  slug: cenovus
+  source_of_record: discover
+  last_verified: *id007
+  workday_tenant: cenovus
+  workday_site: careers
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 4 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Centerfield
+  platform: ashby
+  slug: centerfield
+  source_of_record: discover
+  last_verified: *id008
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (20 job(s))'
+- name: Centerstone
+  platform: workday
+  slug: centerstone
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: centerstone
+  workday_site: centerstonecareers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (12 posting(s), 0 kept)'
+- name: Centific
+  platform: workday
+  slug: centific
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: centific
+  workday_site: Centific_Global
+  workday_dc: wd1
+  workday_facet: JobFamilyGroup:8bdce696b10c10016a56951427200000,ffab1d38756510004860b3221fdf0000
+  notes: '2026-08-13: official Workday endpoint verified; its technical intern facets
+    total 12 listings.'
+- name: Cerebras Systems
+  platform: greenhouse
+  slug: cerebrassystems
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: Cerence
+  platform: workday
+  slug: cerence
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: cerence
+  workday_site: Cerence
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Certify
+  platform: ashby
+  slug: certifyos
+  source_of_record: discover
+  last_verified: *id008
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (9 job(s))'
+- name: Cerved
+  platform: workday
+  slug: cerved
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: cerved
+  workday_site: cerved
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Chainalysis
+  platform: ashby
+  slug: chainalysis-careers
+  source_of_record: discover
+  last_verified: *id006
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    44 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: ChainGuard
+  platform: greenhouse
+  slug: chainguard
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Chamberlain Group
+  platform: workday
+  slug: chamberlain
+  source_of_record: discover
+  last_verified: *id007
+  workday_tenant: chamberlain
+  workday_site: Chamberlain_Group
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 2 posting(s), 1 kept after
+    the CS-internship screens'
+- name: CHANEL
+  platform: workday
+  slug: cc
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: cc
+  workday_site: chanelcareers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Character AI
+  platform: ashby
+  slug: character
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Chegg
+  platform: workday
+  slug: osv-chegg
+  source_of_record: discover
+  workday_tenant: osv-chegg
+  workday_site: chegg
+  workday_dc: wd5
+  enabled: false
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
+    422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: CHEP
+  platform: workday
+  slug: brambles
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: brambles
+  workday_site: Brambles_Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Chevron Corporation
+  platform: workday
+  slug: chevron
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: chevron
+  workday_site: University
+  workday_dc: wd5
+  workday_facet: workerSubType:3cd342d9804f01e3bd250104bb00c80e
+  notes: '2026-08-13: official Workday endpoint verified; its Intern (Fixed Term)
+    facet has 26 listings.'
+- name: Chewy
+  platform: custom_json
+  slug: chewy-phenom
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Phenom POST /widgets returned the complete unfiltered
+    board; applyUrl is direct.'
+  custom:
+    url: https://careers.chewy.com/widgets
+    method: POST
+    body:
+      lang: en_us
+      deviceType: desktop
+      country: us
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      employment_type: employmentType
+    page_param: from
+    page_size: 100
+    max_pages: 4
+- name: Chicago Trading Company
+  platform: greenhouse
+  slug: chicagotradingcampus
+  source_of_record: discover
+  last_verified: 2026-08-15
+  name_gate_exempt: true
+  notes: '2026-08-15: token taken from the employer''s own apply URL in feed postings;
+    the board publishes the name ''CTC Campus - Website'' (CTC = Chicago Trading Company,
+    a campus board), so the name gate rejects a correct caption'
+- name: Chime
+  platform: greenhouse
+  slug: chime
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Chime job pages link to the chime Greenhouse board;
+    the live board returned 58 postings.'
+- name: CIBC (campus)
+  platform: workday
+  slug: cibc
+  source_of_record: discover
+  last_verified: 2026-08-11
+  recheck_after: *id002
+  workday_tenant: cibc
+  workday_site: campus
+  workday_dc: wd3
+  notes: '2026-08-12: enabled for the bounded resumable Workday crawl. It receives
+    at most five listing requests per daily sync and retains progress; re-measure
+    yield in October'
+- name: Ciena
+  platform: workday
+  slug: ciena
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: ciena
+  workday_site: Careers
+  workday_dc: wd5
+  workday_facet: workerSubType:ac99acc6fb6b108fe66503995497ae7c
+  notes: '2026-08-13: official student careers page and public Workday endpoint verified;
+    its Intern (Fixed Term) facet has 11 listings, so the board completes in one request'
+- name: Cineplex
+  platform: workday
+  slug: cineplex
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: cineplex
+  workday_site: Cineplex
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Circle
+  platform: custom_json
+  slug: circle-phenom
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Phenom POST /widgets returned the complete unfiltered
+    Circle board.'
+  custom:
+    url: https://careers.circle.com/widgets
+    method: POST
+    body:
+      lang: en_us
+      deviceType: desktop
+      country: us
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      employment_type: employmentType
+    page_param: from
+    page_size: 100
+    max_pages: 4
+- name: Circle K
+  platform: workday
+  slug: circlek
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: circlek
+  workday_site: circlekstorejobs
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (6 posting(s), 0 kept)'
+- name: Circle K (corporate)
+  platform: custom_json
+  slug: circlek-phenom
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Phenom POST /widgets, keyword-scoped because the unfiltered board is 10,536
+    store postings; its category facet drops the one co-op.
+  custom:
+    url: https://workwithus.circlek.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: global
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: intern co-op stagiaire student
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 100
+    max_pages: 3
+- name: Circleback
+  platform: ashby
+  slug: circleback
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active software-engineering internship application
+    verifies the public Ashby board.'
+- name: CircleCI
+  platform: greenhouse
+  slug: circleci
+  source_of_record: discover
+  last_verified: *id009
+- name: Cirque du Soleil
+  platform: lever
+  slug: cirquedusoleil
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: lever publishes no board name, so the 81 bilingual postings
+    were read by hand and name the employer in their own text'
+- name: Cisco
+  platform: custom_json
+  slug: cisco
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: phenom. POST /widgets with keywords=intern, which is how the
+    employer''s own internships-and-co-ops page narrows the board'
+  custom:
+    url: https://careers.cisco.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: global
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 10
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: intern
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      employment_type: type
+    page_param: from
+    page_size: 10
+    max_pages: 20
+- name: Cisive
+  platform: workday
+  slug: cisive
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: cisive
+  workday_site: Cisive
+  workday_dc: wd108
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Citadel
+  platform: custom_json
+  slug: citadel
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Cloudflare serves only the sitemap to our client, and it is a strict subset
+    — 52 of the 77 the site lists — so the row is declared non-authoritative and never
+    closes.
+  custom:
+    url: https://www.citadel.com/career-sitemap.xml
+    format: sitemap
+    authoritative: false
+    fields:
+      title: title
+      id: id
+      url: loc
+- name: Citadel Securities
+  platform: custom_json
+  slug: citadelsecurities
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Same Cloudflare posture as Citadel; the sitemap carries 84 of the 107 the
+    site lists, so this row is non-authoritative too and never closes.
+  custom:
+    url: https://www.citadelsecurities.com/career-sitemap.xml
+    format: sitemap
+    authoritative: false
+    fields:
+      title: title
+      id: id
+      url: loc
+- name: Citigroup
+  platform: workday
+  slug: citi
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: citi
+  workday_site: '2'
+  workday_dc: wd5
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: City of Austin
+  platform: workday
+  slug: austintexas
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: austintexas
+  workday_site: COA_Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Clarity Innovations
+  platform: greenhouse
+  slug: clarityinnovates
+  source_of_record: discover
+  last_verified: *id009
+- name: Claroty
+  platform: custom_json
+  slug: claroty
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: endpoint found by browser-assisted discovery from https://www.claroty.com/careers,
+    then replayed over plain HTTP with no browser.'
+  custom:
+    url: https://teamme.link/api/projects/5c8c24e2-9b7a-4386-86e4-a12c9f81e6d0/positions
+    jobs_path: data
+    fields:
+      title: title
+      id: id
+      location: location
+      url: applyUrl
+      category: department
+- name: Clay
+  platform: ashby
+  slug: claylabs
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official jobs page embeds the named Ashby board.'
+- name: Clearco
+  platform: ashby
+  slug: clearco
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: ashby publishes no board name; the postings name Clearco in
+    their own text'
+- name: CLEAResult
+  platform: workday
+  slug: clearesult
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: clearesult
+  workday_site: CLEAResult_External_Careers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (2 posting(s), 0 kept)'
+- name: Clerkie
+  platform: greenhouse
+  slug: clerkie
+  source_of_record: discover
+  last_verified: *id009
+- name: ClickHouse
+  platform: greenhouse
+  slug: clickhouse
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
+    probe that matched the company name on the returned board'
+- name: Clinical Ink
+  platform: smartrecruiters
+  slug: clinicalink
+  source_of_record: discover
+  last_verified: &id010 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/clinicalink with 5 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
+- name: Cloud Chamber
+  platform: greenhouse
+  slug: cloudchamberen
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Cloud Linux
+  platform: workable
+  slug: cloudlinux-1
+  source_of_record: discover
+  last_verified: *id010
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched workable/cloudlinux-1 with 62 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: Cloudflare
+  platform: greenhouse
+  slug: cloudflare
+  source_of_record: discover
+  last_verified: *id009
+- name: Cloudforce
+  platform: lever
+  slug: go-cloudforce
+  source_of_record: discover
+  last_verified: *id008
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (7 job(s))'
+- name: CME Group
+  platform: workday
+  slug: cmegroup
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: cmegroup
+  workday_site: cme_careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: CMiC
+  platform: workable
+  slug: cmic
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: CN
+  platform: custom_json
+  slug: cn
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Cornerstone; the career page hands every visitor a JWT, and careerSiteId
+    1 is the union of its sites 3, 4 and 5.
+  custom:
+    url: https://us.api.csod.com/rec-job-search/external/jobs
+    method: POST
+    body:
+      careerSiteId: 1
+      careerSitePageId: 1
+      pageNumber: 1
+      pageSize: 25
+      cultureId: 1
+      cultureName: en-US
+      searchText: ''
+      states: []
+      countryCodes: []
+      cities: []
+      placeID: ''
+      radius: null
+      postingsWithinDays: null
+      customFieldCheckboxKeys: []
+      customFieldDropdowns: []
+      customFieldRadios: []
+    handshake_url: https://cn360.csod.com/ux/ats/careersite/6/home?c=cn360&lang=en-US
+    token_pattern: '"token":"([A-Za-z0-9._-]+)"'
+    token_header: Authorization
+    token_prefix: 'Bearer '
+    jobs_path: data.requisitions
+    fields:
+      title: displayJobTitle
+      id: requisitionId
+      location: locations
+      description: externalDescription
+    url_template: https://cn360.csod.com/ux/ats/careersite/6/home/requisition/{id}?c=cn360
+    page_param: pageNumber
+    page_size: 25
+    page_start: 1
+    page_step: 1
+    max_pages: 8
+- name: CNO Financial Group
+  platform: workday
+  slug: cnoinc
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: cnoinc
+  workday_site: careers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (4 posting(s), 0 kept)'
+- name: Co Active Systems
+  platform: greenhouse
+  slug: coactivesystems
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: Cockroach Labs
+  platform: greenhouse
+  slug: cockroachlabs
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
+    probe that matched the company name on the returned board'
+- name: Codeage
+  platform: smartrecruiters
+  slug: codeage
+  source_of_record: discover
+  last_verified: *id005
+- name: Cofomo
+  platform: custom_json
+  slug: cofomo
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: endpoint found by browser-assisted discovery from https://www.cofomo.com/jobs,
+    then replayed over plain HTTP with no browser.'
+  custom:
+    url: https://www.cofomo.com/en/jobs.json?page=1&jobCategory=&q=&orderBy=desc
+    jobs_path: data
+    fields:
+      title: title
+      id: id
+      location: jobLocation
+      url: url
+      employment_type: jobType
+    page_param: page
+    page_size: 10
+    max_pages: 20
+- name: Cogeco
+  platform: workday
+  slug: cogeco
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: cogeco
+  workday_site: Cogeco_Careers
+  workday_dc: wd3
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Cohere
+  platform: ashby
+  slug: cohere
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official careers page and applicant privacy notice identify
+    the public Ashby board; it includes a current research internship'
+- name: Cohesity
+  platform: workday
+  slug: cohesity
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: cohesity
+  workday_site: cohesity_careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Coinbase
+  platform: greenhouse
+  slug: coinbase
+  source_of_record: openjobs
+  last_verified: *id009
+- name: Cold Iron Studios
+  platform: breezy
+  slug: cold-iron-studios
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
+- name: ComeOn Group
+  platform: workable
+  slug: comeon-group
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: CommerceIQ
+  platform: greenhouse
+  slug: commerceiq
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Commonwealth Fusion Systems
+  platform: lever
+  slug: cfsenergy
+  source_of_record: discover
+  last_verified: 2026-08-20
+  name_gate_exempt: true
+  notes: '2026-08-20: the owner supplied this exact lever board URL, which is the
+    provenance lever cannot give because it publishes no board name; 66 postings.'
+- name: Composio
+  platform: ashby
+  slug: composio
+  source_of_record: discover
+  last_verified: *id008
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (34 job(s))'
+- name: Compulsion Games
+  platform: bamboohr
+  slug: compulsiongames
+  source_of_record: discover
+  last_verified: 2026-08-18
+  name_gate_exempt: true
+  notes: '2026-08-18: the human check this row was waiting for is done - the owner
+    supplied compulsiongames.bamboohr.com/careers directly, which is the employer
+    own board.'
+- name: Confluent
+  platform: ashby
+  slug: confluent
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the public Ashby board is named Confluent and returned live
+    postings.'
+- name: conga
+  platform: greenhouse
+  slug: conga
+  source_of_record: openjobs
+  last_verified: *id004
+- name: ConnectPrep
+  platform: workable
+  slug: connectprep
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: ConocoPhillips
+  platform: workday
+  slug: conocophillips
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: conocophillips
+  workday_site: External
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Constellation Software (Perseus)
+  platform: workday
+  slug: talentmanagementsolution
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: talentmanagementsolution
+  workday_site: perseus-careers
+  workday_dc: wd3
+  notes: Perseus is Constellation's operating group; the holding company itself publishes
+    no board.
+- name: Constellation Space
+  platform: ashby
+  slug: constellationspace
+  source_of_record: discover
+  last_verified: *id008
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: CookUnity
+  platform: greenhouse
+  slug: cookunity
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Cooper Companies
+  platform: oracle_cloud
+  slug: hcjy
+  source_of_record: discover
+  last_verified: *id007
+  oracle_host: hcjy.fa.us2.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 4 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Copart
+  platform: workday
+  slug: copart
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: copart
+  workday_site: copart
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Copperleaf
+  platform: smartrecruiters
+  slug: IFS1
+  source_of_record: discover
+  last_verified: 2026-08-17
+  name_gate_exempt: true
+  notes: '2026-08-17: Copperleaf was acquired by IFS and its postings live on the
+    IFS SmartRecruiters board, so the name gate rejects a correct row — the board
+    names itself IFS.'
+- name: Core & Main
+  platform: workday
+  slug: coreandmain
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: coreandmain
+  workday_site: coreandmain
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Corning
+  platform: custom_json
+  slug: corning
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: SuccessFactors RMK; /rss.xml carries all 1,131 postings in 15MB,
+    under the 32MB ceiling.'
+  custom:
+    url: https://corningjobs.corning.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Corpay
+  platform: workday
+  slug: corpay
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: corpay
+  workday_site: ext_001
+  workday_dc: wd103
+  workday_facet: workerSubType:2187176562f010018ae3c3dc64300000
+  notes: '2026-08-13: official Workday endpoint verified; its Working Student facet
+    has one listing.'
+- name: Cotiviti
+  platform: icims
+  slug: cotiviti
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Couchbase
+  platform: greenhouse
+  slug: couchbaseinc
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
+    probe that matched the company name on the returned board'
+- name: Coupa
+  platform: lever
+  slug: coupa
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Coursera
+  platform: greenhouse
+  slug: coursera
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Coveo
+  platform: greenhouse
+  slug: coveoen
+  source_of_record: discover
+  last_verified: *id009
+- name: Coveo (FR)
+  platform: greenhouse
+  slug: coveofr
+  source_of_record: discover
+  last_verified: 2026-08-08
+  name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''Coveo Solutions''; the name gate
+    rejects this caption, and the board is confirmed correct'
+- name: Covestro
+  platform: workday
+  slug: covestro
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: covestro
+  workday_site: cov_external
+  workday_dc: wd3
+  workday_facet: workerSubType:ff1397ebecb201c5020ff2234a31c00f,0849407434d40125f8aaac0ff4006acd
+  notes: '2026-08-13: official Workday endpoint verified; its student/intern facets
+    total 27 listings.'
+- name: CPI Card Group
+  platform: icims
+  slug: cpicardgroup
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: CPKC
+  platform: custom_json
+  slug: cpkc
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: SuccessFactors RMK; /rss.xml returned 230 postings, the same Google-jobs
+    shape as Bombardier.
+  custom:
+    url: https://careers.cpr.ca/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: CPP Investments
+  platform: workday
+  slug: cppib
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: cppib
+  workday_site: cppinvestments
+  workday_dc: wd10
+  notes: Coordinates from the employer's own careers URL; the board answered with
+    63 postings.
+- name: Creatify Lab
+  platform: ashby
+  slug: creatify
+  source_of_record: discover
+  last_verified: *id008
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (8 job(s))'
+- name: Credo Semiconductor
+  platform: custom_json
+  slug: credo
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: HiBob board whose api answers 406, but the employer''s own page
+    server-renders every row; the hrefs end in /apply so slugid would collapse them
+    and id is left to the url.'
+  custom:
+    url: https://credosemi.com/about-credo/careers/
+    format: html
+    row_selector: tr.job-main-row
+    fields:
+      title: td:nth-of-type(1)
+      department: td:nth-of-type(2)
+      location: td:nth-of-type(3)
+      url: a[href*="hibob.com/jobs/"]::attr(href)
+- name: Cresta
+  platform: greenhouse
+  slug: cresta
+  source_of_record: discover
+  last_verified: *id009
+- name: Critical mass
+  platform: greenhouse
+  slug: criticalmass
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Croesus
+  platform: custom_json
+  slug: croesus
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Cezanne/Intervieweb board, server-rendered with no JSON or RSS
+    contract, so the page itself is the listing.'
+  custom:
+    url: https://cezanneondemand.intervieweb.it/croesus/en/career
+    format: html
+    row_selector: div.vacancy__header
+    fields:
+      title: div.vacancy__title h3
+      url: div.vacancy__title a::attr(href)
+      location: span.subtitle__informations[title="Location"]
+      category: span.subtitle__informations[title="Functional Area"]
+- name: Croix Bleue
+  platform: workday
+  slug: canassurance
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: canassurance
+  workday_site: Croix_Bleue_Career_Site
+  workday_dc: wd10
+  notes: Coordinates from the employer's own careers URL; a four-posting Quebec board,
+    all in French.
+- name: CrowdStrike
+  platform: workday
+  slug: crowdstrike
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: crowdstrike
+  workday_site: crowdstrikecareers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Crowe
+  platform: workday
+  slug: crowe
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: crowe
+  workday_site: external_careers
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: CTGT
+  platform: ashby
+  slug: ctgt
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active software-engineering internship application
+    verifies the public Ashby board.'
+- name: Cubic corporation
+  platform: workday
+  slug: cubic
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: cubic
+  workday_site: cubic_global_careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: CuspAI
+  platform: ashby
+  slug: cuspai
+  source_of_record: discover
+  last_verified: *id011
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (15 job(s))'
+- name: Cybereason
+  platform: greenhouse
+  slug: cybereason
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers markup exposes the Cybereason Greenhouse board.'

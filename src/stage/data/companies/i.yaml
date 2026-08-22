@@ -1,0 +1,503 @@
+- name: iA Financial Group
+  platform: workday
+  slug: ia
+  source_of_record: discover
+  last_verified: &id007 2026-08-18
+  workday_tenant: ia
+  workday_site: Professional
+  workday_dc: wd3
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: IBKR External
+  platform: greenhouse
+  slug: ibkrexternal
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: IBM
+  platform: custom_json
+  slug: ibm
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-captured search request; field_keyword_18 is IBM''s own
+    Internship facet and the aggregations were dropped because they only feed the
+    facet sidebar.'
+  custom:
+    url: https://www-api.ibm.com/search/api/v2
+    method: POST
+    body:
+      appId: careers
+      scopes:
+      - careers2
+      query:
+        bool:
+          must: []
+      post_filter:
+        term:
+          field_keyword_18: Internship
+      size: 30
+      sort:
+      - _score: desc
+      - pageviews: desc
+      lang: zz
+      localeSelector: {}
+      sm:
+        query: ''
+        lang: zz
+      _source:
+      - _id
+      - title
+      - url
+      - description
+      - language
+      - field_keyword_05
+      - field_keyword_08
+      - field_keyword_18
+      - field_keyword_19
+    headers:
+      Origin: https://www.ibm.com
+      Referer: https://www.ibm.com/
+    jobs_path: hits.hits
+    fields:
+      title: _source.title
+      id: _id
+      url: _source.url
+      description: _source.description
+      location: _source.field_keyword_19
+      category: _source.field_keyword_08
+      employment_type: _source.field_keyword_18
+    page_param: from
+    page_size: 30
+    page_step: 30
+    max_pages: 12
+- name: Icon Creative
+  platform: bamboohr
+  slug: iconcreative
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 25 job(s)'
+- name: ideogram
+  platform: ashby
+  slug: ideogram
+  source_of_record: openjobs
+  last_verified: *id001
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 6 job(s)'
+- name: IDEXX
+  platform: workday
+  slug: idexx
+  source_of_record: discover
+  workday_tenant: idexx
+  workday_site: IDEXX
+  workday_dc: wd1
+  enabled: false
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
+    422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: IDEXX (Phenom)
+  platform: custom_json
+  slug: idexx-phenom
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: supplied by the owner. The Workday row for this employer is
+    parked; the live board is Phenom.'
+  custom:
+    url: https://careers.idexx.com/widgets
+    method: POST
+    body:
+      lang: en_us
+      deviceType: desktop
+      country: us
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 10
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: intern
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 10
+    max_pages: 4
+- name: iFLIP4
+  platform: smartrecruiters
+  slug: iflip4
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/iflip4 with 29 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: IGG
+  platform: bamboohr
+  slug: igg
+  source_of_record: openjobs
+  last_verified: *id001
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 6 job(s)'
+- name: iHeartMedia
+  platform: workday
+  slug: iheartmedia
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: iheartmedia
+  workday_site: External_iHM
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (5 posting(s), 0 kept)'
+- name: Illumina
+  platform: workday
+  slug: illumina
+  source_of_record: openjobs
+  last_verified: &id010 2026-08-14
+  recheck_after: &id006 2026-10-01
+  workday_tenant: illumina
+  workday_site: illumina-careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Image Engine
+  platform: bamboohr
+  slug: imageengine
+  source_of_record: openjobs
+  last_verified: *id001
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 17 job(s)'
+- name: IMC
+  platform: greenhouse
+  slug: imc
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+- name: Inbulks
+  platform: smartrecruiters
+  slug: inbulkscorp
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+- name: Incident IQ
+  platform: greenhouse
+  slug: incidentiq
+  source_of_record: discover
+  last_verified: *id002
+- name: Indigo Books
+  platform: smartrecruiters
+  slug: indigobooksmusic
+  source_of_record: discover
+  last_verified: &id004 2026-08-17
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Infineon
+  platform: custom_json
+  slug: infineon
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: Eightfold tenant; url_template added after 6 kept postings were found pointing
+    at the listing API instead of the job page.
+  custom:
+    url: https://jobs.infineon.com/api/pcsx/search?domain=infineon.com&query=&location=&start=0&
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: locations
+      category: department
+    url_template: https://jobs.infineon.com/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: InfiniteQuant
+  platform: smartrecruiters
+  slug: infinitequant
+  source_of_record: discover
+  last_verified: *id003
+- name: InfluxData
+  platform: ashby
+  slug: influxdata
+  source_of_record: discover
+  last_verified: *id004
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    4 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Infojini
+  platform: smartrecruiters
+  slug: infojiniinc1
+  source_of_record: discover
+  last_verified: &id005 2026-08-16
+  enabled: false
+  notes: '2026-08-16: IT staffing agency: posts client roles rather than its own,
+    so its rows are third-hand data.'
+- name: ING
+  platform: workday
+  slug: ing
+  source_of_record: discover
+  last_verified: &id008 2026-08-14
+  workday_tenant: ing
+  workday_site: icsgblcor
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Inherent
+  platform: ashby
+  slug: inherent
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (6 job(s))'
+- name: Inizio
+  platform: greenhouse
+  slug: inizio
+  source_of_record: discover
+  last_verified: *id002
+- name: Insitro
+  platform: ashby
+  slug: insitro
+  source_of_record: discover
+  last_verified: 2026-08-17
+  name_gate_exempt: true
+  notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
+    careers page and the board answered with postings, but ashby publishes no board
+    name, so provenance is the evidence rather than a name match'
+- name: Instacart
+  platform: greenhouse
+  slug: instacart
+  source_of_record: openjobs
+  last_verified: *id002
+- name: InstaLILY
+  platform: greenhouse
+  slug: instalilyai
+  source_of_record: discover
+  last_verified: *id002
+- name: Instead
+  platform: greenhouse
+  slug: instead
+  source_of_record: discover
+  last_verified: *id002
+- name: Institute of Foundation Models
+  platform: lever
+  slug: ifm-us
+  source_of_record: discover
+  last_verified: &id009 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (44 job(s))'
+- name: Intact
+  platform: workday
+  slug: intactfc
+  source_of_record: discover
+  last_verified: 2026-08-16
+  recheck_after: *id006
+  workday_tenant: intactfc
+  workday_site: intactfc
+  workday_dc: wd3
+  notes: '2026-08-16: un-parked. The 2026-08-11 reason was a budget argument against
+    a 120-request Workday ceiling that is now 732.'
+- name: Integra FEC
+  platform: greenhouse
+  slug: integra
+  source_of_record: discover
+  last_verified: *id002
+- name: Intel
+  platform: workday
+  slug: intel
+  source_of_record: openjobs
+  last_verified: 2026-08-03
+  workday_tenant: intel
+  workday_site: External
+  workday_dc: wd1
+- name: Intelcom
+  platform: workday
+  slug: intelcomgroup
+  source_of_record: discover
+  last_verified: *id007
+  workday_tenant: intelcomgroup
+  workday_site: Intelcom
+  workday_dc: wd3
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Interac
+  platform: workday
+  slug: interac
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: interac
+  workday_site: Interac
+  workday_dc: wd3
+  notes: Coordinates from the employer's own careers URL; the board answered with
+    36 postings.
+- name: Interactive Brokers
+  platform: custom_json
+  slug: dayforce-ibgllc
+  source_of_record: discover
+  last_verified: 2026-08-18
+  rate_profile: conservative
+  notes: 'Dayforce, reached by sending the /api/auth/csrf token as x-csrf-token; no
+    stable per-posting URL exists so apply_url is the board page. 2026-08-21: two
+    boards on this host answered 403 in one run, so the row is pinned conservative.'
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/ibgllc/jobposting/search
+    method: POST
+    body:
+      clientNamespace: ibgllc
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/ibgllc/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+    max_pages: 20
+- name: Interco
+  platform: smartrecruiters
+  slug: interco
+  source_of_record: discover
+  last_verified: *id003
+- name: Interdigital
+  platform: workday
+  slug: interdigital
+  source_of_record: discover
+  last_verified: *id008
+  workday_tenant: interdigital
+  workday_site: InterDigital_Intern
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: International Rescue Committee (IRC)
+  platform: workday
+  slug: theirc
+  source_of_record: discover
+  last_verified: *id008
+  workday_tenant: theirc
+  workday_site: External_Careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Internship
+  platform: ashby
+  slug: interplay
+  source_of_record: discover
+  last_verified: *id009
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (13 job(s))'
+- name: Intropic
+  platform: lever
+  slug: intropic
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (11 job(s))'
+- name: Intuit
+  platform: custom_json
+  slug: intuit-avature
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied Avature facets returned two current co-op postings
+    through the server-rendered listing.'
+  custom:
+    url: https://jobs.intuit.com/search-jobs?acm=9205024,9205760,9205744&alrpm=ALL&ascf=%5B%7B%22key%22%3A%22ALL%22%2C%22value%22%3A%22%22%7D%5D
+    format: html
+    row_selector: li[data-intuit-jobid]
+    fields:
+      title: h2
+      id: ::attr(data-intuit-jobid)
+      url: a.sr-item::attr(href)
+      location: span.job-location
+      category: ::attr(data-category)
+    page_param: p
+    page_size: 15
+    page_start: 1
+    page_step: 1
+    max_pages: 2
+- name: Intuitive Surgical
+  platform: smartrecruiters
+  slug: intuitive
+  source_of_record: discover
+  last_verified: *id003
+- name: Investissement Québec
+  platform: workday
+  slug: investquebec
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: investquebec
+  workday_site: ext
+  workday_dc: wd10
+  notes: Coordinates from the employer's own careers URL; 36 postings, entirely French
+    and Quebec-based.
+- name: Inworld AI
+  platform: greenhouse
+  slug: inworldai
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: Ion
+  platform: lever
+  slug: ion
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Iron Mountain
+  platform: workday
+  slug: ironmountain
+  source_of_record: openjobs
+  last_verified: *id010
+  recheck_after: *id006
+  workday_tenant: ironmountain
+  workday_site: iron-mountain-jobs
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: ISG
+  platform: jobvite
+  slug: isg-one
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
+    redirects to its own /careers page, so the board moved off Jobvite'
+- name: ISS Stoxx
+  platform: workday
+  slug: issgovernance
+  source_of_record: openjobs
+  last_verified: *id010
+  recheck_after: *id006
+  workday_tenant: issgovernance
+  workday_site: ISScareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Ivy Tech Community College
+  platform: workday
+  slug: ivytech
+  source_of_record: discover
+  last_verified: *id008
+  workday_tenant: ivytech
+  workday_site: ivy_tech_careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'

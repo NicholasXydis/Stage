@@ -1,0 +1,497 @@
+- name: D. E. Shaw
+  platform: custom_json
+  slug: deshaw
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: Server-rendered with no job JSON anywhere, but the page embeds __NEXT_DATA__
+    with a props.pageProps.internships array, read through extract.
+  custom:
+    url: https://www.deshaw.com/careers/internships
+    extract: __NEXT_DATA__
+    jobs_path: props.pageProps.internships
+    fields:
+      title: data.displayName
+      id: data.id
+      location: office.0.name
+      description: data.jobDescription.websiteDescription
+      category: data.department.name
+    url_template: https://www.deshaw.com/careers/{id}
+- name: D2L
+  platform: greenhouse
+  slug: d2l
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Its early-talent page server-renders greenhouse job ids, and the native board
+    carries all 24 postings.
+- name: Dallas College
+  platform: workday
+  slug: dallascollege
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: dallascollege
+  workday_site: Dallas_College_Careers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (50 posting(s), 0 kept)'
+- name: Damen Shiprepair Harlingen
+  platform: workday
+  slug: damen
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: damen
+  workday_site: damen_careers
+  workday_dc: wd3
+  workday_facet: workerSubType:1ab29651b443102311bddfb190170002,1ab29651b443102311bddf16ba660001
+  notes: '2026-08-13: official Workday endpoint verified; its intern and dual-student
+    facets total 12 listings.'
+- name: Dark Slope
+  platform: bamboohr
+  slug: darkslope
+  source_of_record: openjobs
+  last_verified: &id002 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 1 job(s)'
+- name: Darktrace
+  platform: workday
+  slug: darktrace
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: darktrace
+  workday_site: DarktaceExternal
+  workday_dc: wd3
+  notes: '2026-08-21: the site id is spelled DarktaceExternal by the employer and
+    is carried verbatim'
+- name: Dassault Systemes
+  platform: custom_json
+  slug: dassault-systemes
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: closed for good — no sitemap, no rss, no endpoint in any shipped
+    bundle, and the owner confirmed a DevTools capture finds no reusable listing request.'
+  custom:
+    url: https://www.3ds.com/careers/jobs
+    fields:
+      title: title
+      id: id
+- name: Databricks
+  platform: greenhouse
+  slug: databricks
+  source_of_record: manual
+  last_verified: &id001 2026-08-14
+- name: Datadog
+  platform: greenhouse
+  slug: datadog
+  source_of_record: discover
+  last_verified: *id001
+- name: DataRobot
+  platform: workday
+  slug: datarobot
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+  workday_tenant: datarobot
+  workday_site: DataRobot_External_Careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: DataVisor
+  platform: workable
+  slug: datavisor-jobs
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Dayshape
+  platform: workable
+  slug: dayshape
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched workable/dayshape with 8 job(s) and the board named itself, so it is polled
+    directly instead of secondhand'
+- name: Decagon
+  platform: ashby
+  slug: decagon
+  source_of_record: openjobs
+  last_verified: *id002
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 128 job(s)'
+- name: Dedalus Labs
+  platform: ashby
+  slug: dedalus-labs
+  source_of_record: discover
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (7 job(s))'
+- name: deel.
+  platform: ashby
+  slug: deel
+  source_of_record: openjobs
+  enabled: false
+  notes: The ashby token answers with zero jobs, which is a placeholder rather than
+    a board.
+- name: Deepgram
+  platform: ashby
+  slug: deepgram
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active software-engineering internship application
+    verifies the public Ashby board.'
+- name: Dell
+  platform: oracle_cloud
+  slug: dell
+  source_of_record: discover
+  last_verified: 2026-08-20
+  oracle_host: enterpriseplatform.dell.com
+  oracle_site: careers
+  oracle_keyword: ''
+  notes: '2026-08-20: Oracle recruiting on a vanity host; the adapter pages inside
+    the finder, which is the only offset Oracle honours, so this row now sees all
+    438 rather than the first 200.'
+- name: Deloitte
+  platform: custom_json
+  slug: deloitte-ca
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: SuccessFactors listings are session-gated, but /sitemap.xml is really a Google-jobs
+    RSS feed carrying the whole board.
+  custom:
+    url: https://careers.deloitte.ca/sitemap.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: Delta Air Lines
+  platform: avature
+  slug: delta
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-14: no Avature adapter and too few rows to justify one; custom_json
+    is the route once the JSON request URL is captured from the careers page'
+- name: Delta Dental
+  platform: workday
+  slug: rhsc
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: rhsc
+  workday_site: delta_dental_of_michigan
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: dentsu
+  platform: workday
+  slug: dentsuaegis
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: dentsuaegis
+  workday_site: dan_global
+  workday_dc: wd3
+  workday_facet: workerSubType:a1d49fbf518a01826699bf0c63153d22
+  notes: '2026-08-13: official Workday endpoint verified; its student/intern facet
+    has 14 listings.'
+- name: DEPT
+  platform: greenhouse
+  slug: dept
+  source_of_record: openjobs
+  last_verified: &id006 2026-08-14
+- name: Desjardins
+  platform: workday
+  slug: desjardins
+  source_of_record: discover
+  last_verified: 2026-08-16
+  recheck_after: &id004 2026-10-01
+  workday_tenant: desjardins
+  workday_site: Desjardins
+  workday_dc: wd10
+  notes: '2026-08-16: un-parked. The 2026-08-11 reason was a budget argument against
+    a 120-request Workday ceiling that is now 732.'
+- name: Desjardins (students)
+  platform: workday
+  slug: desjardins
+  source_of_record: discover
+  last_verified: 2026-08-16
+  recheck_after: *id004
+  workday_tenant: desjardins
+  workday_site: EtudiantsetStagiaires
+  workday_dc: wd10
+  notes: '2026-08-16: un-parked with the rest of the tenant — the 2026-08-11 budget
+    reason expired when the Workday ceiling went 120 to 732'
+- name: DEUNA
+  platform: lever
+  slug: deuna
+  source_of_record: discover
+  last_verified: &id005 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (14 job(s))'
+- name: Dexmate
+  platform: ashby
+  slug: dexmate
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (36 job(s))'
+- name: Dialogue
+  platform: ashby
+  slug: dialogueai
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Dialpad AI
+  platform: greenhouse
+  slug: dialpad
+  source_of_record: openjobs
+  last_verified: *id006
+- name: Digital extremes
+  platform: greenhouse
+  slug: digitalextremes
+  source_of_record: openjobs
+  last_verified: *id006
+- name: Digs
+  platform: greenhouse
+  slug: digs
+  source_of_record: discover
+  last_verified: *id001
+- name: Diligent Corporation
+  platform: greenhouse
+  slug: diligentcorporation
+  source_of_record: openjobs
+  last_verified: *id006
+- name: Discord
+  platform: greenhouse
+  slug: discord
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Disney
+  platform: custom_json
+  slug: disney
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: TalentBrew; scoped to the employer's own internship category path rather
+    than its whole global board.
+  custom:
+    url: https://www.disneycareers.com/en/search-jobs/internship/391/1
+    format: html
+    row_selector: '#search-results-list li'
+    fields:
+      title: h2
+      id: a::attr(data-job-id)
+      url: a::attr(href)
+      location: .job-location
+      category: .job-category
+    page_param: p
+    page_size: 1
+    page_start: 1
+    page_step: 1
+    max_pages: 12
+- name: Diversified Automation
+  platform: lever
+  slug: diversified-automation
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active hardware-engineering co-op application verifies
+    the public Lever board.'
+- name: Dmg Media
+  platform: greenhouse
+  slug: dmgmedia
+  source_of_record: discover
+  last_verified: 2026-08-14
+  notes: '2026-08-14: seen in feed postings but absent from the registry; discover
+    matched greenhouse/dmgmedia with 50 job(s) and the board named itself, so it is
+    polled directly instead of secondhand'
+- name: DNEG
+  platform: custom_json
+  slug: double-negative-visual-effects
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: The jobvite board is server-rendered, so the listing is read as html from
+    /search?nl=1 rather than through an API that does not exist.
+  custom:
+    url: https://jobs.jobvite.com/double-negative-visual-effects/search?nl=1
+    format: html
+    row_selector: li.mb1
+    fields:
+      title: div.jv-job-list-name
+      location: div.jv-job-list-location
+      id: a.jv-job-item::slugid(href)
+      url: a.jv-job-item::attr(href)
+- name: Docebo
+  platform: ashby
+  slug: docebo
+  source_of_record: discover
+  last_verified: 2026-08-17
+  name_gate_exempt: true
+  notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
+    careers page and the board answered with postings, but ashby publishes no board
+    name, so provenance is the evidence rather than a name match'
+- name: Docker
+  platform: ashby
+  slug: docker
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page embeds the named Docker Ashby board.'
+- name: Doctolib
+  platform: greenhouse
+  slug: doctolib
+  source_of_record: discover
+  last_verified: *id001
+- name: Doctors Without Borders
+  platform: greenhouse
+  slug: msfcareers
+  source_of_record: discover
+  last_verified: *id001
+- name: Docugami
+  platform: greenhouse
+  slug: docugami
+  source_of_record: discover
+  last_verified: *id001
+- name: Don't Nod
+  platform: smartrecruiters
+  slug: dontnod
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+- name: DoorDash
+  platform: greenhouse
+  slug: doordashusa
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official job pages link to the doordashusa Greenhouse board;
+    the live board returned 460 postings.'
+- name: Dow
+  platform: workday
+  slug: dow
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: dow
+  workday_site: externalcareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: DP World
+  platform: oracle_cloud
+  slug: ehpv
+  source_of_record: discover
+  last_verified: 2026-08-18
+  oracle_host: ehpv.fa.em2.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-18: host and site supplied by the owner. The candidate endpoint
+    answers 200 with a 522-posting board; keyword=internship narrows it to 8, which
+    is one page'
+- name: DraftKings
+  platform: workday
+  slug: draftkings
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+  recheck_after: *id004
+  workday_tenant: draftkings
+  workday_site: DraftKings
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Dragos
+  platform: greenhouse
+  slug: dragos
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied URL is the employer’s Greenhouse board and returned
+    live postings.'
+- name: Draper
+  platform: workday
+  slug: draper
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: draper
+  workday_site: Draper_Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Dremio
+  platform: greenhouse
+  slug: dremio
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page embeds the Dremio Greenhouse board.'
+- name: Dropbox
+  platform: greenhouse
+  slug: dropbox
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Droyd Robotics
+  platform: ashby
+  slug: droyd
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active machine-learning internship application verifies
+    the public Ashby board.'
+- name: Druide informatique
+  platform: custom_json
+  slug: druide
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: closed for good — its only board is Workland, whose jobs service
+    is alive but names no public route; the owner confirmed a DevTools capture finds
+    no reusable request.'
+  custom:
+    url: https://atlas.workland.com/careers/druide/jobs
+    fields:
+      title: title
+      id: id
+- name: DRW
+  platform: greenhouse
+  slug: drweng
+  source_of_record: discover
+  last_verified: *id001
+- name: Dryft
+  platform: ashby
+  slug: dryft
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (5 job(s))'
+- name: dun bradstreet
+  platform: lever
+  slug: dnb
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Duolingo
+  platform: greenhouse
+  slug: duolingo
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Duracell
+  platform: oracle_cloud
+  slug: fa-ewub-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: fa-ewub-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_26
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: DV Trading
+  platform: greenhouse
+  slug: dvtrading
+  source_of_record: discover
+  last_verified: *id001
+- name: DXC Technology
+  platform: workday
+  slug: dxctechnology
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: dxctechnology
+  workday_site: DXCJobs
+  workday_dc: wd1
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'

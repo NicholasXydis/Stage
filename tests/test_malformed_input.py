@@ -239,7 +239,13 @@ def test_the_real_registry_survives_a_rewrite_without_losing_a_field() -> None:
     from stage.companies import write_registry
     from stage.paths import registry_path
 
-    before = yaml_module.safe_load(registry_path().read_text(encoding="utf-8"))
+    source = registry_path()
+    files = sorted(source.glob("*.yaml")) if source.is_dir() else [source]
+    before = [
+        row
+        for file in files
+        for row in yaml_module.safe_load(file.read_text(encoding="utf-8")) or []
+    ]
     rows = load_companies()
     assert len(rows) == len(before)
 

@@ -1,0 +1,61 @@
+- name: X (Twitter)
+  platform: workday
+  slug: twitter
+  source_of_record: openjobs
+  recheck_after: 2026-10-01
+  workday_tenant: twitter
+  workday_site: X
+  workday_dc: wd5
+  enabled: false
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
+    422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: X-energy
+  platform: workday
+  slug: xenergy
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: xenergy
+  workday_site: X-energyUS
+  workday_dc: wd5
+  notes: '2026-08-17: verified by scratch sync, 97 postings returned, 0 internships
+    on the day of adoption'
+- name: xAI
+  platform: greenhouse
+  slug: xai
+  source_of_record: discover
+  last_verified: 2026-08-18
+  name_gate_exempt: true
+  notes: careers.x.com redirects to x.ai/careers, whose greenhouse board is xai.
+- name: Xantium
+  platform: greenhouse
+  slug: xantium
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched greenhouse/xantium with 7 job(s) and the board named itself, so it is
+    polled directly instead of secondhand'
+- name: XPENG Motors
+  platform: greenhouse
+  slug: xpengmotors
+  source_of_record: discover
+  last_verified: 2026-08-14
+- name: Xsolla
+  platform: lever
+  slug: xsolla
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: XTX Markets
+  platform: custom_json
+  slug: xtx-markets
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: endpoint found by browser-assisted discovery from https://www.xtxmarkets.com/careers,
+    then replayed over plain HTTP with no browser.'
+  custom:
+    url: https://api.xtxcareers.com/jobs.json
+    jobs_path: jobs
+    fields:
+      title: title
+      id: id
+      location: location
+      url: absolute_url

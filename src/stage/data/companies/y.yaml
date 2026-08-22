@@ -1,0 +1,36 @@
+- name: Yahoo
+  platform: workday
+  slug: ouryahoo
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+  recheck_after: 2026-10-01
+  workday_tenant: ouryahoo
+  workday_site: careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Yield Guild Games
+  platform: breezy
+  slug: yield-guild-games
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
+- name: Yotta Labs
+  platform: ashby
+  slug: yotta
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: Younited
+  platform: lever
+  slug: younited
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (5 job(s))'

@@ -1,0 +1,402 @@
+- name: L3Harris
+  platform: custom_json
+  slug: l3harris
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: TalentBrew, server-rendered like BlackRock; its p parameter paginates and
+    page two shares no ids with page one.
+  custom:
+    url: https://careers.l3harris.com/en/search-jobs
+    format: html
+    row_selector: '#search-results-list li'
+    fields:
+      title: h2
+      id: a::attr(data-job-id)
+      url: a::attr(href)
+      location: .job-location
+      category: .job-category
+    page_param: p
+    page_size: 1
+    page_start: 1
+    page_step: 1
+    max_pages: 12
+- name: Lam Research
+  platform: custom_json
+  slug: lamresearch
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Eightfold tenant read from the careers page; filter_paygrade
+    is the publisher''s own intern facet, the same shape as the Eaton row.'
+  custom:
+    url: https://lamresearch.eightfold.ai/api/pcsx/search?domain=lamresearch.com&query=&sort_by=relevance&filter_paygrade=intern%2Fapprentice
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://lamresearch.eightfold.ai/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: Lambda
+  platform: ashby
+  slug: lambda
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 67 job(s)'
+- name: LangChain
+  platform: ashby
+  slug: langchain
+  source_of_record: openjobs
+  last_verified: *id001
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 101 job(s)'
+- name: Larian Studios
+  platform: lever
+  slug: larian
+  source_of_record: openjobs
+  last_verified: &id003 2026-08-04
+- name: Later
+  platform: greenhouse
+  slug: later
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+- name: Lattice Semiconductor
+  platform: workday
+  slug: latticesemi
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: latticesemi
+  workday_site: latticesemiconductorscareers
+  workday_dc: wd5
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL, not guessed.'
+- name: LaunchDarkly
+  platform: greenhouse
+  slug: launchdarkly
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Lawrence Livermore National Laboratory (LLNL)
+  platform: smartrecruiters
+  slug: llnl
+  source_of_record: discover
+  last_verified: &id005 2026-08-14
+- name: LAXIR
+  platform: smartrecruiters
+  slug: laxir1
+  source_of_record: discover
+  last_verified: &id002 2026-08-16
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/laxir1 with 10 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: Lazard
+  platform: oracle_cloud
+  slug: icbpjb
+  source_of_record: discover
+  last_verified: 2026-08-20
+  oracle_host: icbpjb.fa.ocs.oraclecloud.com
+  oracle_site: LazardStudentCareers
+  oracle_keyword: ''
+  notes: '2026-08-20: a student-only Oracle site, so the English keyword is pinned
+    off and the whole 94-row board is walked.'
+- name: LBC Studios
+  platform: bamboohr
+  slug: lbcstudiosca
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: Lead Venture
+  platform: jobvite
+  slug: leadventure
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/leadventure/jobs
+    server-renders all 16 postings, which is the contract this row polls'
+- name: Leidos
+  platform: workday
+  slug: leidos
+  source_of_record: discover
+  last_verified: &id006 2026-08-14
+  workday_tenant: leidos
+  workday_site: External
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Leland
+  platform: ashby
+  slug: leland
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (187 job(s))'
+- name: Liberty University
+  platform: workday
+  slug: liberty
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: liberty
+  workday_site: lu_job_board_staff
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (84 posting(s), 0 kept)'
+- name: Lightcast
+  platform: lever
+  slug: economicmodeling
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Lightspeed
+  platform: custom_json
+  slug: lightspeedhq
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: The greenhouse board is gone and ashby/lightspeed is a different company,
+    so the real board is the server-rendered listing on lightspeedhq.com/careers/openings.
+  custom:
+    url: https://www.lightspeedhq.com/careers/openings/
+    format: html
+    row_selector: li.job
+    fields:
+      title: span.job-title
+      location: span.job-office
+      department: span.job-dept
+      id: a::slugid(href)
+      url: a::attr(href)
+- name: Lightspeed (FR)
+  platform: greenhouse
+  slug: lightspeedhqfr
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: Lila Sciences
+  platform: greenhouse
+  slug: lilasciences
+  source_of_record: discover
+  last_verified: *id004
+- name: Lilt
+  platform: ashby
+  slug: lilt
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: ashby publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
+- name: Limetax
+  platform: ashby
+  slug: limetax
+  source_of_record: discover
+  last_verified: 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (11 job(s))'
+- name: Linear
+  platform: ashby
+  slug: linear
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: LinkedIn
+  platform: smartrecruiters
+  slug: linkedin3
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Liquid Development
+  platform: workable
+  slug: liquid-development
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Litmus
+  platform: greenhouse
+  slug: litmus46
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: Loblaw
+  platform: custom_json
+  slug: loblaw
+  source_of_record: discover
+  last_verified: 2026-08-19
+  enabled: false
+  notes: 296 pages of retail whose pagination is a path rather than a parameter, and
+    no category facet is honoured, so the volume is not worth the two CS roles.
+  custom:
+    url: https://careers.loblaw.ca/jobs
+    format: html
+    authoritative: false
+    row_selector: .results-list__item
+    fields:
+      title: .results-list__item-title--link
+      id: .results-list__item-title--link::attr(href)
+      url: .results-list__item-title--link::attr(href)
+      location: .results-list__item-street--label
+- name: Lockheed Martin
+  platform: custom_json
+  slug: lockheedmartin
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Eightfold fixes the page at 10, so the whole 1,252-position
+    board would cost 126 requests a refresh. Filtered to the owner''s query=internship
+    instead, which stops on a short page and so costs one request while Lockheed has
+    no interns posted.'
+  custom:
+    url: https://lockheedmartin.eightfold.ai/api/pcsx/search?domain=lockheedmartin.com&query=internship&sort_by=relevance
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://lockheedmartin.eightfold.ai/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 30
+- name: Logitech
+  platform: workday
+  slug: logitech
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: logitech
+  workday_site: logitech
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Lombard Odier
+  platform: workday
+  slug: lombardodier
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: lombardodier
+  workday_site: lombard_odier_careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: London stock Exchange
+  platform: workday
+  slug: lseg
+  source_of_record: openjobs
+  last_verified: *id006
+  recheck_after: 2026-10-01
+  workday_tenant: lseg
+  workday_site: Careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Los Alamos National Laboratory
+  platform: custom_json
+  slug: lanl
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the search page is client-side; /jobs-site.xml lists all 505
+    postings, with the slug ahead of a uuid.'
+  custom:
+    url: https://lanl.jobs/jobs-site.xml
+    format: sitemap
+    authoritative: false
+    row_filter: /jobdetails/
+    fields:
+      title: path2_title
+      id: path1
+      url: loc
+- name: Louisiana Blue
+  platform: workday
+  slug: bcbsla
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: bcbsla
+  workday_site: Generation_Blue
+  workday_dc: wd1
+  workday_facet: workerSubType:c705db17b0571036e207c48eba5796e4
+  notes: '2026-08-13: official Workday endpoint verified; its Intern facet has eight
+    listings.'
+- name: Louisiana State University (LSU)
+  platform: workday
+  slug: lsu
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: lsu
+  workday_site: lsuwaiver
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (1 posting(s), 0 kept)'
+- name: Loyalty Juggernaut
+  platform: bamboohr
+  slug: lji
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: LPL Financial Holdings
+  platform: workday
+  slug: lplfinancial
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: lplfinancial
+  workday_site: university
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Lucid Motors
+  platform: greenhouse
+  slug: lucidmotors
+  source_of_record: discover
+  last_verified: *id004
+- name: Lucidya
+  platform: workable
+  slug: lucidya
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: Lucky VR
+  platform: breezy
+  slug: lucky-vr
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
+- name: Ludia
+  platform: bamboohr
+  slug: ludia
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: bamboohr publishes no board name; its postings carry Ludia in
+    their own bilingual titles'
+- name: Lumeto
+  platform: bamboohr
+  slug: lumeto
+  source_of_record: openjobs
+  last_verified: *id001
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 1 job(s)'
+- name: Luminance
+  platform: workable
+  slug: luminance-1
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Lyft
+  platform: greenhouse
+  slug: lyft
+  source_of_record: discover
+  last_verified: *id004
+- name: Léger
+  platform: smartrecruiters
+  slug: leger2
+  source_of_record: discover
+  last_verified: *id002
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/leger2 with 10 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'

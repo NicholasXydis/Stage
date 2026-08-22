@@ -1,0 +1,800 @@
+- name: P&G - Procter & Gamble
+  platform: workday
+  slug: pg
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+  workday_tenant: pg
+  workday_site: '1000'
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: PagerDuty
+  platform: greenhouse
+  slug: pagerduty
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live PagerDuty Greenhouse
+    board.'
+- name: Palantir
+  platform: smartrecruiters
+  slug: palantir
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+- name: Palantir
+  platform: lever
+  slug: palantir
+  source_of_record: discover
+  last_verified: 2026-08-20
+  name_gate_exempt: true
+  notes: '2026-08-20: sibling of the smartrecruiters row, which carries 10 postings
+    to this board''s 308; adopted on apply-url provenance already in the corpus, since
+    lever publishes no name.'
+- name: Palo Alto Networks
+  platform: custom_json
+  slug: paloaltonetworks
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: TalentBrew read as html from /en/search-jobs with k=intern, the only filter
+    honoured, which cuts 87 pages to 1.
+  custom:
+    url: https://jobs.paloaltonetworks.com/en/search-jobs/?k=intern
+    format: html
+    row_selector: li.section29__search-results-li
+    fields:
+      title: h2.section29__search-results-job-title
+      location: span.section29__result-location
+      category: span.section29__result-category
+      id: a.section29__search-results-link::attr(data-job-id)
+      url: a.section29__search-results-link::attr(href)
+    page_param: p
+    page_size: 15
+    page_start: 1
+    page_step: 1
+    max_pages: 10
+- name: PanAgora
+  platform: workday
+  slug: empower
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: empower
+  workday_site: PanAgora
+  workday_dc: wd12
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (2 posting(s), 0 kept)'
+- name: Panasonic North America
+  platform: custom_json
+  slug: panasonic-na
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: iCIMS careers-home site, the same contract as the AMD row; this
+    is the North American board only.'
+  custom:
+    url: https://careers.na.panasonic.com/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    url_template: https://careers.na.panasonic.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
+- name: Parsons
+  platform: custom_json
+  slug: parsons
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: Server-rendered listing, but its search parameter is ignored and the unfiltered
+    page is 1.2MB of cleared defence roles, so the volume is not worth the yield.
+  custom:
+    url: https://jobs.parsons.com/career-search
+    format: html
+    authoritative: false
+    row_selector: .career20_top-wrapper
+    fields:
+      title: .heading-style-h4
+      category: .tag
+      id: a[data-action="view_job"]::attr(href)
+      url: a[data-action="view_job"]::attr(href)
+- name: Partly
+  platform: ashby
+  slug: partly.com
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (42 job(s))'
+- name: Patsnap
+  platform: lever
+  slug: patsnap
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (32 job(s))'
+- name: Payoneer
+  platform: greenhouse
+  slug: payoneer
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+- name: PayPal (Eightfold)
+  platform: custom_json
+  slug: paypal-eightfold
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: Eightfold tenant fetched unfiltered because all five intern filters are accepted
+    and ignored.
+  custom:
+    url: https://paypal.eightfold.ai/api/pcsx/search?domain=paypal.com&query=&start=0&num=10
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://paypal.eightfold.ai/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 14
+- name: PCL Construction
+  platform: custom_json
+  slug: pcl
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; /rss.xml carries all 409 postings, 31 of them student
+    or co-op terms.
+  custom:
+    url: https://careers.pcl.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: PDT Partners
+  platform: greenhouse
+  slug: pdtpartners
+  source_of_record: discover
+  last_verified: *id002
+- name: PEAK6
+  platform: custom_json
+  slug: peak6
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-captured Ongig request. The group_id index is multi-employer
+    — 40 of its 67 rows are Apex Fintech — so it is filtered to the PEAK6 subdivisions;
+    the apply url template is the one the site''s own bundle builds.'
+  custom:
+    url: https://text-analyzer.ongig.com/api/external/v2/jobs/search
+    method: POST
+    body:
+      query: ''
+      precision: 2
+      page:
+        size: 100
+        current: 1
+      filters:
+        all:
+        - any:
+          - live: 1
+        - any:
+          - group_id: 1767
+        - any:
+          - subdivision: PEAK6
+          - subdivision: PEAK6 Capital Management
+      result_fields:
+        title:
+          raw: {}
+        location:
+          raw: {}
+        req_id:
+          raw: {}
+        job_type:
+          raw: {}
+        content:
+          raw: {}
+        category:
+          raw: {}
+        url:
+          raw: {}
+        created_at:
+          raw: {}
+    headers:
+      Authorization: Bearer 1bb83b1b-7481-11df-bbeb-b11bb1cb11b4
+      Origin: https://peak6.com
+      Referer: https://peak6.com/
+    jobs_path: results
+    fields:
+      title: title.raw
+      id: url.raw
+      location: location.raw
+      description: content.raw
+      category: category.raw
+      employment_type: job_type.raw
+    url_template: https://peak6-prod.ongig.com/jobs/{id}
+    page_param: page.current
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 10
+- name: Pear VC
+  platform: ashby
+  slug: pear-vc
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (92 job(s))'
+- name: Pelmorex
+  platform: lever
+  slug: pelmorex
+  source_of_record: discover
+  last_verified: 2026-08-18
+  name_gate_exempt: true
+  notes: '2026-08-18: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (6 job(s))'
+- name: Peloton
+  platform: greenhouse
+  slug: peloton
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live Peloton Greenhouse
+    board.'
+- name: Penn Interactive
+  platform: greenhouse
+  slug: penninteractive
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+- name: Pennsylvania State University
+  platform: workday
+  slug: psu
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: psu
+  workday_site: PSU_Staff
+  workday_dc: wd1
+  workday_facet: workerSubType:5734019731720163878cbb30d04a3321
+  notes: '2026-08-13: official Workday endpoint verified; its Student facet has 15
+    listings.'
+- name: Penta Group
+  platform: lever
+  slug: pentagrp
+  source_of_record: discover
+  last_verified: &id006 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (5 job(s))'
+- name: pentair
+  platform: workday
+  slug: pentair
+  source_of_record: openjobs
+  last_verified: *id003
+  recheck_after: &id005 2026-10-01
+  workday_tenant: pentair
+  workday_site: Pentair_Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: People Can Fly
+  platform: smartrecruiters
+  slug: peoplecanfly
+  source_of_record: openjobs
+  last_verified: *id004
+- name: PepsiCo
+  platform: custom_json
+  slug: pepsico
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: keyword and category params are ignored but country is honoured,
+    so this row is the declared-partial Canadian slice of 328 rather than 2,802 rows'
+  custom:
+    url: https://www.pepsicojobs.com/api/jobs?country=Canada
+    authoritative: false
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      url: data.apply_url
+      location: data.full_location
+      description: data.description
+      category: data.category
+    page_param: page
+    page_size: 10
+    page_start: 1
+    page_step: 1
+    max_pages: 35
+- name: Peraton
+  platform: icims
+  slug: peraton
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Periodic Labs
+  platform: ashby
+  slug: periodic-labs
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (26 job(s))'
+- name: Perplexity AI
+  platform: ashby
+  slug: perplexity
+  source_of_record: discover
+  last_verified: 2026-08-14
+  notes: '2026-08-14: board token perplexity; Ashby API returns 99 jobs'
+- name: Perseus Group, Constellation Software
+  platform: workday
+  slug: talentmanagementsolution
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: talentmanagementsolution
+  workday_site: Perseus-careers1
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Persistent Systems
+  platform: icims
+  slug: persistentsystems
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Persona AI
+  platform: ashby
+  slug: persona.ai
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active teleoperation software-engineering internship
+    application verifies the public Ashby board.'
+- name: PGIM
+  platform: workday
+  slug: pru
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: pru
+  workday_site: pgim_careers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (70 posting(s), 0 kept)'
+- name: Philips
+  platform: workday
+  slug: philips
+  source_of_record: openjobs
+  last_verified: *id003
+  recheck_after: *id005
+  workday_tenant: philips
+  workday_site: jobs-and-careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Phonely
+  platform: ashby
+  slug: phonely
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (18 job(s))'
+- name: Phonic
+  platform: ashby
+  slug: phonic
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (7 job(s))'
+- name: Photon
+  platform: oracle_cloud
+  slug: fa-ertb-saasfaprod1
+  source_of_record: discover
+  last_verified: &id009 2026-08-16
+  oracle_host: fa-ertb-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_2
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 4 posting(s), 3 kept after
+    the CS-internship screens'
+- name: Photonic
+  platform: custom_json
+  slug: photonic
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: endpoint found by browser-assisted discovery from https://www.photonic.com/careers,
+    then replayed over plain HTTP with no browser.'
+  custom:
+    url: https://photonic.pinpointhq.com/postings.json
+    jobs_path: data
+    fields:
+      title: title
+      id: id
+      location: location
+      description: description
+      url: url
+      category: job.department
+      employment_type: employment_type
+- name: Picton Mahoney Asset Management
+  platform: bamboohr
+  slug: pictonmahoney
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; bamboohr publishes no board name, so
+    the name gate cannot confirm it and provenance is the evidence (32 job(s))'
+- name: Pika
+  platform: ashby
+  slug: pika
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (10 job(s))'
+- name: PIMCO
+  platform: workday
+  slug: pimco
+  source_of_record: discover
+  last_verified: &id008 2026-08-17
+  workday_tenant: pimco
+  workday_site: pimco-careers
+  workday_dc: wd1
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Pine Rest
+  platform: workday
+  slug: pinerest
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: pinerest
+  workday_site: PineRest
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (3 posting(s), 0 kept)'
+- name: Pinterest
+  platform: greenhouse
+  slug: pinterest
+  source_of_record: openjobs
+  last_verified: *id002
+- name: Plaid
+  platform: ashby
+  slug: plaid
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Planet Labs
+  platform: greenhouse
+  slug: planetlabs
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the greenhouse board names itself
+    Planet.'
+- name: PlanetScale
+  platform: greenhouse
+  slug: planetscale
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page links directly to PlanetScale Greenhouse
+    postings.'
+- name: PlayStation Global
+  platform: greenhouse
+  slug: sonyinteractiveentertainmentglobal
+  source_of_record: openjobs
+  last_verified: *id002
+  notes: '2026-08-21: this board names itself PlayStation Global and shares no requisition
+    id with the siei board, so the two are separate boards rather than one duplicated
+    caption'
+- name: Plexus
+  platform: workday
+  slug: plexus
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: plexus
+  workday_site: plexus_careers
+  workday_dc: wd504
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Plug power
+  platform: workday
+  slug: plugpower
+  source_of_record: openjobs
+  last_verified: *id003
+  recheck_after: *id005
+  workday_tenant: plugpower
+  workday_site: Plug_Power_Inc
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Pluralis Research
+  platform: ashby
+  slug: pluralis-research
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (11 job(s))'
+- name: Pluralsight
+  platform: workday
+  slug: pluralsight
+  source_of_record: openjobs
+  last_verified: *id003
+  recheck_after: *id005
+  workday_tenant: pluralsight
+  workday_site: Careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Plus
+  platform: lever
+  slug: plus-2
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (37 job(s))'
+- name: Plusgrade
+  platform: workday
+  slug: plusgrade
+  source_of_record: discover
+  last_verified: &id007 2026-08-18
+  workday_tenant: plusgrade
+  workday_site: Plusgrade_External_Site
+  workday_dc: wd10
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Pluxee
+  platform: workday
+  slug: pluxee
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: pluxee
+  workday_site: pluxee_career_site
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: PNC Financial Services
+  platform: workday
+  slug: pnc
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: pnc
+  workday_site: External
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Point C
+  platform: greenhouse
+  slug: pointc
+  source_of_record: discover
+  last_verified: *id002
+- name: Point72
+  platform: greenhouse
+  slug: point72
+  source_of_record: discover
+  last_verified: *id002
+- name: Poka
+  platform: greenhouse
+  slug: poka
+  source_of_record: discover
+  last_verified: *id007
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: pony.ai
+  platform: workable
+  slug: pony-dot-ai
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: PopReach
+  platform: bamboohr
+  slug: popreach
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: Porter Airlines
+  platform: lever
+  slug: porter
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Poshmark
+  platform: ashby
+  slug: poshmark
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (28 job(s))'
+- name: Postman
+  platform: greenhouse
+  slug: postman
+  source_of_record: openjobs
+  last_verified: *id002
+- name: Potloc
+  platform: lever
+  slug: Potloc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: careers-page ATS scan found the lever board; the token is capitalised
+    and lever is case-sensitive, so the lowercase form answers 404.'
+- name: Pratt & Whitney Canada
+  platform: workday
+  slug: globalhr
+  source_of_record: discover
+  last_verified: 2026-08-08
+  workday_tenant: globalhr
+  workday_site: REC_RTX_Ext_Gateway
+  workday_dc: wd5
+  name_gate_exempt: true
+- name: Prior Labs
+  platform: ashby
+  slug: prior-labs
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (16 job(s))'
+- name: ProCogia
+  platform: greenhouse
+  slug: procogia
+  source_of_record: discover
+  last_verified: *id002
+- name: Promutuel
+  platform: workday
+  slug: promutuel
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: promutuel
+  workday_site: promutuel_carrieres
+  workday_dc: wd3
+  notes: Coordinates from the employer's own careers URL; 99 postings, entirely French
+    and Quebec-based.
+- name: ProNexus
+  platform: workable
+  slug: pronexus-1
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Proofpoint
+  platform: workday
+  slug: proofpoint
+  source_of_record: discover
+  last_verified: *id008
+  workday_tenant: proofpoint
+  workday_site: proofpointcareers
+  workday_dc: wd5
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Protech Automotive Solutions
+  platform: workday
+  slug: calibercollision
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: calibercollision
+  workday_site: protech
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (117 posting(s), 0 kept)'
+- name: Prudential Financial
+  platform: workday
+  slug: pru
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: pru
+  workday_site: Careers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (120 posting(s), 0 kept)'
+- name: Prysmian Group
+  platform: workday
+  slug: prysmiangroup
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: prysmiangroup
+  workday_site: careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: PsiQuantum
+  platform: greenhouse
+  slug: psiquantum
+  source_of_record: discover
+  last_verified: *id002
+- name: PSP Investments
+  platform: workday
+  slug: investpsp
+  source_of_record: discover
+  last_verified: *id009
+  workday_tenant: investpsp
+  workday_site: psp_careers
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 1 posting(s), 1 kept after
+    the CS-internship screens'
+- name: PTC
+  platform: workday
+  slug: ptc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: ptc
+  workday_site: PTC
+  workday_dc: wd1
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL, not guessed.'
+- name: Publicis Groupe
+  platform: smartrecruiters
+  slug: publicisgroupe
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches Re-probed
+    2026-08-14 and still dead.'
+- name: Publicis Sapient
+  platform: custom_json
+  slug: publicissapient
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Its /api/jobs answers 403, but /job-details-sitemap server-renders all 388
+    postings; titles come from the url slug and so carry a year and id prefix.
+  custom:
+    url: https://careers.publicissapient.com/job-details-sitemap
+    format: html
+    row_selector: .careersJobsSitemap a[href*="job-details/"]
+    fields:
+      title: ::slug(href)
+      id: ::attr(href)
+      url: ::attr(href)
+- name: Puzzle Cats
+  platform: breezy
+  slug: puzzle-cats
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
+    the slug folds to the caption and the board returned 1 job(s)'
+- name: PwC
+  platform: workday
+  slug: pwc
+  source_of_record: openjobs
+  last_verified: *id003
+  recheck_after: *id005
+  workday_tenant: pwc
+  workday_site: Global_Experienced_Careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Pylon
+  platform: ashby
+  slug: pylon-labs
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (21 job(s))'

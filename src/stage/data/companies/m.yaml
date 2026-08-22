@@ -1,0 +1,922 @@
+- name: Mactores
+  platform: lever
+  slug: mactores
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (34 job(s))'
+- name: Maersk
+  platform: workday
+  slug: maersk
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-14
+  recheck_after: &id003 2026-10-01
+  workday_tenant: maersk
+  workday_site: Maersk_Careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Magic School
+  platform: ashby
+  slug: magicschool
+  source_of_record: openjobs
+  last_verified: &id009 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 1 job(s)'
+- name: Magna
+  platform: workday
+  slug: magna
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: magna
+  workday_site: magna
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Magnera Corporation
+  platform: icims
+  slug: magnera
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Magnet Forensics
+  platform: lever
+  slug: magnetforensics
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (45 job(s))'
+- name: Malt
+  platform: lever
+  slug: malt
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (33 job(s))'
+- name: Man Group
+  platform: greenhouse
+  slug: mangroup
+  source_of_record: discover
+  last_verified: &id007 2026-08-17
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Manex AI
+  platform: ashby
+  slug: manex
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (11 job(s))'
+- name: Mango
+  platform: workday
+  slug: mango
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: mango
+  workday_site: mango_work_your_passion
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Manhattan Associates
+  platform: workday
+  slug: manh
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: manh
+  workday_site: campus
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Manulife
+  platform: workday
+  slug: manulife
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: manulife
+  workday_site: mfcjh_jobs
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Mapjects
+  platform: smartrecruiters
+  slug: mapjectscom
+  source_of_record: discover
+  last_verified: &id006 2026-08-14
+- name: Marina Bay Sands
+  platform: workday
+  slug: marinabaysands
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: marinabaysands
+  workday_site: external
+  workday_dc: wd102
+  workday_facet: workerSubType:7b4b2dfcb1cb1007495d5190db1f0000
+  notes: '2026-08-13: official Workday endpoint verified; its Intern (Fixed Term)
+    facet has 72 listings.'
+- name: Marmon Holdings
+  platform: workday
+  slug: marmon
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: marmon
+  workday_site: Marmon_MSIP_Internships
+  workday_dc: wd501
+  notes: '2026-08-13: official dedicated internship Workday board verified; it has
+    ten listings and no broad-board crawl.'
+- name: Marqeta
+  platform: greenhouse
+  slug: marqeta
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live Marqeta Greenhouse
+    board.'
+- name: Marsh McLennan
+  platform: workday
+  slug: mmc
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id003
+  workday_tenant: mmc
+  workday_site: MMC
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Marshall Wace
+  platform: greenhouse
+  slug: mwinternshipprogram
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+- name: Marvell
+  platform: workday
+  slug: marvell
+  source_of_record: openjobs
+  last_verified: 2026-08-03
+  workday_tenant: marvell
+  workday_site: MarvellCareers
+  workday_dc: wd1
+- name: Mastercard
+  platform: workday
+  slug: mastercard
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id003
+  workday_tenant: mastercard
+  workday_site: CUOReqSite
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Mastercard
+  platform: workday
+  slug: mastercard
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id003
+  workday_tenant: mastercard
+  workday_site: CorporateCareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Masterclass
+  platform: greenhouse
+  slug: masterclass
+  source_of_record: openjobs
+  last_verified: &id005 2026-08-11
+- name: Match Group
+  platform: lever
+  slug: matchgroup
+  source_of_record: openjobs
+  last_verified: &id008 2026-08-04
+- name: MathWorks
+  platform: custom_json
+  slug: mathworks
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: closed for good — AkamaiGHost Access Denied on the careers search,
+    rss.xml and sitemap.xml from the first request; a policy wall, not a gate we may
+    pass.'
+  custom:
+    url: https://www.mathworks.com/company/jobs/opportunities/search
+    fields:
+      title: title
+      id: id
+- name: Matrox
+  platform: custom_json
+  slug: matrox
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: UKG/UltiPro board named only by matrox.com/careers, which links
+    this exact board id; the search endpoint is POST-only.'
+  custom:
+    url: https://recruiting.ultipro.ca/MAT5002MARX/JobBoard/69a03e48-0d5a-46df-9cba-fbcc2c7a9dbc/JobBoardView/LoadSearchResults
+    method: POST
+    body:
+      opportunitySearch:
+        Top: 100
+        Skip: 0
+        QueryString: ''
+        OrderBy: []
+        Filters: []
+    jobs_path: opportunities
+    fields:
+      title: Title
+      id: Id
+      location: Locations.0.Address.City
+      category: JobCategoryName
+      description: BriefDescription
+    url_template: https://recruiting.ultipro.ca/MAT5002MARX/JobBoard/69a03e48-0d5a-46df-9cba-fbcc2c7a9dbc/OpportunityDetail?opportunityId={id}
+- name: Maven Securities
+  platform: greenhouse
+  slug: mavensecuritiesholdingltd
+  source_of_record: manual
+  last_verified: *id004
+- name: Mavericks VFX
+  platform: bamboohr
+  slug: mavericksvfx
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: Maxima
+  platform: ashby
+  slug: maxima
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (24 job(s))'
+- name: MCG Health
+  platform: greenhouse
+  slug: mcghealth
+  source_of_record: discover
+  last_verified: *id004
+- name: McGill University
+  platform: workday
+  slug: mcgill
+  source_of_record: discover
+  last_verified: 2026-08-13
+  workday_tenant: mcgill
+  workday_site: mcgill_careers
+  workday_dc: wd3
+  workday_facet: workerSubType:5b8bbc1be9ca01b84e1ed240de00830e
+  notes: '2026-08-13: verified public Student (Fixed Term) facet; Stage retains only
+    CS, software, data, and research roles after bilingual screening'
+- name: McKesson
+  platform: workday
+  slug: mckesson
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: mckesson
+  workday_site: External_Careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: McKinsey
+  platform: custom_json
+  slug: mckinsey
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: www.mckinsey.com times out for our client, but its jobs api is on gateway.mckinsey.com;
+    q=internship returns all 63 in one request.
+  custom:
+    url: https://gateway.mckinsey.com/apigw-x0cceuow60/v1/api/jobs/search?pageSize=100&start=1&lang=en&q=internship
+    headers:
+      Origin: https://www.mckinsey.com
+      Referer: https://www.mckinsey.com/careers/search-jobs
+    jobs_path: docs
+    fields:
+      title: title
+      id: jobID
+      location: cities
+      url: jobApplyURL
+      category: interestCategory
+- name: MDA
+  platform: custom_json
+  slug: mda
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: UKG/UltiPro board; the MAC5000MCDW tenant is MacDonald Dettwiler, and its
+    six postings are all student terms.
+  custom:
+    url: https://recruiting.ultipro.ca/MAC5000MCDW/JobBoard/7667adcc-47ae-477a-9183-0d8ef8bc0748/JobBoardView/LoadSearchResults
+    method: POST
+    body:
+      opportunitySearch:
+        Top: 50
+        Skip: 0
+        QueryString: ''
+        OrderBy:
+        - Value: postedDateDesc
+          PropertyName: PostedDate
+          Ascending: false
+        Filters:
+        - t: TermsSearchFilterDto
+          fieldName: 4
+          extra: null
+          values: []
+      matchCriteria:
+        PreferredJobs: []
+        Educations: []
+        LicenseAndCertifications: []
+        Skills: []
+        hasNoLicenses: false
+        SkippedSkills: []
+    headers:
+      Referer: https://recruiting.ultipro.ca/MAC5000MCDW/JobBoard/7667adcc-47ae-477a-9183-0d8ef8bc0748
+      Origin: https://recruiting.ultipro.ca
+    jobs_path: opportunities
+    fields:
+      title: Title
+      id: Id
+      location: Locations.0.LocalizedDescription
+      description: BriefDescription
+      category: JobCategoryName
+    url_template: https://recruiting.ultipro.ca/MAC5000MCDW/JobBoard/7667adcc-47ae-477a-9183-0d8ef8bc0748/OpportunityDetail?opportunityId={id}
+    page_param: opportunitySearch.Skip
+    page_size: 50
+    page_step: 50
+    max_pages: 4
+- name: Mediatonic Games
+  platform: greenhouse
+  slug: mediatonic
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches Re-probed
+    2026-08-14 and still dead.'
+- name: Medical Informatics Engineering
+  platform: greenhouse
+  slug: medicalinformaticsengineering
+  source_of_record: discover
+  last_verified: *id004
+- name: Medline
+  platform: workday
+  slug: medline
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: medline
+  workday_site: Medline
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (7 posting(s), 0 kept)'
+- name: Medtronic
+  platform: workday
+  slug: medtronic
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: medtronic
+  workday_site: medtroniccareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Megazebra
+  platform: bamboohr
+  slug: megazebragmbh
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: Melius
+  platform: ashby
+  slug: melius
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active software-engineering internship application
+    verifies the public Ashby board'
+- name: Melotech
+  platform: ashby
+  slug: melotech
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active AI/ML engineering internship application verifies
+    the public Ashby board.'
+- name: Menasha Corporation
+  platform: workday
+  slug: menasha
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: menasha
+  workday_site: menashacorp
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Mercari, inc.
+  platform: workable
+  slug: mercari
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Mercedes-Benz Tech Innovation
+  platform: workday
+  slug: mercedesbenztechinnovation
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: mercedesbenztechinnovation
+  workday_site: mbti_jobportal
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Mercury
+  platform: greenhouse
+  slug: mercury
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Merkle Science
+  platform: lever
+  slug: merklescience
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (25 job(s))'
+- name: Meshy
+  platform: ashby
+  slug: meshy
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (23 job(s))'
+- name: Meta
+  platform: bamboohr
+  slug: meta
+  source_of_record: openjobs
+  enabled: false
+  notes: robots.txt forbids automated collection and Meta serves 400 or 403 even to
+    its own advertised job sitemap.
+- name: META4
+  platform: smartrecruiters
+  slug: meta4
+  source_of_record: openjobs
+  last_verified: *id006
+- name: Metaphor
+  platform: ashby
+  slug: exa
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (50 job(s))'
+- name: Metropolitan Transportation Authority
+  platform: jobvite
+  slug: metropolitantransportationauthority
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/metropolitantransportationauthority/jobs
+    server-renders all 215 postings, which is the contract this row polls'
+- name: Microchip Technology
+  platform: smartrecruiters
+  slug: microchip
+  source_of_record: discover
+  last_verified: *id006
+- name: Micron Technology
+  platform: workday
+  slug: micron
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: micron
+  workday_site: External
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Microsoft
+  platform: custom_json
+  slug: microsoft
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: Custom JSON listing; url_template added after kept postings were found pointing
+    at the listing API.
+  custom:
+    url: https://apply.careers.microsoft.com/api/pcsx/search?domain=microsoft.com&query=&start=0&sort_by=relevance&filter_seniority=Intern
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: locations
+      category: department
+    url_template: https://apply.careers.microsoft.com/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: Midjourney
+  platform: ashby
+  slug: midjourney
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: discover --verify returned 16 jobs and needs-a-manual-check,
+    which is the expected Ashby verdict since Ashby publishes no board name.'
+- name: Miele
+  platform: workday
+  slug: miele
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: miele
+  workday_site: miele-jobs
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 29 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Mila
+  platform: workable
+  slug: mila-2
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Millennium Management
+  platform: custom_json
+  slug: millennium
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Eightfold tenant whose pcsx search is disabled, so the older
+    apply/v2 listing is the contract, as on the NetApp row.'
+  custom:
+    url: https://mlp.eightfold.ai/api/apply/v2/jobs?domain=mlp.com&num=10
+    jobs_path: positions
+    fields:
+      title: name
+      id: id
+      url: canonicalPositionUrl
+      location: location
+      department: department
+      description: job_description
+    page_param: start
+    page_size: 10
+    max_pages: 30
+- name: Millicom
+  platform: workday
+  slug: tigo
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: tigo
+  workday_site: tigocareers
+  workday_dc: wd103
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Mimecast
+  platform: workday
+  slug: mimecast
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id003
+  workday_tenant: mimecast
+  workday_site: Mimecast-Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: mino games
+  platform: teamtailor
+  slug: minogames
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-14: one row, below any adapter threshold; custom_json is the route'
+- name: Miovision
+  platform: ashby
+  slug: miovision
+  source_of_record: discover
+  last_verified: *id007
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    10 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Miratech
+  platform: smartrecruiters
+  slug: miratech1
+  source_of_record: openjobs
+  last_verified: *id006
+- name: Miro
+  platform: custom_json
+  slug: miro
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: Browser-discovered endpoint with no url field or template, so postings would
+    carry the listing API as their apply link.
+  custom:
+    url: https://miro.com/careers/_next/data/sfeejaVaUTHQbAWYZcG8m/en/open-positions.json
+    jobs_path: pageProps.jobs
+    fields:
+      title: title
+      id: id
+      location: location
+      department: departmentName
+    url_template: https://miro.com/careers/vacancy/{id}/
+- name: Mistplay
+  platform: lever
+  slug: mistplay
+  source_of_record: openjobs
+  last_verified: *id008
+- name: Mistral AI
+  platform: ashby
+  slug: mistral.ai
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active applied-science internship application verifies
+    the public Ashby board.'
+- name: MITRE
+  platform: custom_json
+  slug: mitre
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: its Workday CXS site answers 200 with total=0, so the Phenom
+    widget behind careers.mitre.org is the real listing; fetched unfiltered because
+    keywords drops titles.'
+  custom:
+    url: https://careers.mitre.org/widgets
+    method: POST
+    body:
+      lang: en_us
+      deviceType: desktop
+      country: us
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 10
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 10
+    max_pages: 40
+- name: Mitsubishi Heavy Industries
+  platform: custom_json
+  slug: mhi
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; /rss.xml carries all 353 postings, 12 of them internship
+    or Werkstudent terms.
+  custom:
+    url: https://mhicareers.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: MixMob
+  platform: smartrecruiters
+  slug: mixmob
+  source_of_record: openjobs
+  last_verified: *id006
+- name: Mixpanel
+  platform: greenhouse
+  slug: mixpanel
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Mizuho Securities USA
+  platform: workday
+  slug: mizuho
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: mizuho
+  workday_site: Mizuho_Confidential
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Mobius Renewables
+  platform: greenhouse
+  slug: mobius
+  source_of_record: discover
+  last_verified: *id004
+- name: Modal
+  platform: ashby
+  slug: modal
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (30 job(s))'
+- name: Moderna
+  platform: workday
+  slug: modernatx
+  source_of_record: discover
+  last_verified: *id007
+  workday_tenant: modernatx
+  workday_site: M_tx
+  workday_dc: wd1
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Moloco
+  platform: greenhouse
+  slug: moloco
+  source_of_record: discover
+  last_verified: *id004
+- name: Molson Coors
+  platform: custom_json
+  slug: molsoncoors
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Phenom POST /widgets, fetched unfiltered; the board carries French Montreal
+    postings.
+  custom:
+    url: https://careers.molsoncoors.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: global
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 100
+    max_pages: 4
+- name: Moment Energy
+  platform: greenhouse
+  slug: momentenergy
+  source_of_record: discover
+  last_verified: *id004
+- name: MongoDB
+  platform: greenhouse
+  slug: mongodb
+  source_of_record: discover
+  last_verified: *id004
+- name: Monolithic Power Systems
+  platform: workday
+  slug: monolithicpower
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: monolithicpower
+  workday_site: MPS_Careers
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Montenson
+  platform: oracle_cloud
+  slug: montenson
+  source_of_record: manual
+  last_verified: 2026-08-13
+  oracle_host: fa-esgu-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-13: official Oracle candidate JSON verified; it currently has 61
+    internship results.'
+- name: Moog
+  platform: workday
+  slug: moog
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: moog
+  workday_site: moog_external_career_site
+  workday_dc: wd5
+  workday_facet: workerSubType:5601b8111949102e1147d236ce4a0000,5601b8111949102e1147d2d08ef60000
+  notes: '2026-08-13: official Workday endpoint verified; its intern/co-op and student
+    facets total six listings.'
+- name: Moon
+  platform: greenhouse
+  slug: moon
+  source_of_record: discover
+  last_verified: *id004
+- name: Morgan Stanley
+  platform: custom_json
+  slug: morgan-stanley
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: endpoint found by browser-assisted discovery from https://www.morganstanley.com/careers/career-opportunities-search?oppo,
+    then replayed over plain HTTP with no browser.'
+  custom:
+    url: https://www.morganstanley.com/web/career_services/webapp/service/careerservice/resultset.json?&opportunity=sg&lang=EN&location=
+    jobs_path: resultSet
+    fields:
+      title: jobTitle
+      location: location
+      url: url
+      employment_type: employmentType
+- name: Morning Star
+  platform: workday
+  slug: morningstar
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id003
+  workday_tenant: morningstar
+  workday_site: Americas
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Motorola solutions
+  platform: workday
+  slug: motorolasolutions
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id003
+  workday_tenant: motorolasolutions
+  workday_site: Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Mozilla
+  platform: greenhouse
+  slug: mozilla
+  source_of_record: openjobs
+  last_verified: *id005
+- name: MPR Associates
+  platform: icims
+  slug: mpr
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: MSD
+  platform: workday
+  slug: msd
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: msd
+  workday_site: searchjobs
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Mujin
+  platform: bamboohr
+  slug: mujin
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; bamboohr publishes no board name, so
+    the name gate cannot confirm it and provenance is the evidence (28 job(s))'
+- name: Multiply Labs
+  platform: lever
+  slug: multiplylabs
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (6 job(s))'
+- name: MyJunior AI
+  platform: ashby
+  slug: junior
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (18 job(s))'
+- name: Mythic Talent
+  platform: bamboohr
+  slug: mythictalent
+  source_of_record: openjobs
+  last_verified: *id009
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 2 job(s)'

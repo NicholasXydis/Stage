@@ -33,9 +33,10 @@ def registry_path() -> Path:
     override = os.environ.get("STAGE_REGISTRY")
     if override:
         return Path(override).expanduser().resolve()
-    packaged = Path(__file__).resolve().parent / "data" / "companies.yaml"
-    if packaged.exists():
-        return packaged
+    data = Path(__file__).resolve().parent / "data"
+    for packaged in (data / "companies", data / "companies.yaml"):
+        if packaged.exists():
+            return packaged
     return config_dir() / "companies.yaml"
 
 

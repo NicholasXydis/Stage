@@ -1,0 +1,138 @@
+- name: J.S. Held LLC
+  platform: smartrecruiters
+  slug: jsheldllc
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-14
+- name: Jade Global
+  platform: smartrecruiters
+  slug: jadeglobal
+  source_of_record: discover
+  last_verified: *id001
+- name: Jain Global
+  platform: workday
+  slug: jainglobal
+  source_of_record: discover
+  last_verified: 2026-08-14
+  workday_tenant: jainglobal
+  workday_site: ExternalSite
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Jam City
+  platform: lever
+  slug: jamcity
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Jane Street
+  platform: greenhouse
+  slug: janestreet
+  source_of_record: openjobs
+  last_verified: &id003 2026-08-14
+- name: Jefferies
+  platform: custom_json
+  slug: jefferies
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: same oleeoProtect altcha challenge as the Evercore row; the
+    Bank of America tenant on the same platform does not challenge us, so this is
+    tenant configuration.'
+  custom:
+    url: https://jefferies.tal.net/vx/lang-en-GB/mobile-0/appcentre-ext/brand-4/candidate/jobboard/vacancy/2/adv/
+    fields:
+      title: title
+      id: id
+- name: JetBrains
+  platform: greenhouse
+  slug: jetbrains
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Jobs for Humanity
+  platform: smartrecruiters
+  slug: jobsforhumanity
+  source_of_record: discover
+  last_verified: 2026-08-16
+  enabled: false
+  notes: '2026-08-16: aggregator: reposts other employers'' postings, so its rows
+    are third-hand data that duplicate real boards under a different company name.'
+- name: John Deere
+  platform: custom_json
+  slug: john-deere
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: Eightfold tenant reached through the shared /api/pcsx/search template.
+  custom:
+    url: https://careers.deere.com/api/pcsx/search?domain=johndeere.com&query=&location=&start=0&sort_by=hot&filter_seniority=0
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: locations
+      category: department
+    url_template: https://careers.deere.com/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: Johns Hopkins APL
+  platform: custom_json
+  slug: jhuapl
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: iCIMS careers-home site, the same contract as the AMD row; 356
+    postings with full bodies.'
+  custom:
+    url: https://careers.jhuapl.edu/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    url_template: https://careers.jhuapl.edu/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
+- name: Johnson & Johnson
+  platform: workday
+  slug: jj
+  source_of_record: discover
+  last_verified: &id002 2026-08-16
+  workday_tenant: jj
+  workday_site: jj
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 100 posting(s), 5 kept after
+    the CS-internship screens'
+- name: Johnson Controls
+  platform: workday
+  slug: jci
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: jci
+  workday_site: jci
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 15 posting(s), 1 kept after
+    the CS-internship screens'
+- name: JP Morgan Chase
+  platform: oracle_cloud
+  slug: jpmc
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: jpmc.fa.oraclecloud.com
+  oracle_site: CX_1001
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: Jump Trading
+  platform: greenhouse
+  slug: jumptrading
+  source_of_record: discover
+  last_verified: *id003

@@ -1,0 +1,190 @@
+- name: Uber
+  platform: smartrecruiters
+  slug: uber
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-14
+- name: Ubisoft
+  platform: smartrecruiters
+  slug: ubisoft2
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Udemy
+  platform: greenhouse
+  slug: udemy
+  source_of_record: openjobs
+  last_verified: &id004 2026-08-11
+- name: UHY
+  platform: workday
+  slug: uhyus
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+  workday_tenant: uhyus
+  workday_site: uhy
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Uken Games
+  platform: bamboohr
+  slug: uken
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 3 job(s)'
+- name: Uline
+  platform: workday
+  slug: uline
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: uline
+  workday_site: Uline_Careers
+  workday_dc: wd1
+  workday_facet: workerSubType:75633dceeee801286cf04247f2006205,49ddfff330911001fea2d9e45f120000
+  notes: '2026-08-13: official Workday endpoint verified; its intern facets total
+    64 listings.'
+- name: UMB
+  platform: workday
+  slug: umb
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: umb
+  workday_site: UMBExternal
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 1 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Uncountable
+  platform: ashby
+  slug: uncountable
+  source_of_record: discover
+  last_verified: 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (32 job(s))'
+- name: Unify
+  platform: ashby
+  slug: unify
+  source_of_record: discover
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (8 job(s))'
+- name: Unilever
+  platform: workday
+  slug: unilever
+  source_of_record: openjobs
+  last_verified: *id002
+  recheck_after: &id003 2026-10-01
+  workday_tenant: unilever
+  workday_site: Unilever_Experienced_Professionals
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Unisys
+  platform: workday
+  slug: unisys
+  source_of_record: openjobs
+  last_verified: *id002
+  recheck_after: *id003
+  workday_tenant: unisys
+  workday_site: External
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Unity
+  platform: workday
+  slug: unitytech
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: unitytech
+  workday_site: Unity
+  workday_dc: wd1
+  notes: '2026-08-21: official careers page links to Unity’s Workday board; endpoint
+    returned live postings.'
+- name: Universidad IEU S.C.
+  platform: workday
+  slug: galileo
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: galileo
+  workday_site: galileo_career_site
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: University of Arkansas
+  platform: workday
+  slug: uasys
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: uasys
+  workday_site: uasys
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: University of Nevada, Reno
+  platform: smartrecruiters
+  slug: universityofnevadareno
+  source_of_record: discover
+  last_verified: *id001
+- name: University of Rochester
+  platform: workday
+  slug: rochester
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: rochester
+  workday_site: UR_Staff
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: University of Texas at Austin
+  platform: workday
+  slug: utaustin
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: utaustin
+  workday_site: utstudent
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: University of Virginia Investment Management Company (UVIMCO)
+  platform: greenhouse
+  slug: uvimco
+  source_of_record: discover
+  last_verified: 2026-08-14
+- name: University System of New Hampshire
+  platform: workday
+  slug: usnh
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: usnh
+  workday_site: Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Upgrade
+  platform: greenhouse
+  slug: upgrade
+  source_of_record: openjobs
+  last_verified: *id004
+- name: UPS
+  platform: workday
+  slug: hcmportal
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: hcmportal
+  workday_site: search
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (19 posting(s), 0 kept)'
+- name: upwork
+  platform: greenhouse
+  slug: upwork
+  source_of_record: openjobs
+  last_verified: *id004
+- name: USE Insider
+  platform: lever
+  slug: useinsider
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'

@@ -1,0 +1,880 @@
+- name: BAE Systems
+  platform: custom_json
+  slug: baesystems
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: WordPress career site; the public wp/v2 jobs post type is the
+    listing contract. Its location taxonomy is not the first embedded group, so the
+    path names it rather than counting.'
+  custom:
+    url: https://jobsearch.baesystems.com/wp-json/wp/v2/jobs?per_page=100&_embed=wp%3Aterm
+    fields:
+      title: title.rendered
+      id: id
+      url: link
+      location: _embedded.wp:term[0.taxonomy=location].0.name
+      department: _embedded.wp:term[0.taxonomy=area-of-work].0.name
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
+- name: Baker Hughes
+  platform: workday
+  slug: bakerhughes
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: bakerhughes
+  workday_site: BakerHughes
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 120 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Bambus
+  platform: custom_json
+  slug: bambus
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: a Salesforce Experience site that ships no listing markup and
+    names no endpoint; it needs a captured request.'
+  custom:
+    url: https://bambusdev.my.site.com/s/
+    fields:
+      title: title
+      id: id
+- name: Bandai Namco
+  platform: greenhouse
+  slug: bandainamco
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the board names itself Bandai Namco Entertainment America Inc.'
+- name: Bank of America
+  platform: custom_json
+  slug: bankofamerica
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the campus board is tal.net and server-renders its table. Row
+    hrefs carry a rotating xf- session token, so the apply url is rebuilt from data-oppid,
+    as on the Job Bank row.'
+  custom:
+    url: https://bankcampuscareers.tal.net/vx/lang-en-GB/mobile-0/brand-4/candidate/jobboard/vacancy/2/adv/
+    format: html
+    row_selector: tr.search_res
+    fields:
+      title: ::attr(data-title)
+      id: ::attr(data-oppid)
+    url_template: https://bankcampuscareers.tal.net/vx/lang-en-GB/mobile-0/brand-4/candidate/so/pm/1/pl/2/opp/{id}/en-GB
+- name: Bank of China USA
+  platform: icims
+  slug: bocusa
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Banyan Software
+  platform: greenhouse
+  slug: banyansoftware
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+- name: Barclays
+  platform: workday
+  slug: barclays
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: barclays
+  workday_site: external_career_site_barclays
+  workday_dc: wd3
+  workday_facet: workerSubType:6139d325cdcc1001a72ceb63d5d60001
+  notes: '2026-08-13: official Workday endpoint verified; its Intern facet has 13
+    listings.'
+- name: Barkback
+  platform: smartrecruiters
+  slug: barkbackllc
+  source_of_record: discover
+  last_verified: &id007 2026-08-14
+- name: Barnstorm VFX
+  platform: bamboohr
+  slug: barnstormvfx
+  source_of_record: openjobs
+  last_verified: &id012 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 15 job(s)'
+- name: Base Power
+  platform: ashby
+  slug: base-power
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active hardware-engineering internship application
+    verifies the public Ashby board.'
+- name: Baseten
+  platform: ashby
+  slug: baseten
+  source_of_record: discover
+  last_verified: &id008 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (71 job(s))'
+- name: Bayut dubizzle
+  platform: workable
+  slug: bayutdubizzle
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: BCG
+  platform: custom_json
+  slug: bcg
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: Phenom POST /widgets; the earlier HTML-only verdict came from reading the
+    document request rather than the widget.
+  custom:
+    url: https://careers.bcg.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: global
+      pageName: search-results
+      all_fields:
+      - country
+      - city
+      - category
+      - company
+      - type
+      - jobType
+      clearAll: false
+      counts: true
+      ddoKey: refineSearch
+      from: 0
+      global: true
+      irs: false
+      isSliderEnable: false
+      jdsource: facets
+      jobs: true
+      keywords: ''
+      locationData: {}
+      pageId: page17-ds
+      selected_fields:
+        jobType:
+        - Internship
+      siteType: external
+      size: 10
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      employment_type: type
+    page_param: from
+    page_size: 10
+    max_pages: 15
+- name: BDO Canada
+  platform: workday
+  slug: bdo
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+  workday_tenant: bdo
+  workday_site: BDO
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Beacon Software
+  platform: ashby
+  slug: beaconsoftware
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active software-engineering internship application
+    verifies the public Ashby board.'
+- name: Beamdog
+  platform: bamboohr
+  slug: beamdog
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: Beenox
+  platform: custom_json
+  slug: beenox
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Phenom POST /widgets; an Activision studio in Quebec City, two postings today.
+  custom:
+    url: https://careers.beenox.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: ca
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 100
+    max_pages: 2
+- name: Behaviour Interactive
+  platform: lever
+  slug: bhvr
+  source_of_record: openjobs
+  last_verified: &id005 2026-08-04
+- name: Bell Canada
+  platform: custom_json
+  slug: bell-canada
+  source_of_record: discover
+  last_verified: &id006 2026-08-17
+  notes: Phenom POST /widgets, fetched unfiltered because the intern roster is empty
+    rather than the filter broken.
+  custom:
+    url: https://jobs.bell.ca/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: ca
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 10
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      description: descriptionTeaser
+      category: category
+      department: department
+    url_template: https://jobs.bell.ca/ca/en/job/{id}
+    page_param: from
+    page_size: 10
+    max_pages: 8
+- name: Belvedere Trading
+  platform: lever
+  slug: belvederetrading
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active quantitative-trading internship application
+    verifies the public Lever board.'
+- name: Beneva
+  platform: workday
+  slug: beneva
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: beneva
+  workday_site: BenevaSite_carriere
+  workday_dc: wd10
+  notes: Coordinates from the employer's own careers URL; 50 postings, entirely French
+    and Quebec-based.
+- name: Benevity
+  platform: ashby
+  slug: benevity
+  source_of_record: discover
+  last_verified: &id002 2026-08-17
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    13 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Berkshire Hathaway Energy
+  platform: oracle_cloud
+  slug: fa-essf-saasfaprod1
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+  oracle_host: fa-essf-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: Bestow
+  platform: ashby
+  slug: bestow
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (17 job(s))'
+- name: Betterment
+  platform: greenhouse
+  slug: betterment
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official current-openings page exposes the Betterment Greenhouse
+    board.'
+- name: BeyondTrust
+  platform: greenhouse
+  slug: beyondtrust
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: both greenhouse and smartrecruiters answer under this name;
+    greenhouse carries 55 postings to the smartrecruiters board''s 2, so it is the
+    live one'
+- name: Bigblue
+  platform: lever
+  slug: bigblue
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (34 job(s))'
+- name: BigCommerce
+  platform: workday
+  slug: bigcommerce
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: bigcommerce
+  workday_site: Commerce
+  workday_dc: wd12
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Bild AI
+  platform: ashby
+  slug: bild-ai
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active AI/software-engineering internship application
+    verifies the public Ashby board.'
+- name: Binance.US
+  platform: ashby
+  slug: binance.us
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (8 job(s))'
+- name: Bio-Techne
+  platform: workday
+  slug: biotechne
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: biotechne
+  workday_site: Biotechne
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Biogen
+  platform: workday
+  slug: biibhr
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: biibhr
+  workday_site: external
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Black Bery
+  platform: workday
+  slug: bb
+  source_of_record: openjobs
+  last_verified: &id011 2026-08-14
+  recheck_after: &id009 2026-10-01
+  workday_tenant: bb
+  workday_site: QNX
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Black Box
+  platform: oracle_cloud
+  slug: eoje
+  source_of_record: discover
+  last_verified: *id004
+  oracle_host: eoje.fa.us2.oraclecloud.com
+  oracle_site: CX_1001
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: BlackBerry (students)
+  platform: workday
+  slug: bb
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: bb
+  workday_site: Student
+  workday_dc: wd3
+  notes: The tenant's student site; three postings, all co-op or intern, against the
+    QNX row's general board.
+- name: Blackbird Interactive
+  platform: lever
+  slug: blackbirdinteractive
+  source_of_record: openjobs
+  last_verified: *id005
+- name: BlackEdge Capital
+  platform: greenhouse
+  slug: blackedgecapital
+  source_of_record: discover
+  last_verified: &id010 2026-08-14
+- name: Blackline Safety
+  platform: workday
+  slug: blackline
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: blackline
+  workday_site: BlackLineCareers
+  workday_dc: wd108
+  notes: '2026-08-17: verified by scratch sync, 110 postings returned, 0 internships
+    on the day of adoption.'
+- name: BlackRock
+  platform: custom_json
+  slug: blackrock
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: TalentBrew JSON answers 200 with empty content, so the server-rendered /search-jobs
+    page is read instead; pagination is p=, not the pg= in the URL bar.
+  custom:
+    url: https://careers.blackrock.com/search-jobs?p=1
+    format: html
+    row_selector: li.section3__search-results-li
+    fields:
+      title: h2.section3__job-title
+      id: a.section3__search-results-a::attr(data-job-id)
+      url: a.section3__search-results-a::attr(href)
+      location: span.section3__job-location
+    page_param: p
+    page_size: 10
+    page_start: 1
+    page_step: 1
+    max_pages: 32
+- name: Blackstar Computers
+  platform: ashby
+  slug: blackstar
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (14 job(s))'
+- name: Blackstone
+  platform: workday
+  slug: blackstone
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: blackstone
+  workday_site: Blackstone_Campus_Careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: BlinqLABS
+  platform: smartrecruiters
+  slug: blinqlabs
+  source_of_record: discover
+  last_verified: *id007
+- name: Block
+  platform: greenhouse
+  slug: block
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page names the live Block Greenhouse board.'
+- name: Blockhouse
+  platform: ashby
+  slug: blockhouse
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active Rust-development internship application verifies
+    the public Ashby board.'
+- name: Bloomberg
+  platform: custom_json
+  slug: bloomberg
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Avature board on the same listFilterMode markup the Two Sigma
+    row pins; walked unfiltered because its facet ids are opaque.'
+  custom:
+    url: https://bloomberg.avature.net/careers/SearchJobs/?listFilterMode=1&jobRecordsPerPage=12
+    format: html
+    row_selector: article.article--result
+    fields:
+      title: h3.article__header__text__title a
+      url: h3.article__header__text__title a::attr(href)
+      location: div.article__header__content__text > span.paragraph_inner-span
+    page_param: jobOffset
+    page_size: 12
+    max_pages: 40
+- name: Blue Cross Blue Shield of Michigan
+  platform: oracle_cloud
+  slug: ejko
+  source_of_record: discover
+  last_verified: 2026-08-18
+  oracle_host: ejko.fa.us2.oraclecloud.com
+  oracle_site: CX_3
+  notes: '2026-08-18: re-enabled with the site number supplied by the owner. The row
+    was parked as ''returned no postings at all'' because the site was unknown; with
+    siteNumber=CX_3 the candidate endpoint answers 200 with postings.'
+- name: blue isle studios
+  platform: smartrecruiters
+  slug: blueislestudios
+  source_of_record: openjobs
+  last_verified: *id007
+- name: Blue Origin
+  platform: workday
+  slug: blueorigin
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: blueorigin
+  workday_site: blueorigin
+  workday_dc: wd5
+  workday_facet: workerSubType:f3db39143e3e01ea6d86269150283618
+  notes: '2026-08-13: official Workday endpoint verified; its Intern fixed-term facet
+    has one listing.'
+- name: BlueLabs Analytics
+  platform: greenhouse
+  slug: bluelabsanalyticsinc
+  source_of_record: discover
+  last_verified: *id008
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/bluelabsanalyticsinc with 9 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
+- name: Bluestaq
+  platform: greenhouse
+  slug: bluestaq
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched greenhouse/bluestaq with 9 job(s) and the board named itself, so it is
+    polled directly instead of secondhand'
+- name: BMO
+  platform: workday
+  slug: bmo
+  source_of_record: discover
+  last_verified: 2026-08-11
+  recheck_after: *id009
+  workday_tenant: bmo
+  workday_site: External
+  workday_dc: wd3
+  workday_facet: company:99ba898c88ac011c8a873c01f2016c06
+  notes: '2026-08-13: pinned to BMO''s verified Intern (Fixed Term) facet, so sync
+    avoids its 1,180-role general board'
+- name: BMW Group
+  platform: custom_json
+  slug: bmwgroup
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: closed for good — the jobfinder renders client-side, its sitemap
+    carries only content pages, and the owner confirmed a DevTools capture finds no
+    reusable listing request.'
+  custom:
+    url: https://www.bmwgroup.jobs/en/jobfinder.html
+    fields:
+      title: title
+      id: id
+- name: Boeing
+  platform: workday
+  slug: boeing
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: boeing
+  workday_site: external_careers
+  workday_dc: wd1
+  workday_facet: workerSubType:8b618a30e00f01dbf217e9650c3fc507
+  notes: '2026-08-13: official Workday endpoint verified; its paid intern facet has
+    16 listings.'
+- name: Bolder Apps
+  platform: workable
+  slug: bolderapps
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: Bombardier
+  platform: custom_json
+  slug: bombardier
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: SuccessFactors listings are session-gated, but /rss.xml is a Google-jobs
+    feed carrying the whole board.
+  custom:
+    url: https://jobs.bombardier.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: Booking.com
+  platform: custom_json
+  slug: booking-com-jibe
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Jibe search API with the supplied internship keyword
+    returned a live posting.'
+  custom:
+    url: https://jobs.booking.com/api/jobs?keywords=internship&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: full_location
+      url: canonical_url
+      description: data.description
+      employment_type: data.employment_type
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 2
+- name: Booz Allen
+  platform: workday
+  slug: bah
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: bah
+  workday_site: bah_jobs
+  workday_dc: wd1
+  workday_facet: workerSubType:12aea2bdfbdb10dbf53be9b8e38a2a1d
+  notes: '2026-08-13: official Workday endpoint verified; its paid intern facet has
+    two listings.'
+- name: BorgWarner
+  platform: workday
+  slug: borgwarner
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: borgwarner
+  workday_site: BorgWarner_Careers
+  workday_dc: wd5
+  workday_facet: workerSubType:04519724ad9a4dbaa1c1dd96f0cfb311
+  notes: '2026-08-13: official Workday endpoint verified; its Student facet has 28
+    listings.'
+- name: Bosch
+  platform: smartrecruiters
+  slug: boschgroup
+  source_of_record: discover
+  last_verified: *id007
+- name: Boston Dynamics
+  platform: workday
+  slug: bostondynamics
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: bostondynamics
+  workday_site: Boston_Dynamics
+  workday_dc: wd1
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Bot Auto
+  platform: greenhouse
+  slug: botauto
+  source_of_record: discover
+  last_verified: *id010
+- name: Botpress
+  platform: workable
+  slug: botpress
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: careers-page ATS scan found the Workable embed; the widget account
+    names itself Botpress Technologies Inc.'
+- name: bounteous
+  platform: lever
+  slug: bounteous
+  source_of_record: openjobs
+  last_verified: *id005
+- name: BowerGroupAsia
+  platform: bamboohr
+  slug: bga
+  source_of_record: discover
+  last_verified: *id008
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    bamboohr publishes no board name, so provenance is the evidence (23 job(s))'
+- name: BP
+  platform: workday
+  slug: bpinternational
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: bpinternational
+  workday_site: bpEarlyCareers
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (9 posting(s), 0 kept)'
+- name: Brain Hunter
+  platform: smartrecruiters
+  slug: brainhunter
+  source_of_record: openjobs
+  last_verified: *id007
+- name: Branch International
+  platform: greenhouse
+  slug: branch
+  source_of_record: discover
+  last_verified: *id010
+- name: Braze
+  platform: greenhouse
+  slug: braze
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: browser discovery found a greenhouse API URL, so this is a native
+    board rather than custom_json; verified by probe with the company name on the
+    returned board'
+- name: Bree
+  platform: ashby
+  slug: bree
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active machine-learning internship/co-op application
+    verifies the public Ashby board.'
+- name: Brevium
+  platform: greenhouse
+  slug: brevium
+  source_of_record: discover
+  last_verified: *id008
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/brevium with 3 job(s) and the board named itself, so it is
+    polled directly instead of secondhand'
+- name: Brex
+  platform: greenhouse
+  slug: brex
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live Brex Greenhouse board.'
+- name: Bridgewater Associates
+  platform: greenhouse
+  slug: bridgewater89
+  source_of_record: discover
+  last_verified: *id006
+  notes: '2026-08-17: browser-assisted discovery returned www.bridgewater.com/jobboard,
+    whose rows carry job-boards.greenhouse.io/bridgewater89 apply URLs.'
+- name: Brillio
+  platform: lever
+  slug: brillio-2
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Bristol Myers Squibb
+  platform: custom_json
+  slug: bristol-myers-squibb
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: eightfold. filter_family carries the employer''s own early-career
+    and intern/co-op families.'
+  custom:
+    url: https://jobs.bms.com/api/pcsx/search?domain=bms.com&query=&start=0&sort_by=relevance&filter_family=early%20career%20program%2Cintern%2Fco-op
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://jobs.bms.com/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: Broadcom
+  platform: workday
+  slug: broadcom
+  source_of_record: openjobs
+  last_verified: *id011
+  recheck_after: *id009
+  workday_tenant: broadcom
+  workday_site: External_Career
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Brookfield
+  platform: workday
+  slug: brookfield
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: brookfield
+  workday_site: brookfieldprivate
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Brown Brothers Harriman
+  platform: workday
+  slug: bbh
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: bbh
+  workday_site: bbh
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Bruce Power
+  platform: workday
+  slug: brucepower
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: brucepower
+  workday_site: BrucePower
+  workday_dc: wd3
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Buckman
+  platform: smartrecruiters
+  slug: buckman
+  source_of_record: openjobs
+  last_verified: *id007
+- name: Budge Studios
+  platform: bamboohr
+  slug: budge
+  source_of_record: openjobs
+  last_verified: *id012
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 4 job(s)'
+- name: Build Staff
+  platform: smartrecruiters
+  slug: buildstaffinc
+  source_of_record: openjobs
+  last_verified: *id007
+- name: Bungie
+  platform: greenhouse
+  slug: bungie
+  source_of_record: openjobs
+  last_verified: *id010
+- name: Bybit
+  platform: greenhouse
+  slug: bybit
+  source_of_record: discover
+  last_verified: *id010
+- name: Bynder
+  platform: ashby
+  slug: bynder
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (25 job(s))'
+- name: ByteDance
+  platform: smartrecruiters
+  slug: bytedance
+  source_of_record: openjobs
+  last_verified: *id007

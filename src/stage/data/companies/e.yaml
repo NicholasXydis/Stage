@@ -1,0 +1,512 @@
+- name: e-Careers
+  platform: workable
+  slug: ecareers
+  source_of_record: discover
+  last_verified: &id003 2026-08-16
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: East Penn Manufacturing Company
+  platform: icims
+  slug: eastpennmanufacturing
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Eaton
+  platform: custom_json
+  slug: eaton
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: Eightfold tenant honouring filter_career_level; the location filter is stripped
+    because it hid the one Canadian posting.
+  custom:
+    url: https://eaton.eightfold.ai/api/pcsx/search?domain=eaton.com&query=&start=0&sort_by=relevance&filter_career_level=Intern
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://eaton.eightfold.ai/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: eBay
+  platform: workday
+  slug: ebay
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+  recheck_after: &id007 2026-10-01
+  workday_tenant: ebay
+  workday_site: apply
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Eclipse Automation
+  platform: greenhouse
+  slug: eclipse
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+- name: Egra
+  platform: ashby
+  slug: egra
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active AI research internship application verifies
+    the public Ashby board.'
+- name: Eidos-Montreal
+  platform: custom_json
+  slug: dayforce-eic
+  source_of_record: discover
+  last_verified: 2026-08-18
+  rate_profile: conservative
+  notes: 'Dayforce, reached by sending the /api/auth/csrf token as x-csrf-token. 2026-08-21:
+    two boards on this host answered 403 in one run, so the row is pinned conservative.'
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/eic/jobposting/search
+    method: POST
+    body:
+      clientNamespace: eic
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/eic/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+    max_pages: 20
+- name: Electric Hydrogen
+  platform: greenhouse
+  slug: eh2internship
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: The employer's internships-only greenhouse board; it answered 200 with an
+    empty roster on 2026-08-20.
+- name: Electronic Arts
+  platform: custom_json
+  slug: ea
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reopened — the 2026-08-14 note said custom_json was the route
+    once a contract existed, and jobs.ea.com is the same Avature listFilterMode markup
+    the Two Sigma row pins.'
+  custom:
+    url: https://jobs.ea.com/en_US/careers/SearchJobs/?listFilterMode=1&jobRecordsPerPage=20
+    format: html
+    row_selector: article.article--result
+    fields:
+      title: h3.article__header__text__title a
+      id: h3.article__header__text__title a::slugid(href)
+      url: h3.article__header__text__title a::attr(href)
+      location: span.list-item-location
+      department: span.list-item-department
+      employment_type: span.list-item-workerType
+    page_param: jobOffset
+    page_size: 20
+    max_pages: 20
+- name: ElevenLabs
+  platform: ashby
+  slug: elevenlabs
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 238 job(s)'
+- name: Ellipsis Labs
+  platform: ashby
+  slug: ellipsislabs
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (11 job(s))'
+- name: EllisDon
+  platform: workday
+  slug: ellisdon
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: ellisdon
+  workday_site: Ellis-Don
+  workday_dc: wd3
+  notes: '2026-08-17: verified by scratch sync, 120 postings returned. Canadian construction;
+    0 internships on the day of adoption, kept for its seasonal IT and co-op intake'
+- name: Eluvio
+  platform: workable
+  slug: eluvio
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Enbridge
+  platform: workday
+  slug: enbridge
+  source_of_record: discover
+  last_verified: &id001 2026-08-17
+  workday_tenant: enbridge
+  workday_site: enbridge_careers
+  workday_dc: wd3
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Encephalo Investments
+  platform: smartrecruiters
+  slug: encephaloinvestments
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/encephaloinvestments with 3 job(s) and the board named
+    itself, so it is polled directly instead of secondhand'
+- name: Endava
+  platform: smartrecruiters
+  slug: endava
+  source_of_record: openjobs
+  last_verified: &id005 2026-08-14
+- name: Enghouse Systems
+  platform: bamboohr
+  slug: enghouse
+  source_of_record: discover
+  last_verified: *id001
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    17 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Engineers Gate
+  platform: greenhouse
+  slug: engineersgate
+  source_of_record: discover
+  last_verified: *id002
+- name: Enova International
+  platform: greenhouse
+  slug: enova
+  source_of_record: discover
+  last_verified: *id002
+- name: Enpal
+  platform: ashby
+  slug: enpal
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active automation and software-development internship
+    application verifies the public Ashby board.'
+- name: Ensemble Health Partners
+  platform: greenhouse
+  slug: ensemble
+  source_of_record: discover
+  last_verified: *id002
+- name: Enverus
+  platform: jobvite
+  slug: drillinginfo
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
+    answers but renders no jv-job-list table, so it is an empty or retired board'
+- name: Epia Neuro
+  platform: ashby
+  slug: epianeuro
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (16 job(s))'
+- name: Epic Games
+  platform: greenhouse
+  slug: epicgames
+  source_of_record: openjobs
+  last_verified: *id002
+- name: Epic Systems
+  platform: custom_json
+  slug: epic-systems
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: closed for good — an Avature tenant that does not serve the
+    listFilterMode markup, and the owner confirmed a DevTools capture finds no reusable
+    listing request.'
+  custom:
+    url: https://careers.epic.com/jobs/
+    fields:
+      title: title
+      id: id
+- name: Epicor
+  platform: workday
+  slug: epicorsoftware
+  source_of_record: discover
+  last_verified: &id006 2026-08-14
+  workday_tenant: epicorsoftware
+  workday_site: epicorjobs
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: EPRI
+  platform: workday
+  slug: vhr-epri
+  source_of_record: discover
+  workday_tenant: vhr-epri
+  workday_site: epricareers
+  workday_dc: wd1
+  enabled: false
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
+    422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: Equativ
+  platform: lever
+  slug: equativ
+  source_of_record: discover
+  last_verified: *id004
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (22 job(s))'
+- name: Equifax
+  platform: workday
+  slug: equifax
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: equifax
+  workday_site: UR_External
+  workday_dc: wd5
+  workday_facet: jobFamilyGroup:ef45ca2670b010249197ce07f79d9cf0
+  notes: '2026-08-13: official Workday endpoint verified; its Internships job-family
+    group has two listings.'
+- name: Eragon
+  platform: ashby
+  slug: eragon
+  source_of_record: discover
+  last_verified: *id004
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: Ericsson
+  platform: custom_json
+  slug: ericsson
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Its Phenom-shaped widgets answer 401, but the site is Eightfold; /api/pcsx/search
+    returns all 491 positions.
+  custom:
+    url: https://jobs.ericsson.com/api/pcsx/search?domain=ericsson.com&query=&start=0&sort_by=relevance
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://jobs.ericsson.com/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: Escape Velocity Entertainment
+  platform: workable
+  slug: escape-velocity-entertainment-inc
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: eSentire
+  platform: custom_json
+  slug: esentire
+  source_of_record: discover
+  last_verified: 2026-08-21
+  rate_profile: conservative
+  notes: 'Dayforce, reached by sending the /api/auth/csrf token as x-csrf-token. 2026-08-21:
+    two boards on this host answered 403 in one run, so the row is pinned conservative.'
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/esentire/jobposting/search
+    method: POST
+    body:
+      clientNamespace: esentire
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/esentire/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+- name: Espa AI
+  platform: ashby
+  slug: espa
+  source_of_record: discover
+  last_verified: *id004
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (2 job(s))'
+- name: Esri
+  platform: greenhouse
+  slug: esri
+  source_of_record: discover
+  last_verified: *id002
+- name: Etched.ai
+  platform: greenhouse
+  slug: etchedai
+  source_of_record: discover
+  last_verified: *id002
+- name: Ether.fi
+  platform: ashby
+  slug: ether.fi
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (10 job(s))'
+- name: Ethernovia
+  platform: greenhouse
+  slug: ethernovia
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+- name: ETHGlobal
+  platform: ashby
+  slug: ethglobal
+  source_of_record: discover
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (1 job(s))'
+- name: Etsy
+  platform: custom_json
+  slug: etsy
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the official Etsy careers search server-renders 30 job cards
+    per page; the existing HTML adapter returned 30 authoritative postings with stable
+    detail URLs.'
+  custom:
+    url: https://careers.etsy.com/jobs/search?page=1&query=
+    format: html
+    row_selector: article.job-search-results-card-col
+    fields:
+      title: h3.job-search-results-card-title a
+      id: h3.job-search-results-card-title a::attr(href)
+      url: h3.job-search-results-card-title a::attr(href)
+      location: .job-component-location span
+      department: .job-component-department span
+    page_param: page
+    page_size: 30
+    page_start: 1
+    page_step: 1
+    max_pages: 5
+- name: Eulerity
+  platform: greenhouse
+  slug: eulerity
+  source_of_record: discover
+  last_verified: *id002
+- name: Eurofins
+  platform: smartrecruiters
+  slug: eurofins
+  source_of_record: discover
+  last_verified: *id005
+- name: Euronext
+  platform: workday
+  slug: hrhub
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: hrhub
+  workday_site: euronext_career_page
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: EV Realty
+  platform: lever
+  slug: evrealty-us
+  source_of_record: discover
+  last_verified: *id004
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (1 job(s))'
+- name: Evercore
+  platform: custom_json
+  slug: evercore
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: its tal.net tenant answers every board url with an oleeoProtect
+    altcha challenge titled Quick Check Needed. That is a CAPTCHA, so it is a policy
+    boundary, not a gap.'
+  custom:
+    url: https://evercore.tal.net/vx/lang-en-GB/mobile-0/appcentre-ext/brand-6/candidate/jobboard/vacancy/2/adv/
+    fields:
+      title: title
+      id: id
+- name: Everpure
+  platform: greenhouse
+  slug: purestorage
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: everpuredata.com embeds this board and greenhouse names it Everpure;
+    the purestorage token is the pre-rename one, so name and token differ legitimately.'
+- name: Evolution
+  platform: smartrecruiters
+  slug: evolution
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Evolver
+  platform: greenhouse
+  slug: evolver
+  source_of_record: discover
+  last_verified: *id002
+- name: Excel Sports Management
+  platform: greenhouse
+  slug: excelsportsmanagement
+  source_of_record: discover
+  last_verified: *id002
+- name: Expedia
+  platform: workday
+  slug: expedia
+  source_of_record: openjobs
+  last_verified: 2026-08-18
+  recheck_after: *id007
+  workday_tenant: expedia
+  workday_site: search
+  workday_dc: wd108
+  notes: Parked as never answering on wd5/private; it is live on wd108/search with
+    141 postings.
+- name: extreme network
+  platform: lever
+  slug: extremenetworks
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: EY
+  platform: custom_json
+  slug: ey
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; its /rss.xml is 106MB and ignores q, but the search page
+    honours q=internship and pages on startrow.
+  custom:
+    url: https://careers.ey.com/search/?q=internship&sortColumn=referencedate&sortDirection=desc
+    format: html
+    authoritative: false
+    row_selector: tr.data-row
+    fields:
+      title: a.jobTitle-link
+      id: a.jobTitle-link::slugid(href)
+      url: a.jobTitle-link::attr(href)
+      location: .jobLocation
+    page_param: startrow
+    page_size: 25
+    page_step: 25
+    max_pages: 8
+- name: Eyeline
+  platform: lever
+  slug: scanlinevfx
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'

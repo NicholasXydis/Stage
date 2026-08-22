@@ -1,0 +1,318 @@
+- name: Valeo
+  platform: workday
+  slug: valeo
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  workday_tenant: valeo
+  workday_site: valeo_jobs
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Valstad
+  platform: ashby
+  slug: valstad
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (9 job(s))'
+- name: Vanderlande
+  platform: workday
+  slug: vanderlande
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: vanderlande
+  workday_site: careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Vanguard
+  platform: workday
+  slug: vanguard
+  source_of_record: discover
+  last_verified: 2026-08-19
+  workday_tenant: vanguard
+  workday_site: vanguard_external
+  workday_dc: wd5
+  notes: 'vanguardjobs.com is a Findly shell whose detail pages name the real tenant.
+    Verified by CXS probe: 494 postings.'
+- name: Vanta
+  platform: ashby
+  slug: vanta
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Varda
+  platform: greenhouse
+  slug: vardaspace
+  source_of_record: discover
+  last_verified: &id006 2026-08-14
+- name: Varonis
+  platform: jobvite
+  slug: varonis-internal
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/varonis-internal/jobs
+    server-renders all 60 postings, which is the contract this row polls'
+- name: Vast Space
+  platform: greenhouse
+  slug: vast
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Veeam Software
+  platform: greenhouse
+  slug: veeamsoftware
+  source_of_record: openjobs
+  last_verified: &id004 2026-08-11
+- name: Veeda AI
+  platform: ashby
+  slug: veeda-labs
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (6 job(s))'
+- name: Veeva Systems
+  platform: lever
+  slug: veeva
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: lever board token verified live at 839 jobs. Lever publishes
+    no board name, so identity rests on the token matching the employer and on careers.veeva.com
+    being the entry point'
+- name: Vega Investment Technologies
+  platform: ashby
+  slug: vega
+  source_of_record: discover
+  last_verified: &id003 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (1 job(s))'
+- name: Velan Studios
+  platform: workable
+  slug: velanstudios
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Vendelux
+  platform: ashby
+  slug: vendelux
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (32 job(s))'
+- name: Vention
+  platform: custom_json
+  slug: vention
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: closed for good — the careers section hydrates from a request
+    named in no bundle, sitemap or turbo-stream, and the owner confirmed a DevTools
+    capture finds nothing.'
+  custom:
+    url: https://vention.com/careers
+    fields:
+      title: title
+      id: id
+- name: Veolia
+  platform: smartrecruiters
+  slug: veoliaenvironnementsa
+  source_of_record: discover
+  last_verified: &id005 2026-08-14
+- name: Vercel
+  platform: greenhouse
+  slug: vercel
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Verily
+  platform: workday
+  slug: verily
+  source_of_record: discover
+  last_verified: &id007 2026-08-17
+  workday_tenant: verily
+  workday_site: Verily_Careers
+  workday_dc: wd1
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Verition Group
+  platform: greenhouse
+  slug: veritiongroupllc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the board names itself Verition
+    Group LLC and carries 2027 internships.'
+- name: Vertiv
+  platform: oracle_cloud
+  slug: vertiv
+  source_of_record: manual
+  last_verified: 2026-08-13
+  oracle_host: egup.fa.us2.oraclecloud.com
+  oracle_site: CX
+  notes: '2026-08-13: official Oracle candidate JSON verified; it currently includes
+    IT security internships.'
+- name: Vertx Inc.
+  platform: workday
+  slug: vertexinc
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: 2026-10-01
+  workday_tenant: vertexinc
+  workday_site: VertexInc
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: VetsEZ
+  platform: breezy
+  slug: vetsez
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; breezy publishes no board name, so
+    the name gate cannot confirm it and provenance is the evidence (47 job(s))'
+- name: VGW
+  platform: greenhouse
+  slug: vgw
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Videotron
+  platform: smartrecruiters
+  slug: Videotron
+  source_of_record: discover
+  last_verified: *id005
+- name: Vidsy
+  platform: lever
+  slug: vidsy
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Vidyard
+  platform: custom_json
+  slug: vidyard
+  source_of_record: discover
+  enabled: false
+  notes: The kula.ai payload names offices rather than postings and carries no per-job
+    url, so every posting would apply to the listing endpoint; parked until recaptured.
+  custom:
+    url: https://careers.kula.ai/api/internal/ats_job_posts?accountName=vidyard&page=1&type=ats_job_post.index&items=99
+    jobs_path: data.ats_job.offices
+    fields:
+      title: name
+      id: id
+      location: location
+- name: Viking Global
+  platform: greenhouse
+  slug: vikingglobalinvestors
+  source_of_record: discover
+  last_verified: *id003
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/vikingglobalinvestors with 3 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
+- name: Viridien
+  platform: workday
+  slug: cgg
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: cgg
+  workday_site: viridiencareers
+  workday_dc: wd103
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Virtu Financial
+  platform: greenhouse
+  slug: virtu
+  source_of_record: discover
+  last_verified: *id006
+- name: Visa
+  platform: smartrecruiters
+  slug: visa
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Vital Lyfe
+  platform: ashby
+  slug: vital-lyfe
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (13 job(s))'
+- name: Vitalant
+  platform: workday
+  slug: vitalant
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: vitalant
+  workday_site: Careers
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Vmax AI Corp
+  platform: ashby
+  slug: vmax
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (8 job(s))'
+- name: VO2 Group
+  platform: lever
+  slug: vo2-group
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (36 job(s))'
+- name: Voldex
+  platform: ashby
+  slug: voldex
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 7 job(s)'
+- name: Voleon
+  platform: ashby
+  slug: voleon
+  source_of_record: discover
+  last_verified: *id007
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    57 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Voloridge
+  platform: greenhouse
+  slug: voloridgeinvestmentmanagement
+  source_of_record: discover
+  last_verified: *id006
+- name: Voltus
+  platform: lever
+  slug: voltus
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Vooban
+  platform: greenhouse
+  slug: vooban
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the careers page answers 403 from CloudFront, but the greenhouse
+    board behind it is open and names itself Vooban.'
+- name: VWH Capital Management
+  platform: smartrecruiters
+  slug: vwhcapitalmanagementlp
+  source_of_record: discover
+  last_verified: *id005

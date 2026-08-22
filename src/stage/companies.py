@@ -20,6 +20,7 @@ from stage.domain import (
     SourceOfRecord,
     public_https_url,
 )
+from stage.lexicon import fold
 from stage.paths import registry_path
 from stage.sources.platforms import SlugRejectedError, oracle_target
 
@@ -31,9 +32,7 @@ class RegistryError(Exception):
 def _require_str(row: dict[str, Any], key: str, index: int) -> str:
     value = row.get(key)
     if not isinstance(value, str) or not value.strip():
-        raise RegistryError(
-            f"companies.yaml entry {index}: field {key!r} must be a non-empty string"
-        )
+        raise RegistryError(f"registry entry {index}: field {key!r} must be a non-empty string")
     return value.strip()
 
 
@@ -42,7 +41,7 @@ def _optional_str(row: dict[str, Any], key: str) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str):
-        raise RegistryError(f"companies.yaml: field {key!r} must be a string")
+        raise RegistryError(f"registry: field {key!r} must be a string")
     return value.strip() or None
 
 
@@ -51,7 +50,7 @@ def _optional_pin(row: dict[str, Any], key: str) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str):
-        raise RegistryError(f"companies.yaml: field {key!r} must be a string")
+        raise RegistryError(f"registry: field {key!r} must be a string")
     return value.strip()
 
 
@@ -59,7 +58,7 @@ def _require_bool(row: dict[str, Any], key: str, index: int, *, default: bool) -
     value = row.get(key, default)
     if not isinstance(value, bool):
         raise RegistryError(
-            f"companies.yaml entry {index}: {key!r} must be an unquoted true or false, "
+            f"registry entry {index}: {key!r} must be an unquoted true or false, "
             f"not {type(value).__name__} {value!r}"
         )
     return value
@@ -70,7 +69,7 @@ def _parse_date(row: dict[str, Any], key: str, index: int) -> date | None:
     if value is None:
         return None
     if isinstance(value, bool):
-        raise RegistryError(f"companies.yaml entry {index}: field {key!r} must be a date")
+        raise RegistryError(f"registry entry {index}: field {key!r} must be a date")
     if isinstance(value, date):
         return value
     if isinstance(value, str):
@@ -78,10 +77,10 @@ def _parse_date(row: dict[str, Any], key: str, index: int) -> date | None:
             return date.fromisoformat(value)
         except ValueError as exc:
             raise RegistryError(
-                f"companies.yaml entry {index}: field {key!r} must be an ISO date like "
+                f"registry entry {index}: field {key!r} must be an ISO date like "
                 f"2026-08-08, not {value!r}"
             ) from exc
-    raise RegistryError(f"companies.yaml entry {index}: field {key!r} must be a date")
+    raise RegistryError(f"registry entry {index}: field {key!r} must be a date")
 
 
 def _oracle_fields(
@@ -92,17 +91,17 @@ def _oracle_fields(
     if platform is not Platform.ORACLE_CLOUD:
         if host is not None or site is not None or row.get("oracle_keyword") is not None:
             raise RegistryError(
-                f"companies.yaml entry {index}: Oracle fields only belong on platform oracle_cloud"
+                f"registry entry {index}: Oracle fields only belong on platform oracle_cloud"
             )
         return None, None
     if host is None or site is None:
         raise RegistryError(
-            f"companies.yaml entry {index}: platform oracle_cloud needs oracle_host and oracle_site"
+            f"registry entry {index}: platform oracle_cloud needs oracle_host and oracle_site"
         )
     try:
         return oracle_target(host, site)
     except SlugRejectedError as exc:
-        raise RegistryError(f"companies.yaml entry {index}: {exc}") from exc
+        raise RegistryError(f"registry entry {index}: {exc}") from exc
 
 
 def _custom_int(raw: dict[str, Any], name: str, index: int) -> int:
@@ -110,9 +109,7 @@ def _custom_int(raw: dict[str, Any], name: str, index: int) -> int:
     if value in (None, ""):
         return 0
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-        raise RegistryError(
-            f"companies.yaml entry {index}: custom.{name} must be a non-negative integer"
-        )
+        raise RegistryError(f"registry entry {index}: custom.{name} must be a non-negative integer")
     return value
 
 
@@ -121,76 +118,70 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
     if raw is None:
         if platform is Platform.CUSTOM_JSON:
             raise RegistryError(
-                f"companies.yaml entry {index}: platform custom_json needs a 'custom' block "
+                f"registry entry {index}: platform custom_json needs a 'custom' block "
                 "with url and a title field mapping"
             )
         return None
     if platform is not Platform.CUSTOM_JSON:
         raise RegistryError(
-            f"companies.yaml entry {index}: a 'custom' block only belongs on platform custom_json"
+            f"registry entry {index}: a 'custom' block only belongs on platform custom_json"
         )
     if not isinstance(raw, dict):
-        raise RegistryError(f"companies.yaml entry {index}: 'custom' must be a mapping")
+        raise RegistryError(f"registry entry {index}: 'custom' must be a mapping")
 
     url = public_https_url(str(raw.get("url", "")))
     if url is None:
         raise RegistryError(
-            f"companies.yaml entry {index}: custom.url must be a public https address "
-            "without credentials"
+            f"registry entry {index}: custom.url must be a public https address without credentials"
         )
     mapping = raw.get("fields", {})
     if not isinstance(mapping, dict):
-        raise RegistryError(f"companies.yaml entry {index}: custom.fields must be a mapping")
+        raise RegistryError(f"registry entry {index}: custom.fields must be a mapping")
     unknown = sorted(set(mapping) - set(KNOWN_FIELDS))
     if unknown:
         raise RegistryError(
-            f"companies.yaml entry {index}: custom.fields has unknown key(s) "
+            f"registry entry {index}: custom.fields has unknown key(s) "
             f"{', '.join(unknown)}; known: {', '.join(KNOWN_FIELDS)}"
         )
     missing = [name for name in REQUIRED_FIELDS if not str(mapping.get(name, "")).strip()]
     if missing:
-        raise RegistryError(
-            f"companies.yaml entry {index}: custom.fields must map {', '.join(missing)}"
-        )
+        raise RegistryError(f"registry entry {index}: custom.fields must map {', '.join(missing)}")
     for key, value in mapping.items():
         if not isinstance(value, str) or not value.strip():
             raise RegistryError(
-                f"companies.yaml entry {index}: custom.fields[{key!r}] must be a non-empty string"
+                f"registry entry {index}: custom.fields[{key!r}] must be a non-empty string"
             )
     method = str(raw.get("method", "GET") or "GET").upper()
     if method not in ("GET", "POST"):
-        raise RegistryError(f"companies.yaml entry {index}: custom.method must be GET or POST")
+        raise RegistryError(f"registry entry {index}: custom.method must be GET or POST")
     body = raw.get("body", {})
     if not isinstance(body, dict):
-        raise RegistryError(f"companies.yaml entry {index}: custom.body must be a mapping")
+        raise RegistryError(f"registry entry {index}: custom.body must be a mapping")
     headers_raw = raw.get("headers", {})
     if not isinstance(headers_raw, dict):
-        raise RegistryError(f"companies.yaml entry {index}: custom.headers must be a mapping")
+        raise RegistryError(f"registry entry {index}: custom.headers must be a mapping")
     headers: dict[str, str] = {}
     for key, value in headers_raw.items():
         if not isinstance(value, str) or not value.strip():
             raise RegistryError(
-                f"companies.yaml entry {index}: custom.headers[{key!r}] must be a non-empty string"
+                f"registry entry {index}: custom.headers[{key!r}] must be a non-empty string"
             )
         headers[str(key)] = value
     fmt = str(raw.get("format", "json") or "json").lower()
     if fmt not in ("json", "rss", "html", "sitemap", "jsonld"):
         raise RegistryError(
-            f"companies.yaml entry {index}: custom.format must be json, rss, html, sitemap "
-            "or jsonld"
+            f"registry entry {index}: custom.format must be json, rss, html, sitemap or jsonld"
         )
     row_selector = str(raw.get("row_selector", "") or "")
     if fmt == "html" and not row_selector:
-        raise RegistryError(
-            f"companies.yaml entry {index}: custom.format html needs custom.row_selector"
-        )
+        raise RegistryError(f"registry entry {index}: custom.format html needs custom.row_selector")
     extract = str(raw.get("extract", "") or "")
     handshake_url = ""
     if raw.get("handshake_url"):
         checked = public_https_url(str(raw["handshake_url"]))
         if checked is None:
             raise RegistryError(
-                f"companies.yaml entry {index}: custom.handshake_url must be a public https address"
+                f"registry entry {index}: custom.handshake_url must be a public https address"
             )
         handshake_url = checked
     token_pattern = str(raw.get("token_pattern", "") or "")
@@ -198,28 +189,25 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
     token_prefix = str(raw.get("token_prefix", "") or "")
     if handshake_url and not (token_pattern and token_header):
         raise RegistryError(
-            f"companies.yaml entry {index}: custom.handshake_url needs token_pattern and "
-            "token_header"
+            f"registry entry {index}: custom.handshake_url needs token_pattern and token_header"
         )
     if token_pattern:
         try:
             re.compile(token_pattern)
         except re.error as exc:
             raise RegistryError(
-                f"companies.yaml entry {index}: custom.token_pattern is not a valid regex: {exc}"
+                f"registry entry {index}: custom.token_pattern is not a valid regex: {exc}"
             ) from exc
     item_tag = str(raw.get("item_tag", "item") or "item")
     if not re.fullmatch(r"[A-Za-z_][\w.:-]{0,63}", item_tag):
-        raise RegistryError(
-            f"companies.yaml entry {index}: custom.item_tag must be an xml element name"
-        )
+        raise RegistryError(f"registry entry {index}: custom.item_tag must be an xml element name")
     row_filter = str(raw.get("row_filter", "") or "")
     if row_filter:
         try:
             re.compile(row_filter)
         except re.error as exc:
             raise RegistryError(
-                f"companies.yaml entry {index}: custom.row_filter is not a valid regex: {exc}"
+                f"registry entry {index}: custom.row_filter is not a valid regex: {exc}"
             ) from exc
     page_param = str(raw.get("page_param", "") or "")
     paging = {
@@ -228,7 +216,7 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
     }
     if page_param and paging["page_size"] < 1:
         raise RegistryError(
-            f"companies.yaml entry {index}: custom.page_param needs a positive custom.page_size"
+            f"registry entry {index}: custom.page_param needs a positive custom.page_size"
         )
     return CustomBoard(
         url=url,
@@ -261,16 +249,14 @@ def _company_from_row(row: dict[str, Any], index: int) -> Company:
     try:
         platform = Platform(platform_value)
     except ValueError as exc:
-        raise RegistryError(
-            f"companies.yaml entry {index}: unknown platform {platform_value!r}"
-        ) from exc
+        raise RegistryError(f"registry entry {index}: unknown platform {platform_value!r}") from exc
 
     record_value = row.get("source_of_record", SourceOfRecord.MANUAL.value)
     try:
         source_of_record = SourceOfRecord(record_value)
     except ValueError as exc:
         raise RegistryError(
-            f"companies.yaml entry {index}: unknown source_of_record {record_value!r}"
+            f"registry entry {index}: unknown source_of_record {record_value!r}"
         ) from exc
 
     enabled = _require_bool(row, "enabled", index, default=True)
@@ -410,9 +396,42 @@ def _registry_payload(companies: Sequence[Company]) -> str:
     )
 
 
+def _is_shard_dir(target: Path) -> bool:
+    return target.suffix.lower() not in {".yaml", ".yml"}
+
+
+def _shard_name(name: str) -> str:
+    first = fold(name)[:1]
+    return first if "a" <= first <= "z" else "other"
+
+
+def _registry_files(source: Path) -> list[Path]:
+    if source.is_dir():
+        return sorted(source.glob("*.yaml"))
+    return [source] if source.exists() else []
+
+
+def _rows_in(source: Path) -> list[Any]:
+    try:
+        raw = yaml.safe_load(source.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise RegistryError(f"{source} is not valid YAML: {exc}") from exc
+    except OSError as exc:
+        raise RegistryError(f"{source} could not be read: {exc.strerror or exc}") from exc
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise RegistryError(f"{source.name} must contain a list of company entries")
+    return raw
+
+
 @contextmanager
 def _registry_lock(target: Path) -> Iterator[None]:
-    lock_path = target.with_name(f".{target.name}.lock")
+    if _is_shard_dir(target):
+        target.mkdir(parents=True, exist_ok=True)
+        lock_path = target / ".registry.lock"
+    else:
+        lock_path = target.with_name(f".{target.name}.lock")
     try:
         lock = lock_path.open("a+b")
     except OSError as exc:
@@ -437,7 +456,21 @@ def _registry_lock(target: Path) -> Iterator[None]:
 
 
 def _write_registry(companies: Sequence[Company], target: Path) -> Path:
-    payload = _registry_payload(companies)
+    if not _is_shard_dir(target):
+        return _write_file(_registry_payload(companies), target)
+    target.mkdir(parents=True, exist_ok=True)
+    grouped: dict[str, list[Company]] = {}
+    for company in companies:
+        grouped.setdefault(_shard_name(company.name), []).append(company)
+    for shard, rows in sorted(grouped.items()):
+        _write_file(_registry_payload(rows), target / f"{shard}.yaml")
+    for stale in target.glob("*.yaml"):
+        if stale.stem not in grouped:
+            stale.unlink()
+    return target
+
+
+def _write_file(payload: str, target: Path) -> Path:
     staged: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -469,33 +502,27 @@ def write_registry(companies: Sequence[Company], path: Path | None = None) -> Pa
 def load_companies(path: Path | None = None, today: date | None = None) -> tuple[Company, ...]:
     source = path or registry_path()
     moment = today or datetime.now(UTC).date()
-    if not source.exists():
+    files = _registry_files(source)
+    if not files:
         raise RegistryError(f"registry not found at {source}")
-
-    try:
-        raw = yaml.safe_load(source.read_text(encoding="utf-8"))
-    except yaml.YAMLError as exc:
-        raise RegistryError(f"{source} is not valid YAML: {exc}") from exc
-    except OSError as exc:
-        raise RegistryError(f"{source} could not be read: {exc.strerror or exc}") from exc
-    if raw is None:
-        return ()
-    if not isinstance(raw, list):
-        raise RegistryError("companies.yaml must contain a list of company entries")
 
     companies: list[Company] = []
     seen: set[tuple[Platform, str, str]] = set()
-    for index, row in enumerate(raw, start=1):
-        if not isinstance(row, dict):
-            raise RegistryError(f"companies.yaml entry {index} is not a mapping")
-        company = _company_from_row(row, index)
-        key = board_identity(company)
-        if key in seen:
-            raise RegistryError(
-                f"companies.yaml entry {index}: duplicate board {board_label(company)}"
-            )
-        seen.add(key)
-        companies.append(_resume_if_due(company, moment))
+    for file in files:
+        for index, row in enumerate(_rows_in(file), start=1):
+            if not isinstance(row, dict):
+                raise RegistryError(f"{file.name}: entry {index} is not a mapping")
+            try:
+                company = _company_from_row(row, index)
+            except RegistryError as exc:
+                raise RegistryError(f"{file.name}: {exc}") from exc
+            key = board_identity(company)
+            if key in seen:
+                raise RegistryError(
+                    f"{file.name}: registry entry {index}: duplicate board {board_label(company)}"
+                )
+            seen.add(key)
+            companies.append(_resume_if_due(company, moment))
     return tuple(companies)
 
 

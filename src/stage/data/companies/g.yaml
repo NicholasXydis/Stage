@@ -1,0 +1,587 @@
+- name: G-Research
+  platform: workday
+  slug: gresearch
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+  workday_tenant: gresearch
+  workday_site: G-Research
+  workday_dc: wd103
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Game Mode One
+  platform: bamboohr
+  slug: gamemodeone
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 4 job(s)'
+- name: Gameloft
+  platform: smartrecruiters
+  slug: gameloft
+  source_of_record: openjobs
+  last_verified: &id008 2026-08-14
+- name: Gardens Interactive
+  platform: ashby
+  slug: gardens
+  source_of_record: openjobs
+  last_verified: *id001
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 3 job(s)'
+- name: Garmin
+  platform: custom_json
+  slug: garmin
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: iCIMS careers-home site, the same contract as the AMD row.'
+  custom:
+    url: https://careers.garmin.com/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    url_template: https://careers.garmin.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
+- name: Gartner
+  platform: workday
+  slug: gartner
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: gartner
+  workday_site: EXT
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: GCI
+  platform: oracle_cloud
+  slug: edqv
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: edqv.fa.us2.oraclecloud.com
+  oracle_site: CX
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: GE Aerospace
+  platform: workday
+  slug: geaerospace
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: geaerospace
+  workday_site: ge_externalsite
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: GE Appliances
+  platform: workday
+  slug: haier
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: haier
+  workday_site: ge_appliances
+  workday_dc: wd3
+  workday_facet: Job_Profile:8dae14acd89201e8d9cb2ea4b401baaa
+  notes: '2026-08-13: official Workday endpoint verified; its Intern job-profile facet
+    has 19 listings.'
+- name: GE HealthCare
+  platform: workday
+  slug: gehc
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: gehc
+  workday_site: gehc_externalsite
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: GE Vernova
+  platform: workday
+  slug: gevernova
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: gevernova
+  workday_site: vernova_externalsite
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: GEA
+  platform: workday
+  slug: gea
+  source_of_record: discover
+  last_verified: &id003 2026-08-16
+  workday_tenant: gea
+  workday_site: geacareers
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 23 posting(s), 3 kept after
+    the CS-internship screens'
+- name: Geisinger
+  platform: workday
+  slug: geisinger
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: geisinger
+  workday_site: geisingerexternal
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 2 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Gemini
+  platform: greenhouse
+  slug: gemini
+  source_of_record: discover
+  last_verified: &id005 2026-08-14
+- name: Gen
+  platform: ashby
+  slug: gen-digital
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active data-engineering internship application verifies
+    the public Ashby board.'
+- name: Generac
+  platform: workday
+  slug: generac
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: generac
+  workday_site: external
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: General Dynamics Information Technology
+  platform: workday
+  slug: gdit
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: gdit
+  workday_site: external_career_site
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: General Dynamics Mission Systems
+  platform: icims
+  slug: gdms
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: General Intuition &amp; Medal
+  platform: ashby
+  slug: generalintuition-medal
+  source_of_record: discover
+  last_verified: 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (13 job(s))'
+- name: General Motors
+  platform: custom_json
+  slug: gm
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the Beamery listing is client-side, but /sitemap.xml carries
+    872 English job urls whose requisition id precedes the slug.'
+  custom:
+    url: https://search-careers.gm.com/sitemap.xml
+    format: sitemap
+    authoritative: false
+    row_filter: /en/jobs/jr-
+    fields:
+      title: path1_title
+      id: path2
+      url: loc
+- name: Generation West Virginia
+  platform: workable
+  slug: generation-west-virginia-1
+  source_of_record: discover
+  last_verified: &id004 2026-08-16
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: Genesys
+  platform: workday
+  slug: genesys
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: genesys
+  workday_site: Genesys
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Genetec
+  platform: workable
+  slug: genetec-inc
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: GenMD
+  platform: ashby
+  slug: genmd
+  source_of_record: discover
+  last_verified: &id009 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (2 job(s))'
+- name: Genpact
+  platform: workday
+  slug: genpact
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: genpact
+  workday_site: External_Careers
+  workday_dc: wd108
+  notes: '2026-08-17: coordinates found by browser-assisted discovery, then verified
+    by a scratch sync — the board answered with 21 posting(s)'
+- name: Gensyn
+  platform: greenhouse
+  slug: gensyn
+  source_of_record: discover
+  last_verified: *id004
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/gensyn with 3 job(s) and the board named itself, so it is polled
+    directly instead of secondhand'
+- name: Genworth Financial
+  platform: workday
+  slug: gnw
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: gnw
+  workday_site: GNW
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: GeoComply
+  platform: lever
+  slug: geocomply-2
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active internship application verifies the public Lever
+    board'
+- name: Georgian Partners Growth
+  platform: ashby
+  slug: georgian
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active AI/ML engineering internship application verifies
+    the public Ashby board.'
+- name: GHGSat
+  platform: workable
+  slug: ghgsat
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
+    probe that matched the company name on the returned board.'
+- name: Gigamon
+  platform: jobvite
+  slug: gigamon
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/gigamon/jobs
+    server-renders all 28 postings, which is the contract this row polls'
+- name: Gildan
+  platform: custom_json
+  slug: gildan
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: The page publishes its whole listing as schema.org JobPosting blocks, which
+    carry the body and employment type its visible cards do not.
+  custom:
+    url: https://gildancorp.com/en/careers/open-positions/
+    format: jsonld
+    fields:
+      title: title
+      id: identifier.value
+      url: url
+      location: jobLocation.name
+      description: description
+      employment_type: employmentType
+      category: jobCategory
+    page_param: page
+    page_size: 10
+    page_start: 1
+    page_step: 1
+    max_pages: 10
+- name: Gilead
+  platform: workday
+  slug: gilead
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: gilead
+  workday_site: gileadcareers
+  workday_dc: wd1
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Ginkgo Bioworks
+  platform: greenhouse
+  slug: ginkgobioworks
+  source_of_record: discover
+  last_verified: *id005
+- name: GitHub
+  platform: custom_json
+  slug: github-jibe
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official early-career Jibe API returned 92 public job records;
+    canonical URLs are preserved.'
+  custom:
+    url: https://www.github.careers/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: full_location
+      url: data.meta_data.canonical_url
+      description: data.description
+      category: data.categories.0.name
+      employment_type: data.employment_type
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 2
+- name: gitlab
+  platform: greenhouse
+  slug: gitlab
+  source_of_record: openjobs
+  last_verified: &id007 2026-08-14
+- name: Glean
+  platform: greenhouse
+  slug: gleanwork
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Global Partners
+  platform: workday
+  slug: global
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: global
+  workday_site: globalpartnerscareers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 1 posting(s), 1 kept after
+    the CS-internship screens'
+- name: GlobalFoundries
+  platform: workday
+  slug: globalfoundries
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: globalfoundries
+  workday_site: external
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Globalization Partners
+  platform: greenhouse
+  slug: globalizationpartners
+  source_of_record: openjobs
+  last_verified: &id006 2026-08-08
+  name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''G-P''; the name gate rejects this
+    caption, and the board is confirmed correct'
+- name: Gloss Genius
+  platform: greenhouse
+  slug: glossgenius
+  source_of_record: openjobs
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''Genius AI''; the name gate rejects
+    this caption, and the board is confirmed correct'
+- name: GOAT Group
+  platform: greenhouse
+  slug: goatgroup
+  source_of_record: openjobs
+  last_verified: *id007
+- name: GoDaddy
+  platform: greenhouse
+  slug: godaddy
+  source_of_record: openjobs
+  last_verified: *id007
+- name: Goldman Sachs
+  platform: custom_json
+  slug: goldmansachs
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Public GraphQL gateway, introspection open; experiences CAMPUS is the publisher's
+    own early-careers scope. Detail route /roles/[roleId] read from the app build
+    manifest.
+  custom:
+    url: https://api-higher.gs.com/gateway/api/v1/graphql
+    method: POST
+    body:
+      query: query($i:RoleSearchQueryInput!){roleSearch(searchQueryInput:$i){totalCount
+        items{roleId jobTitle division descriptionHtml lastPostedDate locations{city
+        state country}}}}
+      variables:
+        i:
+          page:
+            pageSize: 250
+            pageNumber: 0
+          experiences:
+          - CAMPUS
+    jobs_path: data.roleSearch.items
+    fields:
+      title: jobTitle
+      id: roleId
+      location: locations.0.city
+      description: descriptionHtml
+      department: division
+    url_template: https://higher.gs.com/roles/{id}
+    page_param: variables.i.page.pageNumber
+    page_size: 250
+    page_step: 1
+    max_pages: 6
+- name: GoMotive
+  platform: greenhouse
+  slug: gomotive
+  source_of_record: openjobs
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-08: board publishes the name ''Motive''; the name gate rejects this
+    caption, and the board is confirmed correct'
+- name: Google
+  platform: recruitee
+  slug: google
+  source_of_record: discover
+  last_verified: *id005
+  enabled: false
+  notes: '2026-08-21: the recruitee tenant answers with the Senior Marketer (Sample)
+    demo posting, so it is not this employer; google.com/robots.txt disallows /about/careers/applications/jobs/results,
+    so no direct route exists'
+- name: Grab
+  platform: smartrecruiters
+  slug: grab
+  source_of_record: discover
+  last_verified: *id008
+- name: Grafana Labs
+  platform: greenhouse
+  slug: grafanalabs
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied URL is the employer’s Greenhouse board and returned
+    live postings.'
+- name: Grant Thornton
+  platform: recruitee
+  slug: grantthornton
+  source_of_record: discover
+  last_verified: *id005
+- name: Gritt Robotics Inc
+  platform: ashby
+  slug: gritt
+  source_of_record: discover
+  last_verified: *id009
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (20 job(s))'
+- name: Group 1001
+  platform: workday
+  slug: group1001wd
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: group1001wd
+  workday_site: careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Group One Trading
+  platform: custom_json
+  slug: grouponetrading
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: ApplicantPro tenant, identity confirmed from its own job pages.
+    Its sitemap holds 444 urls but only three postings and no titles, and the listing
+    renders client-side.'
+  custom:
+    url: https://group1.applicantpro.com/jobs/
+    fields:
+      title: title
+      id: id
+- name: Groupe Dynamite
+  platform: custom_json
+  slug: groupe-dynamite
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Montreal retailer with a real tech team but no internships when added; 482
+    postings at 100 a page is 5 requests.
+  custom:
+    url: https://carrieres.dynamiteclothing.com/api/jobs?limit=100&sortBy=relevance&descending=false&internal=false
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      url: data.apply_url
+      category: data.category
+      employment_type: data.employment_type
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 10
+- name: Groupon
+  platform: greenhouse
+  slug: groupon
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+- name: GSA
+  platform: greenhouse
+  slug: gsacapital
+  source_of_record: manual
+  last_verified: *id005
+- name: GSK
+  platform: workday
+  slug: gsk
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: gsk
+  workday_site: gskcareers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: GuideWell Mutual
+  platform: oracle_cloud
+  slug: fa-etum-saasfaprod1
+  source_of_record: discover
+  last_verified: *id003
+  oracle_host: fa-etum-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 3 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Gumloop
+  platform: ashby
+  slug: gumloop
+  source_of_record: discover
+  last_verified: *id009
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (10 job(s))'
+- name: Guru Studio
+  platform: bamboohr
+  slug: gurustudio
+  source_of_record: openjobs
+  last_verified: *id001
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 2 job(s)'
+- name: Gusto
+  platform: greenhouse
+  slug: gusto
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'

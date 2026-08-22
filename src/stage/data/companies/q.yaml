@@ -1,0 +1,121 @@
+- name: Q5
+  platform: workable
+  slug: q5-partners
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: Qorvo
+  platform: custom_json
+  slug: qorvo
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: SuccessFactors RMK; /rss.xml carries all 131 postings in 1.4MB.'
+  custom:
+    url: https://careers.qorvo.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: QS Quacquarelli Symonds
+  platform: bamboohr
+  slug: qs
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: Quadric
+  platform: workable
+  slug: quadric-dot-i-o-inc
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Quadrillion
+  platform: ashby
+  slug: quadrillion-labs
+  source_of_record: discover
+  last_verified: 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (6 job(s))'
+- name: Qualcomm
+  platform: custom_json
+  slug: qualcomm
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: eightfold /api/pcsx/search?domain= — the endpoint template carries
+    across tenants, the filter names do not.'
+  custom:
+    url: https://careers.qualcomm.com/api/pcsx/search?domain=qualcomm.com&query=&location=&start=0&sort_by=relevance&filter_seniority=Intern
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://careers.qualcomm.com/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: Qualys
+  platform: workday
+  slug: qualys
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: qualys
+  workday_site: Careers
+  workday_dc: wd5
+  notes: '2026-08-21: supplied URL exposes the Workday tenant, site, and data center;
+    endpoint returned live postings.'
+- name: Quantbot Technologies
+  platform: greenhouse
+  slug: quantbot-technologies
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+- name: Quantic Dream
+  platform: lever
+  slug: quanticdream
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
+- name: Quantlab
+  platform: jobvite
+  slug: quantlab
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
+    answers 403, so the board is closed to our client'
+- name: Qube Research and Technologies
+  platform: greenhouse
+  slug: quberesearchandtechnologies
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the board names itself Qube Research
+    & Technologies.'
+- name: QuEra Computing
+  platform: greenhouse
+  slug: queracomputinginc
+  source_of_record: discover
+  last_verified: *id001
+- name: Quince
+  platform: greenhouse
+  slug: quince
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+  name_gate_exempt: true
+- name: Quora
+  platform: ashby
+  slug: quora
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 5 job(s)'

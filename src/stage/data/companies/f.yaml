@@ -1,0 +1,454 @@
+- name: F5 Networks
+  platform: workday
+  slug: ffive
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: ffive
+  workday_site: f5jobs
+  workday_dc: wd5
+  notes: '2026-08-17: coordinates found by browser-assisted discovery, then verified
+    by a scratch sync — the board answered with 1 posting(s)'
+- name: Fab2
+  platform: ashby
+  slug: fab2
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active automation software-engineering internship application
+    verifies the public Ashby board.'
+- name: Facility Solutions Group
+  platform: icims
+  slug: fsg
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Faire
+  platform: greenhouse
+  slug: faire
+  source_of_record: manual
+  last_verified: &id001 2026-08-14
+- name: Fanatics
+  platform: oracle_cloud
+  slug: fa-exki-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: fa-exki-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: FanDuel
+  platform: greenhouse
+  slug: fanduel
+  source_of_record: openjobs
+  last_verified: &id007 2026-08-14
+- name: Fannie Mae
+  platform: smartrecruiters
+  slug: fanniemae1sb
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/fanniemae1sb with 133 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
+- name: Fastly
+  platform: greenhouse
+  slug: fastly
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the live Fastly Greenhouse
+    board.'
+- name: Felix & Paul Studios
+  platform: bamboohr
+  slug: felixandpaul
+  source_of_record: discover
+  last_verified: 2026-08-18
+  name_gate_exempt: true
+  notes: '2026-08-18: felixandpaul.com/careers links felixandpaul.bamboohr.com, which
+    is the employer own site naming its own board - the provenance BambooHR cannot
+    supply itself.'
+- name: FICO
+  platform: workday
+  slug: fico
+  source_of_record: openjobs
+  last_verified: &id004 2026-08-14
+  recheck_after: &id005 2026-10-01
+  workday_tenant: fico
+  workday_site: External
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Fidelity Canada
+  platform: workday
+  slug: fil
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: fil
+  workday_site: fidelitycanada
+  workday_dc: wd3
+  notes: '2026-08-20: the Canadian Fidelity board, distinct from the American Fidelity
+    row; 146 postings.'
+- name: Field AI
+  platform: lever
+  slug: field-ai
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (126 job(s))'
+- name: Figma
+  platform: greenhouse
+  slug: figma
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Figure
+  platform: greenhouse
+  slug: figure
+  source_of_record: discover
+  last_verified: *id001
+- name: Final Strike Games
+  platform: bamboohr
+  slug: finalstrikegames
+  source_of_record: openjobs
+  last_verified: &id008 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 1 job(s)'
+- name: Findem
+  platform: lever
+  slug: findem
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Finmid
+  platform: ashby
+  slug: finmid.com
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (8 job(s))'
+- name: Fireblocks
+  platform: greenhouse
+  slug: fireblocks
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official job markup carries Greenhouse posting identifiers;
+    board identity verified.'
+- name: Firefly Aerospace
+  platform: custom_json
+  slug: fireflyspace
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-captured ClearCompany request. The board id is the path,
+    the visible site renders from it client-side, and location already carries the
+    uppercase subdivision code.'
+  custom:
+    url: https://careers-api.clearcompany.com/v1/00ed92c3-5bfb-7bfb-456d-4d9d77fef9a5?pageSize=25&source=CJB-0
+    headers:
+      Origin: https://fireflyspace.com
+      Referer: https://fireflyspace.com/
+    jobs_path: results
+    fields:
+      title: positionTitle
+      id: id
+      url: applyLink
+      location: location
+      description: description
+      department: departmentName
+    page_param: pageIndex
+    page_size: 25
+    page_step: 1
+    max_pages: 20
+- name: Firetiger
+  platform: ashby
+  slug: firetiger
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: First American
+  platform: workday
+  slug: firstam
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: firstam
+  workday_site: firstamericancareers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 120 posting(s), 0 kept after
+    the CS-internship screens'
+- name: First Bank & Trust
+  platform: workday
+  slug: bankeasy
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+  workday_tenant: bankeasy
+  workday_site: bank-easy-job-openings
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: First Quality
+  platform: workday
+  slug: firstquality
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: firstquality
+  workday_site: firstquality
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: First Quantum
+  platform: workday
+  slug: firstquantum
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: firstquantum
+  workday_site: First_Quantum_Careers
+  workday_dc: wd3
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Five Rings
+  platform: greenhouse
+  slug: fiveringsllc
+  source_of_record: discover
+  last_verified: *id001
+- name: Fivetran
+  platform: greenhouse
+  slug: fivetran
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Flagright
+  platform: ashby
+  slug: flagright.com
+  source_of_record: discover
+  last_verified: &id006 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (32 job(s))'
+- name: Flexera Software
+  platform: workday
+  slug: flexerasoftware
+  source_of_record: openjobs
+  last_verified: *id004
+  recheck_after: *id005
+  workday_tenant: flexerasoftware
+  workday_site: FlexeraSoftware
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Flexion Robotics
+  platform: workable
+  slug: flexion-robotics
+  source_of_record: discover
+  last_verified: *id006
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: Flinks
+  platform: workable
+  slug: flinks
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: careers-page ATS scan found the Workable embed; the widget account
+    names itself Flinks.'
+- name: Flipp
+  platform: greenhouse
+  slug: flipp
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Board token read from the early-talent page's own greenhouse embed (11 job(s)).
+- name: Flow Traders
+  platform: greenhouse
+  slug: flowtraders
+  source_of_record: discover
+  last_verified: *id001
+- name: Fluency
+  platform: ashby
+  slug: fluency
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (3 job(s))'
+- name: Fluxergy
+  platform: lever
+  slug: fluxergy-2
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (11 job(s))'
+- name: Fluxon
+  platform: greenhouse
+  slug: fluxon
+  source_of_record: openjobs
+  last_verified: *id007
+- name: Fonds FTQ
+  platform: workday
+  slug: fondsftq
+  source_of_record: discover
+  last_verified: 2026-08-18
+  workday_tenant: fondsftq
+  workday_site: sitecarriere_externe
+  workday_dc: wd10
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Ford Motor
+  platform: custom_json
+  slug: ford
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: TalentBrew site whose listing is client-side; /sitemap.xml lists
+    all 830 postings on one consistent seven-segment url shape.'
+  custom:
+    url: https://www.careers.ford.com/sitemap.xml
+    format: sitemap
+    authoritative: false
+    row_filter: /job/
+    fields:
+      title: path3_title
+      id: path1
+      url: loc
+      location: path4_title
+- name: Formlabs
+  platform: greenhouse
+  slug: formlabs
+  source_of_record: manual
+  last_verified: *id001
+- name: Fortinet
+  platform: oracle_cloud
+  slug: edel
+  source_of_record: discover
+  last_verified: 2026-08-21
+  oracle_host: edel.fa.us2.oraclecloud.com
+  oracle_site: CX_2001
+  notes: '2026-08-21: the tenant is opaque, so identity comes from the requisition
+    detail, which names Fortinet; 909 postings unfiltered'
+- name: Fortra
+  platform: greenhouse
+  slug: fortra
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches Re-probed
+    2026-08-14 and still dead.'
+- name: Forus
+  platform: ashby
+  slug: forus
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (48 job(s))'
+- name: Four Hands
+  platform: greenhouse
+  slug: fourhands
+  source_of_record: discover
+  last_verified: *id006
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/fourhands with 46 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: Fox Factory
+  platform: workday
+  slug: foxfactory
+  source_of_record: openjobs
+  last_verified: *id004
+  recheck_after: *id005
+  workday_tenant: foxfactory
+  workday_site: FOX
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Framestore
+  platform: recruitee
+  slug: framestore
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Freeform
+  platform: greenhouse
+  slug: freeformfuturecorp
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/freeformfuturecorp with 62 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
+- name: Frima
+  platform: custom_json
+  slug: frima-studio
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: 'The jobvite park was right about jobvite and wrong about the employer: frimastudio.com
+    is WordPress with a public career post type.'
+  custom:
+    url: https://frimastudio.com/wp-json/wp/v2/career?per_page=50
+    fields:
+      title: title.rendered
+      id: id
+      url: link
+      description: content.rendered
+- name: Front
+  platform: ashby
+  slug: frontcareers
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (23 job(s))'
+- name: Frontier Health
+  platform: ashby
+  slug: frontier-health
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: FTI Consulting
+  platform: workday
+  slug: fticonsulting
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: fticonsulting
+  workday_site: FTIConsultingCareersPrivate
+  workday_dc: wd108
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (28 posting(s), 0 kept)'
+- name: FTI Consulting
+  platform: workday
+  slug: fticonsulting
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: fticonsulting
+  workday_site: FTIConsultingCareers
+  workday_dc: wd108
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (28 posting(s), 0 kept)'
+- name: Full Circle
+  platform: bamboohr
+  slug: fullcircle
+  source_of_record: openjobs
+  last_verified: *id008
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 13 job(s)'
+- name: Fundwell
+  platform: ashby
+  slug: fundwell
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (7 job(s))'
+- name: Fussball Club Cincinnati LLC (“FC Cincinnati”)
+  platform: greenhouse
+  slug: fccincinnati
+  source_of_record: discover
+  last_verified: *id006
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/fccincinnati with 14 job(s) and the board named itself, so
+    it is polled directly instead of secondhand'

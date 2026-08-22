@@ -1,0 +1,340 @@
+- name: Waabi
+  platform: lever
+  slug: waabi
+  source_of_record: discover
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (58 job(s))'
+- name: Wabtec
+  platform: smartrecruiters
+  slug: wabtec
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/wabtec with 661 job(s) and the board named itself, so
+    it is polled directly instead of secondhand'
+- name: Walleye Capital
+  platform: greenhouse
+  slug: walleyecapital-external-students
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+- name: WallStreetQuants
+  platform: workable
+  slug: wallstreetquants
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Walmart
+  platform: workday
+  slug: walmart
+  source_of_record: openjobs
+  recheck_after: &id007 2026-10-01
+  workday_tenant: walmart
+  workday_site: WalmartExternal
+  workday_dc: wd5
+  enabled: false
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
+    422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: Warner Bros Games
+  platform: workday
+  slug: warnerbros
+  source_of_record: openjobs
+  last_verified: 2026-08-03
+  workday_tenant: warnerbros
+  workday_site: global
+  workday_dc: wd5
+- name: WATI.io
+  platform: workable
+  slug: wati-dot-i-o
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Wattpad
+  platform: lever
+  slug: wattpad
+  source_of_record: discover
+  last_verified: 2026-08-20
+  name_gate_exempt: true
+  notes: Board token read from the employer's own jobs page (29 job(s)); lever publishes
+    no board name.
+- name: WaveApps
+  platform: lever
+  slug: waveapps
+  source_of_record: openjobs
+  last_verified: &id003 2026-08-04
+- name: Wayfair
+  platform: smartrecruiters
+  slug: wayfair
+  source_of_record: openjobs
+  last_verified: &id005 2026-08-14
+- name: Waymo
+  platform: greenhouse
+  slug: waymo
+  source_of_record: discover
+  last_verified: *id001
+- name: We are social
+  platform: workable
+  slug: we-are-social-1
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Wealthfront
+  platform: lever
+  slug: wealthfront
+  source_of_record: discover
+  last_verified: &id002 2026-08-17
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    21 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Wealthsimple
+  platform: ashby
+  slug: wealthsimple
+  source_of_record: discover
+  last_verified: *id002
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    39 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Webflow
+  platform: greenhouse
+  slug: webflow
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page exposes the live Webflow Greenhouse board.'
+- name: WebFX
+  platform: lever
+  slug: webfx
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Weights & Biases
+  platform: custom_json
+  slug: weights-and-biases
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the official CoreWeave Weights & Biases page embeds the weights_and_biases
+    Greenhouse API; the live board returned 15 postings.'
+  custom:
+    url: https://boards-api.greenhouse.io/v1/boards/weights_and_biases/jobs?content=true
+    jobs_path: jobs
+    fields:
+      title: title
+      id: id
+      location: location.name
+      url: absolute_url
+      description: content
+- name: Wellington Management
+  platform: workday
+  slug: wellington
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: wellington
+  workday_site: External
+  workday_dc: wd5
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Wells Fargo
+  platform: workday
+  slug: wf
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+  workday_tenant: wf
+  workday_site: wellsfargojobs
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Welocalize
+  platform: workday
+  slug: welocalize
+  source_of_record: discover
+  last_verified: *id004
+  workday_tenant: welocalize
+  workday_site: welocalize
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Western Digital
+  platform: smartrecruiters
+  slug: westerndigital
+  source_of_record: discover
+  last_verified: *id005
+- name: Wicked Workshop
+  platform: smartrecruiters
+  slug: keywordsaustralia
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches Re-probed
+    2026-08-14 and still dead.'
+- name: WildBrain
+  platform: smartrecruiters
+  slug: wildbrain
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Wincent
+  platform: ashby
+  slug: wincent
+  source_of_record: discover
+  last_verified: &id006 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (16 job(s))'
+- name: Wind River
+  platform: jobvite
+  slug: windriver
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
+    redirects to Jobvite job-seeker support, so the board is gone'
+- name: WindBorne Systems
+  platform: ashby
+  slug: windborne-systems
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (23 job(s))'
+- name: Wing Assistant
+  platform: lever
+  slug: getwingapp
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (493 job(s))'
+- name: Wingtra AG
+  platform: lever
+  slug: wingtra-2
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Winland Foods
+  platform: workday
+  slug: winlandfoods
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: winlandfoods
+  workday_site: external
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (105 posting(s), 0 kept)'
+- name: Wintermute
+  platform: lever
+  slug: wintermute-trading
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (28 job(s))'
+- name: Wise
+  platform: smartrecruiters
+  slug: wise
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official Wise jobs page identifies its SmartRecruiters board;
+    public API returned live postings.'
+- name: Wiz
+  platform: ashby
+  slug: wiz
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: public Ashby board is named Wiz; it currently returns no postings.'
+- name: Wizards of the Coast
+  platform: greenhouse
+  slug: wizardsofthecoast
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: Wolters Kluwer
+  platform: workday
+  slug: wk
+  source_of_record: openjobs
+  last_verified: *id004
+  recheck_after: *id007
+  workday_tenant: wk
+  workday_site: External
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Wolverine Trading
+  platform: custom_json
+  slug: wolverinetrading
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-captured request; wolve.com renders a Pinpoint board whose
+    postings.json carries the whole listing with full bodies.'
+  custom:
+    url: https://wolve.pinpointhq.com/postings.json
+    headers:
+      Origin: https://www.wolve.com
+      Referer: https://www.wolve.com/
+    jobs_path: data
+    fields:
+      title: title
+      id: id
+      url: url
+      location: location.name
+      description: description
+      employment_type: employment_type_text
+- name: WongDoody
+  platform: greenhouse
+  slug: wongdoody
+  source_of_record: openjobs
+  last_verified: &id008 2026-08-11
+- name: Workato
+  platform: greenhouse
+  slug: workato
+  source_of_record: openjobs
+  last_verified: *id008
+- name: Workday
+  platform: workday
+  slug: workday
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: workday
+  workday_site: Workday
+  workday_dc: wd5
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Workiva
+  platform: workday
+  slug: workiva
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: workiva
+  workday_site: careers
+  workday_dc: wd503
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Workleap
+  platform: greenhouse
+  slug: workleap
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: WSP
+  platform: oracle_cloud
+  slug: emit
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: emit.fa.ca3.oraclecloud.com
+  oracle_site: CX_2001
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: WTW
+  platform: smartrecruiters
+  slug: wtw
+  source_of_record: discover
+  last_verified: *id005

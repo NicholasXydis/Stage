@@ -1,0 +1,1124 @@
+- name: S&P Global
+  platform: workday
+  slug: spgi
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: spgi
+  workday_site: SPGI_Careers
+  workday_dc: wd5
+  notes: '2026-08-20: careers.spglobal.com is a shell over this Workday tenant; 300
+    postings.'
+- name: Safari AI
+  platform: greenhouse
+  slug: safariai
+  source_of_record: openjobs
+  last_verified: &id006 2026-08-11
+- name: Sailpoint
+  platform: workday
+  slug: sailpoint
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-14
+  recheck_after: &id002 2026-10-01
+  workday_tenant: sailpoint
+  workday_site: SailPoint
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Saint Leo University
+  platform: workday
+  slug: saintleo
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: saintleo
+  workday_site: SLU
+  workday_dc: wd503
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (39 posting(s), 0 kept)'
+- name: Salesforce
+  platform: workday
+  slug: salesforce
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: salesforce
+  workday_site: External_Career_Site
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Samaya
+  platform: greenhouse
+  slug: samayaai
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+- name: Samsara
+  platform: greenhouse
+  slug: samsara
+  source_of_record: discover
+  last_verified: *id003
+- name: Samsung Electronics
+  platform: workday
+  slug: samsungelectronics
+  source_of_record: discover
+  last_verified: 2026-08-19
+  workday_tenant: sec
+  workday_site: Samsung_Careers
+  workday_dc: wd3
+  notes: 'Verified by CXS probe: 668 postings, and the tenant advertises an Intern(Empl.)
+    worker subtype. Distinct board from greenhouse/samsungsemiconductor.'
+- name: Samsung Semiconductor
+  platform: greenhouse
+  slug: samsungsemiconductor
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Sandbox VR
+  platform: lever
+  slug: sandboxvr
+  source_of_record: openjobs
+  last_verified: &id004 2026-08-04
+- name: SandboxAQ
+  platform: ashby
+  slug: sandboxaq
+  source_of_record: openjobs
+  last_verified: &id008 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 33 job(s)'
+- name: Sandia National Laboratories
+  platform: custom_json
+  slug: sandia
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: NLx-hosted board with no json contract; /sitemaps/jobs_1.xml
+    lists its postings on the same six-segment shape as the Siemens row.'
+  custom:
+    url: https://sandia.jobs/sitemaps/jobs_1.xml
+    format: sitemap
+    authoritative: false
+    row_filter: /job/?$
+    fields:
+      title: path3_title
+      id: path2
+      url: loc
+      location: path4_title
+- name: SAP
+  platform: custom_json
+  slug: sap
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: jobs.sap.com/sitemap.xml is a Google-jobs RSS feed, not a sitemap; it carries
+    the Montreal iXp internships in both English and French.
+  custom:
+    url: https://jobs.sap.com/sitemap.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: SAP Fioneer
+  platform: workable
+  slug: fioneer
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Saputo
+  platform: workday
+  slug: saputo
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: saputo
+  workday_site: Saputo_External_Careers
+  workday_dc: wd5
+  notes: '2026-08-17: verified by scratch sync, 120 postings returned. Montreal HQ.'
+- name: SAQ
+  platform: custom_json
+  slug: saq
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: SuccessFactors RMK; the French board publishes all 10 postings
+    through /rss.xml'
+  custom:
+    url: https://emploi.saq.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: Saronic
+  platform: ashby
+  slug: saronic
+  source_of_record: discover
+  last_verified: 2026-08-20
+  name_gate_exempt: true
+  notes: '2026-08-20: the owner supplied this exact ashby board URL, which is the
+    provenance ashby cannot give because it publishes no board name; 225 postings.'
+- name: Savannah River National Laboratory
+  platform: oracle_cloud
+  slug: ewvl
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: ewvl.fa.us8.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: Saviynt
+  platform: lever
+  slug: saviynt
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Scale AI
+  platform: greenhouse
+  slug: scaleai
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Schonfeld
+  platform: greenhouse
+  slug: schonfeld
+  source_of_record: discover
+  last_verified: *id003
+- name: SchoolMint
+  platform: greenhouse
+  slug: schoolmint
+  source_of_record: discover
+  last_verified: &id005 2026-08-16
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/schoolmint with 2 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: Schweitzer Engineering Laboratories
+  platform: workday
+  slug: selinc
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: selinc
+  workday_site: SEL
+  workday_dc: wd1
+  workday_facet: jobFamilyGroup:df72ee3ddefc1018ed60659348e352d3
+  notes: '2026-08-13: official Workday endpoint verified; its Internship job-family
+    facet has 25 listings.'
+- name: Scientific Games
+  platform: workday
+  slug: sglottery
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: sglottery
+  workday_site: ScientificGamesExternalCareers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: SciTec
+  platform: workable
+  slug: scitec
+  source_of_record: discover
+  last_verified: *id005
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: Scopely
+  platform: greenhouse
+  slug: scopely
+  source_of_record: openjobs
+  last_verified: *id006
+- name: SCOR
+  platform: oracle_cloud
+  slug: fa-errt-saasfaprod1
+  source_of_record: discover
+  last_verified: &id013 2026-08-16
+  oracle_host: fa-errt-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_2001
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 31 posting(s), 2 kept after
+    the CS-internship screens'
+- name: Scotiabank
+  platform: custom_json
+  slug: scotiabank
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: SuccessFactors listings are session-gated, but /rss.xml is a Google-jobs
+    feed carrying the whole board.
+  custom:
+    url: https://jobs.scotiabank.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: SDSU Research Foundation
+  platform: icims
+  slug: sdsurf
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Seagate
+  platform: custom_json
+  slug: seagate
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: SuccessFactors RMK; /rss.xml carries all 237 postings, 81 of
+    them intern terms.'
+  custom:
+    url: https://seagatecareers.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: Security Risk Advisors
+  platform: workable
+  slug: securityriskadvisors
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: SEGA Europe
+  platform: custom_json
+  slug: sega
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: Drupal careers site that server-renders all 25 vacancies with
+    a country and department field per row'
+  custom:
+    url: https://careers.sega.co.uk/vacancies
+    format: html
+    row_selector: div.job-summary.views-row
+    fields:
+      title: div.views-field-title a
+      id: div.views-field-title a::slugid(href)
+      url: div.views-field-title a::attr(href)
+      location: div.views-field-field-country
+      category: div.views-field-field-department
+      description: div.views-field-field-description-brief
+- name: Semios
+  platform: workable
+  slug: semios
+  source_of_record: discover
+  last_verified: &id011 2026-08-18
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Semtech
+  platform: workday
+  slug: semtech
+  source_of_record: openjobs
+  last_verified: 2026-08-03
+  workday_tenant: semtech
+  workday_site: SemtechCareers
+  workday_dc: wd1
+- name: Sensata
+  platform: workday
+  slug: sensata
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: sensata
+  workday_site: Sensata-Careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: SentinelOne
+  platform: greenhouse
+  slug: sentinellabs
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official jobs page exposes Greenhouse posting IDs; the sentinellabs
+    board returned 212 live postings.'
+- name: Sentry
+  platform: ashby
+  slug: sentry
+  source_of_record: discover
+  last_verified: &id007 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (46 job(s))'
+- name: Serval
+  platform: ashby
+  slug: serval
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (43 job(s))'
+- name: ServiceNow
+  platform: smartrecruiters
+  slug: servicenow
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Seven Research
+  platform: greenhouse
+  slug: sevenresearch
+  source_of_record: discover
+  last_verified: *id003
+- name: SharkNinja
+  platform: greenhouse
+  slug: sharkninjaoperatingllc
+  source_of_record: discover
+  last_verified: *id003
+- name: SHEIN
+  platform: greenhouse
+  slug: shein
+  source_of_record: discover
+  last_verified: *id003
+- name: Shell
+  platform: workday
+  slug: shell
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: shell
+  workday_site: shellcareers
+  workday_dc: wd3
+- name: Shield AI
+  platform: lever
+  slug: shieldai
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Shift Technology
+  platform: greenhouse
+  slug: shifttechnology
+  source_of_record: discover
+  last_verified: &id010 2026-08-15
+  notes: '2026-08-15: board verified live — 29 postings, Paris-centred insurance-fraud
+    AI including Data Science internships.'
+- name: ShopBack
+  platform: lever
+  slug: shopback-2
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (70 job(s))'
+- name: Shopify
+  platform: custom_json
+  slug: shopify
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: Internships are kept off the careers sitemap and /careers/search, so the
+    board is read from the internships microsite where they are published.
+  custom:
+    url: https://internships.shopify.com/
+    format: html
+    row_selector: a[href*="/careers/"][href*="_"]
+    fields:
+      title: ::slug(href)
+      id: ::slugid(href)
+      url: ::attr(href)
+- name: ShyftLabs
+  platform: lever
+  slug: shyftlabs
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Side Effects Software
+  platform: workable
+  slug: sideinc
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: verified live, then paused to match the rest of the workable
+    platform, which is parked until 2026-08-18 after two 429s in one day'
+- name: SideFX
+  platform: bamboohr
+  slug: sidefx
+  source_of_record: openjobs
+  last_verified: *id008
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 2 job(s)'
+- name: Siemens Digital Industries Software
+  platform: custom_json
+  slug: siemens-dis
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the Nuxt listing is client-side and no api answers, so /sitemaps/jobs_1.xml
+    is the contract; robots allows it. Its index names one jobs sitemap, but a sitemap
+    can still lag the board and nothing reconciles the count, so it never closes.'
+  custom:
+    url: https://jobs.sw.siemens.com/sitemaps/jobs_1.xml
+    format: sitemap
+    authoritative: false
+    row_filter: /job/?$
+    fields:
+      title: path3_title
+      id: path2
+      url: loc
+      location: path4_title
+- name: Sierra
+  platform: ashby
+  slug: sierra
+  source_of_record: openjobs
+  last_verified: *id008
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 191 job(s)'
+- name: SiFive
+  platform: workday
+  slug: sifive
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: sifive
+  workday_site: sifivecareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: SightCall
+  platform: smartrecruiters
+  slug: sightcall
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/sightcall with 4 job(s) and the board named itself, so
+    it is polled directly instead of secondhand'
+- name: Sigma Computing
+  platform: greenhouse
+  slug: sigmacomputing
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Signal Space Lab
+  platform: smartrecruiters
+  slug: signalspacelab
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches Re-probed
+    2026-08-14 and still dead.'
+- name: Signify
+  platform: workday
+  slug: lighting
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: lighting
+  workday_site: jobs-and-careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Sika Group
+  platform: smartrecruiters
+  slug: sikaag
+  source_of_record: openjobs
+  last_verified: &id009 2026-08-14
+- name: Silicon Labs
+  platform: workday
+  slug: silabs
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: silabs
+  workday_site: SiliconlabsCareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: SiMa.ai
+  platform: jobvite
+  slug: simaai
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
+    redirects to its own /careers page, so the board moved off Jobvite'
+- name: Simcorp
+  platform: workday
+  slug: simcorp
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: simcorp
+  workday_site: SimCorp_Jobs
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Simular
+  platform: ashby
+  slug: simular
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (22 job(s))'
+- name: Singulier
+  platform: workable
+  slug: singulier
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: sitetracker
+  platform: lever
+  slug: sitetracker
+  source_of_record: openjobs
+  last_verified: *id004
+- name: SIXT
+  platform: smartrecruiters
+  slug: sixt
+  source_of_record: discover
+  last_verified: *id009
+- name: SK Hynix Memory Solution
+  platform: greenhouse
+  slug: skhynixmemorysolutionsamericainc
+  source_of_record: discover
+  last_verified: *id010
+  name_gate_exempt: true
+  notes: '2026-08-15: token taken from the employer''s own apply URL in feed postings;
+    the board publishes the name ''SK hynix memory solutions America Inc.'', so the
+    name gate rejects a correct caption'
+- name: Skild AI
+  platform: greenhouse
+  slug: skildai-careers
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-captured request named the board token; the careers page
+    guesses would never have found it, and greenhouse names the board Skild AI.'
+- name: skybox labs
+  platform: lever
+  slug: skyboxlabs
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Skydio
+  platform: ashby
+  slug: skydio
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (109 job(s))'
+- name: SkyGig
+  platform: workable
+  slug: skygig
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Skyworks
+  platform: custom_json
+  slug: skyworks
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: successfactors — CSRF handshake. GET the careers page for the
+    token and JSESSIONID, then POST.'
+  custom:
+    url: https://careers.skyworksinc.com/services/recruiting/v1/jobs
+    method: POST
+    body:
+      locale: en_US
+      pageNumber: 0
+      sortBy: ''
+      keywords: ''
+      location: ''
+      facetFilters: {}
+      brand: ''
+      alertId: ''
+      categoryId: 9923100
+      rcmCandidateId: ''
+      skills: []
+    handshake_url: https://careers.skyworksinc.com/go/internships-and-Recent-College-Grads/9923100/
+    token_pattern: (?i)csrf[_-]?token["\']?\s*[:=]\s*["\']([A-Za-z0-9\-]{8,})
+    token_header: X-Csrf-Token
+    jobs_path: jobSearchResult
+    fields:
+      title: response.unifiedStandardTitle
+      id: response.id
+      location: response.jobLocationShort
+      employment_type: response.jobFunction_obj
+    url_template: https://careers.skyworksinc.com/job/{id}/
+    page_param: pageNumber
+    page_size: 10
+- name: Smoking Gun Interactive
+  platform: workable
+  slug: smoking-gun-interactive-1
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Snap
+  platform: custom_json
+  slug: snap
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery on the employer careers
+    page, then replayed over plain HTTP.'
+  custom:
+    url: https://careers.snap.com/api/jobs
+    jobs_path: body
+    fields:
+      title: _source.title
+      id: _source.id
+      location: _source.primary_location
+      url: _source.absolute_url
+      category: _source.role
+      employment_type: _source.employment_type
+- name: Snowed In Studios
+  platform: workable
+  slug: snowed-in-studios-3
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Snowflake
+  platform: ashby
+  slug: snowflake
+  source_of_record: openjobs
+  last_verified: *id008
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 391 job(s)'
+- name: Snyk
+  platform: greenhouse
+  slug: snyk
+  source_of_record: openjobs
+  enabled: false
+  notes: The ashby token answers with zero jobs, which is a placeholder rather than
+    a board.
+- name: sofar sounds
+  platform: lever
+  slug: sofarsounds
+  source_of_record: openjobs
+  last_verified: *id004
+- name: SoFi
+  platform: greenhouse
+  slug: sofi
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Solar Turbines
+  platform: workday
+  slug: cat
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: cat
+  workday_site: solarturbines
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (107 posting(s), 0 kept)'
+- name: SoloPulse
+  platform: lever
+  slug: solopulseco
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active systems-engineering internship application verifies
+    the public Lever board.'
+- name: Sony Global
+  platform: workday
+  slug: sonyglobal
+  source_of_record: discover
+  last_verified: 2026-08-19
+  workday_tenant: sonyglobal
+  workday_site: SonyGlobalCareers
+  workday_dc: wd1
+  notes: 'sonyjobs.com only iframes this tenant. Verified by CXS probe: 94 postings,
+    Intern (Fixed Term) advertised. Parent of the existing Sony Interactive rows.'
+- name: Sony Interactive Entertainment
+  platform: greenhouse
+  slug: siei
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Sony Pictures Entertainment
+  platform: workday
+  slug: spe
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: spe
+  workday_site: SonyPicturesEntertainment
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Sophos
+  platform: lever
+  slug: sophos
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: lever publishes no board name; the 118 postings name Sophos
+    in their own text'
+- name: SOTI
+  platform: workday
+  slug: soti
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: soti
+  workday_site: SOTI-Next-Gen
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: SpaceX
+  platform: greenhouse
+  slug: spacex
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Spacial AI
+  platform: ashby
+  slug: spacial
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (6 job(s))'
+- name: Spaulding Ridge
+  platform: greenhouse
+  slug: spauldingridge
+  source_of_record: openjobs
+  last_verified: *id006
+- name: Specter Aerospace
+  platform: recruitee
+  slug: specter
+  source_of_record: discover
+  last_verified: *id003
+  enabled: false
+  notes: '2026-08-21: the recruitee tenant answers with the Senior Marketer (Sample)
+    demo posting, so the board is a trial tenant and not this employer'
+- name: Spiria
+  platform: lever
+  slug: spiria
+  source_of_record: discover
+  last_verified: *id011
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: SpotDraft
+  platform: ashby
+  slug: spotdraft
+  source_of_record: discover
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (12 job(s))'
+- name: Spotify
+  platform: lever
+  slug: spotify
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Sprinkler
+  platform: workday
+  slug: sprinklr
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: sprinklr
+  workday_site: careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Square Enix
+  platform: workable
+  slug: square-enix
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Squarepoint Capital
+  platform: greenhouse
+  slug: squarepointcapital
+  source_of_record: discover
+  last_verified: *id003
+- name: Squarespace
+  platform: greenhouse
+  slug: squarespace
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official early-career page resolves to the live Squarespace
+    Greenhouse board.'
+- name: Squeeze Studio
+  platform: recruitee
+  slug: squeezestudio
+  source_of_record: openjobs
+  last_verified: *id003
+- name: SRI International
+  platform: icims
+  slug: sri
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: SS8
+  platform: greenhouse
+  slug: ss8
+  source_of_record: openjobs
+  last_verified: *id006
+- name: SSENSE
+  platform: custom_json
+  slug: ssense
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Teamtailor vanity host; its own /jobs.rss carries the full board
+    and the channel names itself SSENSE.'
+  custom:
+    url: https://careers.ssense.com/jobs.rss
+    format: rss
+    fields:
+      title: title
+      id: guid
+      url: link
+      description: description
+      location: tt:locations
+      department: tt:department
+- name: Stability AI
+  platform: greenhouse
+  slug: stabilityai
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: StackAdapt
+  platform: greenhouse
+  slug: stackadapt-confidential
+  source_of_record: discover
+  last_verified: *id003
+- name: Starburst
+  platform: greenhouse
+  slug: starburst
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: State of Nebraska
+  platform: workday
+  slug: son
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: son
+  workday_site: NebraskaStateCareers
+  workday_dc: wd108
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (1 posting(s), 0 kept)'
+- name: State Street
+  platform: workday
+  slug: statestreet
+  source_of_record: discover
+  last_verified: &id012 2026-08-17
+  workday_tenant: statestreet
+  workday_site: Global
+  workday_dc: wd1
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: StepStone Group
+  platform: greenhouse
+  slug: stepstone
+  source_of_record: discover
+  last_verified: *id003
+- name: Stevens Capital Management
+  platform: greenhouse
+  slug: scm
+  source_of_record: discover
+  last_verified: *id003
+- name: Stingray
+  platform: custom_json
+  slug: stingray
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: WordPress career site; wp/v2 job is the listing contract. The
+    location path names the taxonomy rather than indexing it, so a reordered _embed
+    cannot silently swap in a department.'
+  custom:
+    url: https://jobs.stingray.com/wp-json/wp/v2/job?per_page=100&_embed=wp%3Aterm
+    fields:
+      title: title.rendered
+      id: id
+      url: link
+      location: _embedded.wp:term[0.taxonomy=location].0.name
+- name: storytq
+  platform: workable
+  slug: jobs
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: Strava
+  platform: ashby
+  slug: strava
+  source_of_record: discover
+  last_verified: *id012
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    24 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Stripe
+  platform: greenhouse
+  slug: stripe
+  source_of_record: manual
+  last_verified: *id003
+- name: Submittable
+  platform: greenhouse
+  slug: submittable
+  source_of_record: discover
+  last_verified: *id003
+- name: Substack
+  platform: ashby
+  slug: substack
+  source_of_record: openjobs
+  last_verified: *id008
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 12 job(s)'
+- name: Sumo Logic
+  platform: greenhouse
+  slug: sumologic
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Sun Life
+  platform: workday
+  slug: sunlife
+  source_of_record: discover
+  last_verified: *id013
+  workday_tenant: sunlife
+  workday_site: Campus
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 6 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Suncor Energy
+  platform: workday
+  slug: suncor
+  source_of_record: discover
+  last_verified: 2026-08-19
+  workday_tenant: suncor
+  workday_site: Suncor_External
+  workday_dc: wd1
+  notes: Coordinates taken from the employer's own careers URL; the unfiltered board
+    is 44 postings, so no facet is pinned.
+- name: Supabase
+  platform: ashby
+  slug: supabase
+  source_of_record: openjobs
+  last_verified: *id008
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 57 job(s)'
+- name: Super.com
+  platform: lever
+  slug: super-com
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-14: superseded — this employer''s feed postings now apply through
+    Ashby'
+- name: Super.com (Ashby)
+  platform: ashby
+  slug: super.com
+  source_of_record: discover
+  last_verified: 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board resolved from this employer''s own application URL in
+    a feed posting; the older Lever row for the same employer stays disabled as a
+    vendor-migration fossil'
+- name: Supercell
+  platform: ashby
+  slug: supercell
+  source_of_record: openjobs
+  last_verified: *id008
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 40 job(s)'
+- name: Survay Monkey
+  platform: greenhouse
+  slug: surveymonkey
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches Re-probed
+    2026-08-14 and still dead.'
+- name: Susquehanna International Group (SIG)
+  platform: custom_json
+  slug: sig
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reopened — the iCIMS listing host is still closed, but this
+    employer also runs an iCIMS careers-home site at careers.sig.com whose /api/jobs
+    answers with full bodies.'
+  custom:
+    url: https://careers.sig.com/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    url_template: https://careers.sig.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 8
+- name: Sweatpals
+  platform: ashby
+  slug: sweatpals
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (5 job(s))'
+- name: Sword Health
+  platform: lever
+  slug: swordhealth
+  source_of_record: openjobs
+  last_verified: *id004
+- name: Synchrony Financial
+  platform: workday
+  slug: synchronyfinancial
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: synchronyfinancial
+  workday_site: University
+  workday_dc: wd5
+  workday_facet: workerSubType:8bc859bd8bb6106a60c793a3f28013d3
+  notes: '2026-08-13: official Workday endpoint verified; its Intern/Co-op facet has
+    13 listings.'
+- name: Synechron
+  platform: workday
+  slug: synechron
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: synechron
+  workday_site: SynechronCareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Syngenta Group
+  platform: smartrecruiters
+  slug: syngentagroup
+  source_of_record: openjobs
+  last_verified: *id009
+- name: Synopsys
+  platform: custom_json
+  slug: synopsys
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: TalentBrew site with no json or rss; /sitemap.xml is the listing
+    and row_filter keeps only /job/ urls. A sitemap is a crawl artifact that can lag
+    the board and no independent count reconciles it, so it never closes; purge bounds
+    the staleness at 14 days.'
+  custom:
+    url: https://careers.synopsys.com/sitemap.xml
+    format: sitemap
+    authoritative: false
+    row_filter: /job/
+    fields:
+      title: path3_title
+      id: path1
+      url: loc
+      location: path4_title
+- name: Sysco
+  platform: workday
+  slug: sysco
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: sysco
+  workday_site: syscocareers
+  workday_dc: wd5
+  workday_facet: workerSubType:b014cc62fe6601ac5a96d6b1da283744,6a5d7ea644cc1000511fb8d1d9a00000
+  notes: '2026-08-13: official Workday endpoint verified; its intern and student facets
+    total 24 listings.'

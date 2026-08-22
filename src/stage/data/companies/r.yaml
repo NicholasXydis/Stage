@@ -1,0 +1,583 @@
+- name: Rackspace Technology
+  platform: lever
+  slug: rackspace
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
+- name: Radix Trading
+  platform: greenhouse
+  slug: radixuniversity
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+- name: Rainmaker
+  platform: lever
+  slug: make-rain
+  source_of_record: discover
+  last_verified: &id006 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (32 job(s))'
+- name: Rakuten Kobo
+  platform: workday
+  slug: rakuten
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  workday_tenant: rakuten
+  workday_site: kobo
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Ramp
+  platform: ashby
+  slug: ramp
+  source_of_record: openjobs
+  last_verified: &id002 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 128 job(s)'
+- name: RAPP
+  platform: greenhouse
+  slug: rapp
+  source_of_record: openjobs
+  last_verified: &id005 2026-08-11
+- name: Razer
+  platform: workday
+  slug: razer
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: razer
+  workday_site: careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: RBC (early talent)
+  platform: workday
+  slug: rbc
+  source_of_record: discover
+  last_verified: 2026-08-11
+  recheck_after: &id009 2026-10-01
+  workday_tenant: rbc
+  workday_site: RBCEARLYTALENT1
+  workday_dc: wd3
+  notes: '2026-08-12: enabled for the bounded resumable Workday crawl. It receives
+    at most five listing requests per daily sync and retains progress; re-measure
+    yield in October'
+- name: Readystate Asset Management
+  platform: greenhouse
+  slug: readystate
+  source_of_record: discover
+  last_verified: &id004 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched greenhouse/readystate with 1 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: Recursion
+  platform: greenhouse
+  slug: recursionpharmaceuticals
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the greenhouse embed names this
+    token and the board names itself Recursion.'
+- name: Red Barrels
+  platform: bamboohr
+  slug: redbarrels
+  source_of_record: openjobs
+  last_verified: *id002
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 1 job(s)'
+- name: Red Bull
+  platform: smartrecruiters
+  slug: redbull
+  source_of_record: discover
+  last_verified: &id007 2026-08-14
+- name: Red Hat
+  platform: workday
+  slug: redhat
+  source_of_record: discover
+  last_verified: 2026-08-21
+  workday_tenant: redhat
+  workday_site: jobs
+  workday_dc: wd5
+  notes: '2026-08-21: supplied URL exposes the Workday tenant, site, and data center;
+    endpoint returned live postings.'
+- name: Reddit
+  platform: greenhouse
+  slug: reddit
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Redis
+  platform: ashby
+  slug: redis
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the public Ashby board is named Redis and returned live postings.'
+- name: Redwood Materials
+  platform: greenhouse
+  slug: redwoodmaterials
+  source_of_record: discover
+  last_verified: *id003
+- name: Reflector Entertainment
+  platform: custom_json
+  slug: dayforce-ref
+  source_of_record: discover
+  last_verified: 2026-08-18
+  rate_profile: conservative
+  notes: 'Dayforce, reached by sending the /api/auth/csrf token as x-csrf-token. 2026-08-21:
+    two boards on this host answered 403 in one run, so the row is pinned conservative.'
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/ref/jobposting/search
+    method: POST
+    body:
+      clientNamespace: ref
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/ref/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+    max_pages: 20
+- name: reflector entertainment
+  platform: recruitee
+  slug: reflectorentertainment
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: recruitee publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: RegDesk
+  platform: smartrecruiters
+  slug: regdeskinc
+  source_of_record: discover
+  last_verified: *id004
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/regdeskinc with 2 job(s) and the board named itself, so
+    it is polled directly instead of secondhand'
+- name: Reitmans
+  platform: smartrecruiters
+  slug: reitmanscanadalteltd
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Relativity Space
+  platform: greenhouse
+  slug: relativity
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reached from the owner''s RippleMatch link; the greenhouse board
+    names itself Relativity Space.'
+- name: relic entertainment
+  platform: bamboohr
+  slug: relicentertainment
+  source_of_record: openjobs
+  last_verified: *id002
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 1 job(s)'
+- name: Reltio
+  platform: greenhouse
+  slug: reltio
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Remote
+  platform: greenhouse
+  slug: remotecom
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Renaissance Technologies
+  platform: custom_json
+  slug: rentec
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: server-rendered board of 12 roles; the id sits in a selectedPosition
+    query param rather than a path segment, so identity comes from the url'
+  custom:
+    url: https://www.rentec.com/Careers.action?jobs=true
+    format: html
+    row_selector: div.flex-auto:not(.flex)
+    fields:
+      title: a
+      url: a::attr(href)
+- name: Renault
+  platform: workday
+  slug: alliancewd
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: alliancewd
+  workday_site: renault-group-careers
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (17 posting(s), 0 kept)'
+- name: Rendezvous Robotics
+  platform: greenhouse
+  slug: rendezvousrobotics
+  source_of_record: discover
+  last_verified: *id003
+- name: Renesas
+  platform: smartrecruiters
+  slug: renesaselectronics
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Reonic
+  platform: ashby
+  slug: reonic
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (32 job(s))'
+- name: Replit
+  platform: ashby
+  slug: replit
+  source_of_record: discover
+  last_verified: *id004
+  name_gate_exempt: true
+  notes: '2026-08-18: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (78 job(s))'
+- name: Reply
+  platform: lever
+  slug: reply
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (40 job(s))'
+- name: Resolver
+  platform: jobvite
+  slug: resolver
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/resolver/jobs
+    server-renders all 12 postings, which is the contract this row polls'
+- name: RESPEC
+  platform: smartrecruiters
+  slug: respecinc
+  source_of_record: discover
+  last_verified: *id007
+- name: ResponsiveAds
+  platform: workable
+  slug: responsiveads-inc
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Retool
+  platform: custom_json
+  slug: retool
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the official Gem board used by Retool exposes a public GraphQL
+    listing query; the existing POST adapter returned 34 postings with direct job
+    URLs.'
+  custom:
+    url: https://jobs.gem.com/api/public/graphql
+    method: POST
+    body:
+      query: "query JobBoardList($boardId: String!) {\n  oatsExternalJobPostings(boardId:\
+        \ $boardId) {\n    jobPostings {\n      id\n      extId\n      title\n   \
+        \   locations {\n        id\n        name\n        city\n        isoCountry\n\
+        \        isRemote\n        extId\n      }\n      job {\n        id\n     \
+        \   department {\n          id\n          name\n          extId\n        }\n\
+        \        locationType\n        employmentType\n      }\n    }\n  }\n}\n"
+      variables:
+        boardId: retool
+    headers:
+      Origin: https://jobs.gem.com
+      Referer: https://jobs.gem.com/retool
+    jobs_path: data.oatsExternalJobPostings.jobPostings
+    fields:
+      title: title
+      id: extId
+      location: locations.0.name
+      department: job.department.name
+      employment_type: job.employmentType
+    url_template: https://jobs.gem.com/retool/{id}
+- name: ReversingLabs
+  platform: workable
+  slug: reversinglabs
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Revise Robotics
+  platform: ashby
+  slug: reviserobotics
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (2 job(s))'
+- name: Revvity
+  platform: workday
+  slug: revvity
+  source_of_record: discover
+  last_verified: &id008 2026-08-16
+  workday_tenant: revvity
+  workday_site: External
+  workday_dc: wd103
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 8 posting(s), 2 kept after
+    the CS-internship screens'
+- name: RFCUNY
+  platform: workday
+  slug: rfcuny
+  source_of_record: discover
+  last_verified: *id008
+  workday_tenant: rfcuny
+  workday_site: RFCUNY
+  workday_dc: wd108
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 120 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Rho
+  platform: ashby
+  slug: rho
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (43 job(s))'
+- name: Riot Games
+  platform: greenhouse
+  slug: riotgames
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Its student-internships page refuses our client, but the native greenhouse
+    board answers with 161 postings.
+- name: Ripple
+  platform: greenhouse
+  slug: ripple
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page exposes the live Ripple Greenhouse board.'
+- name: Rippling
+  platform: custom_json
+  slug: rippling
+  source_of_record: discover
+  last_verified: &id010 2026-08-17
+  notes: '2026-08-17: found from the ats.rippling.com apply URL carried by Rippling''s
+    own feed postings.'
+  custom:
+    url: https://api.rippling.com/platform/api/ats/v1/board/rippling/jobs
+    fields:
+      title: name
+      id: uuid
+      location: workLocation.label
+      url: url
+      category: department.label
+- name: Riveron
+  platform: ashby
+  slug: riveron
+  source_of_record: discover
+  last_verified: *id004
+  name_gate_exempt: true
+  notes: '2026-08-18: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (70 job(s))'
+- name: Rivian
+  platform: custom_json
+  slug: rivian
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: iCIMS career-site (careers-home) JSON API, which is a different contract
+    from the icims.com boards that serve only HTML.
+  custom:
+    url: https://careers.rivian.com/api/jobs?limit=100&internal=false
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      url: data.apply_url
+      location: data.full_location
+      description: data.description
+      department: data.category
+      employment_type: data.employment_type
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 15
+- name: Rivian and Volkswagen Group Technologies
+  platform: ashby
+  slug: rivianvw.tech
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (113 job(s))'
+- name: Roam
+  platform: ashby
+  slug: tryroam
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: Robinhood
+  platform: greenhouse
+  slug: robinhood
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: browser discovery found a greenhouse API URL, so this is a native
+    board rather than custom_json; verified by probe with the company name on the
+    returned board'
+- name: Roblox
+  platform: greenhouse
+  slug: roblox
+  source_of_record: discover
+  last_verified: *id003
+- name: Roche
+  platform: workday
+  slug: roche
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: roche
+  workday_site: roche-ext
+  workday_dc: wd3
+  workday_facet: workerSubType:5cbb2c6fdeee0185f1889cdb54348a05
+  notes: '2026-08-13: official Workday endpoint verified; its Interns, Apprentices
+    and Graduates facet has nine listings.'
+- name: Rocket
+  platform: workday
+  slug: rocket
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id009
+  workday_tenant: rocket
+  workday_site: rocket_careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Rocket Lab
+  platform: greenhouse
+  slug: rocketlab
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Careers page is SilverStripe, but its position slugs carry Greenhouse job
+    ids; the board names itself Rocket Lab Corporation.
+- name: Rockstar Games
+  platform: greenhouse
+  slug: rockstargames
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Rodeo FX
+  platform: smartrecruiters
+  slug: rodeofx
+  source_of_record: discover
+  last_verified: 2026-08-21
+- name: Rogers
+  platform: custom_json
+  slug: rogers
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; /rss.xml carries the whole 166-posting board, which is
+    retail and field roles today.
+  custom:
+    url: https://jobs.rogers.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Rolls-Royce
+  platform: workday
+  slug: rollsroyce
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id009
+  workday_tenant: rollsroyce
+  workday_site: professional
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Rovio
+  platform: lever
+  slug: rovio-2
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Royal Bank of Canada
+  platform: workday
+  slug: rbc
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: rbc
+  workday_site: rbcglobal1
+  workday_dc: wd3
+  workday_facet: workerSubType:7911130ac48001184e788bd8f87d0001
+  notes: '2026-08-13: official general Workday endpoint verified; its Student/Coop
+    fixed-term facet is separate from the existing early-talent site.'
+- name: RRS Group
+  platform: smartrecruiters
+  slug: rrsgroup
+  source_of_record: discover
+  last_verified: *id007
+- name: RSM
+  platform: workday
+  slug: rsm
+  source_of_record: discover
+  last_verified: *id008
+  workday_tenant: rsm
+  workday_site: rsmcareers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 2 posting(s), 1 kept after
+    the CS-internship screens'
+- name: RTX
+  platform: workday
+  slug: globalhr
+  source_of_record: discover
+  last_verified: *id010
+  workday_tenant: globalhr
+  workday_site: Private_Posting_No_TMP
+  workday_dc: wd5
+  name_gate_exempt: true
+  notes: 'Found in a feed apply URL: globalhr.wd5 carries 269 postings, and the tenant
+    is shared with Pratt & Whitney.'
+- name: Rubrik
+  platform: greenhouse
+  slug: rubrik
+  source_of_record: discover
+  last_verified: 2026-08-21
+- name: Runway
+  platform: ashby
+  slug: runway
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Ruselle Investments
+  platform: workday
+  slug: russell
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id009
+  workday_tenant: russell
+  workday_site: russellinvestments
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Rush street interactive
+  platform: greenhouse
+  slug: rushstreetinteractive
+  source_of_record: openjobs
+  last_verified: *id005

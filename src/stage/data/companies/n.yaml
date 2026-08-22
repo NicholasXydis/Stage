@@ -1,0 +1,549 @@
+- name: Nagarro
+  platform: smartrecruiters
+  slug: nagarro1
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-14
+- name: Nanoleaf
+  platform: bamboohr
+  slug: nanoleaf
+  source_of_record: discover
+  last_verified: &id003 2026-08-17
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    1 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Nasdaq
+  platform: workday
+  slug: nasdaq
+  source_of_record: openjobs
+  last_verified: 2026-08-03
+  workday_tenant: nasdaq
+  workday_site: Global_External_Site
+  workday_dc: wd1
+  workday_facet: workerSubType:88704065592e0140cc56a1a7463955ae
+  notes: '2026-08-13: verified public fixed-term facet; it avoids walking Nasdaq''s
+    182-role general board while the title classifier retains only CS internships
+    and co-ops'
+- name: National Bank of Canada
+  platform: custom_json
+  slug: bnc
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: Every Avature JSON shape returns markup, so the server-rendered results table
+    is read instead.
+  custom:
+    url: https://emplois.bnc.ca/en_CA/careers/searchjobs/
+    format: html
+    row_selector: table tr:has(a[data-map='job-detail-link'])
+    fields:
+      title: a[data-map='job-detail-link']
+      id: a[data-map='job-detail-link']::attr(href)
+      url: a[data-map='job-detail-link']::attr(href)
+      location: td:nth-of-type(1)
+    page_param: jobOffset
+    page_size: 20
+    page_step: 20
+    max_pages: 25
+- name: National Laboratory of the Rockies
+  platform: workday
+  slug: nrel
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: nrel
+  workday_site: NLR
+  workday_dc: wd5
+  workday_facet: workerSubType:41059f5be019104091d88850a3f54318
+  notes: '2026-08-13: official Workday endpoint verified; its Intern fixed-term facet
+    has 21 listings.'
+- name: NationGraph
+  platform: ashby
+  slug: nationgraph
+  source_of_record: discover
+  last_verified: &id007 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (2 job(s))'
+- name: Nationwide Children's Hospital
+  platform: workday
+  slug: nationwidechildrens
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: nationwidechildrens
+  workday_site: NCHCareers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (120 posting(s), 0 kept)'
+- name: Navan
+  platform: greenhouse
+  slug: tripactions
+  source_of_record: discover
+  last_verified: 2026-08-17
+  name_gate_exempt: true
+  notes: '2026-08-17: Navan still posts under its former name TripActions, so the
+    board token is tripactions.'
+- name: Navy Federal
+  platform: oracle_cloud
+  slug: nfcu
+  source_of_record: manual
+  last_verified: 2026-08-13
+  oracle_host: fa-etbx-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: nfcu
+  notes: '2026-08-13: official Oracle candidate JSON verified; it currently includes
+    a year-round data-engineering internship.'
+- name: NBCUniversal
+  platform: smartrecruiters
+  slug: nbcuniversal3
+  source_of_record: discover
+  last_verified: *id001
+- name: Nelnet
+  platform: workday
+  slug: nelnet
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+  workday_tenant: nelnet
+  workday_site: MyNelnet
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Neo Financial
+  platform: ashby
+  slug: neofinancial
+  source_of_record: discover
+  last_verified: 2026-08-20
+  name_gate_exempt: true
+  notes: Board token from the employer's own careers link; ashby publishes no board
+    name, so provenance is the evidence (95 job(s)).
+- name: Neo4j
+  platform: greenhouse
+  slug: neo4j
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
+    probe that matched the company name on the returned board'
+- name: NeoCognition
+  platform: ashby
+  slug: neocognition
+  source_of_record: discover
+  last_verified: &id006 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (5 job(s))'
+- name: ness digital
+  platform: jobvite
+  slug: ness
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/ness/jobs
+    server-renders all 34 postings, which is the contract this row polls'
+- name: nesto
+  platform: custom_json
+  slug: nesto
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Rippling ATS; the public board API is stable, unlike the _next/data
+    route whose build id changes on every deploy.'
+  custom:
+    url: https://api.rippling.com/platform/api/ats/v1/board/nesto/jobs
+    fields:
+      title: name
+      id: uuid
+      url: url
+      location: workLocation.label
+      department: department.label
+- name: NetApp
+  platform: custom_json
+  slug: netapp
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: Eightfold tenant whose pcsx search is disabled, so the older
+    apply/v2 listing is the contract; it carries no intern facet, so it is fetched
+    unfiltered.'
+  custom:
+    url: https://netapp.eightfold.ai/api/apply/v2/jobs?domain=netapp.com&num=10
+    jobs_path: positions
+    fields:
+      title: name
+      id: id
+      url: canonicalPositionUrl
+      location: location
+      department: department
+      description: job_description
+    page_param: start
+    page_size: 10
+    max_pages: 30
+- name: NetEase Games
+  platform: greenhouse
+  slug: neteasegames
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+- name: Netflix
+  platform: workday
+  slug: netflix
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: netflix
+  workday_site: netflix
+  workday_dc: wd108
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Netic
+  platform: ashby
+  slug: netic
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official internship application verifies the public Ashby board'
+- name: Netlify
+  platform: greenhouse
+  slug: netlify
+  source_of_record: discover
+  last_verified: *id003
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Netomi
+  platform: lever
+  slug: netomi
+  source_of_record: openjobs
+  last_verified: &id005 2026-08-04
+- name: Netskope
+  platform: smartrecruiters
+  slug: netskope
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Netsmart
+  platform: workday
+  slug: ntst
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: ntst
+  workday_site: careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Neura Robotics
+  platform: ashby
+  slug: neura-robotics-gmbh
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active AI infrastructure and robotics internship application
+    verifies the public Ashby board'
+- name: Neuralink
+  platform: greenhouse
+  slug: neuralink
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+- name: New Balance
+  platform: workday
+  slug: newbalance
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: newbalance
+  workday_site: careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: New Relic
+  platform: smartrecruiters
+  slug: newrelic
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: New York Post Holdings
+  platform: workday
+  slug: dowjones
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: dowjones
+  workday_site: New_York_Post_Careers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (63 posting(s), 0 kept)'
+- name: Newrich Network
+  platform: workable
+  slug: newrich-network
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: NewsBreak
+  platform: greenhouse
+  slug: newsbreak
+  source_of_record: discover
+  last_verified: *id004
+- name: Nexstar
+  platform: workday
+  slug: nexstar
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: nexstar
+  workday_site: nexstar
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 84 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Next Level Business Services
+  platform: smartrecruiters
+  slug: nextlevelbusinessservicesinc2
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Nextiva
+  platform: greenhouse
+  slug: nextiva
+  source_of_record: discover
+  last_verified: *id004
+- name: Nidec
+  platform: workday
+  slug: nidec
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: nidec
+  workday_site: nidec
+  workday_dc: wd1
+  workday_facet: workerSubType:741416030163102b023a6d8feab221d6,741416030163102b023a6798c61821d4
+  notes: '2026-08-13: official Workday endpoint verified; its Co-Op and Intern fixed-term
+    facets total eleven listings.'
+- name: NielsenIQ
+  platform: smartrecruiters
+  slug: nielseniq
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Nightwing Intelligence Solutions
+  platform: workday
+  slug: nwis
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: nwis
+  workday_site: NW
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Nintendo
+  platform: greenhouse
+  slug: nintendo
+  source_of_record: discover
+  last_verified: 2026-08-21
+- name: Nio
+  platform: workday
+  slug: nio
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: nio
+  workday_site: NIO_Careers
+  workday_dc: wd3
+  workday_facet: workerSubType:0e6a0783031c1002034cb2de456e0000,7ac7128699f61006f6e20a25c28693c8
+  notes: '2026-08-13: official Workday endpoint verified; its intern facets total
+    five listings.'
+- name: Nissan Global
+  platform: workday
+  slug: alliance
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: alliance
+  workday_site: nissanjobs
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Nium
+  platform: lever
+  slug: nium
+  source_of_record: openjobs
+  last_verified: *id005
+- name: Niural
+  platform: ashby
+  slug: niural
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (27 job(s))'
+- name: Nokia
+  platform: oracle_cloud
+  slug: fa-evmr-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: fa-evmr-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: Northeastern University
+  platform: workday
+  slug: northeastern
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: northeastern
+  workday_site: careers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (1 posting(s), 0 kept)'
+- name: Northern Trust
+  platform: workday
+  slug: ntrs
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: ntrs
+  workday_site: northerntrust
+  workday_dc: wd1
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL; 637 postings.'
+- name: Northrop Grumman
+  platform: workday
+  slug: ngc
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: ngc
+  workday_site: Northrop_Grumman_External_Site
+  workday_dc: wd1
+  workday_facet: workerSubType:a111b0a898f10129e4db58f2e700d97a
+  notes: '2026-08-13: official Workday endpoint verified; its global intern fixed-term
+    facet has three listings.'
+- name: Northwestern Mutual
+  platform: smartrecruiters
+  slug: northwesternmutual
+  source_of_record: discover
+  last_verified: *id001
+- name: Notarius
+  platform: bamboohr
+  slug: portagecybertech
+  source_of_record: discover
+  last_verified: 2026-08-18
+  name_gate_exempt: true
+  notes: portagecybertech is the parent's BambooHR board, so the name gate is exempted
+    with that reason.
+- name: Notion
+  platform: ashby
+  slug: notion
+  source_of_record: discover
+  last_verified: 2026-08-18
+  name_gate_exempt: true
+  notes: '2026-08-18: the Greenhouse park was right about Greenhouse and wrong about
+    the employer - notion.com/careers links jobs.ashbyhq.com, and the Ashby posting
+    API returns 129 postings.'
+- name: Novanta
+  platform: workday
+  slug: novanta
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: novanta
+  workday_site: Novanta-Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Novogradac
+  platform: workday
+  slug: novoco
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: novoco
+  workday_site: Novogradac
+  workday_dc: wd108
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (25 posting(s), 0 kept)'
+- name: NTT DATA AIVista
+  platform: ashby
+  slug: ntt-data-aivista
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (8 job(s))'
+- name: nubank
+  platform: ashby
+  slug: nubank
+  source_of_record: discover
+  last_verified: 2026-08-18
+  name_gate_exempt: true
+  notes: '2026-08-18: re-probed while working the owner batch. Greenhouse nubank answers
+    200 with total 0 - a live-looking token with no board - while the Ashby posting
+    API returns 112 postings (Miami, Ciudad de Mexico), consistent with Nubank.'
+- name: Nuclear Promise X
+  platform: ashby
+  slug: npx
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (14 job(s))'
+- name: Nuro
+  platform: greenhouse
+  slug: nuro
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the greenhouse board names itself
+    Nuro.'
+- name: Nutanix
+  platform: custom_json
+  slug: nutanix
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: its Google-jobs feed wraps rows in <job> rather than <item>,
+    which item_tag now reads; city is mapped alone because the feed splits city, state
+    and country.'
+  custom:
+    url: https://careers.nutanix.com/en/jobs/xml/
+    format: rss
+    item_tag: job
+    fields:
+      title: title
+      id: apijobid
+      url: url
+      location: city
+      description: description
+      category: category
+      employment_type: jobtype
+      department: department
+- name: Nuvei
+  platform: workable
+  slug: nuvei
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: careers-page ATS scan found the Workable embed; the widget account
+    names itself Nuvei.'
+- name: NVIDIA
+  platform: workday
+  slug: nvidia
+  source_of_record: openjobs
+  last_verified: 2026-08-20
+  recheck_after: 2026-10-01
+  workday_tenant: nvidia
+  workday_site: NVIDIAExternalCareerSite
+  workday_dc: wd5
+  notes: '2026-08-20: reopened — the old note recorded a SlugRejectedError, not a
+    Workday refusal; the CXS endpoint answers 200 with 2,000 postings on these coordinates.'
+- name: NVIDIA (Eightfold)
+  platform: custom_json
+  slug: nvidia-eightfold
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: Eightfold tenant whose intern filter is honoured, 9 hits against 2,628.
+  custom:
+    url: https://jobs.nvidia.com/api/pcsx/search?domain=nvidia.com&query=&start=0&num=10&filter_job_type=intern%20(fixed%20term)
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://jobs.nvidia.com/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 5
+- name: Nvizzio Creations
+  platform: smartrecruiters
+  slug: nvizziocreations
+  source_of_record: openjobs
+  last_verified: *id001
+- name: NXP
+  platform: workday
+  slug: nxp
+  source_of_record: openjobs
+  last_verified: *id002
+  recheck_after: 2026-10-01
+  workday_tenant: nxp
+  workday_site: careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'

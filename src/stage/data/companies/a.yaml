@@ -1,0 +1,1258 @@
+- name: ABB
+  platform: workday
+  slug: abb
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  workday_tenant: abb
+  workday_site: external_career_page
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Abbott
+  platform: workday
+  slug: abbott
+  source_of_record: discover
+  last_verified: &id006 2026-08-17
+  workday_tenant: abbott
+  workday_site: abbottcareers
+  workday_dc: wd5
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Abnormal Security
+  platform: greenhouse
+  slug: abnormalsecurity
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Abridge
+  platform: ashby
+  slug: abridge
+  source_of_record: discover
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (45 job(s))'
+- name: AccelData
+  platform: lever
+  slug: acceldata
+  source_of_record: openjobs
+  last_verified: &id015 2026-08-04
+- name: Accenture
+  platform: recruitee
+  slug: accenture
+  source_of_record: discover
+  last_verified: &id008 2026-08-14
+  enabled: false
+  notes: '2026-08-21: the recruitee tenant answers with the Senior Marketer (Sample)
+    demo posting, so the board is a trial tenant and not this employer'
+- name: ACDS
+  platform: lever
+  slug: acds
+  source_of_record: discover
+  last_verified: &id005 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (18 job(s))'
+- name: Activate Games
+  platform: bamboohr
+  slug: activategames
+  source_of_record: openjobs
+  last_verified: &id004 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 41 job(s)'
+- name: Activate Interactive Pte
+  platform: workable
+  slug: activate-interactive-pte-ltd
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Activision
+  platform: workday
+  slug: activision
+  source_of_record: openjobs
+  recheck_after: &id002 2026-10-01
+  workday_tenant: activision
+  workday_site: External
+  workday_dc: wd1
+  enabled: false
+  notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
+    422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: Activision (Phenom)
+  platform: custom_json
+  slug: activision-phenom
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: Phenom POST /widgets, fetched unfiltered because keywords=intern drops French
+    Montreal titles.
+  custom:
+    url: https://careers.activision.com/widgets
+    method: POST
+    body:
+      lang: en_us
+      deviceType: desktop
+      country: us
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 10
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 10
+    max_pages: 8
+- name: Adaption Labs
+  platform: ashby
+  slug: adaption
+  source_of_record: discover
+  last_verified: &id007 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (7 job(s))'
+- name: Addepar
+  platform: greenhouse
+  slug: addepar1
+  source_of_record: openjobs
+  last_verified: &id003 2026-08-14
+- name: Adobe
+  platform: workday
+  slug: adobe
+  source_of_record: openjobs
+  last_verified: &id014 2026-08-03
+  workday_tenant: adobe
+  workday_site: external_experienced
+  workday_dc: wd5
+- name: Adtheorant
+  platform: icims
+  slug: cadent
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Adtran
+  platform: workday
+  slug: adtran
+  source_of_record: openjobs
+  last_verified: *id001
+  recheck_after: *id002
+  workday_tenant: adtran
+  workday_site: ADTRAN
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Advanced Systems Group, LLC
+  platform: jobvite
+  slug: asgllc
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
+    redirects to Jobvite job-seeker support, so the board is gone'
+- name: Adyen
+  platform: greenhouse
+  slug: adyen
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Aegon
+  platform: workday
+  slug: transamerica
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: transamerica
+  workday_site: nld-aegon
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: AeroSpike
+  platform: greenhouse
+  slug: aerospike
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+  enabled: false
+  notes: '2026-08-12: disabled — configured Greenhouse board returned 404; official
+    careers page now points to an unsupported Rippling board'
+- name: Aerovect
+  platform: ashby
+  slug: aerovect
+  source_of_record: openjobs
+  last_verified: *id004
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 38 job(s)'
+- name: AeroVironment
+  platform: workday
+  slug: avav
+  source_of_record: discover
+  last_verified: 2026-08-14
+  workday_tenant: avav
+  workday_site: AVAV
+  workday_dc: wd1
+  notes: '2026-08-14: re-verified directly — the board answers 200 with 292 postings,
+    so the earlier HTTP 520 was a transient CDN error rather than a dead tenant'
+- name: Affirm
+  platform: greenhouse
+  slug: affirm
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
+    probe that matched the company name on the returned board'
+- name: AfterQuery
+  platform: ashby
+  slug: afterquery
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (27 job(s))'
+- name: Agilent
+  platform: workday
+  slug: agilent
+  source_of_record: discover
+  last_verified: &id009 2026-08-16
+  workday_tenant: agilent
+  workday_site: agilent_student_careers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 11 posting(s), 2 kept after
+    the CS-internship screens'
+- name: Agility Robotics
+  platform: greenhouse
+  slug: agilityrobotics
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the greenhouse board names itself
+    Agility Robotics.'
+- name: Agropur
+  platform: workday
+  slug: agropur
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: agropur
+  workday_site: Agropur_Careers
+  workday_dc: wd3
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: AGS - American Gaming Systems
+  platform: jobvite
+  slug: agscareer
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/agscareer/jobs
+    server-renders all 15 postings, which is the contract this row polls'
+- name: Air Canada
+  platform: custom_json
+  slug: aircanada
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: aircanada.com refuses our client, but its Phenom site at careers.aircanada.com
+    answers; 55 postings, fetched unfiltered.
+  custom:
+    url: https://careers.aircanada.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: ca
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      description: descriptionTeaser
+      category: category
+      department: department
+    url_template: https://careers.aircanada.com/ca/en/job/{id}
+    page_param: from
+    page_size: 100
+    max_pages: 3
+- name: Air Transat
+  platform: smartrecruiters
+  slug: transatat1
+  source_of_record: discover
+  last_verified: *id006
+  notes: smartrecruiters/transatat1 is the parent's board, approved by hand after
+    the name fold failed.
+- name: Airbnb
+  platform: greenhouse
+  slug: airbnb
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page resolves to the named Greenhouse board;
+    live board verified.'
+- name: Airbus
+  platform: workday
+  slug: ag
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: ag
+  workday_site: airbus
+  workday_dc: wd3
+  workday_facet: workerSubType:f5811cef9cb50193723ed01d470a6e15
+  notes: '2026-08-20: pinned to the employer''s own Trainee / Student facet, 123 postings
+    against a 2,000-posting general board. 2026-08-14: verified by a real sync — this
+    board returned postings, which is the only verification a Workday tenant can have
+    without an offline probe'
+- name: Airlab Inc.
+  platform: smartrecruiters
+  slug: airlabinc
+  source_of_record: openjobs
+  last_verified: &id010 2026-08-14
+  name_gate_exempt: true
+- name: Airtable
+  platform: greenhouse
+  slug: airtable
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Airwallex
+  platform: ashby
+  slug: airwallex
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (620 job(s))'
+- name: Aizon
+  platform: lever
+  slug: aizon
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (5 job(s))'
+- name: Akamai
+  platform: custom_json
+  slug: akamai
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: closed for good — jobs.akamai.com answers AkamaiGHost Access
+    Denied to the careers page, its Oracle CE endpoint, rss.xml and sitemap.xml alike;
+    a wall, not a handshake.'
+  custom:
+    url: https://jobs.akamai.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions
+    fields:
+      title: Title
+      id: Id
+- name: akqa
+  platform: greenhouse
+  slug: akqa
+  source_of_record: discover
+  last_verified: *id008
+- name: Akuna Capital
+  platform: greenhouse
+  slug: akunacapital
+  source_of_record: discover
+  last_verified: *id008
+- name: Al Warren Oil Company
+  platform: workable
+  slug: al-warren-oil-company-inc
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Alan
+  platform: ashby
+  slug: alan
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (90 job(s))'
+- name: AlayaCare
+  platform: greenhouse
+  slug: alayacare
+  source_of_record: discover
+  last_verified: *id008
+- name: Alertus Technologies
+  platform: lever
+  slug: alertus
+  source_of_record: discover
+  last_verified: *id007
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (23 job(s))'
+- name: Alithya
+  platform: oracle_cloud
+  slug: alithya
+  source_of_record: discover
+  last_verified: 2026-08-20
+  oracle_host: careers.alithya.com
+  oracle_site: CX_1
+  oracle_keyword: ''
+  notes: '2026-08-20: bilingual Quebec board, so the English keyword is pinned off;
+    unfiltered it is 95 rows in one page.'
+- name: AlixPartners
+  platform: greenhouse
+  slug: alixpartners
+  source_of_record: discover
+  last_verified: *id008
+- name: Alpha Sense
+  platform: greenhouse
+  slug: alphasense
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Alphawave Semi
+  platform: workday
+  slug: alphawave
+  source_of_record: openjobs
+  last_verified: &id011 2026-08-14
+  recheck_after: *id002
+  workday_tenant: alphawave
+  workday_site: Alphawave_External
+  workday_dc: wd10
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Alstom
+  platform: custom_json
+  slug: alstom
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; /rss.xml carries all 2,425 postings, 51 of them intern,
+    stage or Werkstudent terms.
+  custom:
+    url: https://jobsearch.alstom.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: AltaGas
+  platform: workday
+  slug: wgl
+  source_of_record: discover
+  last_verified: *id009
+  workday_tenant: wgl
+  workday_site: altagas
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 1 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Altamira Technologies
+  platform: jobvite
+  slug: altamiracorps
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/altamiracorps/jobs
+    server-renders all 53 postings, which is the contract this row polls'
+- name: ALTEN
+  platform: smartrecruiters
+  slug: alten
+  source_of_record: discover
+  last_verified: *id010
+- name: Altera Corporation
+  platform: workday
+  slug: altera
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: altera
+  workday_site: altera
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Altom Transport
+  platform: workable
+  slug: altom-transport
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Amazon
+  platform: custom_json
+  slug: amazon
+  source_of_record: discover
+  last_verified: &id012 2026-08-17
+  notes: '2026-08-17: amazon.jobs first-party search.json, filtered to base_query=intern
+    which returned 192 hits the day it was added.'
+  custom:
+    url: https://www.amazon.jobs/en/search.json?base_query=intern&result_limit=100&offset=0
+    jobs_path: jobs
+    fields:
+      title: title
+      id: id
+      location: normalized_location
+      description: description_short
+      category: job_category
+      employment_type: job_schedule_type
+    url_template: https://www.amazon.jobs/en/jobs/{id}
+    page_param: offset
+    page_size: 100
+    max_pages: 10
+- name: Ambarella
+  platform: workday
+  slug: ambarella
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: ambarella
+  workday_site: Ambarella
+  workday_dc: wd108
+  workday_facet: workerSubType:aaa12f807cf9100114e1a75a6f3a0000
+  notes: '2026-08-13: official Workday internship posting and public endpoint verified;
+    its Intern facet has one listing, so the board completes in one request'
+- name: Amber
+  platform: jobvite
+  slug: amberstudiocareers
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
+    answers but renders no jv-job-list table, so it is an empty or retired board'
+- name: Amcor
+  platform: workday
+  slug: amcor
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: amcor
+  workday_site: amcor_external_career_site
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: AMD
+  platform: custom_json
+  slug: amd
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: iCIMS careers-home site, a different contract from the icims.com
+    listing that was parked; /api/jobs returns full bodies and the board carries no
+    intern facet.'
+  custom:
+    url: https://careers.amd.com/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    url_template: https://careers.amd.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 16
+- name: Amentum
+  platform: workday
+  slug: pae
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: pae
+  workday_site: amentum_careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Ameren
+  platform: workday
+  slug: ameren
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: ameren
+  workday_site: External
+  workday_dc: wd1
+  workday_facet: jobFamilyGroup:ca7af90bcfd30137a937b96cb8095255
+  notes: '2026-08-13: official Workday endpoint verified; its Intern/Co-op job-family
+    facet has 20 listings.'
+- name: American Airlines
+  platform: custom_json
+  slug: americanairlines
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: SuccessFactors RMK whose /rss.xml is 1.2MB and carries all 117
+    postings with g:id, g:location and g:job_function'
+  custom:
+    url: https://jobs.aa.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: American Express
+  platform: oracle_cloud
+  slug: egug
+  source_of_record: discover
+  last_verified: *id009
+  oracle_host: egug.fa.us2.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 62 posting(s), 2 kept after
+    the CS-internship screens'
+- name: American Fidelity
+  platform: workday
+  slug: americanfidelity
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: americanfidelity
+  workday_site: External
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: AmerisourceBergen
+  platform: workday
+  slug: myhrabc
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: myhrabc
+  workday_site: global
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Amgen
+  platform: workday
+  slug: amgen
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: amgen
+  workday_site: careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Amplitude
+  platform: greenhouse
+  slug: amplitude
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Analog Devices Thailand
+  platform: workday
+  slug: analogdevices
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: analogdevices
+  workday_site: External
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Analytical Mechanics Associates
+  platform: workday
+  slug: amainc
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: amainc
+  workday_site: ama_careers
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Ancestry
+  platform: workday
+  slug: ancestry
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: ancestry
+  workday_site: Careers
+  workday_dc: wd501
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Anchorage Digital
+  platform: lever
+  slug: anchorage
+  source_of_record: discover
+  last_verified: *id006
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    39 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Anduril Industries
+  platform: greenhouse
+  slug: andurilindustries
+  source_of_record: openjobs
+  last_verified: *id008
+- name: Anthelion Capital
+  platform: ashby
+  slug: anthelioncap
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (3 job(s))'
+- name: Anthology Inc
+  platform: jobvite
+  slug: anthology
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/anthology/jobs
+    server-renders all 7 postings, which is the contract this row polls'
+- name: Anthropic
+  platform: greenhouse
+  slug: anthropic
+  source_of_record: discover
+  last_verified: *id007
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/anthropic with 441 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: ANYbotics
+  platform: lever
+  slug: anybotics
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (22 job(s))'
+- name: Anyon Systems
+  platform: bamboohr
+  slug: anyon
+  source_of_record: discover
+  last_verified: *id006
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    19 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Anysphere
+  platform: ashby
+  slug: cursor
+  source_of_record: discover
+  last_verified: *id006
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Apex Technology, Inc.
+  platform: ashby
+  slug: apex-technology-inc
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (78 job(s))'
+- name: Apollo Global Management
+  platform: workday
+  slug: athene
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: athene
+  workday_site: Apollo_Careers
+  workday_dc: wd5
+  notes: '2026-08-20: coordinates read from the owner-supplied careers URL; 67 postings.'
+- name: Appian
+  platform: greenhouse
+  slug: appian
+  source_of_record: discover
+  last_verified: *id008
+- name: Apple
+  platform: custom_json
+  slug: apple
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: No API; the Students/Internships search page embeds every record in window.__staticRouterHydrationData.
+    Scoped to Apple's own internships team because the full board is thousands of
+    roles.
+  custom:
+    url: https://jobs.apple.com/en-ca/search?team=internships-STDNT-INTRN
+    extract: window.__staticRouterHydrationData
+    jobs_path: loaderData.search.searchResults
+    fields:
+      title: postingTitle
+      id: id
+      location: locations.0.name
+      description: jobSummary
+    url_template: https://jobs.apple.com/en-ca/details/{id}
+    page_param: page
+    page_size: 20
+    page_start: 1
+    page_step: 1
+    max_pages: 10
+- name: Applied Intuition
+  platform: ashby
+  slug: applied
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active reinforcement-learning internship application
+    verifies the public Ashby board.'
+- name: Applied Materials
+  platform: workday
+  slug: amat
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: amat
+  workday_site: External
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: ApplyBoard
+  platform: workday
+  slug: applyboard
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: applyboard
+  workday_site: ApplyBoardNH
+  workday_dc: wd3
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Apptronik
+  platform: greenhouse
+  slug: apptronik
+  source_of_record: discover
+  last_verified: *id008
+- name: Aptive
+  platform: workday
+  slug: aptiv
+  source_of_record: openjobs
+  last_verified: *id011
+  recheck_after: *id002
+  workday_tenant: aptiv
+  workday_site: APTIV_CAREERS
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Aptura
+  platform: ashby
+  slug: aptura
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (7 job(s))'
+- name: AQR Capital
+  platform: greenhouse
+  slug: aqr
+  source_of_record: discover
+  last_verified: *id012
+  notes: '2026-08-17: greenhouse token read from the embed script on careers.aqr.com;
+    the board names itself ''AQR'' and carried 47 jobs'
+- name: Aquatic Capital Management
+  platform: greenhouse
+  slug: aquaticcapitalmanagement
+  source_of_record: discover
+  last_verified: *id008
+- name: Aquatic Informatics
+  platform: workday
+  slug: veralto
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: veralto
+  workday_site: HachJobs
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Architect Labs
+  platform: ashby
+  slug: architect
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Arctic Wolf
+  platform: workday
+  slug: arcticwolf
+  source_of_record: discover
+  last_verified: &id013 2026-08-17
+  workday_tenant: arcticwolf
+  workday_site: External
+  workday_dc: wd1
+  notes: '2026-08-17: verified by scratch sync. The board carried 1 posting that day,
+    so this is a real but near-empty roster rather than a broken site.'
+- name: Ardian
+  platform: workday
+  slug: ardian
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: ardian
+  workday_site: ArdianCareers
+  workday_dc: wd103
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Arevon
+  platform: greenhouse
+  slug: arevonenergyimpltest
+  source_of_record: discover
+  last_verified: 2026-08-15
+  notes: '2026-08-15: seen in feed postings but absent from the registry; discover
+    matched greenhouse/arevonenergyimpltest with 12 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
+- name: Argmax
+  platform: greenhouse
+  slug: argmax
+  source_of_record: discover
+  last_verified: *id008
+- name: Argonne National Laboratory
+  platform: workday
+  slug: argonne
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: argonne
+  workday_site: EDU_PUB
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (1 posting(s), 0 kept)'
+- name: Arista Networks
+  platform: smartrecruiters
+  slug: aristanetworks
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Aristocrat
+  platform: workday
+  slug: aristocrat
+  source_of_record: openjobs
+  last_verified: *id011
+  recheck_after: *id002
+  workday_tenant: aristocrat
+  workday_site: AristocratExternalCareersSite
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Arizona State University
+  platform: workday
+  slug: asuep
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: asuep
+  workday_site: ASUEP
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Arlington County VA
+  platform: oracle_cloud
+  slug: fa-exkk-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: fa-exkk-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: Arlo
+  platform: workday
+  slug: arlo
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: arlo
+  workday_site: external_careers
+  workday_dc: wd12
+  workday_facet: workerSubType:f46aeba69a1910054d93a118bf5e0000
+  notes: '2026-08-13: official Workday endpoint verified; its intern fixed-term facet
+    has two listings.'
+- name: Arm
+  platform: custom_json
+  slug: arm
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: TalentBrew site with no json or rss; /sitemap.xml is the listing
+    and row_filter keeps only /job/ urls. A sitemap is a crawl artifact that can lag
+    the board and no independent count reconciles it, so it never closes; purge bounds
+    the staleness at 14 days.'
+  custom:
+    url: https://careers.arm.com/sitemap.xml
+    format: sitemap
+    authoritative: false
+    row_filter: /job/
+    fields:
+      title: path3_title
+      id: path1
+      url: loc
+      location: path4_title
+- name: Arrowstreet Capital
+  platform: workday
+  slug: arrowstreetcapital
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: arrowstreetcapital
+  workday_site: Campus_Careers
+  workday_dc: wd5
+  notes: '2026-08-13: official dedicated campus Workday board verified; it has four
+    listings and no broad-board crawl.'
+- name: Artists Animation
+  platform: bamboohr
+  slug: artistsanimation
+  source_of_record: openjobs
+  last_verified: *id004
+  notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
+    but the slug folds to the caption and the board returned 2 job(s)'
+- name: Asana
+  platform: greenhouse
+  slug: asana
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official early-career page identifies the live Asana Greenhouse
+    board.'
+- name: ASM Global
+  platform: workday
+  slug: asmglobal
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: asmglobal
+  workday_site: careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: ASML
+  platform: workday
+  slug: asml
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: asml
+  workday_site: asmlext1
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Assurant
+  platform: workday
+  slug: assurant
+  source_of_record: discover
+  last_verified: *id001
+  workday_tenant: assurant
+  workday_site: assurant_careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: AST SpaceMobile
+  platform: greenhouse
+  slug: astspacemobile
+  source_of_record: discover
+  last_verified: *id008
+- name: Astera Labs
+  platform: greenhouse
+  slug: asteralabs
+  source_of_record: discover
+  last_verified: *id008
+- name: Astranis
+  platform: greenhouse
+  slug: astranis
+  source_of_record: discover
+  last_verified: *id008
+- name: Astreya
+  platform: workday
+  slug: astreya
+  source_of_record: discover
+  last_verified: *id009
+  workday_tenant: astreya
+  workday_site: life-at-astreya-opportunities
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 120 posting(s), 0 kept after
+    the CS-internship screens'
+- name: Ataccama
+  platform: lever
+  slug: ataccama
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (15 job(s))'
+- name: ATCO
+  platform: oracle_cloud
+  slug: eezy
+  source_of_record: discover
+  last_verified: 2026-08-18
+  oracle_host: eezy.fa.ca2.oraclecloud.com
+  oracle_site: CX
+  notes: The park cited a rotation budget that later moved; the board answers with
+    79 postings.
+- name: Atlassian
+  platform: custom_json
+  slug: atlassian
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: first-party listings endpoint behind the careers page; it answers
+    250 rows whatever team filter is sent, so the slice is declared partial'
+  custom:
+    url: https://www.atlassian.com/endpoint/careers/listings
+    authoritative: false
+    fields:
+      title: title
+      id: id
+      url: applyUrl
+      location: locations.0
+      description: overview
+      category: category
+- name: Atomic cartoons
+  platform: greenhouse
+  slug: atomiccartoons
+  source_of_record: openjobs
+  last_verified: *id003
+- name: Atoms
+  platform: greenhouse
+  slug: atoms
+  source_of_record: discover
+  last_verified: *id008
+- name: ATS Automation
+  platform: custom_json
+  slug: atsautomation
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: SuccessFactors RMK; /rss.xml carries the whole board (210 items against 164
+    on its own search page).
+  custom:
+    url: https://jobs.atsautomation.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Attentive
+  platform: greenhouse
+  slug: attentive
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official careers page exposes the Attentive Greenhouse board
+    API.'
+- name: Atura Power
+  platform: bamboohr
+  slug: aturapower
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; bamboohr publishes no board name, so
+    the name gate cannot confirm it and provenance is the evidence (2 job(s))'
+- name: Auctor
+  platform: ashby
+  slug: auctor
+  source_of_record: discover
+  last_verified: *id005
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Augsburg University
+  platform: smartrecruiters
+  slug: augsburguniversity-minneapolismn
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/augsburguniversity-minneapolismn with 56 job(s) and the
+    board named itself, so it is polled directly instead of secondhand'
+- name: Aurora Innovation
+  platform: custom_json
+  slug: aurora-innovation
+  source_of_record: discover
+  last_verified: *id013
+  notes: '2026-08-17: endpoint found by browser-assisted discovery, then replayed
+    over plain HTTP with no browser.'
+  custom:
+    url: https://aurora.tech/api/jobs-index
+    jobs_path: jobs
+    fields:
+      title: title
+      id: jobId
+      location: locations
+      category: category
+      employment_type: employmentType
+      url: applyLink
+- name: Autodesk
+  platform: workday
+  slug: autodesk
+  source_of_record: openjobs
+  last_verified: *id014
+  workday_tenant: autodesk
+  workday_site: Ext
+  workday_dc: wd1
+- name: Automation Anywhere
+  platform: recruitee
+  slug: automation
+  source_of_record: discover
+  last_verified: *id008
+  enabled: false
+  notes: '2026-08-21: the recruitee tenant publishes Dutch-language field-service
+    roles, so the slug belongs to a different employer'
+- name: AutoScout24
+  platform: greenhouse
+  slug: autoscout24
+  source_of_record: discover
+  last_verified: *id007
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/autoscout24 with 52 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: Avalanche Studios Group
+  platform: lever
+  slug: avalanchestudios
+  source_of_record: openjobs
+  last_verified: *id015
+- name: Avanade
+  platform: workday
+  slug: accenture
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: accenture
+  workday_site: avanadecareers
+  workday_dc: wd103
+  workday_facet: workerSubType:136d83bad7ee010fa71a0c95bf002201
+  notes: '2026-08-13: official Workday endpoint verified; its Intern fixed-term facet
+    has 28 listings.'
+- name: Axiom Space
+  platform: workday
+  slug: axiomspace
+  source_of_record: discover
+  last_verified: *id006
+  workday_tenant: axiomspace
+  workday_site: External_Career_Site
+  workday_dc: wd5
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Axiomatic AI
+  platform: greenhouse
+  slug: axiomaticai
+  source_of_record: discover
+  last_verified: *id008
+- name: Axis Capital
+  platform: workday
+  slug: axiscapital
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: axiscapital
+  workday_site: axiscareers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (1 posting(s), 0 kept)'
+- name: Axon
+  platform: greenhouse
+  slug: axon
+  source_of_record: openjobs
+  last_verified: *id003
+- name: AXQ Capital
+  platform: greenhouse
+  slug: axq
+  source_of_record: discover
+  last_verified: *id008

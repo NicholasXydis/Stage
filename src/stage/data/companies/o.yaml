@@ -1,0 +1,371 @@
+- name: Occidental Petroleum
+  platform: workday
+  slug: oxy
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: oxy
+  workday_site: Corporate
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (2 posting(s), 0 kept)'
+- name: Occidental Petroleum Corporation (Oxy)
+  platform: workday
+  slug: oxy
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: oxy
+  workday_site: UniversityRelations
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (3 posting(s), 0 kept)'
+- name: OceanComm
+  platform: workable
+  slug: oceancomm
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Octaura
+  platform: greenhouse
+  slug: octaura
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+- name: Octopus
+  platform: lever
+  slug: octopus
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
+    of the right company; needs a human to open the board once'
+- name: Odin Dynamics, Inc
+  platform: ashby
+  slug: odin-dynamics
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Off world studios
+  platform: bamboohr
+  slug: owi
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: OH.io
+  platform: greenhouse
+  slug: ohio
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/ohio with 6 job(s) and the board named itself, so it is polled
+    directly instead of secondhand'
+- name: Ohio State University
+  platform: workday
+  slug: osu
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: osu
+  workday_site: OSUCareers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (120 posting(s), 0 kept)'
+- name: Oklo
+  platform: greenhouse
+  slug: oklo
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Okta
+  platform: greenhouse
+  slug: okta
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Old Mission Capital
+  platform: greenhouse
+  slug: oldmissioncapital
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: greenhouse token read from the embed script on the employer''s
+    own careers page; the board names itself ''Old Mission'' and carried 35 jobs'
+- name: Olg
+  platform: workday
+  slug: olg
+  source_of_record: openjobs
+  last_verified: &id002 2026-08-14
+  recheck_after: &id003 2026-10-01
+  workday_tenant: olg
+  workday_site: Careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Oligo Space
+  platform: ashby
+  slug: oligo
+  source_of_record: discover
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (15 job(s))'
+- name: OMERS
+  platform: custom_json
+  slug: omers
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Phenom POST /widgets, fetched unfiltered because its Students & Interns category
+    holds only three of 79 postings.
+  custom:
+    url: https://careers.omers.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: ca
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobSeqNo
+      location: location
+      url: applyUrl
+      description: descriptionTeaser
+      category: category
+      department: department
+    page_param: from
+    page_size: 100
+    max_pages: 6
+- name: ON.energy
+  platform: greenhouse
+  slug: onenergy
+  source_of_record: discover
+  last_verified: *id001
+- name: OneLocal
+  platform: greenhouse
+  slug: onelocal
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: ONEOK
+  platform: workday
+  slug: oneok
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: oneok
+  workday_site: ONEOK_Early_Careers
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 13 posting(s), 1 kept after
+    the CS-internship screens'
+- name: onsemi
+  platform: oracle_cloud
+  slug: hctz
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: hctz.fa.us2.oraclecloud.com
+  oracle_site: CX_1001
+  notes: '2026-08-14: host and site come from the employer''s own application URL,
+    verified by a real sync. 2026-08-20: the hctz tenant is onsemi, named by its own
+    careers page title.'
+- name: Ontario Teachers' Pension Plan
+  platform: workday
+  slug: otppb
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: otppb
+  workday_site: OntarioTeachers_Careers
+  workday_dc: wd3
+  notes: Coordinates from the employer's own careers URL; the board answered with
+    28 postings.
+- name: Open Systems Technologies
+  platform: smartrecruiters
+  slug: opensystemstechnologies
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
+    as a token that does not exist; re-check if the employer relaunches Re-probed
+    2026-08-14 and still dead.'
+- name: OpenAI
+  platform: ashby
+  slug: openai
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the public Ashby board is named OpenAI and returned live postings.'
+- name: Opendoor
+  platform: greenhouse
+  slug: opendoor
+  source_of_record: openjobs
+  enabled: false
+  notes: Greenhouse, Ashby and Lever tokens all fail and the careers page names no
+    ATS host.
+- name: OpenText
+  platform: custom_json
+  slug: opentext
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Phenom POST /widgets, fetched unfiltered because the board publishes no student
+    category.
+  custom:
+    url: https://careers.opentext.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: global
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      description: descriptionTeaser
+      category: category
+      department: department
+    url_template: https://careers.opentext.com/us/en/job/{id}
+    page_param: from
+    page_size: 100
+    max_pages: 8
+- name: OPSWAT
+  platform: greenhouse
+  slug: opswat
+  source_of_record: discover
+  last_verified: *id001
+- name: Optimum (Altice USA)
+  platform: custom_json
+  slug: optimum-altice
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; this is Altice USA's Optimum, not the Quebec insurer
+    of the same name.
+  custom:
+    url: https://www.optimumcareers.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Optiv
+  platform: workday
+  slug: optiv
+  source_of_record: openjobs
+  last_verified: *id002
+  recheck_after: *id003
+  workday_tenant: optiv
+  workday_site: Optiv_Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Optiver
+  platform: greenhouse
+  slug: optiverprivate
+  source_of_record: discover
+  last_verified: *id001
+- name: OpusClip
+  platform: ashby
+  slug: opusclip
+  source_of_record: discover
+  last_verified: *id004
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (9 job(s))'
+- name: Oracle
+  platform: oracle_cloud
+  slug: eeho
+  source_of_record: manual
+  last_verified: 2026-08-13
+  oracle_host: eeho.fa.us2.oraclecloud.com
+  oracle_site: jobsearch
+  notes: '2026-08-13: public Oracle candidate JSON verified; current technical internships
+    include OCI software and AI agent roles'
+- name: Orca Security
+  platform: custom_json
+  slug: orca-security
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: endpoint found by browser-assisted discovery, then replayed
+    over plain HTTP. 12 postings in one response.'
+  custom:
+    url: https://teamme.link/api/projects/22fd1775-f1e3-4164-90b1-a1920cac263d/positions
+    jobs_path: data
+    fields:
+      title: title
+      id: id
+      location: location
+      department: department
+      url: applyUrl
+- name: Orennia
+  platform: greenhouse
+  slug: orennia
+  source_of_record: discover
+  last_verified: *id001
+- name: Orion Health
+  platform: workable
+  slug: orion-health
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Osedea
+  platform: lever
+  slug: osedea
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Oshkosh
+  platform: workday
+  slug: oshkoshcorporation
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: oshkoshcorporation
+  workday_site: oshkosh
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Output Biosciences
+  platform: ashby
+  slug: output
+  source_of_record: discover
+  last_verified: *id004
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (9 job(s))'

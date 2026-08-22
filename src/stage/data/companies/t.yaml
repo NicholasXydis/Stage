@@ -1,0 +1,806 @@
+- name: Taboola
+  platform: greenhouse
+  slug: taboola
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+- name: Tacit
+  platform: ashby
+  slug: tacit
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (17 job(s))'
+- name: TAG
+  platform: workday
+  slug: tag
+  source_of_record: openjobs
+  last_verified: &id005 2026-08-14
+  recheck_after: &id004 2026-10-01
+  workday_tenant: tag
+  workday_site: Tag_Careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Taiga Motors
+  platform: bamboohr
+  slug: taigamotors
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Take-Two Interactive
+  platform: greenhouse
+  slug: taketwo
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Taktile
+  platform: ashby
+  slug: taktile
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (44 job(s))'
+- name: Talan
+  platform: smartrecruiters
+  slug: talan
+  source_of_record: discover
+  last_verified: &id003 2026-08-16
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/talan with 452 job(s) and the board named itself, so it
+    is polled directly instead of secondhand'
+- name: Talent-360.me
+  platform: workable
+  slug: talent3600
+  source_of_record: discover
+  last_verified: *id003
+  enabled: false
+  notes: '2026-08-16: recruitment agency: posts client roles rather than its own,
+    so its rows are third-hand data.'
+- name: Tanium
+  platform: greenhouse
+  slug: tanium
+  source_of_record: discover
+  last_verified: 2026-08-21
+- name: tarte cosmetics
+  platform: workable
+  slug: tarte-inc
+  source_of_record: discover
+  last_verified: *id003
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: TC Energy
+  platform: workday
+  slug: tcenergy
+  source_of_record: discover
+  last_verified: &id008 2026-08-17
+  workday_tenant: tcenergy
+  workday_site: CAREER_SITE_TC
+  workday_dc: wd3
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: TD Bank
+  platform: workday
+  slug: td
+  source_of_record: discover
+  last_verified: 2026-08-11
+  recheck_after: *id004
+  workday_tenant: td
+  workday_site: TD_Bank_Careers
+  workday_dc: wd3
+  workday_facet: jobFamily:de769652963501ab29a8b80c0704c3aa,de769652963501e60b293b0d070431ab
+  notes: '2026-08-13: pinned to TD''s verified Campus and Interns & Associates job-family
+    filters; both values are retained so future student postings are included without
+    walking the 1,824-role general board'
+- name: TD SYNNEX
+  platform: workday
+  slug: synnex
+  source_of_record: discover
+  last_verified: &id006 2026-08-16
+  workday_tenant: synnex
+  workday_site: tdsynnexcareers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 25 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Tech Mahindra
+  platform: bamboohr
+  slug: techmahindra
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Techtronic Industries
+  platform: workday
+  slug: tti
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: tti
+  workday_site: tti_pe
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Tecsys
+  platform: workable
+  slug: tecsys
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Tekion Corp
+  platform: greenhouse
+  slug: tekion
+  source_of_record: openjobs
+  last_verified: 2026-08-01
+  enabled: false
+  notes: '2026-08-12: disabled — configured Greenhouse board returned 404; official
+    job-openings page no longer exposes a working supported board'
+- name: Teledyne
+  platform: workday
+  slug: flir
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: flir
+  workday_site: flircareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Teleperformance
+  platform: recruitee
+  slug: teleperformance
+  source_of_record: discover
+  last_verified: *id001
+- name: TELUS
+  platform: custom_json
+  slug: telus
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: careers.telus.com publishes its whole board as a Google-jobs RSS feed at
+    /rss.xml, but it is the retail and frontline board with no internship titles when
+    added.
+  custom:
+    url: https://careers.telus.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: TELUS Health
+  platform: workday
+  slug: lifeworks
+  source_of_record: discover
+  last_verified: 2026-08-16
+  recheck_after: *id004
+  workday_tenant: lifeworks
+  workday_site: External
+  workday_dc: wd3
+  name_gate_exempt: true
+  notes: '2026-08-16: un-parked. The 2026-08-11 reason was a budget argument against
+    a 120-request Workday ceiling that is now 732.'
+- name: Temporal Technologies
+  platform: greenhouse
+  slug: temporaltechnologies
+  source_of_record: openjobs
+  last_verified: &id007 2026-08-11
+- name: Tenable
+  platform: greenhouse
+  slug: tenableinc
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
+    probe that matched the company name on the returned board'
+- name: Tencent
+  platform: workday
+  slug: tencent
+  source_of_record: openjobs
+  last_verified: *id005
+  recheck_after: *id004
+  workday_tenant: tencent
+  workday_site: Tencent_Careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Tenstorrent
+  platform: greenhouse
+  slug: tenstorrent
+  source_of_record: discover
+  last_verified: *id001
+- name: Terminal
+  platform: ashby
+  slug: terminal
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active backend software-engineering internship application
+    verifies the public Ashby board.'
+- name: Terranova
+  platform: ashby
+  slug: terranova
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active embedded-systems internship application verifies
+    the public Ashby board.'
+- name: Tessera Labs
+  platform: ashby
+  slug: tessera-labs
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (11 job(s))'
+- name: Texas A&M International University
+  platform: workday
+  slug: tamus
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: tamus
+  workday_site: TAMIU_Student_Employment
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (45 posting(s), 0 kept)'
+- name: Texas Instruments
+  platform: oracle_cloud
+  slug: edbz
+  source_of_record: discover
+  last_verified: *id006
+  oracle_host: edbz.fa.us2.oraclecloud.com
+  oracle_site: CX
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 48 posting(s), 2 kept after
+    the CS-internship screens'
+- name: Thales
+  platform: workday
+  slug: thales
+  source_of_record: openjobs
+  last_verified: *id005
+  recheck_after: *id004
+  workday_tenant: thales
+  workday_site: Careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: The E.W. Scripps Company
+  platform: workday
+  slug: scripps
+  source_of_record: openjobs
+  last_verified: 2026-08-18
+  recheck_after: *id004
+  workday_tenant: scripps
+  workday_site: Scripps_Careers
+  workday_dc: wd115
+  notes: '2026-08-18: re-enabled with the correct datacenter. The row was parked on
+    wd5, which answers 422; the live board is scripps.wd115.myworkdayjobs.com site
+    Scripps_Careers, found by a careers-page ATS scan, and it answers with 79 postings.'
+- name: The Exploration Company
+  platform: ashby
+  slug: the-exploration-company
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (111 job(s))'
+- name: The Federal Reserve System
+  platform: workday
+  slug: rb
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: rb
+  workday_site: FRS
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (106 posting(s), 0 kept)'
+- name: The Independent Order of Foresters - Canada
+  platform: workday
+  slug: foresters
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: foresters
+  workday_site: ForestersFinancialCareers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: The Nuclear Company
+  platform: greenhouse
+  slug: thenuclearcompany
+  source_of_record: discover
+  last_verified: *id001
+- name: The Orchard
+  platform: greenhouse
+  slug: theorchard
+  source_of_record: openjobs
+  last_verified: *id007
+- name: The Trade Desk
+  platform: greenhouse
+  slug: thetradedesk
+  source_of_record: discover
+  last_verified: *id001
+- name: The Walt Disney Company
+  platform: workday
+  slug: disney
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+  recheck_after: *id004
+  workday_tenant: disney
+  workday_site: disneycareer
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Thermo Fisher Scientific
+  platform: workday
+  slug: thermofisher
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: thermofisher
+  workday_site: ThermoFisherCareers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Thingtrax
+  platform: workable
+  slug: thingtrax
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Thomson Reuters
+  platform: workday
+  slug: thomsonreuters
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: thomsonreuters
+  workday_site: External_Career_Site
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: ThoughtSpot
+  platform: custom_json
+  slug: thoughtspot
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: endpoint found by browser-assisted discovery from https://www.thoughtspot.com/careers,
+    then replayed over plain HTTP with no browser.'
+  custom:
+    url: https://www.thoughtspot.com/api/getCareersListing
+    jobs_path: data
+    fields:
+      title: name
+      id: id
+      location: locations
+      url: url
+      category: department
+- name: Thoughtworks
+  platform: custom_json
+  slug: thoughtworks
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: endpoint found by browser-assisted discovery, then replayed
+    over plain HTTP. 47 postings in one response.'
+  custom:
+    url: https://www.thoughtworks.com/rest/careers/jobs
+    jobs_path: jobs
+    fields:
+      title: name
+      id: sourceSystemId
+      location: location
+      category: role
+    url_template: https://www.thoughtworks.com/careers/jobs/{id}
+- name: Thumbtack
+  platform: greenhouse
+  slug: thumbtack
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: thyssenkrupp
+  platform: workday
+  slug: thyssenkruppmaterialsna
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: thyssenkruppmaterialsna
+  workday_site: '1'
+  workday_dc: wd12
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (4 posting(s), 0 kept)'
+- name: Tier 9 Game Studios
+  platform: breezy
+  slug: tier-9-game-studios-ltd
+  source_of_record: openjobs
+  last_verified: &id009 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
+    the slug folds to the caption and the board returned 1 job(s)'
+- name: TIFIN
+  platform: greenhouse
+  slug: tifin
+  source_of_record: discover
+  last_verified: *id001
+- name: TikTok
+  platform: custom_json
+  slug: tiktok
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: The listing needs the website-path and accept-language headers its own bundle
+    sends; recruit type 202 is the publisher's Intern facet, so no keyword is used.
+  custom:
+    url: https://api.lifeattiktok.com/api/v1/public/supplier/search/job/posts
+    method: POST
+    body:
+      keyword: ''
+      limit: 100
+      offset: 0
+      recruitment_id_list:
+      - '202'
+      job_category_id_list: []
+      location_code_list: []
+      subject_id_list: []
+      tag_id_list: []
+    headers:
+      Referer: https://lifeattiktok.com/
+      Origin: https://lifeattiktok.com
+      website-path: tiktok
+      accept-language: en-US
+    jobs_path: data.job_post_list
+    fields:
+      title: title
+      id: id
+      location: city_info.en_name
+      description: description
+      category: job_category.en_name
+    url_template: https://lifeattiktok.com/search/{id}
+    page_param: offset
+    page_size: 100
+    page_step: 100
+    max_pages: 14
+- name: Tilde Research
+  platform: ashby
+  slug: tilderesearch
+  source_of_record: discover
+  last_verified: *id002
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (3 job(s))'
+- name: TMEIC Corporation Americas
+  platform: workable
+  slug: tmeic-corporation-americas
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: TMX GROUP
+  platform: workday
+  slug: tmx
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: tmx
+  workday_site: TMX_Careers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Toast
+  platform: greenhouse
+  slug: toast
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: official early-career page resolves to the live Toast Greenhouse
+    board.'
+- name: Together AI
+  platform: greenhouse
+  slug: togetherai
+  source_of_record: discover
+  last_verified: *id001
+- name: Tonic DNA
+  platform: smartrecruiters
+  slug: tonicdna1
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+- name: Toon Boom
+  platform: bamboohr
+  slug: toonboom
+  source_of_record: discover
+  last_verified: *id008
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    7 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Toppan MErril
+  platform: workday
+  slug: toppanmerrill
+  source_of_record: openjobs
+  last_verified: *id005
+  recheck_after: *id004
+  workday_tenant: toppanmerrill
+  workday_site: Toppan_Merrill
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Torn banner studios
+  platform: greenhouse
+  slug: tornbannerstudios
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
+    Re-probed 2026-08-14 and still dead.'
+- name: Tower Research Capital
+  platform: greenhouse
+  slug: towerresearchcapital
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Toyota Research Institute
+  platform: lever
+  slug: tri
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (14 job(s))'
+- name: TPG
+  platform: greenhouse
+  slug: tpgcareers
+  source_of_record: discover
+  last_verified: *id008
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Track VFX
+  platform: lever
+  slug: trackvfx
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Tradebot
+  platform: custom_json
+  slug: tradebot
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: the careers page renders client-side and its sitemap holds a
+    single url, so there is no listing to read.'
+  custom:
+    url: https://www.tradebot.com/careers
+    fields:
+      title: title
+      id: id
+- name: Tradeweb
+  platform: oracle_cloud
+  slug: ecnf
+  source_of_record: discover
+  last_verified: 2026-08-14
+  oracle_host: ecnf.fa.us2.oraclecloud.com
+  oracle_site: CX
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: TransMarket Group
+  platform: greenhouse
+  slug: transmarketgroup
+  source_of_record: discover
+  last_verified: *id001
+- name: TransPerfect
+  platform: recruitee
+  slug: tgs
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: recruitee publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: TransUnion
+  platform: workday
+  slug: transunion
+  source_of_record: openjobs
+  last_verified: *id005
+  recheck_after: *id004
+  workday_tenant: transunion
+  workday_site: TransUnion
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Trek
+  platform: workday
+  slug: trekbikes
+  source_of_record: openjobs
+  last_verified: *id005
+  recheck_after: *id004
+  workday_tenant: trekbikes
+  workday_site: TREK
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Trellix
+  platform: workday
+  slug: trellix
+  source_of_record: openjobs
+  last_verified: *id005
+  recheck_after: *id004
+  workday_tenant: trellix
+  workday_site: EnterpriseCareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Trend Micro
+  platform: workday
+  slug: trendmicro
+  source_of_record: openjobs
+  last_verified: *id005
+  recheck_after: *id004
+  workday_tenant: trendmicro
+  workday_site: External
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: TribalScale
+  platform: greenhouse
+  slug: tribalscale
+  source_of_record: discover
+  last_verified: *id001
+- name: Trimble
+  platform: workday
+  slug: trimble
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: trimble
+  workday_site: trimblecareers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Triotech
+  platform: bamboohr
+  slug: triotech
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Triple dot studios
+  platform: greenhouse
+  slug: tripledotstudios
+  source_of_record: openjobs
+  last_verified: *id007
+- name: True Anomaly
+  platform: greenhouse
+  slug: trueanomalyinc
+  source_of_record: discover
+  last_verified: *id001
+- name: Truist Bank
+  platform: workday
+  slug: truist
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: truist
+  workday_site: Careers
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Truveta
+  platform: greenhouse
+  slug: truveta
+  source_of_record: discover
+  last_verified: *id003
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/truveta with 40 job(s) and the board named itself, so it is
+    polled directly instead of secondhand'
+- name: TSC
+  platform: workday
+  slug: tsc
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: tsc
+  workday_site: TSC-Careers
+  workday_dc: wd12
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: TSMC
+  platform: custom_json
+  slug: tsmc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  enabled: false
+  notes: '2026-08-20: switched off on cost, not reachability. Its 542 facet omits
+    real internships, so a correct row must walk all 719 rows in 72 requests per refresh,
+    and the board yields no CS internships today. Re-enable if TSMC starts posting
+    software interns.'
+  custom:
+    url: https://careers.tsmc.com/en_US/careers/SearchJobs/?listFilterMode=1&jobRecordsPerPage=10
+    format: html
+    row_selector: article.article--result
+    fields:
+      title: h3.article__header__text__title a
+      url: h3.article__header__text__title a::attr(href)
+      location: div.article__header__content__text > span.paragraph_inner-span
+    page_param: jobOffset
+    page_size: 10
+    max_pages: 80
+- name: TTC Global
+  platform: greenhouse
+  slug: ttcglobal
+  source_of_record: openjobs
+  last_verified: *id007
+- name: Tuckernuck
+  platform: bamboohr
+  slug: tnuck
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    bamboohr publishes no board name, so provenance is the evidence (22 job(s))'
+- name: Turabify
+  platform: workable
+  slug: turabify-co
+  source_of_record: discover
+  last_verified: 2026-08-16
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: Turbulent
+  platform: breezy
+  slug: turbulent
+  source_of_record: openjobs
+  last_verified: *id009
+  notes: '2026-08-11: enabled on slug evidence - breezy publishes no board name, but
+    the slug folds to the caption and the board returned 4 job(s)'
+- name: Turner & Townsend
+  platform: smartrecruiters
+  slug: turnertownsend
+  source_of_record: discover
+  last_verified: *id003
+  enabled: false
+  notes: '2026-08-16: probed in isolation — 2,914 postings fetched, 0 internships
+    kept, and all 69 of its Canadian rows are full-time project management, HR and
+    accounting roles.'
+- name: TVH
+  platform: workday
+  slug: tvh
+  source_of_record: openjobs
+  last_verified: *id005
+  recheck_after: *id004
+  workday_tenant: tvh
+  workday_site: JobsatTVH
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Twilio
+  platform: greenhouse
+  slug: twilio
+  source_of_record: discover
+  last_verified: *id001
+- name: Two Circles
+  platform: workable
+  slug: twocircles
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Two Sigma
+  platform: custom_json
+  slug: twosigma
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: Avature /feed/ is a hard 20 items with no offset parameter, so the HTML listing
+    is read instead; jobOffset pages it, and the whole board is 54 roles so it is
+    unfiltered.
+  custom:
+    url: https://careers.twosigma.com/careers/OpenRoles/?listFilterMode=1&jobRecordsPerPage=10
+    format: html
+    row_selector: article.article--result
+    fields:
+      title: h3.article__header__text__title a
+      id: h3.article__header__text__title a::slugid(href)
+      url: h3.article__header__text__title a::attr(href)
+      location: div.article__header__content__text > span.paragraph_inner-span
+      department: div.article__header__content__sub-text > span.paragraph_inner-span
+      employment_type: div.article__header__content__sub-text > span.paragraph_inner-span:nth-of-type(2)
+    page_param: jobOffset
+    page_size: 10
+    page_step: 10
+    max_pages: 12
+- name: Two Six Technologies
+  platform: greenhouse
+  slug: twosixtechnologies
+  source_of_record: discover
+  last_verified: *id003
+  notes: '2026-08-16: seen in feed postings but absent from the registry; discover
+    matched greenhouse/twosixtechnologies with 59 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'

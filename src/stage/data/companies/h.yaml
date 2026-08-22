@@ -1,0 +1,446 @@
+- name: Haize Labs
+  platform: greenhouse
+  slug: haizelabs
+  source_of_record: discover
+  last_verified: &id004 2026-08-14
+- name: Halcyon
+  platform: greenhouse
+  slug: halcyon
+  source_of_record: openjobs
+  last_verified: &id001 2026-08-11
+- name: Haleon
+  platform: workday
+  slug: gsknch
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+  recheck_after: 2026-10-01
+  workday_tenant: gsknch
+  workday_site: GSKCareers
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Harman
+  platform: workday
+  slug: harman
+  source_of_record: discover
+  last_verified: &id008 2026-08-14
+  workday_tenant: harman
+  workday_site: harman
+  workday_dc: wd3
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Harvey
+  platform: ashby
+  slug: harvey
+  source_of_record: openjobs
+  last_verified: &id002 2026-08-11
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 388 job(s)'
+- name: Hasbro
+  platform: greenhouse
+  slug: hasbro
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Haven Studios
+  platform: greenhouse
+  slug: havenenglish
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Haven Studios Inc
+  platform: greenhouse
+  slug: haven
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Hawkeye Innovations
+  platform: ashby
+  slug: hawkeyeinnovations
+  source_of_record: openjobs
+  last_verified: *id002
+  notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
+    the slug folds to the caption and the board returned 35 job(s)'
+- name: HB studios
+  platform: greenhouse
+  slug: hbstudios
+  source_of_record: openjobs
+  last_verified: 2026-08-09
+- name: HCompany
+  platform: ashby
+  slug: hcompany
+  source_of_record: discover
+  last_verified: &id003 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (22 job(s))'
+- name: Headlands Technologies
+  platform: greenhouse
+  slug: headlandstechnologiesllc
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: owner-supplied careers URL; the board names itself Headlands
+    Technologies LLC.'
+- name: HealthCorps
+  platform: workable
+  slug: healthcorpsorg
+  source_of_record: discover
+  last_verified: &id006 2026-08-16
+  notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
+    match the rest of the workable platform, which is parked until 2026-08-18 after
+    two 429s in one day.'
+- name: Heidelberg Materials
+  platform: workday
+  slug: heidelbergmaterials
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: heidelbergmaterials
+  workday_site: global_hm_career_site
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (120 posting(s), 0 kept)'
+- name: Helion Energy
+  platform: ashby
+  slug: helion
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
+    106 jobs and needs-a-manual-check, the expected verdict where the platform publishes
+    no board name; token equals the company name'
+- name: Heliux
+  platform: ashby
+  slug: heliux
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (3 job(s))'
+- name: Helsing
+  platform: greenhouse
+  slug: helsing
+  source_of_record: discover
+  last_verified: *id004
+- name: Hendrick Motorsports
+  platform: workday
+  slug: hendrick
+  source_of_record: discover
+  last_verified: &id005 2026-08-16
+  workday_tenant: hendrick
+  workday_site: HMSCareers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 38 posting(s), 1 kept after
+    the CS-internship screens'
+- name: Hermeus
+  platform: lever
+  slug: hermeus
+  source_of_record: manual
+  last_verified: 2026-08-13
+  notes: '2026-08-13: official active software-engineering internship application
+    verifies the public Lever board.'
+- name: Heron Power
+  platform: ashby
+  slug: heron-power
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (37 job(s))'
+- name: Hewlett Packard Enterprise
+  platform: workday
+  slug: hpe
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: hpe
+  workday_site: acjobsite
+  workday_dc: wd5
+  workday_facet: workerSubType:98cbd30d374e1033353f1fbd0c2452f5
+  notes: '2026-08-13: official Workday endpoint verified; its Temp Intern (Fixed Term)
+    facet has six listings.'
+- name: HEXAWARE
+  platform: oracle_cloud
+  slug: fa-etqo-saasfaprod1
+  source_of_record: discover
+  last_verified: &id007 2026-08-14
+  oracle_host: fa-etqo-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: High Voltage Software
+  platform: workable
+  slug: high-voltage-software
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Highdive
+  platform: greenhouse
+  slug: highdive
+  source_of_record: openjobs
+  last_verified: *id001
+- name: Highspot
+  platform: lever
+  slug: highspot
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Hitachi
+  platform: smartrecruiters
+  slug: hitachisolutions
+  source_of_record: openjobs
+  last_verified: 2026-08-14
+- name: Hiverge
+  platform: ashby
+  slug: hiverge
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: HNTB
+  platform: workday
+  slug: hntb
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: hntb
+  workday_site: hntb_university_careers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 42 posting(s), 4 kept after
+    the CS-internship screens'
+- name: HNTB
+  platform: workday
+  slug: hntb
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: hntb
+  workday_site: hntb_careers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 42 posting(s), 4 kept after
+    the CS-internship screens'
+- name: Hololabs
+  platform: bamboohr
+  slug: hololabs
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
+    evidence of the right company; needs a human to open the board once'
+- name: Homebase
+  platform: ashby
+  slug: homebase
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (14 job(s))'
+- name: Hone Health
+  platform: greenhouse
+  slug: honehealth
+  source_of_record: discover
+  last_verified: *id004
+- name: Honeywell
+  platform: oracle_cloud
+  slug: honeywell
+  source_of_record: discover
+  last_verified: 2026-08-20
+  oracle_host: ibqbjb.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  oracle_keyword: ''
+  notes: '2026-08-20: careers.honeywell.com is a Phenom shell over this Oracle tenant.
+    Walked unfiltered because keyword=internship returns 11 where the French stage
+    returns 33, so no one keyword spans the board; 1,307 rows complete, 34 of them
+    Canadian.'
+- name: Hong Leong Bank
+  platform: workday
+  slug: hlb
+  source_of_record: discover
+  last_verified: *id005
+  workday_tenant: hlb
+  workday_site: hlbcareers
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 20 posting(s), 2 kept after
+    the CS-internship screens'
+- name: HOOPP
+  platform: workday
+  slug: hoopp
+  source_of_record: discover
+  last_verified: 2026-08-20
+  workday_tenant: hoopp
+  workday_site: HOOPPStudent
+  workday_dc: wd10
+  notes: The employer's student site answered 200 with an empty roster on 2026-08-20,
+    not a broken board.
+- name: Hootsuite
+  platform: greenhouse
+  slug: hootsuite
+  source_of_record: manual
+  last_verified: *id004
+- name: Hopper
+  platform: ashby
+  slug: hopper
+  source_of_record: discover
+  last_verified: 2026-08-17
+  name_gate_exempt: true
+  notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
+    careers page and the board answered with postings, but ashby publishes no board
+    name, so provenance is the evidence rather than a name match'
+- name: Horizon Industries
+  platform: greenhouse
+  slug: horizonindustrieslimited
+  source_of_record: discover
+  last_verified: *id004
+- name: Howard University
+  platform: workday
+  slug: howard
+  source_of_record: discover
+  last_verified: 2026-08-16
+  workday_tenant: howard
+  workday_site: HU
+  workday_dc: wd1
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (2 posting(s), 0 kept)'
+- name: Howmet Aerospace
+  platform: oracle_cloud
+  slug: fa-exty-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-08-18
+  oracle_host: fa-exty-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: Intern
+  notes: '2026-08-18: host and site supplied by the owner. The site is literally named
+    Intern but is not intern-filtered - it returns the whole 771-posting board - so
+    the adapter''s keyword=internship is what makes it affordable at 17 postings,
+    one page'
+- name: HP
+  platform: workday
+  slug: hp
+  source_of_record: openjobs
+  last_verified: 2026-08-03
+  workday_tenant: hp
+  workday_site: ExternalCareerSite
+  workday_dc: wd5
+- name: HPR (Hyannis Port Research)
+  platform: greenhouse
+  slug: hyannisportresearch
+  source_of_record: discover
+  last_verified: *id004
+- name: Hubs.is
+  platform: ashby
+  slug: hubs.is
+  source_of_record: discover
+  last_verified: *id006
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (9 job(s))'
+- name: Huck Adventures
+  platform: smartrecruiters
+  slug: huckadventures
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/huckadventures with 7 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
+- name: Hudson River Trading
+  platform: greenhouse
+  slug: hrttalentcommunity
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-17: greenhouse token from the careers page. The board names itself
+    ''HRT Talent Community'' and carried only 3 jobs, so this is a talent-community
+    board rather than the main requisition list; feed coverage stays the primary route
+    for this employer'
+- name: Hugging Face
+  platform: workable
+  slug: huggingface
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Human Computer Lab
+  platform: ashby
+  slug: human-computer-lab
+  source_of_record: discover
+  last_verified: *id003
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Hunt Oil Company
+  platform: oracle_cloud
+  slug: fa-eqcd-saasfaprod1
+  source_of_record: discover
+  last_verified: *id007
+  oracle_host: fa-eqcd-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
+    endpoint has no offline probe, and this host and site come from the employer''s
+    own application URL'
+- name: Huntress
+  platform: greenhouse
+  slug: huntress
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied URL is the employer’s Greenhouse board and returned
+    live postings.'
+- name: Huntsman
+  platform: workday
+  slug: huntsman
+  source_of_record: discover
+  last_verified: *id008
+  workday_tenant: huntsman
+  workday_site: huntsman
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Hydro One
+  platform: custom_json
+  slug: hydroone
+  source_of_record: discover
+  last_verified: 2026-08-19
+  notes: SuccessFactors RMK; /rss.xml returned all 18 postings its search page reports.
+  custom:
+    url: https://jobs.hydroone.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Hydro-Québec
+  platform: custom_json
+  slug: hydroquebec
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK; /rss.xml carries the whole French board, including its
+    collegial and university stage postings.
+  custom:
+    url: https://emploi.hydroquebec.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Hypercubic
+  platform: ashby
+  slug: hypercubic
+  source_of_record: discover
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (2 job(s))'
+- name: HyperLight
+  platform: workable
+  slug: hyperlight
+  source_of_record: discover
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'

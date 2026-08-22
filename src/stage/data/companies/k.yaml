@@ -1,0 +1,272 @@
+- name: k-ID
+  platform: ashby
+  slug: k-id
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (9 job(s))'
+- name: Kabam
+  platform: lever
+  slug: kabam
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: Kastle AI
+  platform: ashby
+  slug: kastle
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: KBR
+  platform: workday
+  slug: kbr
+  source_of_record: discover
+  last_verified: &id002 2026-08-14
+  workday_tenant: kbr
+  workday_site: KBR_Careers
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Kepler Communications
+  platform: lever
+  slug: kepler
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (34 job(s))'
+- name: KeyBank
+  platform: workday
+  slug: keybank
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: keybank
+  workday_site: External_Career_Site
+  workday_dc: wd5
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Keysight Technologies
+  platform: custom_json
+  slug: keysight
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: reopened — the old row pointed at jobs.keysight.com; the iCIMS
+    careers-home site at careers.keysight.com answers /api/jobs with 606 postings
+    and full bodies.'
+  custom:
+    url: https://careers.keysight.com/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    url_template: https://careers.keysight.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 10
+- name: Keywords Studios
+  platform: workable
+  slug: keywords-intl1
+  source_of_record: openjobs
+  last_verified: 2026-08-17
+  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
+    paused_until resumed it.'
+- name: Kiewit
+  platform: custom_json
+  slug: kiewit
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: SuccessFactors RMK at kiewitcareers; /rss.xml carries all 829 postings, nine
+    of them intern or student terms.
+  custom:
+    url: https://kiewitcareers.kiewit.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Kimley-Horn
+  platform: icims
+  slug: kimley-horn
+  source_of_record: discover
+  enabled: false
+  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
+    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
+    on its icims.com host is 404.'
+- name: Kion Group
+  platform: workday
+  slug: kiongroup
+  source_of_record: discover
+  last_verified: &id003 2026-08-16
+  workday_tenant: kiongroup
+  workday_site: kiongroup
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 22 posting(s), 4 kept after
+    the CS-internship screens'
+- name: Kion Group
+  platform: workday
+  slug: kiongroup
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: kiongroup
+  workday_site: kion_scs
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 22 posting(s), 4 kept after
+    the CS-internship screens'
+- name: Kirin
+  platform: ashby
+  slug: kirin
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (39 job(s))'
+- name: KKR
+  platform: greenhouse
+  slug: staged
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: '2026-08-20: the token reads like a staging board, but greenhouse names it
+    Student Careers at KKR and it carries nine real 2027 internships, so the caption
+    is the evidence, not the slug.'
+- name: KLA
+  platform: workday
+  slug: kla
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: kla
+  workday_site: AnnArbor
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Klaviyo
+  platform: greenhouse
+  slug: klaviyo
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Klue
+  platform: ashby
+  slug: klue
+  source_of_record: discover
+  last_verified: 2026-08-17
+  name_gate_exempt: true
+  notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
+    careers page and the board answered with postings, but ashby publishes no board
+    name, so provenance is the evidence rather than a name match'
+- name: Kognitos
+  platform: ashby
+  slug: kognitos
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (6 job(s))'
+- name: KOHO
+  platform: ashby
+  slug: koho
+  source_of_record: discover
+  last_verified: 2026-08-17
+  name_gate_exempt: true
+  notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
+    careers page and the board answered with postings, but ashby publishes no board
+    name, so provenance is the evidence rather than a name match'
+- name: KONE
+  platform: workday
+  slug: kone
+  source_of_record: discover
+  last_verified: *id003
+  workday_tenant: kone
+  workday_site: careers
+  workday_dc: wd3
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync — the board answered with 120 posting(s), 1 kept after
+    the CS-internship screens'
+- name: kos.ai
+  platform: ashby
+  slug: kos.ai
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (5 job(s))'
+- name: KOSTAL Group
+  platform: smartrecruiters
+  slug: kostalgroup
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: '2026-08-18: seen in feed postings but absent from the registry; discover
+    matched smartrecruiters/kostalgroup with 118 job(s) and the board named itself,
+    so it is polled directly instead of secondhand'
+- name: KPMG
+  platform: custom_json
+  slug: kpmg
+  source_of_record: discover
+  last_verified: 2026-08-18
+  notes: 'The earlier park named a wrong filter, not a dead endpoint: tags1=Intern/Co-op
+    is the facet the site itself uses.'
+  custom:
+    url: https://careers.kpmg.ca/api/jobs?lang=en-US&limit=25&page=1&tags1=Intern%2FCo-op
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      url: data.apply_url
+      category: data.category
+      employment_type: data.employment_type
+    page_param: page
+    page_size: 25
+    page_start: 1
+    page_step: 1
+    max_pages: 20
+- name: Krafton
+  platform: greenhouse
+  slug: krafton
+  source_of_record: discover
+  last_verified: 2026-08-20
+  notes: Its careers page answers 403, but the native greenhouse board answers with
+    77 postings.
+- name: KRAFTON Montréal Studio
+  platform: greenhouse
+  slug: studiokraftonboard
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+- name: Kraken
+  platform: ashby
+  slug: kraken.com
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: supplied URL is the employer’s Ashby board and returned live
+    postings.'
+- name: Kyndryl
+  platform: workday
+  slug: kyndryl
+  source_of_record: discover
+  last_verified: 2026-08-17
+  workday_tenant: kyndryl
+  workday_site: KyndrylEarlyCareers
+  workday_dc: wd5
+  notes: '2026-08-17: verified by scratch sync. This is the employer''s own early-careers
+    site, which carried 1 posting that day; adopted for the September intake'

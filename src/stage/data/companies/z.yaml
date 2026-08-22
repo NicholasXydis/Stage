@@ -1,0 +1,140 @@
+- name: Zapier
+  platform: ashby
+  slug: zapier
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  name_gate_exempt: true
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
+    with postings, but this platform publishes no board name, so provenance is the
+    evidence rather than a name match.'
+- name: Zebra Technologies
+  platform: workday
+  slug: zebra
+  source_of_record: discover
+  last_verified: &id002 2026-08-17
+  workday_tenant: zebra
+  workday_site: Zebra_careers
+  workday_dc: wd501
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Zeeco, Inc.
+  platform: lever
+  slug: zeeco
+  source_of_record: openjobs
+  last_verified: 2026-08-04
+- name: ZEISS
+  platform: workday
+  slug: zeissgroup
+  source_of_record: manual
+  last_verified: 2026-08-13
+  workday_tenant: zeissgroup
+  workday_site: external
+  workday_dc: wd3
+  workday_facet: workerSubType:c33c89f6bf4001e6411e63a580aefe2b,c2e6b8b5b37f0192a5d38625a300310e
+  notes: '2026-08-13: official Workday endpoint verified; its intern and working-student
+    facets total 120 listings.'
+- name: Zello
+  platform: ashby
+  slug: zello
+  source_of_record: discover
+  last_verified: &id001 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (10 job(s))'
+- name: Zendesk
+  platform: workday
+  slug: zendesk
+  source_of_record: discover
+  last_verified: 2026-08-14
+  workday_tenant: zendesk
+  workday_site: zendesk
+  workday_dc: wd1
+  notes: '2026-08-14: verified by a real sync — this board returned postings, which
+    is the only verification a Workday tenant can have without an offline probe'
+- name: Zettabyte
+  platform: ashby
+  slug: zettabyte-space
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; ashby publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (9 job(s))'
+- name: Ziff Davis
+  platform: jobvite
+  slug: ziffdavis
+  source_of_record: openjobs
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/ziffdavis/jobs
+    server-renders all 73 postings, which is the contract this row polls'
+- name: Zillow
+  platform: workday
+  slug: zillow
+  source_of_record: discover
+  last_verified: *id002
+  workday_tenant: zillow
+  workday_site: Zillow_Group_External
+  workday_dc: wd5
+  notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
+    for a known ATS hostname, no browser and one request per host.'
+- name: Zinnia
+  platform: greenhouse
+  slug: zinnia
+  source_of_record: openjobs
+  last_verified: 2026-08-11
+- name: Zoom
+  platform: custom_json
+  slug: zoom
+  source_of_record: discover
+  last_verified: 2026-08-21
+  notes: '2026-08-21: the official job search page server-renders its listings; the
+    existing HTML route returned stable rows and page pagination.'
+  custom:
+    url: https://careers.zoom.us/jobs/search
+    format: html
+    row_selector: article.job-search-results-card-col
+    fields:
+      title: h3.job-search-results-card-title a
+      id: .job-component-requisition-identifier span
+      url: h3.job-search-results-card-title a::attr(href)
+      location: .job-component-location span
+      description: p.job-search-results-summary
+      category: .job-component-category span
+    page_param: page
+    page_size: 30
+    page_start: 1
+    page_step: 1
+    max_pages: 5
+- name: Zoox
+  platform: lever
+  slug: zoox
+  source_of_record: discover
+  last_verified: *id001
+  name_gate_exempt: true
+  notes: '2026-08-14: board token taken from this employer''s own application URL
+    in a feed posting, not from slug guessing; lever publishes no board name, so the
+    name gate cannot confirm it and provenance is the evidence (240 job(s))'
+- name: Zscaler
+  platform: greenhouse
+  slug: zscaler
+  source_of_record: openjobs
+  last_verified: 2026-08-16
+  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
+    a live probe that matched the company name on the returned board'
+- name: Zuru
+  platform: lever
+  slug: zuru
+  source_of_record: openjobs
+  enabled: false
+  notes: '2026-08-14: superseded — this employer''s feed postings now apply through
+    Ashby'
+- name: ZURU (Ashby)
+  platform: ashby
+  slug: zuru
+  source_of_record: discover
+  last_verified: 2026-08-14
+  name_gate_exempt: true
+  notes: '2026-08-14: board resolved from this employer''s own application URL in
+    a feed posting; the older Lever row for the same employer stays disabled as a
+    vendor-migration fossil'
