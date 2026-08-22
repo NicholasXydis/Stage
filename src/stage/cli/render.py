@@ -27,6 +27,7 @@ from stage.domain import (
     DiscoveryEvent,
     DiscoveryFinished,
     DiscoveryStarted,
+    IntegrityRepair,
     Job,
     PlannedRequest,
     PlatformCandidate,
@@ -40,6 +41,7 @@ from stage.domain import (
     SourceFailed,
     SourceFinished,
     SourceFresh,
+    SourceResting,
     SourceRotated,
     SourceStarted,
     SyncEvent,
@@ -321,9 +323,34 @@ _COVERAGE_STYLE = {
 }
 
 
+def render_contradictions(console: Console, report: "CoverageReport") -> None:
+    if not report.contradictions:
+        console.print("[dim]No review verdict contradicts the registry or has aged out.[/dim]")
+        return
+    table = Table(
+        title="Review verdicts to re-derive", box=None, pad_edge=False, header_style="bold"
+    )
+    table.add_column("Company")
+    table.add_column("Verdict")
+    table.add_column("Why it no longer holds")
+    for record, reason in report.contradictions:
+        table.add_row(
+            sanitize(record.company), sanitize(record.disposition.value), sanitize(reason)
+        )
+    console.print(table)
+
+
 def render_coverage(
-    console: Console, report: "CoverageReport", now: datetime, *, include_classified: bool = False
+    console: Console,
+    report: "CoverageReport",
+    now: datetime,
+    *,
+    include_classified: bool = False,
+    include_contradictions: bool = False,
 ) -> None:
+    if include_contradictions:
+        render_contradictions(console, report)
+        return
     counts: dict[CoverageState, int] = {}
     for row in report.rows:
         counts[row.state] = counts.get(row.state, 0) + 1
@@ -603,6 +630,15 @@ def render_canary(console: Console, report: "CanaryReport") -> None:
         )
 
 
+def render_repairs(console: "Console", repairs: Sequence[IntegrityRepair]) -> None:
+    if not repairs:
+        return
+    console.print("[bold]Repaired[/bold]")
+    for entry in repairs:
+        console.print(f"  {entry.repaired} × {sanitize(entry.check)} — {sanitize(entry.detail)}")
+    console.print()
+
+
 def render_doctor(console: Console, report: "DoctorReport", now: datetime) -> None:
     console.print(f"[bold]schema[/bold] v{report.schema_version}")
     if report.never_synced:
@@ -799,6 +835,7 @@ async def render_sync(
     events: AsyncIterator[SyncEvent],
     *,
     request_log: TextIO | None = None,
+    progress: Callable[[SyncEvent], None] | None = None,
 ) -> SyncOutcome:
     outcome = SyncOutcome.FAILURE
     failures: list[tuple[str, str, str]] = []
@@ -806,6 +843,8 @@ async def render_sync(
     validated = 0
 
     async for event in events:
+        if progress is not None:
+            progress(event)
         match event:
             case SyncStarted(sources=sources, companies=companies):
                 source_names = ", ".join(sources)
@@ -863,6 +902,11 @@ async def render_sync(
                 console.print(
                     f"  [dim]fresh[/dim] — {fresh.skipped} refreshed within "
                     f"{fresh.refresh_interval_h:.0f}h, {fresh.remaining} left"
+                )
+            case SourceResting() as resting:
+                console.print(
+                    f"  [dim]resting[/dim] — {resting.skipped} board(s) backing off after "
+                    f"repeated failures, {resting.remaining} left"
                 )
             case PlannedRequest(company=company, url=url, has_validator=cached):
                 if not planned:
@@ -932,9 +976,15 @@ async def render_sync(
                 quarantine_note = ""
                 if finished.quarantined:
                     quarantine_note = f", [yellow]{finished.quarantined} quarantined[/yellow]"
+                reason_note = (
+                    f" [dim]({sanitize(finished.partial_reason)})[/dim]"
+                    if finished.partial_reason
+                    else ""
+                )
                 console.print(
-                    f"\n[bold]{finished.outcome.value}[/bold] — {finished.added} added, "
-                    f"{finished.updated} updated, {finished.closed} closed"
+                    f"\n[bold]{finished.outcome.value}[/bold]{reason_note} — "
+                    f"{finished.added} added, {finished.updated} updated, "
+                    f"{finished.closed} closed"
                     f"{quarantine_note}{purge_note}{cache_note}"
                 )
                 if finished.quarantined:
@@ -974,6 +1024,7 @@ async def render_discovery(
     display_name: str | None = None,
     request_log: TextIO | None = None,
     collect: bool = False,
+    progress: Callable[[DiscoveryEvent], None] | None = None,
 ) -> bool | DiscoveryFinished:
     from stage.companies import registry_entry_yaml
     from stage.services.discover import to_company
@@ -991,6 +1042,8 @@ async def render_discovery(
             console.print(plain(f"  {line}"), highlight=False)
 
     async for event in events:
+        if progress is not None:
+            progress(event)
         match event:
             case DiscoveryStarted(companies=names, platforms=platforms, probes_planned=planned):
                 console.print(

@@ -18,8 +18,10 @@ def test_only_the_typer_wrapper_calls_asyncio_run() -> None:
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
         if "asyncio.run(" in line
     ]
-    assert len(call_sites) == 1
-    assert call_sites[0].startswith("cli/app.py:")
+    assert len(call_sites) == 1, f"asyncio.run belongs to one wrapper only: {call_sites}"
+    assert call_sites[0].startswith("cli/options.py:"), (
+        "only the Typer entrypoint may own the event loop"
+    )
 
 
 def test_services_never_renders() -> None:

@@ -108,10 +108,12 @@ def test_a_second_run_is_refused_and_names_the_first(tmp_path: Path) -> None:
 
 def test_the_lock_is_released_when_the_run_finishes(tmp_path: Path) -> None:
     lock = tmp_path / "network.lock"
+    owner = lock.with_suffix(".owner")
     with single_run("sync", lock):
-        pass
+        assert owner.exists(), "a held lock must name the run that holds it"
+    assert not owner.exists(), "the holder record outlived the run that wrote it"
     with single_run("discover", lock):
-        pass
+        assert owner.exists(), "the lock was not reusable once the first run finished"
 
 
 def test_the_lock_is_released_even_when_the_run_raises(tmp_path: Path) -> None:
@@ -196,7 +198,7 @@ def test_a_broken_registry_is_reported_even_while_another_run_holds_the_lock(
 ) -> None:
     from typer.testing import CliRunner
 
-    from stage.cli.app import app
+    from stage.cli.options import app
 
     registry = tmp_path / "companies.yaml"
     registry.write_text(
@@ -216,7 +218,7 @@ def test_a_broken_registry_is_reported_even_while_another_run_holds_the_lock(
 
 
 def test_two_databases_do_not_contend_for_one_lock(tmp_path: Path) -> None:
-    from stage.cli.app import _lock_path
+    from stage.cli.options import _lock_path
 
     first = _lock_path(tmp_path / "one.db")
     second = _lock_path(tmp_path / "two.db")
