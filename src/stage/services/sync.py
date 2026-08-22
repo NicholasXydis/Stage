@@ -37,9 +37,11 @@ from stage.domain import (
     SourceFailed,
     SourceFinished,
     SourceFresh,
+    SourceResting,
     SourceRotated,
     SourceRunStats,
     SourceStarted,
+    SourceVisit,
     SyncEvent,
     SyncFinished,
     SyncOutcome,
@@ -49,6 +51,7 @@ from stage.domain import (
     WorkdayCrawl,
     WorkdayCrawlStep,
     WorkdayFacet,
+    is_resting,
     rotate,
 )
 from stage.http import (
@@ -369,6 +372,34 @@ def _safe_plan(adapter: Adapter, company: Company) -> tuple[tuple[str, ...], str
         return (), f"{type(exc).__name__}: {exc}"
 
 
+def _is_resting(
+    adapter: Adapter,
+    company: Company,
+    visits: Mapping[str, SourceVisit],
+    now: datetime,
+) -> bool:
+    visit = visits.get(_safe_board_key(adapter, company))
+    return visit is not None and is_resting(visit, now)
+
+
+def _partial_reason(
+    failed_sources: Sequence[str],
+    unroutable: Sequence[Company],
+    blocked_sources: Sequence[str],
+    deferred_sources: Sequence[str],
+) -> str:
+    reasons = []
+    if failed_sources:
+        reasons.append(f"{len(failed_sources)} source(s) failed")
+    if blocked_sources:
+        reasons.append(f"{len(blocked_sources)} source(s) blocked")
+    if deferred_sources:
+        reasons.append(f"{len(deferred_sources)} source(s) stopped on their host budget")
+    if unroutable:
+        reasons.append(f"{len(unroutable)} row(s) no adapter could route")
+    return "; ".join(reasons)
+
+
 def _stalest_first(
     adapter: Adapter, companies: Sequence[Company], last_success: Mapping[str, datetime | None]
 ) -> list[Company]:
@@ -518,11 +549,10 @@ async def _run_company_source(
     workday_adapter = adapter if isinstance(adapter, WorkdayAdapter) else None
     is_workday = workday_adapter is not None
     window_h = postures.get(rotation_bucket, RatePosture()).refresh_interval_h
-    last_success = {
-        visit.board: visit.last_success_at
-        for visit in await repository.all_visits()
-        if visit.source == source_name
+    board_visits = {
+        visit.board: visit for visit in await repository.all_visits() if visit.source == source_name
     }
+    last_success = {board: visit.last_success_at for board, visit in board_visits.items()}
     rotation = rotate(
         [RotationMember(key=company.registry_key) for company in companies],
         cursor=stored.rotation_cursor if stored is not None else "",
@@ -550,6 +580,16 @@ async def _run_company_source(
         ]
         refreshed_recently = len(ordered) - len(kept_boards)
         ordered = kept_boards
+
+    resting_boards = 0
+    if not force_refresh and not dry_run:
+        awake = [
+            company
+            for company in ordered
+            if not _is_resting(adapter, company, board_visits, run_started_at)
+        ]
+        resting_boards = len(ordered) - len(awake)
+        ordered = awake
 
     seed = dict(await repository.load_validators(source_name))
     resuming_boards: frozenset[str] = frozenset()
@@ -594,6 +634,8 @@ async def _run_company_source(
             remaining=len(ordered),
             refresh_interval_h=window_h,
         )
+    if resting_boards:
+        yield SourceResting(source=source_name, skipped=resting_boards, remaining=len(ordered))
     if rotation.rotating:
         yield SourceRotated(
             source=source_name,
@@ -911,6 +953,14 @@ async def _run_feed_source(
             quarantined=rejected,
             resolve_duplicates=resolve_duplicates,
             closes_whole_source=authoritative and not incomplete and not unchanged,
+            visits=(
+                CompanyVisit(
+                    board=source_name,
+                    succeeded=not errors,
+                    error=error_text if errors else "",
+                    label=label,
+                ),
+            ),
         )
     )
     write_ms = (time.perf_counter() - write_clock) * 1000
@@ -1118,6 +1168,11 @@ async def sync(
         outcome_status = SyncOutcome.PARTIAL
     else:
         outcome_status = SyncOutcome.SUCCESS
+    partial_reason = (
+        _partial_reason(failed_sources, unroutable, blocked_sources, deferred_sources)
+        if outcome_status is not SyncOutcome.SUCCESS
+        else ""
+    )
 
     purged = await repository.purge(now_fn())
 
@@ -1140,4 +1195,5 @@ async def sync(
         elapsed_ms=(time.perf_counter() - run_clock) * 1000,
         requests=sum(item.requests for item in stats),
         not_modified=sum(item.not_modified for item in stats),
+        partial_reason=partial_reason,
     )

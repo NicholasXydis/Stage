@@ -384,3 +384,19 @@ def test_excluding_a_source_with_no_enabled_rows_still_works() -> None:
     rows = (Company(name="A", platform=Platform.GREENHOUSE, slug="a"),)
     grouped, _, _ = _select(rows, None, ["workday"])
     assert set(grouped) == {"greenhouse"}
+
+
+def test_a_partial_run_says_which_kind_of_partial_it_was() -> None:
+    from stage.domain import Company, Platform
+    from stage.services.sync import _partial_reason
+
+    unroutable = [Company(name="Acme", platform=Platform.TEAMTAILOR, slug="acme")]
+    assert _partial_reason([], [], [], ["workday"]) == (
+        "1 source(s) stopped on their host budget"
+    ), "budget deferral is rotation working, not a failure"
+    assert "failed" in _partial_reason(["themuse"], [], [], [])
+    assert "blocked" in _partial_reason([], [], ["workable"], [])
+    assert "route" in _partial_reason([], unroutable, [], [])
+    combined = _partial_reason(["themuse"], [], [], ["workday"])
+    assert combined.count(";") == 1, "every distinct reason must be named, not just the first"
+    assert _partial_reason([], [], [], []) == "", "a clean run needs no explanation"

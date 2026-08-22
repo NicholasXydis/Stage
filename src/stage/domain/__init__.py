@@ -53,6 +53,7 @@ from stage.domain.events import (
     SourceFailed,
     SourceFinished,
     SourceFresh,
+    SourceResting,
     SourceRotated,
     SourceStarted,
     SyncEvent,
@@ -67,6 +68,7 @@ from stage.domain.health import (
     UNRECORDED_VOLUME,
     VOLUME_DROP_RATIO,
     IntegrityFinding,
+    IntegrityRepair,
     VisitState,
     VolumePoint,
     VolumeSignal,
@@ -113,7 +115,14 @@ from stage.domain.text import (
     web_url,
 )
 from stage.domain.validator import HttpValidator
-from stage.domain.visits import CompanyVisit, DetailFetch, SourceVisit
+from stage.domain.visits import (
+    REST_AFTER_FAILURES,
+    CompanyVisit,
+    DetailFetch,
+    SourceVisit,
+    is_resting,
+    rested_until,
+)
 from stage.domain.workday import WorkdayCrawl, WorkdayCrawlStep, WorkdayFacet
 
 __all__ = [
@@ -173,10 +182,14 @@ __all__ = [
     "SourceFinished",
     "SourceCapped",
     "SourceFresh",
+    "SourceResting",
     "SourceRotated",
     "SourceOfRecord",
     "SourceRunStats",
+    "REST_AFTER_FAILURES",
     "SourceVisit",
+    "is_resting",
+    "rested_until",
     "SourceSignals",
     "SourceStarted",
     "SyncEvent",
@@ -200,6 +213,7 @@ __all__ = [
     "UNRECORDED_VOLUME",
     "VOLUME_DROP_RATIO",
     "IntegrityFinding",
+    "IntegrityRepair",
     "VisitState",
     "VolumePoint",
     "VolumeSignal",

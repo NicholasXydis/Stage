@@ -95,6 +95,13 @@ class SourceFresh:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceResting:
+    source: str
+    skipped: int
+    remaining: int
+
+
+@dataclass(frozen=True, slots=True)
 class SourceCapped:
     source: str
     bucket: str
@@ -170,6 +177,7 @@ class SyncFinished:
     requests: int = 0
     not_modified: int = 0
     dry_run: bool = False
+    partial_reason: str = ""
 
 
 SyncEvent = (
@@ -178,6 +186,7 @@ SyncEvent = (
     | SourceBlocked
     | SourceRotated
     | SourceFresh
+    | SourceResting
     | SourceCapped
     | SourceStarted
     | CompanyStarted
