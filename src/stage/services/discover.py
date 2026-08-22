@@ -28,7 +28,7 @@ from stage.http import (
     ValidatorCache,
     resolve,
 )
-from stage.lexicon import company_legal_suffixes, fold, generic_company_tokens
+from stage.lexicon import company_legal_suffixes, fold, generic_company_tokens, name_root_tokens
 from stage.sources.platforms import (
     PROBES,
     PROBES_BY_PLATFORM,
@@ -68,9 +68,7 @@ class SlugPlan:
 
 
 def slug_candidates(name: str) -> SlugPlan:
-    tokens = [token for token in fold(name).split() if token]
-    while len(tokens) > 1 and tokens[-1] in _LEGAL_SUFFIXES:
-        tokens = tokens[:-1]
+    tokens = list(name_root_tokens(name))
     if not tokens:
         return SlugPlan((), ())
 

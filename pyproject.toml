@@ -64,6 +64,7 @@ select = [
     "TID",
     "ARG",
     "S",
+    "ERA",
 ]
 ignore = ["S101", "S311"]
 

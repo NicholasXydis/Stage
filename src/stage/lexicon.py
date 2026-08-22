@@ -330,5 +330,13 @@ def company_legal_suffixes() -> frozenset[str]:
     return _company_tokens()[1]
 
 
+def name_root_tokens(name: str) -> tuple[str, ...]:
+    suffixes = company_legal_suffixes()
+    tokens = [token for token in fold(name).split() if token]
+    while len(tokens) > 1 and tokens[-1] in suffixes:
+        tokens = tokens[:-1]
+    return tuple(tokens)
+
+
 def division_qualifiers() -> frozenset[str]:
     return _company_tokens()[2]

@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 
 from stage.domain import Platform, PlatformCandidate
-from stage.lexicon import company_legal_suffixes, division_qualifiers, fold
+from stage.lexicon import division_qualifiers, fold, name_root_tokens
 from stage.sources.platforms import identify_url
 
 SEED_PATH = Path(__file__).resolve().parents[1] / "data" / "seed_companies.yaml"
@@ -54,16 +54,8 @@ class CrossReference:
         return sorted(counted.items(), key=lambda pair: (-pair[1], pair[0].value))
 
 
-def name_tokens(name: str) -> tuple[str, ...]:
-    suffixes = company_legal_suffixes()
-    tokens = [token for token in fold(name).split() if token]
-    while len(tokens) > 1 and tokens[-1] in suffixes:
-        tokens = tokens[:-1]
-    return tuple(tokens)
-
-
 def match_key(name: str) -> str:
-    return "".join(name_tokens(name))
+    return "".join(name_root_tokens(name))
 
 
 def recognized_boards(entry: DatasetEntry) -> tuple[PlatformCandidate, ...]:
@@ -81,7 +73,7 @@ def recognized_boards(entry: DatasetEntry) -> tuple[PlatformCandidate, ...]:
 def _prefix_index(entries: Sequence[DatasetEntry]) -> dict[tuple[str, ...], list[DatasetEntry]]:
     index: defaultdict[tuple[str, ...], list[DatasetEntry]] = defaultdict(list)
     for entry in entries:
-        tokens = name_tokens(entry.name)
+        tokens = name_root_tokens(entry.name)
         for size in range(1, len(tokens)):
             index[tokens[:size]].append(entry)
     return index
@@ -92,8 +84,8 @@ def is_division_of(
 ) -> bool:
     if match_key(candidate_name) in independent:
         return False
-    root = name_tokens(parent)
-    tokens = name_tokens(candidate_name)
+    root = name_root_tokens(parent)
+    tokens = name_root_tokens(candidate_name)
     if len(tokens) <= len(root) or tokens[: len(root)] != root:
         return False
     qualifiers = division_qualifiers()
@@ -104,8 +96,8 @@ def _same_family(names: Sequence[str], independent: frozenset[str] = frozenset()
     if sum(1 for name in names if match_key(name) in independent) > 1:
         return False
     shortest = min(names, key=len)
-    root = name_tokens(shortest)
-    return all(name_tokens(name)[: len(root)] == root for name in names)
+    root = name_root_tokens(shortest)
+    return all(name_root_tokens(name)[: len(root)] == root for name in names)
 
 
 def load_seeds(path: Path = SEED_PATH) -> tuple[Seed, ...]:
@@ -182,7 +174,7 @@ def crossref(seeds: Sequence[Seed], entries: Sequence[DatasetEntry]) -> CrossRef
         family: list[tuple[DatasetEntry, bool]] = []
         if primary is not None:
             family.append((primary, False))
-        for entry in related_index.get(name_tokens(seed.name), ()):
+        for entry in related_index.get(name_root_tokens(seed.name), ()):
             if primary is not None and match_key(entry.name) == match_key(primary.name):
                 continue
             if not is_division_of(seed.name, entry.name, independent):

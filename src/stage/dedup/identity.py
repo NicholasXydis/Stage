@@ -6,7 +6,6 @@ from stage.domain import (
     Job,
     Language,
     location_agrees,
-    source_rank,
     term_agrees,
 )
 from stage.lexicon import fold, role_lexicon
@@ -92,7 +91,3 @@ def _cross_language(left: Job, right: Job) -> MatchResult:
     if not canonical or canonical != title_canonical(right.title_raw):
         return MatchResult()
     return MatchResult(MatchKind.CROSS_LANGUAGE, canonical)
-
-
-def _rank(job: Job) -> tuple[int, str]:
-    return source_rank(job.source, job.id)
