@@ -34,6 +34,7 @@ CREATE INDEX idx_jobs_duplicate_of ON jobs (duplicate_of);
 CREATE INDEX idx_jobs_degree ON jobs (degree_requirement);
 CREATE INDEX idx_jobs_company_canonical ON jobs (company) WHERE duplicate_of IS NULL;
 CREATE INDEX idx_jobs_company_fold ON jobs (company_fold);
+CREATE INDEX idx_jobs_apply_url_canonical ON jobs (apply_url_canonical);
 
 CREATE VIRTUAL TABLE jobs_fts USING fts5 (
     company,
