@@ -8,7 +8,13 @@ from stage.domain import (
     location_agrees,
     term_agrees,
 )
-from stage.lexicon import fold, role_lexicon
+from stage.lexicon import (
+    division_qualifiers,
+    fold,
+    generic_company_tokens,
+    name_root_tokens,
+    role_lexicon,
+)
 
 __all__ = [
     "SOURCE_PRIORITY",
@@ -56,8 +62,22 @@ def _title_tokens(job: Job) -> frozenset[str]:
     return frozenset(fold(job.title_raw).split())
 
 
+def _qualified_prefix(shorter: tuple[str, ...], longer: tuple[str, ...]) -> bool:
+    if not shorter or longer[: len(shorter)] != shorter:
+        return False
+    if not set(longer[len(shorter) :]) <= division_qualifiers():
+        return False
+    return bool(set(shorter) - generic_company_tokens())
+
+
 def _company_matches(left: Job, right: Job) -> bool:
-    return fold(left.company) == fold(right.company)
+    if fold(left.company) == fold(right.company):
+        return True
+    first, second = name_root_tokens(left.company), name_root_tokens(right.company)
+    if first == second:
+        return True
+    shorter, longer = sorted((first, second), key=len)
+    return _qualified_prefix(shorter, longer)
 
 
 def would_merge(left: Job, right: Job) -> MatchResult:

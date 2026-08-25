@@ -332,3 +332,48 @@ def test_a_malformed_id_degrades_to_the_stricter_rule_not_the_looser_one() -> No
     other = job("also-bare", "greenhouse", "Acme", "Software Engineer Intern")
     assert bare.board_key == other.board_key == "greenhouse"
     assert not would_merge(bare, other)
+
+
+def test_two_boards_on_one_platform_never_merge_on_a_title_alone() -> None:
+    left = job(
+        "greenhouse:tower-en:1", "greenhouse", "Tower Research", "Quantitative Trader Intern"
+    )
+    right = job(
+        "greenhouse:tower-fr:2", "greenhouse", "Tower Research", "Quantitative Trader Intern"
+    )
+    assert resolve_duplicates([left, right], []) == (), (
+        "a title match inside one platform is too soft to merge two boards"
+    )
+
+
+@pytest.mark.parametrize(
+    ("left_name", "right_name"),
+    [
+        ("Medpace", "Medpace, Inc."),
+        ("Verition Fund Management", "Verition Fund Management LLC"),
+        ("Jump Trading", "Jump Trading Group"),
+        ("Old Mission", "Old Mission Capital"),
+    ],
+)
+def test_a_legal_suffix_or_division_word_is_not_a_different_employer(
+    left_name: str, right_name: str
+) -> None:
+    left = job("greenhouse:a:1", "greenhouse", left_name, "Software Engineer Intern")
+    right = job("lever:b:2", "lever", right_name, "Software Engineer Intern")
+    assert would_merge(left, right), f"{left_name!r} and {right_name!r} are one employer"
+
+
+@pytest.mark.parametrize(
+    ("left_name", "right_name"),
+    [
+        ("Apex", "Apex Capital"),
+        ("Meta", "Nvidia"),
+        ("Jump Trading", "Jump Crypto Holdings"),
+    ],
+)
+def test_a_shared_generic_word_does_not_make_two_employers_one(
+    left_name: str, right_name: str
+) -> None:
+    left = job("greenhouse:a:1", "greenhouse", left_name, "Software Engineer Intern")
+    right = job("lever:b:2", "lever", right_name, "Software Engineer Intern")
+    assert not would_merge(left, right), f"{left_name!r} and {right_name!r} are separate employers"

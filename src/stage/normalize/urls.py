@@ -1,5 +1,5 @@
 import re
-from urllib.parse import SplitResult, urlsplit, urlunsplit
+from urllib.parse import SplitResult, parse_qsl, urlsplit, urlunsplit
 
 TRACKER_DOMAINS: frozenset[str] = frozenset(
     {
@@ -44,7 +44,32 @@ LOCALE_LANGUAGES: frozenset[str] = frozenset(
     }
 )
 
+IDENTITY_PARAMS: frozenset[str] = frozenset(
+    {
+        "gh_jid",
+        "id",
+        "jid",
+        "job",
+        "jobid",
+        "job_id",
+        "jobnumber",
+        "jobreqid",
+        "opportunityid",
+        "pid",
+        "positionid",
+        "postingid",
+        "req",
+        "reqid",
+        "req_id",
+        "requisitionid",
+        "rid",
+        "vacancyid",
+    }
+)
+
 _LOCALE_REGION = re.compile(r"^[a-z]{2}[-_][a-zA-Z]{2}$")
+_IDENTITY_VALUE = re.compile(r"^[A-Za-z0-9._~-]{1,128}$")
+_IDENTITY_KEYS: frozenset[str] = frozenset(name.replace("_", "") for name in IDENTITY_PARAMS)
 
 
 def _is_locale_segment(segment: str) -> bool:
@@ -70,6 +95,18 @@ def is_tracker_url(url: str) -> bool:
     return any(host == domain or host.endswith(f".{domain}") for domain in TRACKER_DOMAINS)
 
 
+def _identity_query(query: str) -> str:
+    if not query:
+        return ""
+    kept: list[str] = []
+    for name, value in parse_qsl(query, keep_blank_values=False):
+        if name.lower().replace("-", "_").replace("_", "") not in _IDENTITY_KEYS:
+            continue
+        if _IDENTITY_VALUE.match(value):
+            kept.append(f"{name.lower()}={value}")
+    return "&".join(sorted(kept))
+
+
 def canonical_apply_url(raw: str) -> str:
     if not raw or not raw.strip():
         return ""
@@ -82,4 +119,4 @@ def canonical_apply_url(raw: str) -> str:
     segments = [segment for segment in parts.path.split("/") if segment]
     kept = [segment for segment in segments if not _is_locale_segment(segment)]
     path = "/" + "/".join(kept)
-    return urlunsplit(("https", host, path.rstrip("/") or "/", "", ""))
+    return urlunsplit(("https", host, path.rstrip("/") or "/", _identity_query(parts.query), ""))

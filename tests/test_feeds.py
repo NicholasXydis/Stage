@@ -357,3 +357,28 @@ async def test_a_community_feed_that_lost_a_file_is_not_authoritative(
         "a feed closes source-wide, so an incomplete read would close the missing file's postings"
     )
     assert second in result.stale_urls
+
+
+def test_a_query_string_requisition_id_survives_canonicalisation() -> None:
+    first = canonical_apply_url("https://careers.acme.com/careers/JobDetail?jobId=128711")
+    second = canonical_apply_url("https://careers.acme.com/careers/JobDetail?jobId=128513")
+    assert first != second, "the path alone is one page; the requisition lives in the query"
+    assert first.endswith("?jobid=128711")
+
+
+def test_tracking_parameters_are_still_dropped() -> None:
+    assert (
+        canonical_apply_url("https://acme.com/jobs/1?utm_source=li&utm_campaign=x&ref=y")
+        == "https://acme.com/jobs/1"
+    )
+
+
+def test_an_identity_parameter_is_normalised_so_two_spellings_agree() -> None:
+    assert canonical_apply_url("https://acme.com/j?jobId=7") == canonical_apply_url(
+        "https://acme.com/j?JOBID=7"
+    )
+
+
+def test_an_unreasonable_identity_value_is_ignored_rather_than_carried() -> None:
+    assert canonical_apply_url("https://acme.com/j?id=" + "x" * 200) == "https://acme.com/j"
+    assert canonical_apply_url("https://acme.com/j?id=a%20b") == "https://acme.com/j"
