@@ -12,7 +12,7 @@ class Rejection:
 def screen_is_internship(job: Job) -> Rejection | None:
     from stage.classify.internship import screen_internship
 
-    verdict = screen_internship(job.title_raw, job.signals.employment_type)
+    verdict = screen_internship(job.title_raw, job.signals.employment_type, job.signals.category)
     if verdict.is_internship:
         return None
     return Rejection(
