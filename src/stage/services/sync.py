@@ -59,6 +59,7 @@ from stage.http import (
     HostBudget,
     HostBudgetExceededError,
     HttpClient,
+    HttpError,
     RatePosture,
     ValidatorCache,
     resolve,
@@ -297,7 +298,7 @@ async def _fetch_company(
     crawls: Mapping[str, WorkdayCrawl],
     page_budget: int,
     final_workday_pass: bool,
-) -> tuple[Company, FetchResult | None, str, float, bool]:
+) -> tuple[Company, FetchResult | None, str, float, bool, bool]:
     started = time.perf_counter()
     try:
         if isinstance(adapter, WorkdayAdapter):
@@ -329,11 +330,12 @@ async def _fetch_company(
             result = await adapter.fetch(company, client, now, facets, details)
     except HostBudgetExceededError as exc:
         elapsed = (time.perf_counter() - started) * 1000
-        return company, None, f"{type(exc).__name__}: {exc}", elapsed, False
+        return company, None, f"{type(exc).__name__}: {exc}", elapsed, False, True
     except Exception as exc:
         elapsed = (time.perf_counter() - started) * 1000
-        return company, None, f"{type(exc).__name__}: {exc}", elapsed, True
-    return company, result, "", (time.perf_counter() - started) * 1000, True
+        unreachable = isinstance(exc, HttpError)
+        return company, None, f"{type(exc).__name__}: {exc}", elapsed, True, unreachable
+    return company, result, "", (time.perf_counter() - started) * 1000, True, False
 
 
 def _keepable_validators(cache: ValidatorCache, skip_urls: set[str]) -> tuple[HttpValidator, ...]:
@@ -730,7 +732,9 @@ async def _run_company_source(
         for company in ordered:
             yield CompanyStarted(source=source_name, company=company.name)
 
-        for company, result, error, elapsed, attempted in await asyncio.gather(*pending):
+        for company, result, error, elapsed, attempted, unreachable in await asyncio.gather(
+            *pending
+        ):
             for record in _drain(client, source_name):
                 yield record
             board = _safe_board_key(adapter, company)
@@ -745,7 +749,11 @@ async def _run_company_source(
                     CompanyVisit(board=board, succeeded=False, error=error, label=company.name)
                 )
                 yield CompanyFailed(
-                    source=source_name, company=company.name, error=error, elapsed_ms=elapsed
+                    source=source_name,
+                    company=company.name,
+                    error=error,
+                    elapsed_ms=elapsed,
+                    unreachable=unreachable,
                 )
             elif result.not_modified:
                 visits.append(CompanyVisit(board=board, succeeded=True, label=company.name))

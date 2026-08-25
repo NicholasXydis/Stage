@@ -597,6 +597,8 @@ def render_canary(console: Console, report: "CanaryReport") -> None:
     for probe in report.probes:
         if probe.is_failure:
             result = "[red]failed[/red]"
+        elif probe.is_unreachable:
+            result = "[yellow]unreachable[/yellow]"
         elif probe.is_empty:
             result = "[red]no postings[/red]"
         elif probe.unchanged:
@@ -619,9 +621,15 @@ def render_canary(console: Console, report: "CanaryReport") -> None:
             "probed on a schedule.[/dim]"
         )
     console.print()
+    if report.unreachable:
+        console.print(
+            f"[yellow]{len(report.unreachable)} board(s) refused or dropped the request.[/yellow] "
+            "That is the publisher's server, not our parser; stage doctor tracks repeat failures."
+        )
     if report.passed:
         console.print(
-            f"[green]{len(report.probes)} board(s) still answer the shape we parse.[/green]"
+            f"[green]{len(report.probes) - len(report.unreachable)} board(s) still answer "
+            "the shape we parse.[/green]"
         )
     else:
         console.print(

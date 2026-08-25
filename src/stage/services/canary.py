@@ -21,10 +21,15 @@ class BoardProbe:
     error: str = ""
     degraded: str = ""
     unchanged: bool = False
+    unreachable: bool = False
 
     @property
     def is_failure(self) -> bool:
-        return bool(self.error)
+        return bool(self.error) and not self.unreachable
+
+    @property
+    def is_unreachable(self) -> bool:
+        return bool(self.error) and self.unreachable
 
     @property
     def is_empty(self) -> bool:
@@ -43,6 +48,10 @@ class CanaryReport:
     @property
     def empties(self) -> tuple[BoardProbe, ...]:
         return tuple(probe for probe in self.probes if probe.is_empty)
+
+    @property
+    def unreachable(self) -> tuple[BoardProbe, ...]:
+        return tuple(probe for probe in self.probes if probe.is_unreachable)
 
     @property
     def passed(self) -> bool:
@@ -93,7 +102,10 @@ async def canary(
             )
         elif isinstance(event, CompanyFailed):
             probes[(event.source, event.company)] = BoardProbe(
-                source=event.source, company=event.company, error=event.error
+                source=event.source,
+                company=event.company,
+                error=event.error,
+                unreachable=event.unreachable,
             )
         elif isinstance(event, CompanyUnchanged):
             probes[(event.source, event.company)] = BoardProbe(

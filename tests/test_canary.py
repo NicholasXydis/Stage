@@ -94,3 +94,39 @@ def test_every_custom_json_format_gets_its_own_probe() -> None:
         if company.enabled and company.platform is Platform.CUSTOM_JSON and company.custom
     }
     assert formats == shipped, f"custom_json formats with no probe: {sorted(shipped - formats)}"
+
+
+def test_a_board_that_refuses_the_request_does_not_fail_the_canary() -> None:
+    report = CanaryReport(
+        probes=(
+            BoardProbe(
+                source="oracle_cloud",
+                company="Alithya",
+                error="ForbiddenError: careers.alithya.com returned 403",
+                unreachable=True,
+            ),
+        )
+    )
+    assert report.passed, "a publisher's 403 says nothing about whether our parser still works"
+    assert report.failures == ()
+    assert len(report.unreachable) == 1
+
+
+def test_a_parse_failure_still_fails_the_canary() -> None:
+    report = CanaryReport(
+        probes=(
+            BoardProbe(
+                source="hanzili",
+                company="hanzili 2027",
+                error="PayloadValidationError: no current internship rows",
+            ),
+        )
+    )
+    assert not report.passed, "drift in a payload we parse is exactly what the canary is for"
+    assert len(report.failures) == 1
+    assert report.unreachable == ()
+
+
+def test_an_unreachable_board_is_not_counted_as_empty() -> None:
+    probe = BoardProbe(source="lever", company="Acme", error="BreakerOpenError", unreachable=True)
+    assert probe.is_unreachable and not probe.is_empty and not probe.is_failure

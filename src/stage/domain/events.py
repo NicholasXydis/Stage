@@ -38,6 +38,7 @@ class CompanyFailed:
     company: str
     error: str
     elapsed_ms: float
+    unreachable: bool = False
 
 
 @dataclass(frozen=True, slots=True)
