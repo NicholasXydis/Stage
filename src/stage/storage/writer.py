@@ -139,11 +139,23 @@ class AsyncRepository:
     async def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int:
         return await self._writer.run(lambda repository: repository.relabel_quarantine(entries))
 
+    async def refresh_quarantine_locations(
+        self, resolve: Callable[[str], tuple[str, str | None]]
+    ) -> int:
+        return await self._writer.run(
+            lambda repository: repository.refresh_quarantine_locations(resolve)
+        )
+
     async def repair_integrity(self) -> list[IntegrityRepair]:
         return await self._writer.run(lambda repository: repository.repair_integrity())
 
     async def purge(self, now: datetime) -> PurgeResult:
         return await self._writer.run(lambda repository: repository.purge(now))
+
+    async def close_orphan_boards(self, sources: Sequence[str], boards: Sequence[str]) -> int:
+        return await self._writer.run(
+            lambda repository: repository.close_orphan_boards(sources, boards)
+        )
 
     async def preview_purge(self, now: datetime) -> PurgeResult:
         return await self._writer.run(lambda repository: repository.preview_purge(now))

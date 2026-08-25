@@ -95,6 +95,9 @@ class Repository(Protocol):
     def purge(self, now: datetime) -> PurgeResult:
         pass
 
+    def close_orphan_boards(self, sources: Sequence[str], boards: Sequence[str]) -> int:
+        pass
+
     def preview_purge(self, now: datetime) -> PurgeResult:
         pass
 
@@ -105,6 +108,10 @@ class Repository(Protocol):
         pass
 
     def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int: ...
+
+    def refresh_quarantine_locations(
+        self, resolve: Callable[[str], tuple[str, str | None]]
+    ) -> int: ...
 
     def quarantine_reason_counts(self) -> dict[str, int]:
         pass

@@ -195,6 +195,24 @@ def _group_by_adapter(
     return grouped, unroutable
 
 
+def _registry_boards(
+    companies: Sequence[Company],
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    boards: set[str] = set()
+    unreadable: set[str] = set()
+    covered: set[str] = set()
+    for company in companies:
+        adapter = adapter_for_platform(company.platform)
+        if adapter is None:
+            continue
+        covered.add(adapter.name)
+        try:
+            boards.add(adapter.board_key(company))
+        except Exception:
+            unreadable.add(adapter.name)
+    return tuple(sorted(covered - unreadable)), tuple(sorted(boards))
+
+
 def _select(
     companies: Sequence[Company],
     sources: Sequence[str] | None,
@@ -1173,6 +1191,9 @@ async def sync(
         if outcome_status is not SyncOutcome.SUCCESS
         else ""
     )
+
+    sources_with_boards, known_boards = _registry_boards(companies)
+    await repository.close_orphan_boards(sources_with_boards, known_boards)
 
     purged = await repository.purge(now_fn())
 

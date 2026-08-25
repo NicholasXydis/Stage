@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -394,6 +394,7 @@ MAX_CHAIN_REPAIR_PASSES = 8
 class SqliteRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._conn = connection
+        connection.create_function("stage_board_of", 2, board_of, deterministic=True)
 
     @classmethod
     def connect(cls, db_path: Path) -> "SqliteRepository":
@@ -1023,6 +1024,25 @@ class SqliteRepository:
                 relabelled += int(cursor.rowcount or 0)
         return relabelled
 
+    def refresh_quarantine_locations(self, resolve: Callable[[str], tuple[str, str | None]]) -> int:
+        rows = self._conn.execute(
+            "SELECT id, location_raw, location, remote_scope FROM quarantine "
+            "WHERE location_raw IS NOT NULL AND location_raw <> ''"
+        ).fetchall()
+        updates = []
+        for row in rows:
+            bucket, scope = resolve(str(row["location_raw"]))
+            if bucket == str(row["location"]) and scope == row["remote_scope"]:
+                continue
+            updates.append((bucket, scope, str(row["id"])))
+        if not updates:
+            return 0
+        with self._transaction() as conn:
+            conn.executemany(
+                "UPDATE quarantine SET location = ?, remote_scope = ? WHERE id = ?", updates
+            )
+        return len(updates)
+
     def quarantine_reason_counts(self) -> dict[str, int]:
         rows = self._conn.execute(
             "SELECT reason, COUNT(*) AS total FROM quarantine GROUP BY reason ORDER BY total DESC"
@@ -1409,13 +1429,13 @@ class SqliteRepository:
                 detail="the posting is visible again on its own",
             ),
             IntegrityRepair(
-                check="same-source merges",
+                check="same-board merges",
                 repaired=self._execute_repair(
                     "UPDATE jobs SET duplicate_of = NULL WHERE id IN ("
                     "SELECT a.id FROM jobs a JOIN jobs b ON a.duplicate_of = b.id "
-                    "WHERE a.source = b.source)"
+                    "WHERE stage_board_of(a.id, a.source) = stage_board_of(b.id, b.source))"
                 ),
-                detail="two rows from one source are two requisitions",
+                detail="two rows from one board are two requisitions",
             ),
             IntegrityRepair(
                 check="duplicate chains",
@@ -1435,6 +1455,20 @@ class SqliteRepository:
         ]
         self._conn.commit()
         return [repair for repair in repairs if repair.repaired]
+
+    def close_orphan_boards(self, sources: Sequence[str], boards: Sequence[str]) -> int:
+        if not sources or not boards:
+            return 0
+        source_slots = ", ".join("?" * len(sources))
+        board_slots = ", ".join("?" * len(boards))
+        with self._transaction() as conn:
+            closed = conn.execute(
+                f"UPDATE jobs SET status = ? WHERE status = ? AND source IN ({source_slots}) "
+                "AND stage_board_of(id, source) <> source "
+                f"AND stage_board_of(id, source) NOT IN ({board_slots})",
+                (JobStatus.CLOSED.value, JobStatus.OPEN.value, *sources, *boards),
+            ).rowcount
+        return int(closed or 0)
 
     def _execute_repair(self, sql: str) -> int:
         return int(self._conn.execute(sql).rowcount or 0)
@@ -1467,10 +1501,10 @@ class SqliteRepository:
                 "followers must repoint at the survivor",
             ),
             (
-                "same-source merges",
+                "same-board merges",
                 "SELECT COUNT(*) AS total FROM jobs a JOIN jobs b ON a.duplicate_of = b.id "
-                "WHERE a.source = b.source",
-                "two rows from one source are two requisitions",
+                "WHERE stage_board_of(a.id, a.source) = stage_board_of(b.id, b.source)",
+                "two rows from one board are two requisitions",
             ),
             (
                 "postings in both tables",

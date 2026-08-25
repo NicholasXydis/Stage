@@ -81,13 +81,13 @@ async def test_a_duplicate_chain_is_flattened_onto_the_survivor(db_path: Path) -
         )
 
 
-async def test_a_same_source_merge_is_undone(db_path: Path) -> None:
+async def test_a_same_board_merge_is_undone(db_path: Path) -> None:
     async with open_repository(db_path) as repository:
         await _store(repository, [_job("a"), _job("b", duplicate_of="a")])
-        assert (await _counts(repository))["same-source merges"] == 1
+        assert (await _counts(repository))["same-board merges"] == 1
 
         await repair_integrity(repository)
-        assert (await _counts(repository))["same-source merges"] == 0
+        assert (await _counts(repository))["same-board merges"] == 0
         freed = await repository.get_job("b")
         assert freed is not None and freed.duplicate_of is None, (
             "two rows from one board are two requisitions and both must stay visible"
@@ -110,4 +110,47 @@ async def test_a_finding_that_cannot_be_repaired_safely_is_left_for_a_human(
         repairs = await repair_integrity(repository)
         assert not [entry for entry in repairs if entry.check == "postings in both tables"], (
             "quarantine collisions need a human decision and must not be repaired blindly"
+        )
+
+
+async def test_a_renamed_board_stops_holding_its_old_postings_open(db_path: Path) -> None:
+    async with open_repository(db_path) as repository:
+        await _store(
+            repository,
+            [
+                _job("greenhouse:acme:1", status=JobStatus.OPEN),
+                _job("greenhouse:acme-old:2", status=JobStatus.OPEN),
+            ],
+        )
+        closed = await repository.close_orphan_boards(["greenhouse"], ["greenhouse:acme"])
+        assert closed == 1, "only the board the registry can no longer poll is closed"
+        live = await repository.get_job("greenhouse:acme:1")
+        orphan = await repository.get_job("greenhouse:acme-old:2")
+        assert live is not None and live.status is JobStatus.OPEN
+        assert orphan is not None and orphan.status is JobStatus.CLOSED
+
+
+async def test_a_feed_posting_is_never_closed_as_an_orphan_board(db_path: Path) -> None:
+    async with open_repository(db_path) as repository:
+        await _store(
+            repository, [_job("simplify:acme:1", source="simplify", status=JobStatus.OPEN)]
+        )
+        closed = await repository.close_orphan_boards(["greenhouse"], ["greenhouse:acme"])
+        assert closed == 0, "a feed board is not a registry row and cannot be orphaned"
+
+
+async def test_a_posting_with_no_board_in_its_id_is_never_closed_as_an_orphan(
+    db_path: Path,
+) -> None:
+    async with open_repository(db_path) as repository:
+        await _store(repository, [_job("greenhouse-deferred", status=JobStatus.OPEN)])
+        closed = await repository.close_orphan_boards(["greenhouse"], ["greenhouse:acme"])
+        assert closed == 0, "an id carrying no board identity is unknown, not orphaned"
+
+
+async def test_no_known_boards_closes_nothing(db_path: Path) -> None:
+    async with open_repository(db_path) as repository:
+        await _store(repository, [_job("greenhouse:acme:1", status=JobStatus.OPEN)])
+        assert await repository.close_orphan_boards(["greenhouse"], []) == 0, (
+            "an empty registry is a loading failure, not proof every board is gone"
         )
