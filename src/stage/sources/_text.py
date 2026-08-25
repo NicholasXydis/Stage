@@ -10,6 +10,11 @@ _RAW_CLOSE = {
 }
 _BLOCK_BREAKS = re.compile(r"</(p|div|li|tr|h[1-6])>|<br\s*/?>", re.IGNORECASE)
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+_PICTOGRAPH = "\U0001f000-\U0001faff\u2600-\u27bf\u2b00-\u2bff"
+_JOINER = "\ufe0f\u200d"
+_PICTOGRAPHS = re.compile(
+    f"[{_PICTOGRAPH}{_JOINER}]{{0,64}}[{_PICTOGRAPH}][{_PICTOGRAPH}{_JOINER}]{{0,64}}"
+)
 _BLANK_LINES = re.compile(r"\n{3,}")
 
 
@@ -69,4 +74,6 @@ def strip_html(raw: str) -> str:
 
 
 def collapse_whitespace(raw: str) -> str:
-    return " ".join(_CONTROL.sub("", raw).split())
+    stripped = _CONTROL.sub("", raw)
+    cleaned = " ".join(_PICTOGRAPHS.sub(" ", stripped).split())
+    return cleaned or " ".join(stripped.split())

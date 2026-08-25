@@ -190,6 +190,8 @@ class InternshipLexicon:
     blocked_bigrams: frozenset[str]
     disqualifiers: frozenset[str]
     structured_internship: frozenset[str]
+    structured_excluded: frozenset[str]
+    structured_only_blocked: frozenset[str]
 
 
 @lru_cache(maxsize=1)
@@ -200,6 +202,8 @@ def internship_lexicon() -> InternshipLexicon:
         blocked_bigrams=_folded_phrases(payload, "blocked_bigrams", source),
         disqualifiers=_folded_phrases(payload, "disqualifiers", source),
         structured_internship=_folded_phrases(payload, "structured_internship", source),
+        structured_excluded=_folded_phrases(payload, "structured_excluded", source),
+        structured_only_blocked=_folded_phrases(payload, "structured_only_blocked", source),
     )
 
 

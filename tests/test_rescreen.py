@@ -374,3 +374,72 @@ async def test_rescreen_persists_active_location_corrections(db_path: Path) -> N
     assert result.quarantined == 0
     assert stored is not None
     assert stored.location is LocationBucket.INTERNATIONAL
+
+
+@pytest.mark.asyncio
+async def test_rescreen_re_reads_a_quarantine_location_it_once_got_wrong(
+    db_path: Path,
+) -> None:
+    from stage.classify.scope import Rejection, to_quarantined
+
+    job = replace(
+        _job("workday:bosch:erlangen", "Werkstudent Einkauf"),
+        location_raw="Erlangen, BY, DE, 91058",
+        location=LocationBucket.USA,
+    )
+    store = SqliteRepository.connect(db_path)
+    store.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=NOW,
+            quarantined=(
+                to_quarantined(
+                    job,
+                    Rejection(
+                        reason=RejectionReason.NOT_AN_INTERNSHIP,
+                        matched_phrase="no internship marker in title",
+                    ),
+                ),
+            ),
+        )
+    )
+    store.close()
+
+    async with open_repository(db_path) as repository:
+        result = await rescreen(repository, now=NOW)
+        entries = await repository.list_quarantined(QuarantineFilters(limit=10))
+
+    assert result.relocated == 1, "a stale bucket on a non-internship row is still refreshed"
+    assert entries[0].location is not LocationBucket.USA, "Bavaria is not Delaware"
+
+
+@pytest.mark.asyncio
+async def test_a_correct_quarantine_location_is_left_alone(db_path: Path) -> None:
+    from stage.classify.scope import Rejection, to_quarantined
+
+    job = replace(
+        _job("workday:acme:boston", "Warehouse Associate"),
+        location_raw="Boston, MA",
+        location=LocationBucket.USA,
+    )
+    store = SqliteRepository.connect(db_path)
+    store.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=NOW,
+            quarantined=(
+                to_quarantined(
+                    job,
+                    Rejection(
+                        reason=RejectionReason.NOT_A_CS_ROLE, matched_phrase="warehouse associate"
+                    ),
+                ),
+            ),
+        )
+    )
+    store.close()
+
+    async with open_repository(db_path) as repository:
+        result = await rescreen(repository, now=NOW)
+
+    assert result.relocated == 0, "a bucket that already agrees must not be rewritten"

@@ -227,8 +227,10 @@
   workday_tenant: cmu
   workday_site: cmu
   workday_dc: wd5
-  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
-    verified by a scratch sync (5 posting(s), 0 kept)'
+  enabled: false
+  recheck_after: 2026-11-25
+  notes: '2026-08-25: every plausible coordinate answers 422 and the tenant''s own
+    careers page returns 500, so the CXS contract is closed.'
 - name: Castleton Commodities International
   platform: workday
   slug: osv-cci

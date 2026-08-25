@@ -7,6 +7,7 @@ import respx
 
 from stage.http import HttpClient, HttpStatusError, profile
 from stage.sources import get_feeds
+from stage.sources.base import PayloadValidationError
 from stage.sources.curated_markdown import HanziliFeed, NegarFeed, NorthwesternQuantFeed
 from stage.sources.zshah import ZshahFeed
 
@@ -143,3 +144,45 @@ async def test_seasonal_feed_reports_a_status_that_is_not_a_missing_file(
             await feed.fetch(client, run_time)
 
     assert not fallback.called, "a status other than 404 must not fall through to the next url"
+
+
+@respx.mock
+async def test_a_feed_that_declares_itself_empty_is_not_drift(run_time: datetime) -> None:
+    feed = HanziliFeed()
+    respx.get(feed.plan(run_time)[0]).mock(
+        return_value=httpx.Response(
+            200,
+            json=_content(
+                "# 2026 Canadian CS Internship Positions\n\n"
+                "## Software Engineering\n_No roles currently_\n\n"
+                "## Data / ML\n_No roles currently_\n"
+            ),
+        )
+    )
+    async with HttpClient(
+        allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False
+    ) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert result.jobs == (), "the publisher lists no roles, so the feed carries none"
+    assert not result.authoritative, "an empty feed must never close what it cannot see"
+    assert "no roles right now" in result.degraded
+
+
+@respx.mock
+async def test_a_feed_that_loses_its_table_still_raises(run_time: datetime) -> None:
+    feed = HanziliFeed()
+    respx.get(feed.plan(run_time)[0]).mock(
+        return_value=httpx.Response(
+            200,
+            json=_content(
+                "# 2026 Canadian CS Internship Positions\n\n"
+                "## Software Engineering\n\nRoles have moved to postings.json.\n"
+            ),
+        )
+    )
+    async with HttpClient(
+        allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False
+    ) as client:
+        with pytest.raises(PayloadValidationError):
+            await feed.fetch(client, run_time)

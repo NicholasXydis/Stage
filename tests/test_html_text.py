@@ -62,3 +62,26 @@ def test_an_unclosed_raw_element_leaves_the_rest_of_the_body_intact() -> None:
 def test_a_closing_tag_must_match_the_element_it_closes() -> None:
     assert strip_html("<script>keep</style>me</script>") == ""
     assert strip_html("<p>a</p><script>b</script><p>c</p>") == "a\n c"
+
+
+def test_a_feed_emoji_never_reaches_a_stored_title() -> None:
+    assert collapse_whitespace("\U0001f525 Software Developer Intern") == (
+        "Software Developer Intern"
+    )
+    assert collapse_whitespace("Account Executive - Canada \U0001f1e8\U0001f1e6") == (
+        "Account Executive - Canada"
+    )
+
+
+def test_stripping_pictographs_leaves_ordinary_text_alone() -> None:
+    assert collapse_whitespace("Stagiaire en développement  logiciel (H/F)") == (
+        "Stagiaire en développement logiciel (H/F)"
+    )
+    assert collapse_whitespace("C++ / C# Engineer — Intern") == "C++ / C# Engineer — Intern"
+
+
+def test_a_title_made_only_of_emoji_keeps_its_original_text() -> None:
+    assert collapse_whitespace("\U0001f525") == "\U0001f525", (
+        "cleaning must never leave a posting with no title at all"
+    )
+    assert collapse_whitespace("\U0001f1e7\U0001f1ea") == "\U0001f1e7\U0001f1ea"

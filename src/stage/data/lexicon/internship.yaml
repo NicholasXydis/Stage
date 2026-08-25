@@ -163,3 +163,25 @@ disqualifiers:
   - internship coordinator
   - mentor interns
   - supervise interns
+
+structured_excluded:
+  - experienced professionals
+  - experienced professional
+  - experienced hire
+  - experienced hires
+  - new graduates
+  - new graduate
+  - campus hire
+  - campus hires
+
+structured_only_blocked:
+  - senior
+  - principal
+  - director
+  - head of
+  - vice president
+  - staff software engineer
+  - member of technical staff 2
+  - member of technical staff 3
+  - member of technical staff 4
+  - member of technical staff 5

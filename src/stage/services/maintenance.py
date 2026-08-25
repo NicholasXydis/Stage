@@ -61,10 +61,13 @@ class RescreenResult:
     updated: int = 0
     released: int = 0
     relabelled: int = 0
+    relocated: int = 0
 
     @property
     def changed(self) -> bool:
-        return bool(self.updated or self.quarantined or self.released or self.relabelled)
+        return bool(
+            self.updated or self.quarantined or self.released or self.relabelled or self.relocated
+        )
 
     @property
     def skipped(self) -> int:
@@ -105,6 +108,7 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
         quarantined += len(rejected)
         updated += len(updates)
     released, relabelled = await _release_reclassified_quarantine(repository, moment)
+    relocated = await repository.refresh_quarantine_locations(_resolved_place)
     return RescreenResult(
         examined=examined,
         quarantined=quarantined,
@@ -112,7 +116,16 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
         updated=updated,
         released=released,
         relabelled=relabelled,
+        relocated=relocated,
     )
+
+
+def _resolved_place(location_raw: str) -> tuple[str, str | None]:
+    from stage.normalize import resolve_location
+
+    resolved = resolve_location(location_raw)
+    scope = resolved.remote_scope
+    return resolved.bucket.value, None if scope is None else scope.value
 
 
 def _reclassifications(
@@ -127,7 +140,7 @@ def _reclassifications(
         screen_is_internship,
     )
     from stage.classify.scope import to_quarantined
-    from stage.normalize import resolve_location
+    from stage.normalize import canonical_apply_url, resolve_location
 
     candidates: list[Job] = []
     rejected: list[QuarantinedJob] = []
@@ -136,6 +149,7 @@ def _reclassifications(
         title_role = classify_role(job.title_raw, job.description).role
         candidate = replace(
             job,
+            apply_url_canonical=canonical_apply_url(job.apply_url_raw),
             location=location.bucket,
             remote_scope=location.remote_scope,
             role=title_role if title_role is not RoleCategory.UNKNOWN else job.role,

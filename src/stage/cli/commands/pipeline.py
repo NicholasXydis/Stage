@@ -217,6 +217,8 @@ def rescreen(db: DatabaseOption = None) -> None:
         changes.append(f"[green]{result.released} restored from quarantine[/green]")
     if result.relabelled:
         changes.append(f"[dim]{result.relabelled} rejection(s) given a sharper reason[/dim]")
+    if result.relocated:
+        changes.append(f"[dim]{result.relocated} quarantine location(s) re-read[/dim]")
     console.print(f"Re-screened {result.examined} posting(s) — {', '.join(changes)}.")
     if result.released:
         console.print(

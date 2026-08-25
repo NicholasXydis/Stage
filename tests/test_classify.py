@@ -102,7 +102,8 @@ def test_the_internship_screen_never_reads_a_description() -> None:
     assert set(inspect.signature(screen_internship).parameters) == {
         "title",
         "employment_type",
-    }, "screen_internship must take no description; 17 of 8,944 rows justify it"
+        "category",
+    }, "screen_internship reads the title and publisher signals only, never a description"
 
 
 @pytest.mark.parametrize(
@@ -721,3 +722,35 @@ def test_tied_role_phrases_choose_the_earliest_title_match(title: str, role: Rol
 )
 def test_audited_technical_role_gaps_resolve(title: str, role: RoleCategory) -> None:
     assert classify_role(title).role is role, title
+
+
+def test_a_publisher_level_category_overrides_a_wrong_employment_type() -> None:
+    verdict = screen_internship(
+        "Quantitative Systematic Trader - Experienced Hire",
+        employment_type="INTERN",
+        category="Experienced Professionals",
+    )
+    assert not verdict.is_internship, "a board that stamps INTERN on every row is not evidence"
+    assert verdict.disqualified_by == "experienced professionals"
+
+
+def test_a_new_graduate_category_is_not_an_internship() -> None:
+    verdict = screen_internship("Quantitative Trader - Graduate: 2027", "INTERN", "New Graduates")
+    assert not verdict.is_internship
+
+
+def test_a_seniority_title_outweighs_a_structured_internship_type() -> None:
+    verdict = screen_internship("Member of Technical Staff 4- Dev Extension", "Internship")
+    assert not verdict.is_internship, "structured-only evidence cannot outrank a seniority grade"
+
+
+def test_a_seniority_word_never_blocks_a_title_that_says_internship() -> None:
+    assert screen_internship("Senior Data Science Intern", "Internship").is_internship, (
+        "the title's own internship marker is stronger evidence than a grade word"
+    )
+
+
+def test_a_normal_category_still_leaves_the_structured_type_alone() -> None:
+    assert screen_internship(
+        "Software Dev Engineer Intern", "FullTime", "Software Development"
+    ).is_internship

@@ -21,6 +21,7 @@ LINK = re.compile(r"\[([^\]]*)\]\(\s*<?(?P<url>https?://[^)\s<>]+)>?\s*\)")
 URL = re.compile(r"\]\(\s*<?(?P<url>https?://[^)\s<>]+)>?\s*\)")
 COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 INTERN = re.compile(r"\b(?:intern(?:ship)?s?|co-?op|stagiaire|stage|alternance|student)\b", re.I)
+DECLARED_EMPTY = re.compile(r"_\s*no\s+(?:roles|positions|openings|jobs)[^_\n]{0,40}_", re.I)
 
 
 class GitHubContent(BaseModel):
@@ -98,9 +99,15 @@ class _GitHubMarkdownFeed:
         text = self._decode(response.payload, url, now)
         listings, malformed = self.rows(text)
         if not listings:
-            captured = capture_payload(self.name, str(self.season_year(now)), {"text": text})
-            raise PayloadValidationError(
-                f"{self.name}/{url}: no current internship rows were found (captured {captured})"
+            if not DECLARED_EMPTY.search(text):
+                captured = capture_payload(self.name, str(self.season_year(now)), {"text": text})
+                raise PayloadValidationError(
+                    f"{self.name}/{url}: no current internship rows were found "
+                    f"(captured {captured})"
+                )
+            return FetchResult(
+                degraded=f"{self.name} publishes no roles right now; the feed closes nothing",
+                authoritative=False,
             )
         jobs = tuple(self._to_job(listing, now) for listing in listings)
         return FetchResult(
