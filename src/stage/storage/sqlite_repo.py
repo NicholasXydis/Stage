@@ -990,7 +990,8 @@ class SqliteRepository:
     def list_quarantined(self, filters: QuarantineFilters) -> list[QuarantinedJob]:
         where, params = self._quarantine_where(filters)
         rows = self._conn.execute(
-            f"SELECT * FROM quarantine{where} ORDER BY first_seen DESC, id ASC LIMIT ?",
+            f"SELECT * FROM quarantine{where} ORDER BY company COLLATE NOCASE, "
+            f"first_seen DESC, title_raw COLLATE NOCASE LIMIT ?",
             (*params, filters.limit),
         ).fetchall()
         return [_row_to_quarantined(row) for row in rows]
@@ -1001,6 +1002,26 @@ class SqliteRepository:
             f"SELECT COUNT(*) AS total FROM quarantine{where}", tuple(params)
         ).fetchone()
         return int(row["total"])
+
+    def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int:
+        if not entries:
+            return 0
+        relabelled = 0
+        with self._transaction() as conn:
+            for entry in entries:
+                cursor = conn.execute(
+                    "UPDATE quarantine SET reason = ?, matched_phrase = ? "
+                    "WHERE id = ? AND (reason <> ? OR matched_phrase <> ?)",
+                    (
+                        entry.reason.value,
+                        entry.matched_phrase,
+                        entry.id,
+                        entry.reason.value,
+                        entry.matched_phrase,
+                    ),
+                )
+                relabelled += int(cursor.rowcount or 0)
+        return relabelled
 
     def quarantine_reason_counts(self) -> dict[str, int]:
         rows = self._conn.execute(
