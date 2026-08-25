@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
     from stage.domain import DiscoveryEvent, JobFilters
 
+    ProgressCallback = Callable[[DiscoveryEvent], None]
+
 
 def run_async[T](coroutine: Coroutine[Any, Any, T]) -> T:
     import asyncio
@@ -201,7 +203,7 @@ async def _adopt_unregistered(
     apply_rows: bool,
     today: date,
     stream: Any,
-    progress: Callable[["DiscoveryEvent"], None] | None,
+    progress: "ProgressCallback | None",
 ) -> bool:
     from stage.cli.logfile import open_probe_journal, probe_journal_path
     from stage.cli.render import plain

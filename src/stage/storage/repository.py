@@ -107,11 +107,11 @@ class Repository(Protocol):
     def count_quarantined(self, filters: QuarantineFilters) -> int:
         pass
 
-    def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int: ...
+    def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int:
+        pass
 
-    def refresh_quarantine_locations(
-        self, resolve: Callable[[str], tuple[str, str | None]]
-    ) -> int: ...
+    def refresh_quarantine_locations(self, resolve: Callable[[str], tuple[str, str | None]]) -> int:
+        pass
 
     def quarantine_reason_counts(self) -> dict[str, int]:
         pass
@@ -179,7 +179,8 @@ class Repository(Protocol):
     def all_visits(self) -> list[SourceVisit]:
         pass
 
-    def repair_integrity(self) -> list[IntegrityRepair]: ...
+    def repair_integrity(self) -> list[IntegrityRepair]:
+        pass
 
     def integrity_findings(self) -> list[IntegrityFinding]:
         pass

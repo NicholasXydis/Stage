@@ -268,29 +268,26 @@ class ScheduleStateWriter:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         staged: Path | None = None
         try:
-            with tempfile.NamedTemporaryFile(
-                mode="w",
-                encoding="utf-8",
-                dir=self.path.parent,
-                prefix=f".{self.path.name}.",
-                suffix=".tmp",
-                delete=False,
-            ) as stream:
-                staged = Path(stream.name)
-                stream.write(dump(self._payload))
-                stream.write("\n")
-                stream.flush()
-                os.fsync(stream.fileno())
-            for delay in _STATE_RETRY_DELAYS_SECONDS:
-                if delay:
-                    time.sleep(delay)
-                try:
-                    staged.replace(self.path)
-                except OSError:
-                    continue
-                return
-        except OSError:
-            pass
+            with suppress(OSError):
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    encoding="utf-8",
+                    dir=self.path.parent,
+                    prefix=f".{self.path.name}.",
+                    suffix=".tmp",
+                    delete=False,
+                ) as stream:
+                    staged = Path(stream.name)
+                    stream.write(dump(self._payload))
+                    stream.write("\n")
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                for delay in _STATE_RETRY_DELAYS_SECONDS:
+                    if delay:
+                        time.sleep(delay)
+                    with suppress(OSError):
+                        staged.replace(self.path)
+                        return
         finally:
             if staged is not None:
                 with suppress(OSError):
