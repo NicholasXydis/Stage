@@ -328,3 +328,43 @@ def test_registry_verification_is_scheduled_and_never_writes() -> None:
     assert len(days) == len({action.key for action in schedule._ACTIONS if action.systemd_day}), (
         "two weekly actions on one day would stack their request budgets"
     )
+
+
+def test_a_console_launcher_named_pythonw_is_not_treated_as_windowless(
+    tmp_path: Path, windows_launcher: Callable[[int], bytes]
+) -> None:
+    console = tmp_path / "pythonw.exe"
+    console.write_bytes(windows_launcher(3))
+    assert not schedule._is_windowless(console), (
+        "uv ships its console trampoline under both names, so the filename proves nothing"
+    )
+
+
+def test_a_real_gui_launcher_is_treated_as_windowless(
+    tmp_path: Path, windows_launcher: Callable[[int], bytes]
+) -> None:
+    gui = tmp_path / "pythonw.exe"
+    gui.write_bytes(windows_launcher(2))
+    assert schedule._is_windowless(gui)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b"", b"MZ", b"not an executable at all", b"MZ" + b"\x00" * 200],
+)
+def test_a_file_that_is_not_a_windows_binary_is_never_windowless(
+    tmp_path: Path, payload: bytes
+) -> None:
+    candidate = tmp_path / "pythonw.exe"
+    candidate.write_bytes(payload)
+    assert not schedule._is_windowless(candidate)
+
+
+def test_a_missing_launcher_is_never_windowless(tmp_path: Path) -> None:
+    assert not schedule._is_windowless(tmp_path / "absent.exe")
+
+
+def test_the_windows_task_runs_hidden(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(schedule, "_backend", lambda: "windows")
+    xml = schedule._windows_task_xml(schedule._ACTIONS[0]).decode("utf-16")
+    assert "<Hidden>true</Hidden>" in xml, "a scheduled sync must never flash a console"

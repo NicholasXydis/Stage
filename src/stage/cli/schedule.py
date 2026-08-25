@@ -31,6 +31,8 @@ DISCOVER_TIME = "10:30"
 VERIFY_TIME = "11:30"
 SYNC_EVERY_HOURS = 6
 MAX_JITTER_S = 1800
+_SUBSYSTEM_GUI = 2
+_CREATE_NO_WINDOW = 0x08000000
 
 
 class ScheduleError(Exception):
@@ -324,12 +326,35 @@ def _backend() -> str:
     raise ScheduleError(f"automatic scheduling is not supported on {name}")
 
 
+def _is_windowless(candidate: Path) -> bool:
+    try:
+        header = candidate.read_bytes()[:1024]
+    except OSError:
+        return False
+    if len(header) < 0x40 or header[:2] != b"MZ":
+        return False
+    offset = int.from_bytes(header[0x3C:0x40], "little")
+    if offset + 0x5E > len(header) or header[offset : offset + 4] != b"PE\0\0":
+        return False
+    return int.from_bytes(header[offset + 0x5C : offset + 0x5E], "little") == _SUBSYSTEM_GUI
+
+
+def _windowless_python() -> str | None:
+    seen: set[Path] = set()
+    for parent in (Path(sys.executable).parent, Path(sys.base_prefix), Path(sys.prefix)):
+        for candidate in (parent / "pythonw.exe", parent / "Scripts" / "pythonw.exe"):
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            if candidate.is_file() and _is_windowless(candidate):
+                return str(candidate)
+    return None
+
+
 def _command(action: ScheduledAction) -> tuple[str, ...]:
     executable = sys.executable
     if _backend() == "windows":
-        candidate = Path(executable).with_name("pythonw.exe")
-        if candidate.is_file():
-            executable = str(candidate)
+        executable = _windowless_python() or executable
     return (executable, "-m", "stage.cli.schedule", "run", action.key)
 
 
@@ -355,6 +380,7 @@ def _invoke_cli(
             stdin=subprocess.DEVNULL,
             stdout=stream,
             stderr=subprocess.STDOUT,
+            creationflags=_CREATE_NO_WINDOW if _backend() == "windows" else 0,
         )
     except OSError as error:
         raise ScheduleError(f"unable to start scheduled command: {command[0]}") from error
@@ -436,7 +462,7 @@ def _windows_task_xml(action: ScheduledAction) -> bytes:
         ("RunOnlyIfNetworkAvailable", "false"),
         ("AllowStartOnDemand", "true"),
         ("Enabled", "true"),
-        ("Hidden", "false"),
+        ("Hidden", "true"),
         ("RunOnlyIfIdle", "false"),
         ("WakeToRun", "false"),
         ("ExecutionTimeLimit", "PT2H"),

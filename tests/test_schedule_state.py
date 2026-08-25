@@ -116,13 +116,15 @@ def test_scheduled_child_uses_explicit_log_handles_and_heartbeats(
 
 
 def test_windows_command_uses_pythonw_when_available(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, windows_launcher: Callable[[int], bytes]
 ) -> None:
     python = tmp_path / "python.exe"
     pythonw = tmp_path / "pythonw.exe"
-    pythonw.touch()
+    pythonw.write_bytes(windows_launcher(2))
     monkeypatch.setattr(schedule, "_backend", lambda: "windows")
     monkeypatch.setattr(sys, "executable", str(python))
+    monkeypatch.setattr(sys, "base_prefix", str(tmp_path))
+    monkeypatch.setattr(sys, "prefix", str(tmp_path))
 
     action = next(action for action in schedule._ACTIONS if action.key == "sync")
 
@@ -135,6 +137,8 @@ def test_windows_command_falls_back_to_python_when_pythonw_is_missing(
     python = tmp_path / "python.exe"
     monkeypatch.setattr(schedule, "_backend", lambda: "windows")
     monkeypatch.setattr(sys, "executable", str(python))
+    monkeypatch.setattr(sys, "base_prefix", str(tmp_path))
+    monkeypatch.setattr(sys, "prefix", str(tmp_path))
 
     action = next(action for action in schedule._ACTIONS if action.key == "sync")
 
