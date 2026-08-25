@@ -111,7 +111,7 @@ SOFTWARE_BODY = "You will build backend services in Python and ship software dai
 
 
 def test_a_description_alone_does_not_make_a_posting_a_cs_role() -> None:
-    rejection = screen_is_cs_role(_with("Sales Intern", description=SOFTWARE_BODY))
+    rejection = screen_is_cs_role(_with("Summer Intern", description=SOFTWARE_BODY))
     assert rejection is not None, "every employer's body text mentions software"
     assert rejection.reason is RejectionReason.UNKNOWN_CS_ROLE
 

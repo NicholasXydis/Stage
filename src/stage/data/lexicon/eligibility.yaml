@@ -203,6 +203,13 @@ non_cs:
   - game operations
   - program steering
 
+  - epidemiology
+  - epidemiologie
+  - health services
+  - cyber strategy
+  - people partner
+  - people experience
+  - people operations
 excluded_titles:
   - information technology intern
   - information technology internship
@@ -307,6 +314,11 @@ excluded_titles:
   - accounting
   - comptabilite
   - sales and trading
+  - sales intern
+  - sales internship
+  - technical sales
+  - account manager
+  - relationship manager
 technical_title_exceptions:
   - vehicle software engineer diagnostic user interface
   - fullstack c engineer intern vehicle user interface
@@ -336,6 +348,11 @@ technical_title_exceptions:
   - cyber security
   - information security
   - application development
+  - computer science
+  - genie informatique
+  - data analysis
+  - tool development
+  - developpement d outils
 undergraduate_tokens:
   - bachelor
   - bachelors
@@ -366,3 +383,4 @@ graduate_title_tokens:
   - bac 5
   - etudiant a la maitrise
   - memoire de maitrise
+  - graduate research assistant
