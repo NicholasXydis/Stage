@@ -332,6 +332,10 @@ swe:
   - ingenieur dsp audio
   - ingenieur production virtuelle
   - ingenieur algorithmes spatiaux
+  - sw engineer
+  - game engineer
+  - engine research
+  - technology summer analyst
 
   - application architect
   - middleware engineer
@@ -679,6 +683,8 @@ security:
   - securite zero trust
   - ingenieur securite ia
   - ingenieure securite ia
+  - hacker
+  - cybersecuirty
 
   - cloud native security
   - runtime security
@@ -896,6 +902,8 @@ data:
   - ingenieure applications de donnees
   - ingenieur plateforme analytique
   - ingenieure plateforme analytique
+  - data analyste
+  - data intern
 
   - stream processing engineer
   - message queue engineer
@@ -1142,6 +1150,20 @@ ml-ai:
   - ingenieure ia vocale
   - ingenieur medias generatifs
   - ingenieure medias generatifs
+  - ai applications
+  - ai application
+  - ai system
+  - ai systems
+  - ai model
+  - ai models
+  - ai innovation
+  - ai data
+  - ai compute
+  - ai applied
+  - ai integration
+  - ai game
+  - ai development
+  - ai infrastructure
 
   - search quality engineer
   - recommendation infrastructure
@@ -1883,6 +1905,11 @@ embedded:
   - ingenieur ia embarquee
   - ingenieure ia embarquee
   - robotique peripherique
+  - fpga
+  - soc
+  - gpu
+  - embedded
+  - platform architecture
 
   - motion control software
   - robot simulation

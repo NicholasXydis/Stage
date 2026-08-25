@@ -166,6 +166,42 @@ non_cs:
   - analyste de risque
   - analyste risque
   - gestion des risques
+  - marketeer
+  - accountant
+  - hr intern
+  - outside sales
+  - home support worker
+  - home child care
+  - sales representative
+  - graduate engineer trainee
+  - technician student intern
+  - maintenance
+  - procurement
+  - real estate
+  - financial analyst
+  - industrial engineering
+  - customer service
+  - private equity
+  - sales development
+  - operator
+  - equity research
+  - pharmacy
+  - business strategy
+  - payroll
+  - people operations
+  - account executive
+  - portfolio management
+  - content strategy
+  - public relations
+  - investment banking analyst
+  - banking analyst
+  - electronic engineering
+  - electronics engineering
+  - biomedical engineering
+  - structural engineering
+  - game production
+  - game operations
+  - program steering
 
 excluded_titles:
   - information technology intern
@@ -295,6 +331,11 @@ technical_title_exceptions:
   - genie logiciel
   - developpement logiciel
   - embedded software
+  - data science
+  - data analyst
+  - cyber security
+  - information security
+  - application development
 undergraduate_tokens:
   - bachelor
   - bachelors
