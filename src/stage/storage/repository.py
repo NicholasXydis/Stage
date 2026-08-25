@@ -104,6 +104,8 @@ class Repository(Protocol):
     def count_quarantined(self, filters: QuarantineFilters) -> int:
         pass
 
+    def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int: ...
+
     def quarantine_reason_counts(self) -> dict[str, int]:
         pass
 

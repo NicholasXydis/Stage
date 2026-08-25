@@ -60,10 +60,11 @@ class RescreenResult:
     total: int = 0
     updated: int = 0
     released: int = 0
+    relabelled: int = 0
 
     @property
     def changed(self) -> bool:
-        return bool(self.updated or self.quarantined or self.released)
+        return bool(self.updated or self.quarantined or self.released or self.relabelled)
 
     @property
     def skipped(self) -> int:
@@ -103,13 +104,14 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
             )
         quarantined += len(rejected)
         updated += len(updates)
-    released = await _release_reclassified_quarantine(repository, moment)
+    released, relabelled = await _release_reclassified_quarantine(repository, moment)
     return RescreenResult(
         examined=examined,
         quarantined=quarantined,
         total=total,
         updated=updated,
         released=released,
+        relabelled=relabelled,
     )
 
 
@@ -152,7 +154,7 @@ def _reclassifications(
 async def _release_reclassified_quarantine(
     repository: AsyncRepository,
     moment: datetime,
-) -> int:
+) -> tuple[int, int]:
     from stage.domain import QuarantineFilters, RejectionReason
     from stage.lexicon import fold
     from stage.services.sync import normalize_batch
@@ -187,7 +189,15 @@ async def _release_reclassified_quarantine(
         )
         for entry in entries
     )
-    kept, _ = normalize_batch(candidates)
+    kept, rejected = normalize_batch(candidates)
+    known = {entry.id: entry for entry in entries}
+    sharpened = tuple(
+        entry
+        for entry in rejected
+        if (previous := known.get(entry.id)) is not None
+        and (previous.reason, previous.matched_phrase) != (entry.reason, entry.matched_phrase)
+    )
+    relabelled = await repository.relabel_quarantine(sharpened)
     for source in sorted({entry.source for entry in kept}):
         await repository.apply_source_batch(
             SourceBatch(
@@ -197,4 +207,4 @@ async def _release_reclassified_quarantine(
                 resolve_duplicates=resolve_duplicates,
             )
         )
-    return len(kept)
+    return len(kept), relabelled

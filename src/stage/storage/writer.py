@@ -136,6 +136,9 @@ class AsyncRepository:
     async def count_duplicates(self) -> int:
         return await self._writer.run(lambda repository: repository.count_duplicates())
 
+    async def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int:
+        return await self._writer.run(lambda repository: repository.relabel_quarantine(entries))
+
     async def repair_integrity(self) -> list[IntegrityRepair]:
         return await self._writer.run(lambda repository: repository.repair_integrity())
 
