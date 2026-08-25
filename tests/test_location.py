@@ -238,3 +238,24 @@ def test_an_ambiguous_province_name_needs_canadian_corroboration() -> None:
     assert resolve_location("New Brunswick, New Jersey, United States").bucket is (
         LocationBucket.USA
     ), "an explicit country must outrank a province name that is also a US city"
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Toronto, Ontario, CA", LocationBucket.CANADA),
+        ("Waterloo, Ontario, CA", LocationBucket.CANADA),
+        ("Windsor, Ontario, CA", LocationBucket.CANADA),
+        ("Montreal, Quebec, CA", LocationBucket.MONTREAL),
+        ("Ontario, CA", LocationBucket.USA),
+        ("Ontario, California", LocationBucket.USA),
+        ("Ontario, CA, USA", LocationBucket.USA),
+        ("San Jose, CA", LocationBucket.USA),
+    ],
+)
+def test_a_country_suffix_does_not_turn_a_province_into_california(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket, (
+        f"{raw!r}: a named city beside Ontario decides the country, not the CA suffix"
+    )

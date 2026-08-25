@@ -104,7 +104,16 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
     )
     code_canada, code_usa = _code_hits(segment, lexicon)
 
-    overridden = "canada_overrides" in found
+    override_phrases = {phrase for category, phrase in hits if category == "canada_overrides"}
+    named_canada = {
+        phrase
+        for category, phrase in hits
+        if category in {"canada_cities", "canada_ambiguous", "montreal", "montreal_ambiguous"}
+    }
+    overridden = bool(override_phrases) and all(
+        any(f" {phrase} " in f" {override} " for override in override_phrases)
+        for phrase in named_canada
+    )
     canada_context = (
         "canada_country" in found
         or "canada_regions" in found
