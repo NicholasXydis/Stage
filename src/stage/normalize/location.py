@@ -7,6 +7,8 @@ from stage.lexicon import LocationLexicon, fold, location_lexicon
 
 _SEGMENT_SPLIT = re.compile(r"[;/•|\n]+")
 _FIELD_SPLIT = re.compile(r"[,\-]+")
+_SUBDIVISION_CODE = re.compile(r"[A-Z]{1,3}")
+_COUNTRY_PREFIXES = frozenset({"can", "us", "usa"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,13 +68,44 @@ def _index() -> _PhraseIndex:
     )
 
 
+def _foreign_subdivision_before(fields: list[str], index: int, known: frozenset[str]) -> bool:
+    for previous in reversed(fields[:index]):
+        stripped = previous.strip()
+        if not stripped:
+            continue
+        if not _SUBDIVISION_CODE.fullmatch(stripped):
+            return False
+        folded = fold(stripped)
+        return folded not in known and folded not in _COUNTRY_PREFIXES
+    return False
+
+
+def _last_alphabetic_field(fields: list[str]) -> int:
+    for index in reversed(range(len(fields))):
+        if any(character.isalpha() for character in fields[index]):
+            return index
+    return -1
+
+
+def _reads_as_country(fields: list[str], index: int, token: str, known: frozenset[str]) -> bool:
+    if index != _last_alphabetic_field(fields):
+        return False
+    if fold(fields[index].strip()) != token:
+        return False
+    return _foreign_subdivision_before(fields, index, known)
+
+
 def _code_hits(segment: str, lexicon: LocationLexicon) -> tuple[bool, bool]:
     canada = usa = False
-    for field in _FIELD_SPLIT.split(segment):
+    fields = _FIELD_SPLIT.split(segment)
+    known = lexicon.canada_codes | lexicon.usa_codes
+    for index, field in enumerate(fields):
         for token in fold(field).split():
-            if token not in lexicon.canada_codes and token not in lexicon.usa_codes:
+            if token not in known:
                 continue
             if not re.search(rf"\b{token.upper()}\b", segment):
+                continue
+            if _reads_as_country(fields, index, token, known):
                 continue
             if token in lexicon.canada_codes:
                 canada = True

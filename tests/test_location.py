@@ -259,3 +259,38 @@ def test_a_country_suffix_does_not_turn_a_province_into_california(
     assert resolve_location(raw).bucket is bucket, (
         f"{raw!r}: a named city beside Ontario decides the country, not the CA suffix"
     )
+
+
+@pytest.mark.parametrize(
+    ("raw", "why"),
+    [
+        ("Erlangen, BY, DE, 91058", "DE after a Bavarian code is Germany, not Delaware"),
+        ("Bautzen, SN, DE", "Saxony, not Delaware"),
+        ("Arequipa, ARE, PE", "PE after a Peruvian code is Peru, not Prince Edward Island"),
+        ("Cusco, CUS, PE, 08000", "same, with a postcode"),
+        ("Bhopal, MP, IN", "IN after an Indian state code is India, not Indiana"),
+        ("CABA, B, AR, 1001", "AR after an Argentine code is Argentina, not Arkansas"),
+    ],
+)
+def test_a_foreign_subdivision_makes_the_next_code_a_country(raw: str, why: str) -> None:
+    assert resolve_location(raw).bucket is not LocationBucket.USA, why
+    assert resolve_location(raw).bucket is not LocationBucket.CANADA, why
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Wilmington, DE", LocationBucket.USA),
+        ("Charlottetown, PE", LocationBucket.CANADA),
+        ("Montreal, QC, CA", LocationBucket.MONTREAL),
+        ("Guelph, Ontario, CA", LocationBucket.CANADA),
+        ("CAN, ON, Milton", LocationBucket.CANADA),
+        ("Work From Home, CAN-AB", LocationBucket.CANADA),
+        ("US, CA, Santa Clara", LocationBucket.USA),
+        ("Winston-Salem, NC", LocationBucket.USA),
+        ("New York, NY, United States", LocationBucket.USA),
+        ("2 Locations | PT-Northeast VA", LocationBucket.USA),
+    ],
+)
+def test_a_real_state_or_province_code_still_resolves(raw: str, expected: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is expected, raw
