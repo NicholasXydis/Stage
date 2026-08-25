@@ -192,10 +192,6 @@ def _linux_installed(action: ScheduledAction) -> str:
     return "weekly" if action.systemd_day is not None else "daily"
 
 
-def matches_definition(action: ScheduledAction, installed: str) -> bool:
-    return not installed or action.cadence.startswith(installed)
-
-
 def _definition_matches(action: ScheduledAction, backend: str) -> bool:
     if backend == "windows":
         result = _execute(("schtasks", "/Query", "/TN", action.label, "/XML"))
