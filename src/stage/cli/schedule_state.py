@@ -105,7 +105,7 @@ class ScheduleStateWriter:
     @classmethod
     def open(cls, path: Path, action: str) -> "ScheduleStateWriter":
         payload = read_state_path(path)
-        if payload is None or payload.get("action") != action:
+        if payload is None:
             return cls.start(action, Path(), destination=path)
         return cls(path, payload)
 
@@ -247,6 +247,15 @@ class ScheduleStateWriter:
         if payload is not None and payload.get("run_id") == self._payload.get("run_id"):
             self._payload = payload
 
+    def _merge_heartbeat(self) -> None:
+        stored = read_state_path(self.path)
+        if stored is None or stored.get("run_id") != self._payload.get("run_id"):
+            return
+        theirs = _time(stored.get("heartbeat_at"))
+        mine = _time(self._payload.get("heartbeat_at"))
+        if theirs is not None and (mine is None or theirs > mine):
+            self._payload["heartbeat_at"] = stored["heartbeat_at"]
+
     def _set(
         self,
         values: Mapping[str, object] | None = None,
@@ -261,6 +270,7 @@ class ScheduleStateWriter:
         now = time.monotonic()
         if not force and now - self._last_write < 0.5:
             return
+        self._merge_heartbeat()
         self._write()
         self._last_write = now
 
