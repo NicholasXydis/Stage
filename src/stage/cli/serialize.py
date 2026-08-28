@@ -164,6 +164,11 @@ def schedule_to_json(report: "ScheduleStatus") -> str:
                     "needs_update": (
                         report.needs_update[index] if index < len(report.needs_update) else False
                     ),
+                    "stale_interpreter": (
+                        report.stale_interpreter[index]
+                        if index < len(report.stale_interpreter)
+                        else ""
+                    ),
                     "run": report.states[index] if index < len(report.states) else None,
                 }
                 for index, (action, enabled, installed) in enumerate(report.actions)

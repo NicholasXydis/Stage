@@ -16,13 +16,21 @@ if TYPE_CHECKING:
 @schedule_app.command(
     "enable", help="Create this user's six-hourly sync and weekly discovery schedule"
 )
-def schedule_enable() -> None:
+def schedule_enable(
+    action: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--action",
+            help="Schedule only these actions: sync, discover, verify; repeatable",
+        ),
+    ] = None,
+) -> None:
     from rich.console import Console
 
     from stage.cli.schedule import ScheduleError, enable
 
     try:
-        report = enable()
+        report = enable(action)
     except ScheduleError as exc:
         _print_failure(exc)
         raise typer.Exit(code=2) from exc
@@ -67,13 +75,21 @@ def schedule_status(
 
 
 @schedule_app.command("disable", help="Remove this user's automatic schedule")
-def schedule_disable() -> None:
+def schedule_disable(
+    action: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--action",
+            help="Remove only these actions: sync, discover, verify; repeatable",
+        ),
+    ] = None,
+) -> None:
     from rich.console import Console
 
     from stage.cli.schedule import ScheduleError, disable
 
     try:
-        report = disable()
+        report = disable(action)
     except ScheduleError as exc:
         _print_failure(exc)
         raise typer.Exit(code=2) from exc

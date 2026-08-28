@@ -67,6 +67,7 @@ class ScheduleStatus:
     log_dir: Path
     states: tuple[dict[str, object] | None, ...] = ()
     needs_update: tuple[bool, ...] = ()
+    stale_interpreter: tuple[str, ...] = ()
 
 
 _ACTIONS = (
@@ -85,7 +86,7 @@ _ACTIONS = (
         cadence="weekly on Monday",
         time=DISCOVER_TIME,
         windows_schedule="WEEKLY",
-        cli_arguments=("discover", "--unregistered", "--limit", "40"),
+        cli_arguments=("discover", "--unregistered", "--direct-only", "--limit", "40"),
         windows_day="MON",
         launchd_weekday=1,
         systemd_day="Mon",
@@ -104,25 +105,43 @@ _ACTIONS = (
 )
 
 
-def enable() -> ScheduleStatus:
+def action_keys() -> tuple[str, ...]:
+    return tuple(action.key for action in _ACTIONS)
+
+
+def _chosen(keys: Sequence[str] | None) -> tuple[ScheduledAction, ...]:
+    if not keys:
+        return _ACTIONS
+    unknown = sorted(set(keys) - set(action_keys()))
+    if unknown:
+        raise ScheduleError(
+            f"unknown scheduled action(s): {', '.join(unknown)} (known: {', '.join(action_keys())})"
+        )
+    wanted = set(keys)
+    return tuple(action for action in _ACTIONS if action.key in wanted)
+
+
+def enable(actions: Sequence[str] | None = None) -> ScheduleStatus:
     backend = _backend()
+    chosen = _chosen(actions)
     if backend == "windows":
-        _enable_windows()
+        _enable_windows(chosen)
     elif backend == "macos":
-        _enable_macos()
+        _enable_macos(chosen)
     else:
-        _enable_linux()
+        _enable_linux(chosen)
     return status()
 
 
-def disable() -> ScheduleStatus:
+def disable(actions: Sequence[str] | None = None) -> ScheduleStatus:
     backend = _backend()
+    chosen = _chosen(actions)
     if backend == "windows":
-        _disable_windows()
+        _disable_windows(chosen)
     elif backend == "macos":
-        _disable_macos()
+        _disable_macos(chosen)
     else:
-        _disable_linux()
+        _disable_linux(chosen)
     return status()
 
 
@@ -143,7 +162,39 @@ def status() -> ScheduleStatus:
         tuple(
             enabled and not _definition_matches(action, backend) for action, enabled, _ in actions
         ),
+        tuple(
+            _stale_interpreter(action, backend) if enabled else "" for action, enabled, _ in actions
+        ),
     )
+
+
+def _installed_interpreter(action: ScheduledAction, backend: str) -> str:
+    if backend == "windows":
+        result = _query(("schtasks", "/Query", "/TN", action.label, "/XML"))
+        if result.returncode != 0:
+            return ""
+        command = re.search(r"<Command>([^<]*)</Command>", result.stdout)
+        return unescape(command.group(1)) if command else ""
+    if backend == "macos":
+        try:
+            payload = plistlib.loads(_launch_path(action).read_bytes())
+        except (OSError, plistlib.InvalidFileException):
+            return ""
+        arguments = payload.get("ProgramArguments") if isinstance(payload, dict) else None
+        return str(arguments[0]) if isinstance(arguments, list) and arguments else ""
+    try:
+        service = (_systemd_dir() / f"{_systemd_name(action)}.service").read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    match = re.search(r"^ExecStart=\"([^\"]*)\"", service, flags=re.MULTILINE)
+    return match.group(1).replace('\\"', '"').replace("\\\\", "\\") if match else ""
+
+
+def _stale_interpreter(action: ScheduledAction, backend: str) -> str:
+    executable = _installed_interpreter(action, backend)
+    if not executable or Path(executable).exists():
+        return ""
+    return executable
 
 
 def _installed_cadence(action: ScheduledAction, backend: str) -> str:
@@ -155,7 +206,7 @@ def _installed_cadence(action: ScheduledAction, backend: str) -> str:
 
 
 def _windows_installed(action: ScheduledAction) -> str:
-    result = _execute(("schtasks", "/Query", "/TN", action.label, "/XML"))
+    result = _query(("schtasks", "/Query", "/TN", action.label, "/XML"))
     if result.returncode != 0:
         return ""
     body = result.stdout
@@ -194,7 +245,7 @@ def _linux_installed(action: ScheduledAction) -> str:
 
 def _definition_matches(action: ScheduledAction, backend: str) -> bool:
     if backend == "windows":
-        result = _execute(("schtasks", "/Query", "/TN", action.label, "/XML"))
+        result = _query(("schtasks", "/Query", "/TN", action.label, "/XML"))
         if result.returncode != 0:
             return False
         command = re.search(r"<Command>([^<]*)</Command>", result.stdout)
@@ -395,6 +446,13 @@ def _execute(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
         raise ScheduleError(f"required scheduler command is unavailable: {command[0]}") from error
 
 
+def _query(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+    try:
+        return _execute(command)
+    except ScheduleError:
+        return subprocess.CompletedProcess(command, 1, "", "")
+
+
 def _run(command: Sequence[str]) -> None:
     completed = _execute(command)
     if completed.returncode == 0:
@@ -406,11 +464,11 @@ def _run(command: Sequence[str]) -> None:
 
 
 def _windows_exists(action: ScheduledAction) -> bool:
-    return _execute(("schtasks", "/Query", "/TN", action.label)).returncode == 0
+    return _query(("schtasks", "/Query", "/TN", action.label)).returncode == 0
 
 
-def _enable_windows() -> None:
-    for action in _ACTIONS:
+def _enable_windows(actions: Sequence[ScheduledAction] = _ACTIONS) -> None:
+    for action in actions:
         _write_windows_task(action)
 
 
@@ -478,8 +536,8 @@ def _windows_start_boundary(action: ScheduledAction) -> str:
     return f"{local.date().isoformat()}T{action.time}:00"
 
 
-def _disable_windows() -> None:
-    for action in _ACTIONS:
+def _disable_windows(actions: Sequence[ScheduledAction] = _ACTIONS) -> None:
+    for action in actions:
         _execute(("schtasks", "/Delete", "/TN", action.label, "/F"))
 
 
@@ -529,16 +587,16 @@ def _macos_exists(action: ScheduledAction) -> bool:
     if not _launch_path(action).is_file():
         return False
     return (
-        _execute(("launchctl", "print", f"{_launch_domain()}/{_launch_label(action)}")).returncode
+        _query(("launchctl", "print", f"{_launch_domain()}/{_launch_label(action)}")).returncode
         == 0
     )
 
 
-def _enable_macos() -> None:
-    paths = {action: _write_launch_agent(action) for action in _ACTIONS}
+def _enable_macos(actions: Sequence[ScheduledAction] = _ACTIONS) -> None:
+    paths = {action: _write_launch_agent(action) for action in actions}
     active: list[ScheduledAction] = []
     try:
-        for action in _ACTIONS:
+        for action in actions:
             _execute(("launchctl", "bootout", f"{_launch_domain()}/{_launch_label(action)}"))
             _run(("launchctl", "bootstrap", _launch_domain(), str(paths[action])))
             active.append(action)
@@ -548,8 +606,8 @@ def _enable_macos() -> None:
         raise
 
 
-def _disable_macos() -> None:
-    for action in _ACTIONS:
+def _disable_macos(actions: Sequence[ScheduledAction] = _ACTIONS) -> None:
+    for action in actions:
         _execute(("launchctl", "bootout", f"{_launch_domain()}/{_launch_label(action)}"))
         _launch_path(action).unlink(missing_ok=True)
 
@@ -602,16 +660,16 @@ def _write_systemd_units(action: ScheduledAction) -> None:
 
 def _linux_exists(action: ScheduledAction) -> bool:
     name = f"{_systemd_name(action)}.timer"
-    return _execute(("systemctl", "--user", "is-enabled", name)).returncode == 0
+    return _query(("systemctl", "--user", "is-enabled", name)).returncode == 0
 
 
-def _enable_linux() -> None:
-    for action in _ACTIONS:
+def _enable_linux(actions: Sequence[ScheduledAction] = _ACTIONS) -> None:
+    for action in actions:
         _write_systemd_units(action)
     _run(("systemctl", "--user", "daemon-reload"))
     active: list[ScheduledAction] = []
     try:
-        for action in _ACTIONS:
+        for action in actions:
             _run(("systemctl", "--user", "enable", "--now", f"{_systemd_name(action)}.timer"))
             active.append(action)
     except ScheduleError:
@@ -620,8 +678,8 @@ def _enable_linux() -> None:
         raise
 
 
-def _disable_linux() -> None:
-    for action in _ACTIONS:
+def _disable_linux(actions: Sequence[ScheduledAction] = _ACTIONS) -> None:
+    for action in actions:
         name = _systemd_name(action)
         _execute(("systemctl", "--user", "disable", "--now", f"{name}.timer"))
         for suffix in ("service", "timer"):

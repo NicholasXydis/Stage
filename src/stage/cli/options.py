@@ -355,6 +355,12 @@ def _render_schedule(console: Any, report: Any) -> None:
             console.print(
                 "    [yellow]needs a scheduler update — run stage schedule enable[/yellow]"
             )
+        stale = report.stale_interpreter[index] if index < len(report.stale_interpreter) else ""
+        if enabled and stale:
+            console.print(
+                f"    [red]interpreter is missing: {stale}[/red] — this run will fail; "
+                "re-run stage schedule enable"
+            )
         run = report.states[index] if index < len(report.states) else None
         _render_scheduled_run(console, run)
     console.print(f"Logs: {report.log_dir}")

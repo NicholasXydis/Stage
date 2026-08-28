@@ -181,7 +181,7 @@ def test_scheduled_discovery_uses_the_bounded_unregistered_review_workflow(
 
     assert schedule.run_scheduled("discover", jitter_seconds=0) == 0
 
-    assert calls == [("discover", "--unregistered", "--limit", "40")]
+    assert calls == [("discover", "--unregistered", "--direct-only", "--limit", "40")]
 
 
 def test_schedule_help_is_layered_and_classification_explains_required_evidence() -> None:
@@ -368,3 +368,97 @@ def test_the_windows_task_runs_hidden(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(schedule, "_backend", lambda: "windows")
     xml = schedule._windows_task_xml(schedule._ACTIONS[0]).decode("utf-16")
     assert "<Hidden>true</Hidden>" in xml, "a scheduled sync must never flash a console"
+
+
+def test_a_missing_interpreter_is_reported_so_silent_failures_surface(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    action = schedule._ACTIONS[0]
+    agents = tmp_path / "LaunchAgents"
+    agents.mkdir()
+    plist = agents / f"{schedule._launch_label(action)}.plist"
+    plist.write_bytes(
+        plistlib.dumps({"ProgramArguments": [str(tmp_path / "gone" / "python3"), "-m", "stage"]})
+    )
+    monkeypatch.setattr(schedule, "_launch_path", lambda _: plist)
+
+    stale = schedule._stale_interpreter(action, "macos")
+
+    assert stale.endswith("gone/python3")
+
+
+def test_a_present_interpreter_is_not_flagged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    action = schedule._ACTIONS[0]
+    existing = tmp_path / "python3"
+    existing.write_text("", encoding="utf-8")
+    plist = tmp_path / "agent.plist"
+    plist.write_bytes(plistlib.dumps({"ProgramArguments": [str(existing), "-m", "stage"]}))
+    monkeypatch.setattr(schedule, "_launch_path", lambda _: plist)
+
+    assert schedule._stale_interpreter(action, "macos") == ""
+
+
+def test_selecting_one_action_leaves_the_others_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(schedule, "_backend", lambda: "macos")
+    monkeypatch.setattr(schedule, "status", lambda: None)
+    written: list[str] = []
+    monkeypatch.setattr(
+        schedule, "_enable_macos", lambda actions: written.extend(a.key for a in actions)
+    )
+
+    schedule.enable(["verify"])
+
+    assert written == ["verify"]
+
+
+def test_an_unknown_action_is_refused_before_anything_is_written(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(schedule, "_backend", lambda: "macos")
+    monkeypatch.setattr(
+        schedule,
+        "_enable_macos",
+        lambda _actions: pytest.fail("nothing may be written for an unknown action"),
+    )
+
+    with pytest.raises(schedule.ScheduleError, match="nosuchaction"):
+        schedule.enable(["nosuchaction"])
+
+
+def test_a_child_writing_progress_never_regresses_the_parent_heartbeat(tmp_path: Path) -> None:
+    from stage.cli.schedule_state import ScheduleStateWriter, read_state_path, state_for_status
+
+    path = tmp_path / "verify.json"
+    parent = ScheduleStateWriter.start("verify", tmp_path / "verify.log", destination=path)
+    parent.started("discovering")
+
+    child = ScheduleStateWriter.open(path, "discover")
+    parent.heartbeat()
+    fresh = read_state_path(path)
+    assert fresh is not None
+
+    child._set({"progress": {"complete": 1, "total": 2}}, force=True)
+
+    merged = read_state_path(path)
+    assert merged is not None
+    assert merged["heartbeat_at"] == fresh["heartbeat_at"]
+    assert merged["action"] == "verify"
+    reported = state_for_status(merged)
+    assert reported is not None
+    assert reported["phase"] != "unresponsive"
+
+
+def test_status_survives_a_missing_scheduler_command(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        raise schedule.ScheduleError(f"required scheduler command is unavailable: {command[0]}")
+
+    monkeypatch.setattr(schedule, "_backend", lambda: "windows")
+    monkeypatch.setattr(schedule, "_execute", missing)
+
+    report = schedule.status()
+
+    assert report.backend == "Windows Task Scheduler"
+    assert not any(enabled for _, enabled, _ in report.actions)
+    assert not any(report.stale_interpreter)
