@@ -134,6 +134,18 @@ class Repository(Protocol):
     def count_jobs(self, filters: JobFilters) -> int:
         pass
 
+    def company_names(self) -> list[str]:
+        pass
+
+    def previous_sync_at(self) -> datetime | None:
+        pass
+
+    def requests_since(self, since: datetime) -> tuple[dict[str, int], bool]:
+        pass
+
+    def closed_among(self, job_ids: Sequence[str]) -> int:
+        pass
+
     def board_counts(self) -> dict[str, int]:
         pass
 

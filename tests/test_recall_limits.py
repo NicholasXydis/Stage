@@ -150,3 +150,15 @@ def test_an_enabled_row_always_carries_the_evidence_that_enabled_it() -> None:
         if company.enabled and company.last_verified is None
     ]
     assert not unverified, f"{len(unverified)} enabled rows were never verified: {unverified[:5]}"
+
+
+def test_every_packaged_registry_row_still_parses() -> None:
+    from stage.companies import load_companies
+    from stage.paths import registry_path
+
+    rows = load_companies()
+    shards = sorted(registry_path().glob("*.yaml"))
+
+    assert shards, "the packaged registry lost its shards"
+    assert len(rows) > 1000, f"the registry shrank to {len(rows)} rows"
+    assert all(company.name.strip() for company in rows)

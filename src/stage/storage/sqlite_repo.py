@@ -202,12 +202,17 @@ _VISIT_UPSERT_SQL = (
 
 
 MAX_DETAIL_ATTEMPTS = 3
+_ID_CHUNK = 500
 
 _QUEUE_ELIGIBLE = "(d.id IS NULL OR (d.failed = 1 AND d.attempts < ?))"
 
 
 def _board_glob(board: str) -> str:
     return f"{board}:*"
+
+
+def _limit_clause(limit: int | None) -> tuple[str, tuple[int, ...]]:
+    return ("", ()) if limit is None else (" LIMIT ?", (limit,))
 
 
 def _to_text(value: datetime) -> str:
@@ -990,10 +995,11 @@ class SqliteRepository:
 
     def list_quarantined(self, filters: QuarantineFilters) -> list[QuarantinedJob]:
         where, params = self._quarantine_where(filters)
+        limit, limit_params = _limit_clause(filters.limit)
         rows = self._conn.execute(
             f"SELECT * FROM quarantine{where} ORDER BY company COLLATE NOCASE, "
-            f"first_seen DESC, title_raw COLLATE NOCASE LIMIT ?",
-            (*params, filters.limit),
+            f"first_seen DESC, title_raw COLLATE NOCASE{limit}",
+            (*params, *limit_params),
         ).fetchall()
         return [_row_to_quarantined(row) for row in rows]
 
@@ -1092,9 +1098,10 @@ class SqliteRepository:
 
     def list_jobs(self, filters: JobFilters) -> list[Job]:
         where, params = self._where(filters)
+        limit, limit_params = _limit_clause(filters.limit)
         rows = self._conn.execute(
-            f"SELECT * FROM jobs{where} ORDER BY first_seen DESC, id ASC LIMIT ?",
-            (*params, filters.limit),
+            f"SELECT * FROM jobs{where} ORDER BY first_seen DESC, id ASC{limit}",
+            (*params, *limit_params),
         ).fetchall()
         return [_row_to_job(row) for row in rows]
 
@@ -1104,6 +1111,12 @@ class SqliteRepository:
             f"SELECT COUNT(*) AS total FROM jobs{where}", tuple(params)
         ).fetchone()
         return int(row["total"])
+
+    def company_names(self) -> list[str]:
+        rows = self._conn.execute(
+            "SELECT DISTINCT company FROM jobs ORDER BY company COLLATE NOCASE"
+        ).fetchall()
+        return [str(row["company"]) for row in rows]
 
     def get_job(self, job_id: str) -> Job | None:
         row = self._conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
@@ -1129,11 +1142,12 @@ class SqliteRepository:
         expression, source, params = self._match(query, filters)
         if not expression:
             return []
+        limit, limit_params = _limit_clause(filters.limit)
         rows = self._conn.execute(
             f"SELECT jobs.* {source} "
-            f"ORDER BY bm25(jobs_fts, {_BM25_WEIGHTS}), jobs.first_seen DESC, jobs.id ASC "
-            "LIMIT ?",
-            (expression, *params, filters.limit),
+            f"ORDER BY bm25(jobs_fts, {_BM25_WEIGHTS}), jobs.first_seen DESC, jobs.id ASC"
+            f"{limit}",
+            (expression, *params, *limit_params),
         ).fetchall()
         return [_row_to_job(row) for row in rows]
 
@@ -1187,6 +1201,24 @@ class SqliteRepository:
     def last_sync_at(self) -> datetime | None:
         row = self._conn.execute(
             "SELECT finished_at FROM sync_runs ORDER BY finished_at DESC LIMIT 1"
+        ).fetchone()
+        return _from_text(row["finished_at"]) if row else None
+
+    def closed_among(self, job_ids: Sequence[str]) -> int:
+        total = 0
+        for start in range(0, len(job_ids), _ID_CHUNK):
+            chunk = job_ids[start : start + _ID_CHUNK]
+            marks = ", ".join("?" * len(chunk))
+            row = self._conn.execute(
+                f"SELECT COUNT(*) AS total FROM jobs WHERE status = ? AND id IN ({marks})",
+                (JobStatus.CLOSED.value, *chunk),
+            ).fetchone()
+            total += int(row["total"])
+        return total
+
+    def previous_sync_at(self) -> datetime | None:
+        row = self._conn.execute(
+            "SELECT finished_at FROM sync_runs ORDER BY finished_at DESC LIMIT 1 OFFSET 1"
         ).fetchone()
         return _from_text(row["finished_at"]) if row else None
 
@@ -1247,25 +1279,37 @@ class SqliteRepository:
         if not wanted:
             return {}
         collected: dict[str, list[str]] = {}
-        kept = self._conn.execute(
-            "SELECT company_fold, apply_url_raw FROM jobs "
-            "WHERE duplicate_of IS NULL AND status = ? AND apply_url_raw <> '' "
-            "ORDER BY last_seen DESC, apply_url_raw",
-            (JobStatus.OPEN.value,),
-        ).fetchall()
-        for row in kept:
-            self._collect_apply_url(
-                collected, wanted, str(row["company_fold"]), str(row["apply_url_raw"])
-            )
-        rejected = self._conn.execute(
-            "SELECT company, apply_url_raw FROM quarantine "
-            "WHERE apply_url_raw IS NOT NULL AND apply_url_raw <> '' "
-            "ORDER BY last_seen DESC, apply_url_raw"
-        ).fetchall()
-        for row in rejected:
-            self._collect_apply_url(
-                collected, wanted, fold_company(str(row["company"])), str(row["apply_url_raw"])
-            )
+        folds = sorted(wanted)
+        for start in range(0, len(folds), _ID_CHUNK):
+            chunk = folds[start : start + _ID_CHUNK]
+            marks = ", ".join("?" * len(chunk))
+            kept = self._conn.execute(
+                "SELECT company_fold, apply_url_raw FROM jobs "
+                f"WHERE company_fold IN ({marks}) "
+                "AND duplicate_of IS NULL AND status = ? AND apply_url_raw <> '' "
+                "ORDER BY last_seen DESC, apply_url_raw",
+                (*chunk, JobStatus.OPEN.value),
+            ).fetchall()
+            for row in kept:
+                self._collect_apply_url(
+                    collected, wanted, str(row["company_fold"]), str(row["apply_url_raw"])
+                )
+
+        names = sorted(set(wanted.values()))
+        for start in range(0, len(names), _ID_CHUNK):
+            chunk = names[start : start + _ID_CHUNK]
+            marks = ", ".join("?" * len(chunk))
+            rejected = self._conn.execute(
+                "SELECT company, apply_url_raw FROM quarantine "
+                f"WHERE company IN ({marks}) "
+                "AND apply_url_raw IS NOT NULL AND apply_url_raw <> '' "
+                "ORDER BY last_seen DESC, apply_url_raw",
+                tuple(chunk),
+            ).fetchall()
+            for row in rejected:
+                self._collect_apply_url(
+                    collected, wanted, fold_company(str(row["company"])), str(row["apply_url_raw"])
+                )
         return {company: tuple(urls) for company, urls in collected.items()}
 
     @staticmethod
@@ -1352,6 +1396,18 @@ class SqliteRepository:
                 )
             )
         return history
+
+    def requests_since(self, since: datetime) -> tuple[dict[str, int], bool]:
+        rows = self._conn.execute(
+            "SELECT s.source AS source, SUM(s.requests) AS spent "
+            "FROM sync_run_sources s JOIN sync_runs r ON r.id = s.run_id "
+            "WHERE r.started_at >= ? GROUP BY s.source",
+            (_to_text(since),),
+        ).fetchall()
+        seen = self._conn.execute(
+            "SELECT 1 FROM sync_runs WHERE started_at >= ? LIMIT 1", (_to_text(since),)
+        ).fetchone()
+        return {str(row["source"]): int(row["spent"] or 0) for row in rows}, seen is not None
 
     def run_history(self, limit: int) -> list[SyncRun]:
         runs = self._conn.execute(

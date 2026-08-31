@@ -37,4 +37,4 @@ class QuarantineFilters:
     reason: RejectionReason | None = None
     source: str | None = None
     company: str | None = None
-    limit: int = DEFAULT_QUARANTINE_LIMIT
+    limit: int | None = DEFAULT_QUARANTINE_LIMIT

@@ -24,4 +24,4 @@ class JobFilters:
     company: str | None = None
     status: JobStatus | None = JobStatus.OPEN
     first_seen_after: datetime | None = None
-    limit: int = DEFAULT_LIMIT
+    limit: int | None = DEFAULT_LIMIT

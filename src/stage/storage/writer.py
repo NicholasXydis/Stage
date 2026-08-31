@@ -169,6 +169,18 @@ class AsyncRepository:
     async def count_jobs(self, filters: JobFilters) -> int:
         return await self._writer.run(lambda repository: repository.count_jobs(filters))
 
+    async def closed_among(self, job_ids: Sequence[str]) -> int:
+        return await self._writer.run(lambda repository: repository.closed_among(job_ids))
+
+    async def requests_since(self, since: datetime) -> tuple[dict[str, int], bool]:
+        return await self._writer.run(lambda repository: repository.requests_since(since))
+
+    async def previous_sync_at(self) -> datetime | None:
+        return await self._writer.run(lambda repository: repository.previous_sync_at())
+
+    async def company_names(self) -> list[str]:
+        return await self._writer.run(lambda repository: repository.company_names())
+
     async def get_job(self, job_id: str) -> Job | None:
         return await self._writer.run(lambda repository: repository.get_job(job_id))
 

@@ -113,6 +113,7 @@ CREATE TABLE quarantine (
 
 CREATE INDEX idx_quarantine_first_seen ON quarantine (first_seen DESC);
 CREATE INDEX idx_quarantine_reason_first_seen ON quarantine (reason, first_seen DESC);
+CREATE INDEX idx_quarantine_company ON quarantine (company, last_seen DESC);
 CREATE INDEX idx_quarantine_source_company ON quarantine (source, company);
 
 CREATE TABLE tombstones (

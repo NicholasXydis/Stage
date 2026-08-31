@@ -76,10 +76,9 @@ def resolve_duplicates(
             match = would_merge(left, right)
             if not match or (match.kind is MatchKind.URL and left.apply_url_canonical in ambiguous):
                 continue
-            parent[right_root] = left_root
-            boards[left_root] |= boards[right_root]
-            sources[left_root] |= sources[right_root]
-            reason[right.id] = (match.kind.value, match.evidence)
+            union(left.id, right.id)
+            demoted = right.id if find(right.id) != right_root else left.id
+            reason[demoted] = (match.kind.value, match.evidence)
 
     links: list[DuplicateLink] = []
     for job in jobs:

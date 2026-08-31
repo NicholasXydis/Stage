@@ -377,3 +377,40 @@ def test_a_shared_generic_word_does_not_make_two_employers_one(
     left = job("greenhouse:a:1", "greenhouse", left_name, "Software Engineer Intern")
     right = job("lever:b:2", "lever", right_name, "Software Engineer Intern")
     assert not would_merge(left, right), f"{left_name!r} and {right_name!r} are separate employers"
+
+
+def test_a_chained_duplicate_never_demotes_the_higher_priority_canonical() -> None:
+    from dataclasses import replace
+
+    canonical = job(
+        "greenhouse:acme:1",
+        "greenhouse",
+        "Acme",
+        "Software Engineering Intern",
+        url="https://acme.example/1",
+    )
+    existing = replace(
+        job(
+            "speedyapply:acme:2",
+            "speedyapply",
+            "Acme",
+            "Software Engineering Intern",
+            url="https://acme.example/1",
+        ),
+        duplicate_of=canonical.id,
+    )
+    incoming = job(
+        "lever:acme:3",
+        "lever",
+        "Acme",
+        "Software Engineering Intern",
+        url="https://acme.example/1",
+    )
+
+    links = resolve_duplicates([incoming], [canonical, existing])
+
+    assert links
+    for link in links:
+        assert link.duplicate_id != canonical.id
+        assert link.canonical_id == canonical.id, (link.duplicate_id, link.canonical_id)
+    assert any(link.duplicate_id == incoming.id and link.evidence for link in links)
