@@ -186,10 +186,11 @@
   notes: '2026-08-16: un-parked. The 2026-08-11 reason was a budget argument against
     a 120-request Workday ceiling that is now 732.'
 - name: Temporal Technologies
-  platform: greenhouse
-  slug: temporaltechnologies
-  source_of_record: openjobs
+  platform: ashby
+  slug: temporal
+  source_of_record: discover
   last_verified: &id007 2026-08-11
+  notes: '2026-08-31: greenhouse/temporaltechnologies went 404; moved to ashby.'
 - name: Tenable
   platform: greenhouse
   slug: tenableinc

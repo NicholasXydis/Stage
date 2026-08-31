@@ -382,13 +382,13 @@
 - name: Cerved
   platform: workday
   slug: cerved
+  enabled: false
   source_of_record: discover
   last_verified: *id003
   workday_tenant: cerved
   workday_site: cerved
   workday_dc: wd3
-  notes: '2026-08-14: verified by a real sync — this board returned postings, which
-    is the only verification a Workday tenant can have without an offline probe'
+  notes: '2026-08-31: disabled. Workday reports the tenant decommissioned.'
 - name: Chainalysis
   platform: ashby
   slug: chainalysis-careers
