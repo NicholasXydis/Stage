@@ -119,6 +119,8 @@ class TheMuseFeed:
         return f"{SEARCH}?page={page}&level={quote('Internship')}&{locations}"
 
     def _validate(self, payload: Any, page: int) -> tuple[list[MuseListing], int, int]:
+        if payload is None:
+            return [], 0, page - 1
         try:
             parsed = MusePage.model_validate(payload)
         except Exception as exc:
