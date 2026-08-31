@@ -428,7 +428,7 @@ def quarantine(
             "--reason",
             metavar="REASON",
             help=(
-                "Filter by rejection reason: unknown-location, not-an-internship, "
+                "Filter by rejection reason: out-of-scope-location, not-an-internship, "
                 "out-of-scope-degree, not-a-cs-role, unknown-cs-role"
             ),
         ),

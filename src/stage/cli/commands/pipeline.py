@@ -163,7 +163,8 @@ async def _announce_new_postings(repository: Any, console: Any) -> None:
 
 
 @app.command(
-    help="Remove postings outside the retention window", rich_help_panel="Registry and maintenance"
+    help="Remove expired postings and prune old diagnostic files",
+    rich_help_panel="Registry and maintenance",
 )
 def purge(
     dry_run: Annotated[

@@ -352,6 +352,7 @@ def test_one_command_help_stays_free_of_the_banner() -> None:
 
 
 def test_the_readme_shows_the_same_banner_as_the_cli() -> None:
+    from html import unescape
     from pathlib import Path
 
     from stage.banner import WIDE
@@ -359,7 +360,7 @@ def test_the_readme_shows_the_same_banner_as_the_cli() -> None:
     readme = Path(__file__).resolve().parent.parent / "README.md"
     if not readme.is_file():
         return
-    body = readme.read_text(encoding="utf-8")
+    body = unescape(readme.read_text(encoding="utf-8"))
 
     for line in WIDE.strip("\n").split("\n"):
         assert line.rstrip() in body, line

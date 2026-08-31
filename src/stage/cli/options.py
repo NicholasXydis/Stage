@@ -72,7 +72,10 @@ def _parse_enum[E: StrEnum](value: str | None, enum: type[E], flag: str) -> E | 
     return _require_enum(value, enum, flag)
 
 
-UNMATCHABLE_VALUES = {"--role": frozenset({"hardware"})}
+UNMATCHABLE_VALUES = {
+    "--role": frozenset({"hardware"}),
+    "--location": frozenset({"international"}),
+}
 
 
 def _require_enum[E: StrEnum](value: str, enum: type[E], flag: str) -> E:
@@ -190,7 +193,7 @@ LocationOption = Annotated[
     typer.Option(
         "--location",
         metavar="PLACE",
-        help="Filter by location: montreal, canada, usa, international, unknown",
+        help="Filter by location: montreal, canada, usa, unknown",
     ),
 ]
 TermOption = Annotated[
