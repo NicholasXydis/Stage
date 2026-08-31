@@ -1,6 +1,13 @@
-<div align="center">
+```
+  ____  _
+ / ___|| |_   __ _   __ _   ___
+ \___ \| __| / _` | / _` | / _ \
+  ___) | |_ | (_| || (_| ||  __/
+ |____/ \__| \__,_| \__, | \___|
+                    |___/
+```
 
-<img src="assets/banner.svg" alt="Stage" width="300">
+<div align="center">
 
 ### Every CS internship. One command.
 

@@ -357,13 +357,10 @@ def test_the_readme_shows_the_same_banner_as_the_cli() -> None:
 
     from stage.banner import WIDE
 
-    root = Path(__file__).resolve().parent.parent
-    readme = root / "README.md"
-    banner = root / "assets" / "banner.svg"
+    readme = Path(__file__).resolve().parent.parent / "README.md"
     if not readme.is_file():
         return
-    assert "assets/banner.svg" in readme.read_text(encoding="utf-8")
-    body = unescape(banner.read_text(encoding="utf-8"))
+    body = unescape(readme.read_text(encoding="utf-8"))
 
     for line in WIDE.strip("\n").split("\n"):
         assert line.rstrip() in body, line
