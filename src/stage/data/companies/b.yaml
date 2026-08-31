@@ -53,18 +53,23 @@
   platform: custom_json
   slug: bankofamerica
   source_of_record: discover
-  last_verified: 2026-08-20
-  notes: '2026-08-20: the campus board is tal.net and server-renders its table. Row
-    hrefs carry a rotating xf- session token, so the apply url is rebuilt from data-oppid,
-    as on the Job Bank row.'
+  last_verified: 2026-08-30
+  notes: '2026-08-30: tal.net now answers every request with an Altcha proof-of-work
+    page titled "Quick Check Needed", so the old html board cannot be read and a fresh
+    xf- token does not help. careers.bankofamerica.com serves the same campus listings
+    as json from campusjobssearchservlet, which needs no token and returns all 74
+    rows in one request. The experienced-hire sibling, jobssearchservlet, carries
+    2,273 rows and no internships, so it is deliberately not used.'
   custom:
-    url: https://bankcampuscareers.tal.net/vx/lang-en-GB/mobile-0/brand-4/candidate/jobboard/vacancy/2/adv/
-    format: html
-    row_selector: tr.search_res
+    url: https://careers.bankofamerica.com/services/campusjobssearchservlet?start=0&rows=200&search=getAllJobs
+    jobs_path: jobsList
     fields:
-      title: ::attr(data-title)
-      id: ::attr(data-oppid)
-    url_template: https://bankcampuscareers.tal.net/vx/lang-en-GB/mobile-0/brand-4/candidate/so/pm/1/pl/2/opp/{id}/en-GB
+      title: postingTitle
+      id: jobRequisitionId
+      location: location
+      description: jobDescriptionExternal
+      category: family
+    url_template: https://careers.bankofamerica.com/en-us/students/job-detail/{id}/job
 - name: Bank of China USA
   platform: icims
   slug: bocusa
