@@ -1,0 +1,24 @@
+name: Source or employer request
+description: Ask for a job board, employer, or platform to be covered
+labels: ["source"]
+body:
+  - type: input
+    id: company
+    attributes:
+      label: Employer
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Careers page URL
+      description: The page that lists their open roles.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything relevant, such as whether they post internships in Canada or the US.
+    validations:
+      required: false

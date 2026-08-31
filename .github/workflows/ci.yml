@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COVERAGE_FLOOR: "83"
+  COVERAGE_FLOOR: "87"
   UV_VERSION: "0.11.28"
   UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
 
@@ -22,6 +22,9 @@ jobs:
   quality:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -41,11 +44,11 @@ jobs:
           uv sync --frozen
       - name: Ruff
         id: ruff
-        run: uv run ruff check src/ tests/
+        run: uv run ruff check src/ tests/ scripts/
       - name: Ruff format
         id: ruff_format
         if: always()
-        run: uv run ruff format --check src/ tests/
+        run: uv run ruff format --check src/ tests/ scripts/
       - name: Mypy strict
         id: mypy
         if: always()
@@ -54,14 +57,24 @@ jobs:
         id: pytest
         if: always()
         run: |
-          uv run pytest -q -n auto --cov --cov-branch --cov-report=
+          uv run pytest -q -n auto --cov --cov-branch --cov-report= | tee pytest.txt
+          exit "${PIPESTATUS[0]}"
       - name: Wall-clock tests, serial, and the coverage floor
         id: pytest_serial
         if: always()
         run: |
           uv run pytest -q -m serial --cov --cov-append --cov-branch \
             --cov-report=xml:coverage.xml --cov-report=term-missing:skip-covered \
-            --cov-fail-under="$COVERAGE_FLOOR"
+            --cov-fail-under="$COVERAGE_FLOOR" | tee pytest-serial.txt
+          exit "${PIPESTATUS[0]}"
+      - name: The README badges must match this run
+        run: |
+          uv run python scripts/update_badges.py pytest.txt pytest-serial.txt
+          if ! git diff --quiet -- README.md; then
+            echo "badges are stale; run scripts/update_badges.py and commit" >&2
+            git --no-pager diff -- README.md
+            exit 1
+          fi
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

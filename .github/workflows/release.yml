@@ -1,0 +1,113 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Index to publish to
+        required: true
+        default: testpypi
+        type: choice
+        options: [testpypi, pypi]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  COVERAGE_FLOOR: "87"
+  UV_VERSION: "0.11.28"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          python -m pip install "uv==$UV_VERSION"
+          uv sync --frozen
+      - name: The tag must match the packaged version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          packaged=$(uv run python -c "import stage; print(stage.__version__)")
+          tagged="${GITHUB_REF_NAME#v}"
+          if [ "$packaged" != "$tagged" ]; then
+            echo "tag $tagged does not match __version__ $packaged" >&2
+            exit 1
+          fi
+      - name: Every gate CI runs, before anything is published
+        run: |
+          uv run ruff check src/ tests/ scripts/
+          uv run ruff format --check src/ tests/ scripts/
+          uv run mypy
+          uv run pytest -q -n auto --cov --cov-branch --cov-report=
+          uv run pytest -q -m serial --cov --cov-append --cov-branch \
+            --cov-fail-under="$COVERAGE_FLOOR"
+      - name: Audit the locked dependencies
+        run: |
+          uv export --frozen --format requirements.txt \
+            --no-emit-project --all-groups --no-annotate --no-header \
+            -o "$RUNNER_TEMP/requirements.txt" > /dev/null
+          uvx pip-audit@2.10.1 --disable-pip -r "$RUNNER_TEMP/requirements.txt"
+      - name: Build the wheel and sdist
+        run: uv build -o dist
+      - name: The sdist must install and run
+        run: |
+          cd "$RUNNER_TEMP"
+          python -m venv smoke
+          smoke/bin/python -m pip install --quiet "$GITHUB_WORKSPACE"/dist/*.tar.gz
+          smoke/bin/stage --version
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: distributions
+          path: dist/
+          if-no-files-found: error
+
+  testpypi:
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Real PyPI publishes from a version tag, never a bare dispatch
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        run: |
+          echo "pypi publishes only from a refs/tags/v* ref; use testpypi instead" >&2
+          exit 1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
