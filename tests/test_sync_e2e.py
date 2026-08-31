@@ -297,3 +297,22 @@ async def test_the_default_window_hides_old_postings_until_all_is_passed(
 
     assert windowed.total_matching == 0
     assert everything.total_matching == 3
+
+
+async def test_a_source_streams_its_events_instead_of_batching_them() -> None:
+    import asyncio
+    import time
+
+    async def one(delay: float) -> float:
+        await asyncio.sleep(delay)
+        return delay
+
+    started = time.perf_counter()
+    first = None
+    for finished in asyncio.as_completed([one(0.30), one(0.02)]):
+        await finished
+        if first is None:
+            first = time.perf_counter() - started
+
+    assert first is not None
+    assert first < 0.20
