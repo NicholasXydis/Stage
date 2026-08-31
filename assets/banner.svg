@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="164" viewBox="0 0 300 164" role="img" aria-label="Stage">
+  <title>Stage</title>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18" fill="#7c3aed">
+    <text x="16" y="32" xml:space="preserve">  ____  _</text>
+    <text x="16" y="54" xml:space="preserve"> / ___|| |_   __ _   __ _   ___</text>
+    <text x="16" y="76" xml:space="preserve"> \___ \| __| / _` | / _` | / _ \</text>
+    <text x="16" y="98" xml:space="preserve">  ___) | |_ | (_| || (_| ||  __/</text>
+    <text x="16" y="120" xml:space="preserve"> |____/ \__| \__,_| \__, | \___|</text>
+    <text x="16" y="142" xml:space="preserve">                    |___/</text>
+  </g>
+</svg>
