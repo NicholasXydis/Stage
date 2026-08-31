@@ -1,10 +1,10 @@
 ```
-  ____  _
- / ___|| |_   __ _   __ _   ___
- \___ \| __| / _` | / _` | / _ \
-  ___) | |_ | (_| || (_| ||  __/
- |____/ \__| \__,_| \__, | \___|
-                    |___/
+                        ____  _
+                       / ___|| |_   __ _   __ _   ___
+                       \___ \| __| / _` | / _` | / _ \
+                        ___) | |_ | (_| || (_| ||  __/
+                       |____/ \__| \__,_| \__, | \___|
+                                          |___/
 ```
 
 <div align="center">
@@ -18,37 +18,27 @@ It runs locally. There is no account to make and no server involved.
 
 <br>
 
-![version](https://img.shields.io/static/v1?label=version&message=v1.0.0&color=7c3aed) [![license](https://img.shields.io/static/v1?label=license&message=MIT&color=db2777)](LICENSE)
+![version](https://img.shields.io/static/v1?label=version&message=v1.0.0&color=7c3aed) [![license](https://img.shields.io/static/v1?label=license&message=MIT&color=db2777)](LICENSE) ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=2563eb&logo=python&logoColor=white)
 
 ![tests](https://img.shields.io/static/v1?label=tests&message=2%2C274&color=16a34a) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=16a34a) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
-![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=2563eb&logo=python&logoColor=white)
-
 <br>
 
-**Built with**
-
 <p>
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/python/python-original.svg" alt="Python" width="46" height="46">
-  &nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/sqlite/sqlite-original.svg" alt="SQLite" width="46" height="46">
-  &nbsp;&nbsp;&nbsp;
-  <img src="https://avatars.githubusercontent.com/u/93378883?s=200" alt="Textual" width="46" height="46">
-</p>
-
-**Runs on**
-
-<p>
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/windows8/windows8-original.svg" alt="Windows" width="42" height="42">
-  &nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/linux/linux-original.svg" alt="Linux" width="42" height="42">
-  &nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/apple/apple-original.svg" alt="macOS" width="42" height="42">
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/python/python-original.svg" alt="Python" width="42" height="42" align="middle">
+  &nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/sqlite/sqlite-original.svg" alt="SQLite" width="42" height="42" align="middle">
+  &nbsp;&nbsp;
+  <img src="https://avatars.githubusercontent.com/u/93378883?s=200" alt="Textual" width="42" height="42" align="middle">
+  &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/windows8/windows8-original.svg" alt="Windows" width="42" height="42" align="middle">
+  &nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/linux/linux-original.svg" alt="Linux" width="42" height="42" align="middle">
+  &nbsp;&nbsp;
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/apple/apple-original.svg" alt="macOS" width="42" height="42" align="middle">
 </p>
 
 </div>
-
-<br>
 
 ## Why
 
@@ -63,8 +53,6 @@ rejects is saved with the reason, so you can look at what it skipped instead of
 taking its word for it.
 
 The last sync kept **1,887** postings out of **114,875**.
-
-<br>
 
 ## Install
 
@@ -108,8 +96,6 @@ Python, which is what you want for a command line tool.
 Needs Python 3.12, 3.13, or 3.14. Nothing else to set up — no database to
 configure, no API key, no config file.
 
-<br>
-
 ### First run
 
 ```bash
@@ -127,8 +113,6 @@ stage --install-completion    # tab-complete commands and filters
 
 Completion needs a fresh terminal. After that, `stage <TAB>` lists commands and
 `stage list --<TAB>` lists filters.
-
-<br>
 
 ## The basics
 
@@ -163,8 +147,6 @@ Filters work the same on `list`, `search`, and `export`:
 Mistype one and Stage tells you what it accepts, rather than showing you an
 empty list.
 
-<br>
-
 ## The full-screen browser
 
 ```bash
@@ -178,8 +160,6 @@ looking at, and `s` saves a search for later. Press `?` for the full key list.
 Same database as the CLI. The TUI cycles the three filters that are most useful
 interactively — role, location, and language; `--term`, `--source`, and
 `--company` stay CLI-only.
-
-<br>
 
 ## Keeping it fresh
 
@@ -227,8 +207,6 @@ Yours stays free for browsing.
 
 </details>
 
-<br>
-
 ## Good to know
 
 - Everything sits in one SQLite file you own. Open it with any SQLite client,
@@ -241,16 +219,12 @@ Yours stays free for browsing.
   fields `unknown` instead of guessing.
 - Missing something you expected? `stage quarantine` shows which rule caught it.
 
-<br>
-
 ## Learn more
 
 `stage help` walks through the common workflows with real examples.
 `stage help COMMAND` explains one command; `stage --help` lists them all.
 
 [CHANGELOG.md](CHANGELOG.md) lists what changed in each release.
-
-<br>
 
 ## Found a bug?
 
@@ -259,16 +233,12 @@ without warning and I cannot watch all of them myself. I read everything.
 
 I am not taking pull requests right now.
 
-<br>
-
 ## Security
 
 Stage reads public job boards and writes to a local file. It never asks for
 credentials. Found a security issue? Open a
 [security advisory](https://github.com/NicholasXydis/Stage/security/advisories/new)
 instead of a public issue.
-
-<br>
 
 ## License
 

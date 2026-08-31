@@ -28,6 +28,16 @@
   slug: 2kvegas
   source_of_record: openjobs
   last_verified: 2026-08-14
+- name: 3M
+  platform: workday
+  slug: 3m
+  source_of_record: discover
+  last_verified: 2026-08-31
+  workday_tenant: 3m
+  workday_site: Search
+  workday_dc: wd1
+  notes: '2026-08-31: added. 654 postings including a 2027 Undergraduate IT Intern
+    in Minnesota.'
 - name: 401 Auto
   platform: bamboohr
   slug: 401auto

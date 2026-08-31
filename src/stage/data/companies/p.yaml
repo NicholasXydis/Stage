@@ -373,6 +373,16 @@
   workday_dc: wd5
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (70 posting(s), 0 kept)'
+- name: Pfizer
+  platform: workday
+  slug: pfizer
+  source_of_record: discover
+  last_verified: 2026-08-31
+  workday_tenant: pfizer
+  workday_site: PfizerCareers
+  workday_dc: wd1
+  notes: '2026-08-31: added. 226 postings; most interns are overseas, so the
+    location screen carries the weight.'
 - name: Philips
   platform: workday
   slug: philips
