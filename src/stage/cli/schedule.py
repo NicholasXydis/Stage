@@ -479,6 +479,17 @@ def _write_windows_task(action: ScheduledAction) -> None:
         _run(("schtasks", "/Create", "/F", "/TN", action.label, "/XML", str(path)))
 
 
+_WINDOWS_DAYS = {
+    "MON": "Monday",
+    "TUE": "Tuesday",
+    "WED": "Wednesday",
+    "THU": "Thursday",
+    "FRI": "Friday",
+    "SAT": "Saturday",
+    "SUN": "Sunday",
+}
+
+
 def _windows_task_xml(action: ScheduledAction) -> bytes:
     root = ElementTree.Element(
         "Task", {"version": "1.4", "xmlns": "http://schemas.microsoft.com/windows/2004/02/mit/task"}
@@ -501,7 +512,7 @@ def _windows_task_xml(action: ScheduledAction) -> bytes:
         schedule = ElementTree.SubElement(trigger, "ScheduleByWeek")
         ElementTree.SubElement(schedule, "WeeksInterval").text = "1"
         days = ElementTree.SubElement(schedule, "DaysOfWeek")
-        ElementTree.SubElement(days, "Monday")
+        ElementTree.SubElement(days, _WINDOWS_DAYS.get(action.windows_day or "MON", "Monday"))
     principals = ElementTree.SubElement(root, "Principals")
     principal = ElementTree.SubElement(principals, "Principal", {"id": "Stage"})
     ElementTree.SubElement(principal, "LogonType").text = "InteractiveToken"

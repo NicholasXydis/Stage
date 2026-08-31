@@ -462,3 +462,14 @@ def test_status_survives_a_missing_scheduler_command(monkeypatch: pytest.MonkeyP
     assert report.backend == "Windows Task Scheduler"
     assert not any(enabled for _, enabled, _ in report.actions)
     assert not any(report.stale_interpreter)
+
+
+def test_a_wednesday_task_is_not_scheduled_for_monday() -> None:
+    from stage.cli.schedule import _ACTIONS, _windows_task_xml
+
+    for action in _ACTIONS:
+        if action.windows_day is None:
+            continue
+        xml = _windows_task_xml(action).decode("utf-16")
+        expected = {"MON": "Monday", "WED": "Wednesday"}[action.windows_day]
+        assert f"<{expected}" in xml, action.label
