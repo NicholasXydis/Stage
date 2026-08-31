@@ -3,7 +3,7 @@
 <pre>
   ____  _
  / ___|| |_   __ _   __ _   ___
- \___ \| __| / _` | / _` | / _ \
+ \___ \| __| / _&#96; | / _&#96; | / _ \
   ___) | |_ | (_| || (_| ||  __/
  |____/ \__| \__,_| \__, | \___|
                     |___/
@@ -20,7 +20,7 @@ It runs locally. There is no account to make and no server involved.
 
 ![version](https://img.shields.io/static/v1?label=version&message=v1.0.0&color=7c3aed) [![license](https://img.shields.io/static/v1?label=license&message=MIT&color=db2777)](LICENSE)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=2%2C268&color=16a34a) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=16a34a) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=2%2C274&color=16a34a) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=16a34a) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=2563eb&logo=python&logoColor=white)
 
@@ -58,10 +58,11 @@ what they show you is senior roles, PhD research posts, or work on another
 continent.
 
 Stage checks 1,400+ employer boards for you and keeps the postings a CS
-undergrad can actually apply to. Everything it rejects is saved with the reason,
-so you can look at what it skipped instead of taking its word for it.
+undergrad in Canada or the United States can actually apply to. Everything it
+rejects is saved with the reason, so you can look at what it skipped instead of
+taking its word for it.
 
-The last sync kept **5,111** postings out of **96,634**.
+The last sync kept **1,887** postings out of **114,875**.
 
 <br>
 
@@ -151,7 +152,7 @@ Filters work the same on `list`, `search`, and `export`:
 | Filter | What it takes |
 | --- | --- |
 | `--role` | swe, security, data, ml-ai, quant, infra, embedded, general-cs |
-| `--location` | montreal, canada, usa, international |
+| `--location` | montreal, canada, usa, unknown |
 | `--term` | summer-2027, fall-2026, winter-2027, and so on |
 | `--lang` | en, fr, bilingual |
 | `--source` | greenhouse, lever, ashby, workday, and more |

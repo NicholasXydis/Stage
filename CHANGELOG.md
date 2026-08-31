@@ -14,11 +14,15 @@ them in a SQLite database on your own machine.
 
 - **Fetches from 1,465 employers** across 15 ATS platforms — Greenhouse, Lever,
   Ashby, Workday, SmartRecruiters, Workable and more — plus 11 community feeds.
-- **Filters hard.** A recent sync kept 5,111 postings and rejected 91,523.
-  Every rejection records the rule that caught it, so `stage quarantine` shows
-  you what was skipped and why rather than asking you to trust it.
+- **Filters hard.** A recent sync kept 1,887 postings and rejected 112,988.
+  Postings outside Canada and the United States are rejected too. A posting
+  whose location cannot be read is kept, since a board that publishes no place
+  is missing data rather than advertising a foreign one. Every rejection records
+  the rule that caught it, so `stage quarantine` shows what was skipped and why
+  rather than asking you to trust it.
 - **Classifies each posting** by role, internship scope, degree eligibility,
-  location and language, in English and French.
+  location and language, in English and French. Filter by
+  `--role`, `--location`, `--term`, `--lang`, `--source`, and `--company`.
 - **Browses from the terminal.** `stage list`, `stage search`, and a full-screen
   `stage tui`. Rows are numbered, so `stage show 3` and `stage open 3 5 9` act
   on what you just saw.
