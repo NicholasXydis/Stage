@@ -42,7 +42,7 @@ def run_time() -> datetime:
     return datetime(2026, 8, 2, 12, 0, tzinfo=UTC)
 
 
-def test_international_locations_are_kept(run_time: datetime) -> None:
+def test_international_locations_are_quarantined(run_time: datetime) -> None:
     kept, rejected = normalize_batch(
         [
             _job("1", "Bengaluru, Karnataka, India", run_time),
@@ -51,8 +51,9 @@ def test_international_locations_are_kept(run_time: datetime) -> None:
             _job("4", "London, England, United Kingdom", run_time),
         ]
     )
-    assert [job.id for job in kept] == ["1", "2", "3", "4"]
-    assert rejected == ()
+    assert [job.id for job in kept] == ["2", "3"]
+    assert [job.id for job in rejected] == ["1", "4"]
+    assert {job.reason for job in rejected} == {RejectionReason.OUT_OF_SCOPE_LOCATION}
 
 
 def test_a_rejection_explains_the_evidence(run_time: datetime) -> None:
@@ -84,7 +85,7 @@ def test_a_location_that_could_not_be_read_is_kept_and_stays_visible(run_time: d
         ]
     )
     assert rejected == (), (
-        "worldwide scope admits every readable place, so a failed reading rejects nothing"
+        "an unreadable location is missing evidence, not evidence of a foreign place"
     )
     assert [job.id for job in kept] == ["1", "2", "3", "4"]
     assert all(job.location is LocationBucket.UNKNOWN for job in kept)
@@ -92,7 +93,7 @@ def test_a_location_that_could_not_be_read_is_kept_and_stays_visible(run_time: d
 
 @pytest.mark.parametrize("bucket", list(LocationBucket))
 @pytest.mark.parametrize("scope", [None, RemoteScope.UNSPECIFIED])
-def test_no_location_reading_is_ever_a_rejection(
+def test_no_unreadable_location_is_ever_a_rejection(
     bucket: LocationBucket, scope: RemoteScope | None, run_time: datetime
 ) -> None:
     job = replace(
@@ -102,8 +103,8 @@ def test_no_location_reading_is_ever_a_rejection(
         remote_scope=scope,
     )
     kept, rejected = normalize_batch([job])
-    assert len(kept) == 1, f"{bucket} with scope {scope} must be admitted under worldwide scope"
-    assert not rejected, "under worldwide scope no location reading excludes a posting"
+    assert len(kept) == 1, f"{bucket} with scope {scope} must be admitted"
+    assert not rejected
 
 
 def test_remote_keeps_the_country_it_names(run_time: datetime) -> None:

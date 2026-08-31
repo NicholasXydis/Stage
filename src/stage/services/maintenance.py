@@ -138,6 +138,7 @@ def _reclassifications(
         screen_degree_scope,
         screen_is_cs_role,
         screen_is_internship,
+        screen_location,
     )
     from stage.classify.scope import to_quarantined
     from stage.normalize import canonical_apply_url, resolve_location
@@ -157,6 +158,7 @@ def _reclassifications(
         candidates.append(candidate)
         rejection = (
             screen_is_internship(candidate)
+            or screen_location(candidate)
             or screen_degree_scope(candidate)
             or screen_is_cs_role(candidate)
         )
@@ -179,7 +181,6 @@ async def _release_reclassified_quarantine(
         RejectionReason.UNKNOWN_CS_ROLE,
         RejectionReason.NOT_A_CS_ROLE,
         RejectionReason.OUT_OF_SCOPE_LOCATION,
-        RejectionReason.UNKNOWN_LOCATION,
     ):
         if not remaining:
             break

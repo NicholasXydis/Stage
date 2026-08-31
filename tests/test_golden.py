@@ -83,11 +83,12 @@ def test_the_goldens_cover_every_rule_category_in_both_languages() -> None:
     reasons = {case["expected"]["reason"] for case in cases if not case["expected"]["kept"]}
     assert {
         "not-an-internship",
+        "out-of-scope-location",
         "unknown-cs-role",
-    } == reasons, "unknown-location has no producer under worldwide scope"
+    } == reasons, "only reachable reasons appear in the golden set"
 
     buckets = {entry["location"] for entry in kept}
-    assert {"montreal", "canada", "usa", "international"} <= buckets
+    assert {"montreal", "canada", "usa"} <= buckets
 
 
 def test_french_and_english_reach_the_same_role() -> None:

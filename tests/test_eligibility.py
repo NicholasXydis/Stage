@@ -8,6 +8,7 @@ from stage.domain import (
     DegreeRequirement,
     Job,
     JobFilters,
+    LocationBucket,
     QuarantineFilters,
     RejectionReason,
 )
@@ -506,3 +507,43 @@ def test_offering_sponsorship_is_not_a_restriction() -> None:
         "Perks include company sponsored lunches",
     ):
         assert not resolve_eligibility(_job("Intern", text)).work_auth_flag, text
+
+
+@pytest.mark.parametrize(
+    ("bucket", "rejected"),
+    [
+        (LocationBucket.INTERNATIONAL, True),
+        (LocationBucket.CANADA, False),
+        (LocationBucket.USA, False),
+        (LocationBucket.MONTREAL, False),
+        (LocationBucket.UNKNOWN, False),
+    ],
+)
+def test_only_international_postings_are_screened_out(
+    bucket: LocationBucket, rejected: bool
+) -> None:
+    from dataclasses import replace
+
+    from stage.classify import screen_location
+
+    job = replace(_job("Software Engineer Intern"), location=bucket)
+    verdict = screen_location(job)
+
+    assert (verdict is not None) is rejected
+    if verdict is not None:
+        assert verdict.reason is RejectionReason.OUT_OF_SCOPE_LOCATION
+
+
+def test_a_screened_location_records_where_it_was() -> None:
+    from dataclasses import replace
+
+    from stage.classify import screen_location
+
+    job = replace(
+        _job("Software Engineer Intern", location="Singapore"),
+        location=LocationBucket.INTERNATIONAL,
+    )
+    verdict = screen_location(job)
+
+    assert verdict is not None
+    assert verdict.matched_phrase == "Singapore"

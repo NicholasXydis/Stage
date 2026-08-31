@@ -9,6 +9,7 @@ from stage.classify.role import RoleVerdict, classify_role
 from stage.classify.scope import (
     Rejection,
     screen_is_internship,
+    screen_location,
     to_quarantined,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "classify_role",
     "screen_internship",
     "screen_is_internship",
+    "screen_location",
     "to_quarantined",
 ]

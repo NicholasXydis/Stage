@@ -149,8 +149,8 @@
       "input": {
         "source": "lever",
         "company": "Behaviour Interactive",
-        "title_raw": "Stagiaire en génie logiciel",
-        "location_raw": "Montréal, QC, Canada",
+        "title_raw": "Stagiaire en g\u00e9nie logiciel",
+        "location_raw": "Montr\u00e9al, QC, Canada",
         "signals": {}
       },
       "expected": {
@@ -167,7 +167,7 @@
       "input": {
         "source": "smartrecruiters",
         "company": "Ubisoft",
-        "title_raw": "Stagiaire en science des données",
+        "title_raw": "Stagiaire en science des donn\u00e9es",
         "location_raw": "Montreal, QC, Canada",
         "signals": {}
       },
@@ -185,8 +185,8 @@
       "input": {
         "source": "lever",
         "company": "Genetec",
-        "title_raw": "Stagiaire en cybersécurité",
-        "location_raw": "Montréal, Québec, Canada",
+        "title_raw": "Stagiaire en cybers\u00e9curit\u00e9",
+        "location_raw": "Montr\u00e9al, Qu\u00e9bec, Canada",
         "signals": {}
       },
       "expected": {
@@ -204,7 +204,7 @@
         "source": "lever",
         "company": "Mila",
         "title_raw": "Stagiaire en apprentissage automatique",
-        "location_raw": "Montréal, QC",
+        "location_raw": "Montr\u00e9al, QC",
         "signals": {}
       },
       "expected": {
@@ -221,7 +221,7 @@
       "input": {
         "source": "greenhouse",
         "company": "CAE",
-        "title_raw": "Stagiaire en micrologiciel embarqué",
+        "title_raw": "Stagiaire en micrologiciel embarqu\u00e9",
         "location_raw": "Saint-Laurent, QC, Canada",
         "signals": {}
       },
@@ -239,7 +239,7 @@
       "input": {
         "source": "smartrecruiters",
         "company": "Ubisoft",
-        "title_raw": "Développeur·euse logiciel stagiaire",
+        "title_raw": "D\u00e9veloppeur\u00b7euse logiciel stagiaire",
         "location_raw": "Montreal, QC, Canada",
         "signals": {}
       },
@@ -275,7 +275,7 @@
       "input": {
         "source": "greenhouse",
         "company": "Shopify",
-        "title_raw": "Winter 2027 Co-op — Backend Developer",
+        "title_raw": "Winter 2027 Co-op \u2014 Backend Developer",
         "location_raw": "Ottawa, ON, Canada",
         "signals": {}
       },
@@ -471,12 +471,10 @@
         "signals": {}
       },
       "expected": {
-        "kept": true,
-        "location": "international",
-        "remote_scope": null,
-        "term": "unknown",
-        "role": "swe",
-        "language": "en"
+        "kept": false,
+        "reason": "out-of-scope-location",
+        "matched_phrase": "Bengaluru, Karnataka, India",
+        "location": "international"
       }
     },
     {
@@ -598,7 +596,7 @@
       "input": {
         "source": "simplify",
         "company": "Autodesk",
-        "title_raw": "Software Developer Intern - Stagiaire en Développement Logiciel",
+        "title_raw": "Software Developer Intern - Stagiaire en D\u00e9veloppement Logiciel",
         "location_raw": "Canada",
         "signals": {}
       },
@@ -616,7 +614,7 @@
       "input": {
         "source": "smartrecruiters",
         "company": "Ubisoft",
-        "title_raw": "Programmeur·se Senior C++ - Apprentissage automatique",
+        "title_raw": "Programmeur\u00b7se Senior C++ - Apprentissage automatique",
         "location_raw": "Montreal, QC, Canada",
         "signals": {}
       },
@@ -650,8 +648,8 @@
       "input": {
         "source": "greenhouse",
         "company": "Banque Nationale",
-        "title_raw": "Stagiaire en finance quantitative, Été 2027",
-        "location_raw": "Montréal, QC, Canada",
+        "title_raw": "Stagiaire en finance quantitative, \u00c9t\u00e9 2027",
+        "location_raw": "Montr\u00e9al, QC, Canada",
         "signals": {}
       },
       "expected": {
@@ -669,7 +667,7 @@
         "source": "greenhouse",
         "company": "Videotron",
         "title_raw": "Stagiaire en infrastructure infonuagique",
-        "location_raw": "Montréal, QC, Canada",
+        "location_raw": "Montr\u00e9al, QC, Canada",
         "signals": {}
       },
       "expected": {
@@ -686,8 +684,8 @@
       "input": {
         "source": "greenhouse",
         "company": "CAE",
-        "title_raw": "Stagiaire en logiciel embarqué",
-        "location_raw": "Montréal, QC, Canada",
+        "title_raw": "Stagiaire en logiciel embarqu\u00e9",
+        "location_raw": "Montr\u00e9al, QC, Canada",
         "signals": {}
       },
       "expected": {

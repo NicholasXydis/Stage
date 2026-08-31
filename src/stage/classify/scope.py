@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from stage.domain import Job, QuarantinedJob, RejectionReason
+from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +18,15 @@ def screen_is_internship(job: Job) -> Rejection | None:
     return Rejection(
         reason=RejectionReason.NOT_AN_INTERNSHIP,
         matched_phrase=verdict.disqualified_by or "no internship marker in title",
+    )
+
+
+def screen_location(job: Job) -> Rejection | None:
+    if job.location is not LocationBucket.INTERNATIONAL:
+        return None
+    return Rejection(
+        reason=RejectionReason.OUT_OF_SCOPE_LOCATION,
+        matched_phrase=job.location_raw or "outside Canada and the United States",
     )
 
 

@@ -139,7 +139,7 @@ async def test_rescreen_restores_a_quarantined_location_that_is_now_in_scope(db_
 
     job = replace(
         _job("workday:td:tokyo", "Software Engineer Intern"),
-        location_raw="Tokyo, Japan",
+        location_raw="Toronto, ON, Canada",
         location=LocationBucket.INTERNATIONAL,
     )
     store = SqliteRepository.connect(db_path)
@@ -152,7 +152,7 @@ async def test_rescreen_restores_a_quarantined_location_that_is_now_in_scope(db_
                     job,
                     Rejection(
                         reason=RejectionReason.OUT_OF_SCOPE_LOCATION,
-                        matched_phrase="Tokyo, Japan",
+                        matched_phrase="Toronto, ON, Canada",
                     ),
                 ),
             ),
@@ -352,7 +352,7 @@ async def test_an_uncapped_pass_reports_nothing_skipped(seeded: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_rescreen_persists_active_location_corrections(db_path: Path) -> None:
+async def test_rescreen_quarantines_a_posting_now_seen_as_international(db_path: Path) -> None:
     from dataclasses import replace
 
     job = replace(
@@ -370,10 +370,9 @@ async def test_rescreen_persists_active_location_corrections(db_path: Path) -> N
         result = await rescreen(repository, now=NOW)
         stored = await repository.get_job(job.id)
 
-    assert result.updated == 1
-    assert result.quarantined == 0
-    assert stored is not None
-    assert stored.location is LocationBucket.INTERNATIONAL
+    assert result.updated == 0
+    assert result.quarantined == 1
+    assert stored is None
 
 
 @pytest.mark.asyncio
