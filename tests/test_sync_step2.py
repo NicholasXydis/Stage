@@ -305,19 +305,19 @@ async def test_a_source_stream_failure_does_not_stop_other_sources() -> None:
             elapsed_ms=0.0,
         )
 
-    failed: list[str] = []
-    stats: list[SourceRunStats] = []
+    ledger = sync_module.RunLedger()
     events = [
         event
         async for event in sync_module._merge(
-            [("broken", broken()), ("healthy", healthy())], failed, stats
+            [("broken", broken()), ("healthy", healthy())], ledger
         )
     ]
+    failed = ledger.failed
 
     assert any(isinstance(event, SourceFailed) for event in events)
     assert any(isinstance(event, SourceFinished) for event in events)
     assert failed == ["broken"]
-    assert stats == [SourceRunStats(source="broken", errors=1)]
+    assert ledger.stats == [SourceRunStats(source="broken", errors=1)]
 
 
 async def test_dry_run_stays_green_when_every_enabled_row_is_routable(

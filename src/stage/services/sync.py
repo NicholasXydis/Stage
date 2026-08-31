@@ -2,7 +2,7 @@ import asyncio
 import random
 import time
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 
 from stage.classify import (
@@ -149,16 +149,7 @@ DAILY_RUNS = 4
 
 
 async def _spent_today(repository: AsyncRepository, since: datetime) -> tuple[dict[str, int], bool]:
-    runs = await repository.run_history(DAILY_RUNS * 4)
-    spent: dict[str, int] = {}
-    seen_any = False
-    for run in runs:
-        if run.started_at < since:
-            continue
-        seen_any = True
-        for entry in run.sources:
-            spent[entry.source] = spent.get(entry.source, 0) + entry.requests
-    return spent, seen_any
+    return await repository.requests_since(since)
 
 
 def _daily_allowance(posture: RatePosture, spent: int, has_history: bool, buckets: int = 1) -> int:
@@ -452,10 +443,35 @@ def _drain(client: HttpClient, source: str) -> list[RequestLogged]:
     ]
 
 
+@dataclass(slots=True)
+class FetchHarvest:
+    collected: list[Job] = field(default_factory=list)
+    closable: list[str] = field(default_factory=list)
+    unchanged: list[str] = field(default_factory=list)
+    skip_urls: set[str] = field(default_factory=set)
+    visits: list[CompanyVisit] = field(default_factory=list)
+    resolved_facets: list[WorkdayFacet] = field(default_factory=list)
+    forgotten_facets: list[WorkdayFacet] = field(default_factory=list)
+    workday_crawls: list[WorkdayCrawlStep] = field(default_factory=list)
+    detail_outcomes: list[DetailFetch] = field(default_factory=list)
+    errors: int = 0
+    deferred_boards: int = 0
+    succeeded: bool = False
+
+
+@dataclass(slots=True)
+class RunLedger:
+    stats: list[SourceRunStats] = field(default_factory=list)
+    failed: list[str] = field(default_factory=list)
+    succeeded: list[bool] = field(default_factory=list)
+    blocked: list[str] = field(default_factory=list)
+    deferred: list[str] = field(default_factory=list)
+    plan_bounds: list[tuple[str, str, int, int]] = field(default_factory=list)
+
+
 async def _merge(
     streams: Sequence[tuple[str, AsyncIterator[SyncEvent]]],
-    failed_sources: list[str],
-    stats: list[SourceRunStats],
+    ledger: "RunLedger",
 ) -> AsyncIterator[SyncEvent]:
     if len(streams) == 1:
         source, stream = streams[0]
@@ -466,8 +482,8 @@ async def _merge(
             raise
         except Exception as stream_exc:
             error = f"{type(stream_exc).__name__}: {stream_exc}"
-            failed_sources.append(source)
-            stats.append(SourceRunStats(source=source, errors=1))
+            ledger.failed.append(source)
+            ledger.stats.append(SourceRunStats(source=source, errors=1))
             yield SourceFailed(source=source, error=error)
         return
 
@@ -494,8 +510,8 @@ async def _merge(
             elif isinstance(item, tuple):
                 source, queued_exc = item
                 error = f"{type(queued_exc).__name__}: {queued_exc}"
-                failed_sources.append(source)
-                stats.append(SourceRunStats(source=source, errors=1))
+                ledger.failed.append(source)
+                ledger.stats.append(SourceRunStats(source=source, errors=1))
                 yield SourceFailed(source=source, error=error)
             else:
                 yield item
@@ -527,6 +543,84 @@ async def _plan_company_source(
             )
 
 
+async def _rehearse_company_source(
+    adapter: Adapter,
+    source_name: str,
+    ordered: Sequence[Company],
+    seed: dict[str, HttpValidator],
+    ledger: "RunLedger",
+    page_budgets: Mapping[str, int],
+    detail_budget: int,
+    source_clock: float,
+) -> AsyncIterator[SyncEvent]:
+    ledger.plan_bounds.extend(
+        _plan_bounds(adapter, source_name, ordered, page_budgets, detail_budget)
+    )
+    async for event in _plan_company_source(adapter, ordered, seed):
+        yield event
+    yield SourceFinished(
+        source=source_name,
+        fetched=0,
+        added=0,
+        updated=0,
+        closed=0,
+        failed_companies=0,
+        elapsed_ms=(time.perf_counter() - source_clock) * 1000,
+    )
+
+
+def _drop_recently_refreshed(
+    adapter: Adapter,
+    companies: Sequence[Company],
+    last_success: Mapping[str, datetime | None],
+    open_crawls: frozenset[str],
+    run_started_at: datetime,
+    window_h: float,
+    skip: bool,
+) -> tuple[list[Company], int]:
+    if skip or window_h <= 0:
+        return list(companies), 0
+    since = run_started_at - timedelta(hours=window_h)
+    kept = [
+        company
+        for company in companies
+        if _safe_board_key(adapter, company) in open_crawls
+        or (seen := last_success.get(_safe_board_key(adapter, company))) is None
+        or seen < since
+    ]
+    return kept, len(companies) - len(kept)
+
+
+def _drop_resting(
+    adapter: Adapter,
+    companies: Sequence[Company],
+    board_visits: Mapping[str, SourceVisit],
+    run_started_at: datetime,
+    skip: bool,
+) -> tuple[list[Company], int]:
+    if skip:
+        return list(companies), 0
+    awake = [
+        company
+        for company in companies
+        if not _is_resting(adapter, company, board_visits, run_started_at)
+    ]
+    return awake, len(companies) - len(awake)
+
+
+async def _persist_source_batch(
+    repository: AsyncRepository,
+    template: SourceBatch,
+    collected: Sequence[Job],
+) -> tuple[SourceBatchResult, float, float]:
+    normalize_clock = time.perf_counter()
+    kept, rejected = await asyncio.to_thread(normalize_batch, list(collected))
+    normalize_ms = (time.perf_counter() - normalize_clock) * 1000
+    write_clock = time.perf_counter()
+    counts = await repository.apply_source_batch(replace(template, jobs=kept, quarantined=rejected))
+    return counts, normalize_ms, (time.perf_counter() - write_clock) * 1000
+
+
 async def _run_company_source(
     repository: AsyncRepository,
     adapter: Adapter,
@@ -534,26 +628,21 @@ async def _run_company_source(
     run_started_at: datetime,
     shuffler: random.Random,
     dry_run: bool,
-    stats: list[SourceRunStats],
-    failed: list[str],
-    succeeded_any: list[bool],
+    ledger: "RunLedger",
     rate_state: Mapping[str, RateState],
-    blocked_sources: list[str],
     budgets: dict[str, HostBudget],
     postures: Mapping[str, RatePosture],
-    plan_bounds: list[tuple[str, str, int, int]],
     force_refresh: bool,
     spent_today: Mapping[str, int],
     has_history: bool,
-    deferred_sources: list[str],
 ) -> AsyncIterator[SyncEvent]:
     source_name = adapter.name
     buckets = _adapter_buckets(adapter, companies)
     block = _active_block(rate_state, buckets, run_started_at)
     if block is not None:
-        blocked_sources.append(source_name)
+        ledger.blocked.append(source_name)
         if not dry_run:
-            stats.append(SourceRunStats(source=source_name, blocked=True))
+            ledger.stats.append(SourceRunStats(source=source_name, blocked=True))
         yield SourceBlocked(
             source=source_name,
             bucket=block.bucket,
@@ -588,28 +677,13 @@ async def _run_company_source(
         if workday_adapter is not None
         else frozenset()
     )
-    refreshed_recently = 0
-    if window_h > 0 and not force_refresh and not dry_run:
-        since = run_started_at - timedelta(hours=window_h)
-        kept_boards = [
-            company
-            for company in ordered
-            if _safe_board_key(adapter, company) in open_crawls
-            or (seen := last_success.get(_safe_board_key(adapter, company))) is None
-            or seen < since
-        ]
-        refreshed_recently = len(ordered) - len(kept_boards)
-        ordered = kept_boards
-
-    resting_boards = 0
-    if not force_refresh and not dry_run:
-        awake = [
-            company
-            for company in ordered
-            if not _is_resting(adapter, company, board_visits, run_started_at)
-        ]
-        resting_boards = len(ordered) - len(awake)
-        ordered = awake
+    skip_refresh = force_refresh or dry_run
+    ordered, refreshed_recently = _drop_recently_refreshed(
+        adapter, ordered, last_success, open_crawls, run_started_at, window_h, skip_refresh
+    )
+    ordered, resting_boards = _drop_resting(
+        adapter, ordered, board_visits, run_started_at, skip_refresh
+    )
 
     seed = dict(await repository.load_validators(source_name))
     resuming_boards: frozenset[str] = frozenset()
@@ -668,41 +742,21 @@ async def _run_company_source(
     detail_queue = await repository.detail_queue(source_name, detail_budget)
 
     if dry_run:
-        plan_bounds.extend(
-            _plan_bounds(
-                adapter,
-                source_name,
-                ordered,
-                page_budgets,
-                detail_budget if is_workday else 0,
-            )
-        )
-        async for event in _plan_company_source(adapter, ordered, seed):
+        async for event in _rehearse_company_source(
+            adapter,
+            source_name,
+            ordered,
+            seed,
+            ledger,
+            page_budgets,
+            detail_budget if is_workday else 0,
+            source_clock,
+        ):
             yield event
-        yield SourceFinished(
-            source=source_name,
-            fetched=0,
-            added=0,
-            updated=0,
-            closed=0,
-            failed_companies=0,
-            elapsed_ms=(time.perf_counter() - source_clock) * 1000,
-        )
         return
 
     cache = ValidatorCache(seed)
-    collected: list[Job] = []
-    closable: list[str] = []
-    unchanged: list[str] = []
-    skip_urls: set[str] = set()
-    visits: list[CompanyVisit] = []
-    resolved_facets: list[WorkdayFacet] = []
-    forgotten_facets: list[WorkdayFacet] = []
-    workday_crawls: list[WorkdayCrawlStep] = []
-    detail_outcomes: list[DetailFetch] = []
-    errors = 0
-    deferred_boards = 0
-    successful_results = False
+    harvest = FetchHarvest()
 
     async with HttpClient(
         allowed_hosts=adapter.hosts_for(ordered),
@@ -732,20 +786,19 @@ async def _run_company_source(
         for company in ordered:
             yield CompanyStarted(source=source_name, company=company.name)
 
-        for company, result, error, elapsed, attempted, unreachable in await asyncio.gather(
-            *pending
-        ):
+        for finished in asyncio.as_completed(pending):
+            company, result, error, elapsed, attempted, unreachable = await finished
             for record in _drain(client, source_name):
                 yield record
             board = _safe_board_key(adapter, company)
             if result is None and not attempted:
-                skip_urls.update(_safe_plan(adapter, company)[0])
-                deferred_boards += 1
+                harvest.skip_urls.update(_safe_plan(adapter, company)[0])
+                harvest.deferred_boards += 1
                 yield CompanyDeferred(source=source_name, company=company.name, reason=error)
             elif result is None:
-                errors += 1
-                skip_urls.update(_safe_plan(adapter, company)[0])
-                visits.append(
+                harvest.errors += 1
+                harvest.skip_urls.update(_safe_plan(adapter, company)[0])
+                harvest.visits.append(
                     CompanyVisit(board=board, succeeded=False, error=error, label=company.name)
                 )
                 yield CompanyFailed(
@@ -756,29 +809,29 @@ async def _run_company_source(
                     unreachable=unreachable,
                 )
             elif result.not_modified:
-                visits.append(CompanyVisit(board=board, succeeded=True, label=company.name))
-                unchanged.append(board)
+                harvest.visits.append(CompanyVisit(board=board, succeeded=True, label=company.name))
+                harvest.unchanged.append(board)
                 yield CompanyUnchanged(source=source_name, company=company.name, elapsed_ms=elapsed)
             else:
-                successful_results = True
-                visits.append(CompanyVisit(board=board, succeeded=True, label=company.name))
-                collected.extend(result.jobs)
-                resolved_facets.extend(
+                harvest.succeeded = True
+                harvest.visits.append(CompanyVisit(board=board, succeeded=True, label=company.name))
+                harvest.collected.extend(result.jobs)
+                harvest.resolved_facets.extend(
                     entry for entry in result.facets if isinstance(entry, WorkdayFacet)
                 )
-                forgotten_facets.extend(
+                harvest.forgotten_facets.extend(
                     entry for entry in result.forgotten_facets if isinstance(entry, WorkdayFacet)
                 )
-                detail_outcomes.extend(
+                harvest.detail_outcomes.extend(
                     entry for entry in result.detail_fetches if isinstance(entry, DetailFetch)
                 )
                 if isinstance(result.workday_crawl, WorkdayCrawlStep):
-                    workday_crawls.append(result.workday_crawl)
+                    harvest.workday_crawls.append(result.workday_crawl)
                 if result.authoritative:
-                    closable.append(board)
+                    harvest.closable.append(board)
                 if result.degraded:
-                    skip_urls.update(_safe_plan(adapter, company)[0])
-                    skip_urls.update(result.stale_urls)
+                    harvest.skip_urls.update(_safe_plan(adapter, company)[0])
+                    harvest.skip_urls.update(result.stale_urls)
                 yield CompanyFinished(
                     source=source_name,
                     company=company.name,
@@ -788,53 +841,49 @@ async def _run_company_source(
                 )
 
         metrics = _client_metrics(client)
-        validators = _keepable_validators(cache, skip_urls)
+        validators = _keepable_validators(cache, harvest.skip_urls)
         settled = _advance_cursor(
             client.rate_state(run_started_at), rotation, rotation_bucket, run_started_at
         )
 
     fetch_ms = (time.perf_counter() - fetch_clock) * 1000
-    normalize_clock = time.perf_counter()
-    kept, rejected = await asyncio.to_thread(normalize_batch, collected)
-    normalize_ms = (time.perf_counter() - normalize_clock) * 1000
-    write_clock = time.perf_counter()
-    counts = await repository.apply_source_batch(
+    counts, normalize_ms, write_ms = await _persist_source_batch(
+        repository,
         SourceBatch(
             source=source_name,
             run_started_at=run_started_at,
-            jobs=kept,
-            closable_boards=tuple(closable),
-            unchanged_boards=tuple(unchanged),
+            jobs=(),
+            closable_boards=tuple(harvest.closable),
+            unchanged_boards=tuple(harvest.unchanged),
             validators=validators,
             rate_state=settled,
-            workday_facets=tuple(resolved_facets),
-            forgotten_facets=tuple(forgotten_facets),
-            workday_crawls=tuple(workday_crawls),
-            detail_fetches=tuple(detail_outcomes),
-            visits=tuple(visits),
-            quarantined=rejected,
+            workday_facets=tuple(harvest.resolved_facets),
+            forgotten_facets=tuple(harvest.forgotten_facets),
+            workday_crawls=tuple(harvest.workday_crawls),
+            detail_fetches=tuple(harvest.detail_outcomes),
+            visits=tuple(harvest.visits),
             resolve_duplicates=resolve_duplicates,
-        )
+        ),
+        harvest.collected,
     )
-    write_ms = (time.perf_counter() - write_clock) * 1000
-    if successful_results or unchanged:
-        succeeded_any.append(True)
-    if errors:
-        failed.append(source_name)
-    if deferred_boards:
-        deferred_sources.append(source_name)
+    if harvest.succeeded or harvest.unchanged:
+        ledger.succeeded.append(True)
+    if harvest.errors:
+        ledger.failed.append(source_name)
+    if harvest.deferred_boards:
+        ledger.deferred.append(source_name)
 
     elapsed_ms = (time.perf_counter() - source_clock) * 1000
-    stats.append(
+    ledger.stats.append(
         replace(
-            _stats(source_name, counts, errors, metrics, elapsed_ms),
-            deferred=len(rotation.deferred) + deferred_boards,
+            _stats(source_name, counts, harvest.errors, metrics, elapsed_ms),
+            deferred=len(rotation.deferred) + harvest.deferred_boards,
         )
     )
     yield _finished(
         source_name,
         counts,
-        errors,
+        harvest.errors,
         metrics,
         elapsed_ms,
         fetch_ms=fetch_ms,
@@ -849,21 +898,17 @@ async def _run_feed_source(
     run_started_at: datetime,
     shuffler: random.Random,
     dry_run: bool,
-    stats: list[SourceRunStats],
-    failed: list[str],
-    succeeded_any: list[bool],
+    ledger: "RunLedger",
     rate_state: Mapping[str, RateState],
-    blocked_sources: list[str],
     budgets: dict[str, HostBudget],
     postures: Mapping[str, RatePosture],
-    plan_bounds: list[tuple[str, str, int, int]],
 ) -> AsyncIterator[SyncEvent]:
     source_name = feed.name
     block = _active_block(rate_state, _bucket_keys(feed.hosts, feed.bucket_key), run_started_at)
     if block is not None:
-        blocked_sources.append(source_name)
+        ledger.blocked.append(source_name)
         if not dry_run:
-            stats.append(SourceRunStats(source=source_name, blocked=True))
+            ledger.stats.append(SourceRunStats(source=source_name, blocked=True))
         yield SourceBlocked(
             source=source_name,
             bucket=block.bucket,
@@ -883,7 +928,7 @@ async def _run_feed_source(
     if dry_run:
         planned_urls = feed.plan(run_started_at)
         for bucket in _bucket_keys(feed.hosts, feed.bucket_key):
-            plan_bounds.append((bucket, source_name, len(planned_urls), len(planned_urls)))
+            ledger.plan_bounds.append((bucket, source_name, len(planned_urls), len(planned_urls)))
         for url in planned_urls:
             cached = seed.get(url)
             has_validator = cached is not None and cached.usable
@@ -965,18 +1010,14 @@ async def _run_feed_source(
         settled = client.rate_state(run_started_at)
 
     fetch_ms = (time.perf_counter() - fetch_clock) * 1000
-    normalize_clock = time.perf_counter()
-    kept, rejected = await asyncio.to_thread(normalize_batch, collected)
-    normalize_ms = (time.perf_counter() - normalize_clock) * 1000
-    write_clock = time.perf_counter()
-    counts = await repository.apply_source_batch(
+    counts, normalize_ms, write_ms = await _persist_source_batch(
+        repository,
         SourceBatch(
             source=source_name,
             run_started_at=run_started_at,
-            jobs=kept,
+            jobs=(),
             validators=validators,
             rate_state=settled,
-            quarantined=rejected,
             resolve_duplicates=resolve_duplicates,
             closes_whole_source=authoritative and not incomplete and not unchanged,
             visits=(
@@ -987,16 +1028,16 @@ async def _run_feed_source(
                     label=label,
                 ),
             ),
-        )
+        ),
+        collected,
     )
-    write_ms = (time.perf_counter() - write_clock) * 1000
     if not errors:
-        succeeded_any.append(True)
+        ledger.succeeded.append(True)
     else:
-        failed.append(source_name)
+        ledger.failed.append(source_name)
 
     elapsed_ms = (time.perf_counter() - source_clock) * 1000
-    stats.append(_stats(source_name, counts, errors, metrics, elapsed_ms))
+    ledger.stats.append(_stats(source_name, counts, errors, metrics, elapsed_ms))
     yield _finished(
         source_name,
         counts,
@@ -1107,16 +1148,11 @@ async def sync(
             platforms=tuple(sorted({company.platform.value for company in unroutable})),
         )
 
-    stats: list[SourceRunStats] = []
-    failed_sources: list[str] = []
-    succeeded_any: list[bool] = []
-    blocked_sources: list[str] = []
-    deferred_sources: list[str] = []
+    ledger = RunLedger()
 
     rate_state = await repository.load_rate_state()
     spent_today, has_history = await _spent_today(repository, run_started_at - timedelta(hours=24))
     budgets: dict[str, HostBudget] = {}
-    plan_bounds: list[tuple[str, str, int, int]] = []
     postures = _bucket_postures(grouped, feeds)
 
     streams: list[tuple[str, AsyncIterator[SyncEvent]]] = [
@@ -1129,18 +1165,13 @@ async def sync(
                 run_started_at,
                 shuffler,
                 dry_run,
-                stats,
-                failed_sources,
-                succeeded_any,
+                ledger,
                 rate_state,
-                blocked_sources,
                 budgets,
                 postures,
-                plan_bounds,
                 force_refresh,
                 spent_today,
                 has_history,
-                deferred_sources,
             ),
         )
         for name in sorted(grouped)
@@ -1154,48 +1185,44 @@ async def sync(
                 run_started_at,
                 shuffler,
                 dry_run,
-                stats,
-                failed_sources,
-                succeeded_any,
+                ledger,
                 rate_state,
-                blocked_sources,
                 budgets,
                 postures,
-                plan_bounds,
             ),
         )
         for name in sorted(feeds)
     )
 
-    async for event in _merge(streams, failed_sources, stats):
+    async for event in _merge(streams, ledger):
         yield event
 
     if dry_run:
-        for event in _bucket_plans(plan_bounds, postures):
+        for event in _bucket_plans(ledger.plan_bounds, postures):
             yield event
         yield SyncFinished(
             outcome=(
                 SyncOutcome.PARTIAL
-                if failed_sources or unroutable or blocked_sources
+                if ledger.failed or unroutable or ledger.blocked
                 else SyncOutcome.SUCCESS
             ),
             added=0,
             updated=0,
             closed=0,
-            failed_sources=tuple(failed_sources),
+            failed_sources=tuple(ledger.failed),
             elapsed_ms=(time.perf_counter() - run_clock) * 1000,
             dry_run=True,
         )
         return
 
-    if not succeeded_any and (failed_sources or blocked_sources):
+    if not ledger.succeeded and (ledger.failed or ledger.blocked):
         outcome_status = SyncOutcome.FAILURE
-    elif failed_sources or unroutable or blocked_sources or deferred_sources:
+    elif ledger.failed or unroutable or ledger.blocked or ledger.deferred:
         outcome_status = SyncOutcome.PARTIAL
     else:
         outcome_status = SyncOutcome.SUCCESS
     partial_reason = (
-        _partial_reason(failed_sources, unroutable, blocked_sources, deferred_sources)
+        _partial_reason(ledger.failed, unroutable, ledger.blocked, ledger.deferred)
         if outcome_status is not SyncOutcome.SUCCESS
         else ""
     )
@@ -1210,19 +1237,19 @@ async def sync(
             started_at=run_started_at,
             finished_at=now_fn(),
             outcome=outcome_status,
-            sources=tuple(stats),
+            sources=tuple(ledger.stats),
         )
     )
     yield SyncFinished(
         outcome=outcome_status,
-        added=sum(item.added for item in stats),
-        updated=sum(item.updated for item in stats),
-        closed=sum(item.closed for item in stats),
-        quarantined=sum(item.quarantined for item in stats),
+        added=sum(item.added for item in ledger.stats),
+        updated=sum(item.updated for item in ledger.stats),
+        closed=sum(item.closed for item in ledger.stats),
+        quarantined=sum(item.quarantined for item in ledger.stats),
         purged=purged.purged,
-        failed_sources=tuple(failed_sources),
+        failed_sources=tuple(ledger.failed),
         elapsed_ms=(time.perf_counter() - run_clock) * 1000,
-        requests=sum(item.requests for item in stats),
-        not_modified=sum(item.not_modified for item in stats),
+        requests=sum(item.requests for item in ledger.stats),
+        not_modified=sum(item.not_modified for item in ledger.stats),
         partial_reason=partial_reason,
     )
