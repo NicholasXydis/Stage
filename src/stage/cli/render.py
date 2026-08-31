@@ -172,6 +172,7 @@ def render_rate_state(
 
 
 NARROW_COLUMNS = 70
+CACHE_RATIO_MINIMUM = 20
 
 
 def _age_style(first_seen: datetime, now: datetime) -> tuple[str, str]:
@@ -1033,11 +1034,16 @@ async def render_sync(
                 shared = f" ({', '.join(bound.sources)})" if len(bound.sources) > 1 else ""
                 open_tag = "[yellow]" if bound.exceeds_ceiling else "[dim]"
                 close_tag = "[/yellow]" if bound.exceeds_ceiling else "[/dim]"
+                if bound.exceeds_ceiling and bound.planned > 1:
+                    detail = (
+                        f", worst case {bound.worst_case} against a ceiling of "
+                        f"{bound.ceiling} (the ceiling stops the run early)"
+                    )
+                else:
+                    detail = ""
                 console.print(
                     f"  {open_tag}bucket {bound.bucket}{close_tag}{shared} — "
-                    f"{bound.planned} planned, "
-                    f"worst case {bound.worst_case} against a ceiling of {bound.ceiling}"
-                    f"{' (the ceiling stops the run early)' if bound.exceeds_ceiling else ''}"
+                    f"{bound.planned} planned{detail}"
                 )
             case SourceBlocked() as blocked:
                 console.print(
@@ -1140,10 +1146,10 @@ async def render_sync(
                 outcome = finished.outcome
                 cache_note = ""
                 if finished.requests:
-                    ratio = finished.not_modified / finished.requests
-                    cache_note = (
-                        f", {finished.not_modified}/{finished.requests} cached ({ratio:.0%})"
-                    )
+                    cache_note = f", {finished.not_modified}/{finished.requests} cached"
+                    if finished.requests >= CACHE_RATIO_MINIMUM:
+                        ratio = finished.not_modified / finished.requests
+                        cache_note += f" ({ratio:.0%})"
                 purge_note = f", {finished.purged} purged" if finished.purged else ""
                 quarantine_note = ""
                 if finished.quarantined:
@@ -1208,7 +1214,8 @@ async def render_discovery(
         console.print(f"\n[bold green]{sanitize(name)}[/bold green] -> {candidate.label}")
         if note:
             console.print(f"  [dim]{sanitize(note)}[/dim]")
-        console.print("\n[dim]Paste into data/companies.yaml:[/dim]")
+        letter = next((c for c in name.lower() if c.isalpha()), "a")
+        console.print(f"\n[dim]Paste into src/stage/data/companies/{letter}.yaml:[/dim]")
         entry = registry_entry_yaml(to_company(name, candidate, verified_on=verified_on))
         for line in entry.splitlines():
             console.print(plain(f"  {line}"), highlight=False)
@@ -1272,8 +1279,9 @@ def _show_custom_skeleton(console: Console, url: str, display_name: str | None) 
     console.print(
         "\n[dim]If that page fills itself in from a JSON request, this is "
         "[bold]custom_json[/bold]. Open DevTools, filter Fetch/XHR, reload the page, and copy "
-        "the request that returns the job list. Then paste this into data/companies.yaml, with "
-        "the field names taken from that response:[/dim]"
+        "the request that returns the job list. Then paste this into the registry file for that "
+        "company's first letter, under src/stage/data/companies/, with the field names taken "
+        "from that response:[/dim]"
     )
     for line in (
         f"- name: {display_name or 'REPLACE ME'}",

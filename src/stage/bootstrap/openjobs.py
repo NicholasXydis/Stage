@@ -383,7 +383,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         sys.stdout.write(
             f"\nwrote {len(report.resolved) + len(mined)} candidate row(s) to {args.emit_yaml}\n"
-            "Review before merging into data/companies.yaml — ats_links go stale.\n"
+            "Review before merging into src/stage/data/companies/ — ats_links go stale.\n"
         )
     return 0
 
