@@ -133,7 +133,14 @@ def test_a_real_web_url_still_becomes_a_hyperlink() -> None:
     import io
 
     buffer = io.StringIO()
-    console = Console(file=buffer, force_terminal=True, width=200, legacy_windows=False)
+    console = Console(
+        file=buffer,
+        force_terminal=True,
+        width=200,
+        legacy_windows=False,
+        color_system="truecolor",
+        no_color=False,
+    )
     render_jobs(
         console,
         [_job()],

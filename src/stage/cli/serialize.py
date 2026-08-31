@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Sequence
 from dataclasses import asdict
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 if TYPE_CHECKING:
     from stage.cli.schedule import ScheduleStatus
@@ -43,14 +43,20 @@ def jobs_to_json(jobs: Sequence[Job]) -> str:
     return dump([asdict(job) for job in jobs])
 
 
+def _posting_payload(detail: "PostingDetail") -> dict[str, Any]:
+    return {
+        "job": asdict(detail.job),
+        "canonical": asdict(detail.canonical) if detail.canonical else None,
+        "duplicates": [asdict(job) for job in detail.duplicates],
+    }
+
+
 def posting_to_json(detail: "PostingDetail") -> str:
-    return dump(
-        {
-            "job": asdict(detail.job),
-            "canonical": asdict(detail.canonical) if detail.canonical else None,
-            "duplicates": [asdict(job) for job in detail.duplicates],
-        }
-    )
+    return dump(_posting_payload(detail))
+
+
+def postings_to_json(details: Sequence["PostingDetail"]) -> str:
+    return dump([_posting_payload(detail) for detail in details])
 
 
 def quarantine_to_json(entries: Sequence[QuarantinedJob]) -> str:

@@ -1,14 +1,16 @@
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import Annotated, Any
 
 import typer
 
 from stage.cli.options import (
+    WORD,
     DatabaseOption,
     InvalidOptionError,
     RegistryOption,
     _adopt_unregistered,
+    _count,
     _lock_path,
     _parse_enum,
     _print_failure,
@@ -17,35 +19,38 @@ from stage.cli.options import (
     run_async,
 )
 
-if TYPE_CHECKING:
-    pass
 
-
-@app.command(help="Find the job-board platform a company uses")
+@app.command(
+    help="Find the job-board platform a company uses", rich_help_panel="Registry and maintenance"
+)
 def discover(
     companies: Annotated[
         list[str] | None,
-        typer.Argument(help="Company names to probe"),
+        typer.Argument(metavar="NAME...", click_type=WORD, help="Company names to probe"),
     ] = None,
     url: Annotated[
         str | None,
         typer.Option(
             "--url",
+            metavar="URL",
             help="Extract the platform from a careers URL without fetching that URL",
         ),
     ] = None,
     name: Annotated[
         str | None,
-        typer.Option("--name", help="Company name to show with --url"),
+        typer.Option("--name", metavar="NAME", help="Company name to show with --url"),
     ] = None,
     platform: Annotated[
         list[str] | None,
-        typer.Option("--platform", help="Probe only these platform adapters; repeatable"),
+        typer.Option(
+            "--platform", metavar="PLATFORM", help="Probe only these platform adapters; repeatable"
+        ),
     ] = None,
     exclude: Annotated[
         list[str] | None,
         typer.Option(
             "--exclude",
+            metavar="NAME",
             help="Skip these platform adapters while probing; repeatable",
         ),
     ] = None,
@@ -53,6 +58,7 @@ def discover(
         list[str] | None,
         typer.Option(
             "--company",
+            metavar="NAME",
             help="With --verify, recheck only these registry companies; repeatable",
         ),
     ] = None,
@@ -60,6 +66,7 @@ def discover(
         str | None,
         typer.Option(
             "--expect-size",
+            metavar="SIZE",
             help="Optional employer-size hint: startup, mid, large",
         ),
     ] = None,
@@ -67,6 +74,7 @@ def discover(
         Path | None,
         typer.Option(
             "--request-log",
+            metavar="FILE",
             help="Write outbound HTTP requests to this JSON Lines file",
         ),
     ] = None,
@@ -106,11 +114,15 @@ def discover(
         int,
         typer.Option(
             "--limit",
-            min=1,
-            max=2000,
+            metavar="N",
+            click_type=_count(1, 2000),
             help="Maximum unregistered company names to probe",
         ),
     ] = 40,
+    show_all: Annotated[
+        bool,
+        typer.Option("--all", help="List every result instead of the first few"),
+    ] = False,
     db: DatabaseOption = None,
     apply: Annotated[
         bool,
@@ -123,10 +135,8 @@ def discover(
 ) -> None:
     from contextlib import ExitStack
 
-    from rich.console import Console
-
     from stage.cli.logfile import open_request_log
-    from stage.cli.render import failure, plain, render_discovery
+    from stage.cli.render import failure, plain, render_discovery, terminal
     from stage.cli.runlock import AnotherRunInProgressError, single_run
     from stage.cli.schedule_state import ScheduleStateWriter
     from stage.companies import RegistryError
@@ -134,7 +144,7 @@ def discover(
     from stage.domain import DiscoveryEvent, DiscoveryFinished, EmployerSize, Platform
     from stage.services.discover import NoMatchingCompanyError
 
-    console = Console()
+    console = terminal()
     scheduled_state = (
         ScheduleStateWriter.open(scheduled_progress, "discover")
         if scheduled_progress is not None
@@ -246,6 +256,7 @@ def discover(
                     today=today,
                     stream=stream,
                     progress=progress,
+                    show_all=show_all,
                 )
                 if scheduled_state is not None:
                     scheduled_state.heartbeat()

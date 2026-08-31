@@ -107,3 +107,7 @@ __all__ = [
     "truncate",
     "web_url",
 ]
+
+
+def escape_markup(value: str) -> str:
+    return sanitize(value).replace("\\", "\\\\").replace("[", "\\[")
