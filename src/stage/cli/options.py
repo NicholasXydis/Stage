@@ -512,10 +512,11 @@ _HELP_GUIDE = (
     "  stage open 3 5 9                    Open those rows in a browser\n"
     "  stage export --format csv           Save every match to a file\n"
     "\nFilters, on list, search, and export:\n"
-    "  stage list --role swe --location montreal\n"
-    '  stage search "python" --term summer-2027 --lang en\n'
-    "  stage export --format csv --role ml-ai --last 90 --all\n"
-    "  stage list --last 0                 Ignore the 14-day window entirely\n"
+    "  stage list --role swe --last 90     Filters combine\n"
+    '  stage search "python" --lang en     Quote a phrase\n'
+    "  stage export --format csv --all     Every match, no cap\n"
+    "  stage list --last 0                 No 14-day window\n"
+    "\n"
     "  [--role --location --term --lang --source --company --new --all --last]\n"
     "\nHealth and maintenance:\n"
     "  stage doctor                        Database and source health\n"
