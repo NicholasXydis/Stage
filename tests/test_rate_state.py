@@ -1,3 +1,4 @@
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from stage.domain import (
     decay,
 )
 from stage.http import BucketBlockedError, HostBudget, HttpClient, RatePosture, profile
-from stage.http.client import MAX_INTERVAL_S
+from stage.http.client import MAX_DEFERRAL_S, MAX_INTERVAL_S
 from stage.storage import SourceBatch, open_repository
 
 WORKDAY_BASELINE = 1.5
@@ -656,3 +657,175 @@ def test_jitter_can_be_switched_off_for_a_deterministic_test() -> None:
 
     paced = {client._paced(budget) for _ in range(10)}
     assert paced == {budget.stride}, "jitter off means exactly the configured stride"
+
+
+@respx.mock
+async def test_a_long_retry_after_stops_the_run_not_just_the_next_request() -> None:
+    calls = {"n": 0}
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(429, headers={"Retry-After": "3600"}, json={})
+
+    respx.get("https://slow.example/a").mock(side_effect=refuse)
+    respx.get("https://slow.example/b").mock(side_effect=refuse)
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"slow.example"}),
+        posture=RatePosture(concurrency=2, min_interval_s=0.0, max_requests_per_run=50),
+        bucket_key="slow.example",
+        now=datetime.now(UTC),
+    ) as client:
+        for path in ("a", "b", "a", "b", "a", "b"):
+            with suppress(Exception):
+                await client.get_json(f"https://slow.example/{path}")
+
+    assert calls["n"] == 1
+
+
+@respx.mock
+async def test_a_github_reset_header_is_honoured_without_retry_after() -> None:
+    calls = {"n": 0}
+    reset = int(datetime.now(UTC).timestamp()) + 3600
+
+    def limited(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(
+            429,
+            headers={"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(reset)},
+            json={},
+        )
+
+    respx.get("https://api.github.example/x").mock(side_effect=limited)
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"api.github.example"}),
+        posture=RatePosture(concurrency=2, min_interval_s=0.0, max_requests_per_run=50),
+        bucket_key="api.github.example",
+        now=datetime.now(UTC),
+    ) as client:
+        for _ in range(5):
+            with suppress(Exception):
+                await client.get_json("https://api.github.example/x")
+
+    assert calls["n"] == 1
+
+
+@respx.mock
+async def test_a_reset_header_with_requests_left_is_not_a_cooldown() -> None:
+    calls = {"n": 0}
+    reset = int(datetime.now(UTC).timestamp()) + 3600
+
+    def flaky(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(
+            503,
+            headers={"X-RateLimit-Remaining": "42", "X-RateLimit-Reset": str(reset)},
+            json={},
+        )
+
+    respx.get("https://api.github.example/y").mock(side_effect=flaky)
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"api.github.example"}),
+        posture=RatePosture(concurrency=1, min_interval_s=0.0, max_requests_per_run=50),
+        bucket_key="api.github.example",
+        now=datetime.now(UTC),
+    ) as client:
+        with suppress(Exception):
+            await client.get_json("https://api.github.example/y")
+
+    assert calls["n"] > 1
+
+
+def _limited(reset: str, remaining: str | None) -> httpx.Response:
+    headers = {"X-RateLimit-Reset": reset}
+    if remaining is not None:
+        headers["X-RateLimit-Remaining"] = remaining
+    return httpx.Response(429, headers=headers, json={})
+
+
+@respx.mock
+async def test_a_reset_header_without_a_remaining_count_is_not_a_cooldown() -> None:
+    calls = {"n": 0}
+    reset = str(int(datetime.now(UTC).timestamp()) + 3600)
+
+    def limited(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return _limited(reset, None)
+
+    respx.get("https://api.github.example/z").mock(side_effect=limited)
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"api.github.example"}),
+        posture=RatePosture(concurrency=1, min_interval_s=0.0, max_requests_per_run=50),
+        bucket_key="api.github.example",
+        now=datetime.now(UTC),
+    ) as client:
+        with suppress(Exception):
+            await client.get_json("https://api.github.example/z")
+
+    assert calls["n"] > 1
+
+
+@respx.mock
+async def test_a_blank_remaining_count_is_not_a_cooldown() -> None:
+    calls = {"n": 0}
+    reset = str(int(datetime.now(UTC).timestamp()) + 3600)
+
+    def limited(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return _limited(reset, "")
+
+    respx.get("https://api.github.example/blank").mock(side_effect=limited)
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"api.github.example"}),
+        posture=RatePosture(concurrency=1, min_interval_s=0.0, max_requests_per_run=50),
+        bucket_key="api.github.example",
+        now=datetime.now(UTC),
+    ) as client:
+        with suppress(Exception):
+            await client.get_json("https://api.github.example/blank")
+
+    assert calls["n"] > 1
+
+
+def test_a_reset_expressed_as_seconds_remaining_is_read_as_a_delay() -> None:
+    assert HttpClient._retry_after_raw(_limited("60", "0")) == pytest.approx(60.0)
+
+
+def test_a_reset_expressed_in_milliseconds_is_not_a_thousand_year_block() -> None:
+    when = (datetime.now(UTC).timestamp() + 300) * 1000
+    seconds = HttpClient._retry_after_raw(_limited(str(when), "0"))
+    assert seconds is not None
+    assert seconds == pytest.approx(300.0, abs=5.0)
+
+
+@pytest.mark.parametrize("reset", ["abc", "-5", "9" * 20])
+def test_an_unreadable_reset_is_ignored(reset: str) -> None:
+    assert HttpClient._retry_after_raw(_limited(reset, "0")) is None
+
+
+def test_retry_after_outranks_a_reset_header() -> None:
+    response = httpx.Response(
+        429,
+        headers={
+            "Retry-After": "30",
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": str(int(datetime.now(UTC).timestamp()) + 9999),
+        },
+        json={},
+    )
+    assert HttpClient._retry_after_raw(response) == pytest.approx(30.0)
+
+
+def test_an_absurd_cooldown_cannot_outlive_the_ceiling() -> None:
+    budget = HostBudget(
+        posture=RatePosture(concurrency=1, min_interval_s=0.0, max_requests_per_run=5)
+    )
+    budget.defer_for(999_999_999.0, "absurd")
+    assert budget.deferred_s == MAX_DEFERRAL_S
+
+    settled = budget.settle("absurd.example", datetime.now(UTC))
+    assert settled.blocked_until is not None

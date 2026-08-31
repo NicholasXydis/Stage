@@ -198,7 +198,7 @@ def test_a_broken_registry_is_reported_even_while_another_run_holds_the_lock(
 ) -> None:
     from typer.testing import CliRunner
 
-    from stage.cli.options import app
+    from stage.cli.app import app
 
     registry = tmp_path / "companies.yaml"
     registry.write_text(
@@ -294,3 +294,52 @@ def test_a_single_bucket_source_is_unchanged_by_the_span() -> None:
     assert _daily_allowance(posture, spent, True) == _daily_allowance(
         posture, spent, True, buckets=1
     ), "the default must behave exactly as a one-bucket source"
+
+
+async def test_more_than_sixteen_runs_in_a_day_still_count(tmp_path: Path) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from stage.domain import SourceRunStats, SyncOutcome, SyncRun
+    from stage.services.sync import _spent_today
+    from stage.storage import open_repository
+
+    now = datetime.now(UTC)
+    async with open_repository(tmp_path / "budget.db") as repository:
+        for index in range(25):
+            started = now - timedelta(minutes=25 - index)
+            await repository.record_sync_run(
+                SyncRun(
+                    started_at=started,
+                    finished_at=started + timedelta(seconds=30),
+                    outcome=SyncOutcome.SUCCESS,
+                    sources=(SourceRunStats(source="greenhouse", requests=10),),
+                )
+            )
+        spent, seen = await _spent_today(repository, now - timedelta(hours=24))
+
+    assert seen
+    assert spent["greenhouse"] == 250
+
+
+async def test_yesterdays_requests_do_not_count_against_today(tmp_path: Path) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from stage.domain import SourceRunStats, SyncOutcome, SyncRun
+    from stage.services.sync import _spent_today
+    from stage.storage import open_repository
+
+    now = datetime.now(UTC)
+    async with open_repository(tmp_path / "old.db") as repository:
+        for offset in (timedelta(days=2), timedelta(minutes=5)):
+            started = now - offset
+            await repository.record_sync_run(
+                SyncRun(
+                    started_at=started,
+                    finished_at=started + timedelta(seconds=30),
+                    outcome=SyncOutcome.SUCCESS,
+                    sources=(SourceRunStats(source="greenhouse", requests=7),),
+                )
+            )
+        spent, _ = await _spent_today(repository, now - timedelta(hours=24))
+
+    assert spent["greenhouse"] == 7

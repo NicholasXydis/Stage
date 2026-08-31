@@ -14,15 +14,21 @@ from urllib.parse import urlsplit
 import httpx
 from tenacity import AsyncRetrying, RetryCallState, stop_after_attempt, wait_exponential_jitter
 
+from stage import __version__
 from stage.domain import RateState, block_duration, decay
 from stage.http.breaker import CircuitBreaker
 from stage.http.cache import ValidatorCache
 from stage.http.profiles import RatePosture
 
-USER_AGENT = "stage-cli/0.1.0 (+https://github.com/NicholasXydis/stage; internship aggregator)"
+USER_AGENT = (
+    f"stage-cli/{__version__} (+https://github.com/NicholasXydis/Stage; internship aggregator)"
+)
 TEXT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 MAX_RESPONSE_BYTES = 64 * 1024 * 1024
 MAX_RETRY_AFTER_S = 60.0
+MAX_DEFERRAL_S = 86400.0
+RESET_AS_EPOCH_S = 1_000_000.0
+RESET_AS_EPOCH_MS = 100_000_000_000.0
 MAX_INTERVAL_S = 10.0
 MIN_TIGHTEN_FLOOR_S = 0.25
 MAX_ATTEMPTS = 3
@@ -57,6 +63,10 @@ class HostNotAllowedError(HttpError):
 
 
 class HostBudgetExceededError(HttpError):
+    pass
+
+
+class UnreadablePayloadError(HttpError, ValueError):
     pass
 
 
@@ -161,8 +171,9 @@ class HostBudget:
         return self.min_interval_s / max(1, self.posture.concurrency)
 
     def defer_for(self, seconds: float, reason: str) -> None:
-        if seconds > self.deferred_s:
-            self.deferred_s = seconds
+        capped = min(seconds, MAX_DEFERRAL_S)
+        if capped > self.deferred_s:
+            self.deferred_s = capped
             self.deferred_reason = reason
 
     def tighten(self, factor: float, *, rejected: bool = False) -> None:
@@ -347,6 +358,11 @@ class HttpClient:
                 f"{bucket} is blocked for another "
                 f"{blocking.blocks_remaining_s(self._now):.0f}s ({blocking.reason})"
             )
+        if budget.deferred_s > 0:
+            raise BucketBlockedError(
+                f"{bucket} asked to be left alone for {budget.deferred_s:.0f}s "
+                f"({budget.deferred_reason}); nothing further is sent this run"
+            )
         barred = not budget.breaker.allows() if claim_probe else budget.breaker.is_open()
         if barred:
             raise BreakerOpenError(
@@ -384,10 +400,37 @@ class HttpClient:
             raise
 
     @staticmethod
+    def _reset_seconds(value: float, now: float) -> float | None:
+        if value < RESET_AS_EPOCH_S:
+            return value
+        if value < RESET_AS_EPOCH_MS:
+            return value - now
+        if value < RESET_AS_EPOCH_MS * 1000:
+            return value / 1000 - now
+        return None
+
+    @staticmethod
+    def _rate_limit_reset(response: httpx.Response) -> float | None:
+        remaining = response.headers.get("x-ratelimit-remaining")
+        reset = response.headers.get("x-ratelimit-reset")
+        if reset is None or remaining is None or remaining.strip() != "0":
+            return None
+        try:
+            value = float(reset)
+        except ValueError:
+            return None
+        if value < 0:
+            return None
+        seconds = HttpClient._reset_seconds(value, datetime.now(UTC).timestamp())
+        if seconds is None or seconds <= 0:
+            return None
+        return seconds
+
+    @staticmethod
     def _retry_after_raw(response: httpx.Response) -> float | None:
         raw = response.headers.get("retry-after")
         if not raw:
-            return None
+            return HttpClient._rate_limit_reset(response)
         try:
             return max(0.0, float(raw))
         except ValueError:
@@ -565,9 +608,19 @@ class HttpClient:
             budget.metrics.failures += 1
             budget.last_error = f"HTTP {response.status_code}"
             raise HttpStatusError(bucket, response)
+        try:
+            payload = (
+                content.decode("utf-8", "replace") if decode == "text" else json.loads(content)
+            )
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            budget.metrics.failures += 1
+            budget.breaker.record_failure()
+            budget.last_error = f"{response.status_code} carried unreadable {decode}"
+            raise UnreadablePayloadError(
+                f"{bucket} answered {response.status_code} with unreadable {decode}; "
+                "a challenge or error page is the usual cause"
+            ) from exc
         budget.breaker.record_success()
-
-        payload = content.decode("utf-8", "replace") if decode == "text" else json.loads(content)
         if method == "GET":
             self._cache.record(key, response.headers, datetime.now(UTC))
         return JsonResponse(status=response.status_code, payload=payload, not_modified=False)
@@ -623,6 +676,8 @@ class HttpClient:
         def should_retry(state: RetryCallState) -> bool:
             outcome = state.outcome
             if outcome is None or not outcome.failed:
+                return False
+            if budget.deferred_s > 0:
                 return False
             return isinstance(outcome.exception(), RetryableStatusError | httpx.TransportError)
 

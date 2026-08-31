@@ -17,6 +17,7 @@ from stage.http.client import (
     RequestRecord,
     ResponseTooLargeError,
     RetryableStatusError,
+    UnreadablePayloadError,
 )
 from stage.http.profiles import (
     CEILING_BACKSTOP,
@@ -48,6 +49,7 @@ __all__ = [
     "RatePosture",
     "RequestRecord",
     "ResponseTooLargeError",
+    "UnreadablePayloadError",
     "RetryableStatusError",
     "UnknownProfileError",
     "ValidatorCache",

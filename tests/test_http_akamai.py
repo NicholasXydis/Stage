@@ -8,6 +8,7 @@ import respx
 from stage.domain import RateState
 from stage.http import (
     BreakerOpenError,
+    BucketBlockedError,
     ForbiddenError,
     HostBudget,
     HttpClient,
@@ -135,9 +136,9 @@ async def test_a_403_stops_requests_that_were_already_scheduled() -> None:
         )
 
     forbidden = [r for r in results if isinstance(r, ForbiddenError)]
-    stopped = [r for r in results if isinstance(r, BreakerOpenError)]
+    stopped = [r for r in results if isinstance(r, BreakerOpenError | BucketBlockedError)]
 
-    assert route.call_count < 8, "the breaker must stop siblings that already reserved"
+    assert route.call_count < 8, "the denial must stop siblings that already reserved"
     assert forbidden and stopped
     assert route.call_count == len(forbidden)
 
