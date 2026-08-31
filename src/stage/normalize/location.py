@@ -192,6 +192,31 @@ def _scope(segments: list[_Segment]) -> RemoteScope | None:
     return RemoteScope.UNSPECIFIED
 
 
+_MULTI_SITE_SUFFIX = re.compile(r"\s*\+\s*\d+\s*$")
+
+
+def display_location(raw: str) -> str:
+    if not raw or not raw.strip():
+        return ""
+
+    aliases = location_lexicon().city_aliases
+    first = _MULTI_SITE_SUFFIX.sub("", _SEGMENT_SPLIT.split(raw)[0].strip())
+    if not first:
+        return raw.strip()
+
+    others = len([part for part in _SEGMENT_SPLIT.split(raw)[1:] if part.strip()])
+    more = f" +{others}" if others else ""
+
+    fields = [field.strip() for field in first.split(",") if field.strip()]
+    if not fields:
+        return raw.strip()
+
+    canonical = aliases.get(fold(fields[0]))
+    if canonical is None:
+        return f"{first}{more}"
+    return ", ".join([canonical, *fields[1:]]) + more
+
+
 def resolve_location(raw: str) -> ResolvedLocation:
     if not raw or not raw.strip():
         return ResolvedLocation()

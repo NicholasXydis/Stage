@@ -104,6 +104,26 @@ def _folded_set(payload: dict[str, Any], key: str, source: str) -> frozenset[str
     return frozenset(tokens)
 
 
+def _folded_aliases(payload: dict[str, Any], key: str, source: str) -> dict[str, str]:
+    raw = payload.get(key)
+    if not isinstance(raw, dict) or not raw:
+        raise LexiconError(f"{source}: {key!r} must be a non-empty mapping")
+    aliases: dict[str, str] = {}
+    for canonical, spellings in raw.items():
+        if not isinstance(canonical, str) or not canonical.strip():
+            raise LexiconError(_not_a_string(source, key, canonical))
+        if not isinstance(spellings, list) or not spellings:
+            raise LexiconError(f"{source}: {canonical!r} must list at least one spelling")
+        for entry in spellings:
+            if not isinstance(entry, str):
+                raise LexiconError(_not_a_string(source, key, entry))
+            folded = fold(entry)
+            if not folded:
+                raise LexiconError(f"{source}: {entry!r} folds to nothing")
+            aliases[folded] = canonical
+    return aliases
+
+
 def _folded_phrases(payload: dict[str, Any], key: str, source: str) -> frozenset[str]:
     raw = payload.get(key)
     if not isinstance(raw, list) or not raw:
@@ -135,6 +155,7 @@ class LocationLexicon:
     usa_country: frozenset[str]
     international: frozenset[str]
     international_cities: frozenset[str]
+    city_aliases: dict[str, str]
     remote: frozenset[str]
     hybrid: frozenset[str]
 
@@ -311,6 +332,7 @@ def location_lexicon() -> LocationLexicon:
         usa_country=_folded_phrases(payload, "usa_country", source),
         international=_folded_phrases(payload, "international", source),
         international_cities=_folded_phrases(payload, "international_cities", source),
+        city_aliases=_folded_aliases(payload, "city_aliases", source),
         remote=_folded_phrases(payload, "remote", source),
         hybrid=_folded_phrases(payload, "hybrid", source),
     )

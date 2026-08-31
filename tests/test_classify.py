@@ -754,3 +754,46 @@ def test_a_normal_category_still_leaves_the_structured_type_alone() -> None:
     assert screen_internship(
         "Software Dev Engineer Intern", "FullTime", "Software Development"
     ).is_internship
+
+
+def test_a_leading_qualifier_outranks_a_generic_engineering_phrase() -> None:
+    from stage.classify.role import classify_role
+
+    assert classify_role("Machine Learning Software Engineer Intern").role is RoleCategory.ML_AI
+    assert classify_role("Quantitative Software Developer Intern").role is RoleCategory.QUANT
+    assert classify_role("Flight Software Engineering Intern").role is RoleCategory.EMBEDDED
+
+
+def test_a_trailing_qualifier_does_not_outrank_the_leading_phrase() -> None:
+    from stage.classify.role import classify_role
+
+    assert classify_role("Software Engineer, Machine Learning Intern").role is RoleCategory.SWE
+
+
+def test_the_earliest_of_two_qualifiers_wins() -> None:
+    from stage.classify.role import classify_role
+
+    assert (
+        classify_role("Machine Learning and Security Software Engineer").role
+        is RoleCategory.SECURITY
+    )
+
+
+def test_a_lone_qualifier_needs_no_tie_break() -> None:
+    from stage.classify.role import classify_role
+
+    assert classify_role("Machine Learning Intern").role is RoleCategory.ML_AI
+
+
+def test_a_hardware_token_is_not_treated_as_a_discipline() -> None:
+    from stage.classify.role import classify_role
+
+    assert classify_role("GPU Software Engineer Intern").role is RoleCategory.SWE
+    assert classify_role("FPGA Developer Intern").role is RoleCategory.SWE
+
+
+def test_a_generic_title_is_still_software_engineering() -> None:
+    from stage.classify.role import classify_role
+
+    assert classify_role("Software Engineering Intern").role is RoleCategory.SWE
+    assert classify_role("Platform Software Engineer Intern").role is RoleCategory.SWE

@@ -133,7 +133,10 @@ def test_an_unknown_role_is_quarantined_for_review() -> None:
 
 
 async def test_eligibility_round_trips_through_storage_and_filters(db_path: Path) -> None:
-    doctorate = _job("Software Engineer Research Intern", "Master's or PhD required.")
+    doctorate = _job(
+        "Software Engineer Research Intern",
+        "Bachelor's students welcome. Currently pursuing a PhD is a plus.",
+    )
     open_to_all = _job("Software Engineer Intern", "Build things.")
     kept, _ = normalize_batch([doctorate, open_to_all])
     assert len(kept) == 2
@@ -248,8 +251,6 @@ def test_a_french_phd_requirement_in_the_body_is_quarantined(body: str) -> None:
         "You will work alongside scientists who hold PhDs.",
         "Our team includes several PhD holders.",
         "Un doctorat est un atout.",
-        "Master's or PhD required.",
-        "Candidate must be currently pursuing a PhD degree or MS degree.",
     ],
 )
 def test_a_phd_mention_that_is_not_a_requirement_is_kept(body: str) -> None:
@@ -373,3 +374,135 @@ def test_postdoctoral_titles_are_outside_degree_scope(title: str) -> None:
 def test_a_fullstack_vehicle_ui_engineer_is_not_rejected_as_a_ui_role() -> None:
     title = "Fullstack C++ Engineer Intern, Vehicle User Interface"
     assert screen_is_cs_role(_job(title)) is None
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Currently pursuing a PhD or Master's degree in Computer Science",
+        "Currently pursuing a PhD (preferred), or advanced Master's degree",
+        "Currently enrolled in a PhD program or have a master degree in Robotics",
+        "PhD required",
+        "Masters required",
+        "Master's or PhD required.",
+        "Candidate must be currently pursuing a PhD degree or MS degree.",
+        "Currently enrolled in your last year of a Master's degree in a university",
+        "Current PhD (or MSc) studies in machine learning and robotics",
+        "Currently pursuing a Master's degree in Computer Science",
+        "The ideal candidate is currently pursuing a Master's or PhD in Engineering",
+    ],
+)
+def test_a_posting_offering_no_bachelor_option_is_out_of_scope(description: str) -> None:
+    verdict = screen_degree_scope(_job("Research Intern", description))
+
+    assert verdict is not None
+    assert verdict.reason is RejectionReason.OUT_OF_SCOPE_DEGREE
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Currently pursuing a Bachelor's or Master's degree",
+        "Bachelor's degree required",
+        "Pursuing a BS, MS, or PhD in Computer Science",
+        "Open to undergraduate and graduate students",
+        "Enrolled in an undergraduate program, PhD candidates also welcome",
+        "Currently pursuing a Bachelor's, Master's or PhD",
+        "Enrolled in your last year of a Bachelor's degree",
+        "PhD is a plus",
+        "You will work alongside scientists who hold PhDs",
+        "",
+    ],
+)
+def test_a_posting_open_to_undergraduates_is_kept(description: str) -> None:
+    assert screen_degree_scope(_job("Software Engineering Intern", description)) is None
+
+
+def test_enrollment_language_reads_as_a_bachelors_requirement() -> None:
+    from stage.classify.eligibility import resolve_eligibility
+
+    for text in (
+        "Currently pursuing a Bachelor's degree in Computer Science",
+        "Working towards bachelor's degree in computer science",
+        "Currently enrolled in a Bachelors degree in Computer science",
+        "pursuing an undergraduate degree in CS",
+    ):
+        verdict = resolve_eligibility(_job("Software Engineering Intern", text))
+        assert verdict.degree_requirement.value == "bachelors"
+
+
+def test_enrollment_language_never_quarantines() -> None:
+    from stage.classify.eligibility import screen_degree_scope
+
+    job = _job("SWE Intern", "Currently pursuing a Bachelor's or Master's degree")
+
+    assert screen_degree_scope(job) is None
+
+
+def test_a_clearance_or_sponsorship_limit_is_flagged() -> None:
+    from stage.classify.eligibility import resolve_eligibility
+
+    for text in (
+        "Must hold an active security clearance",
+        "US citizenship required for this role",
+        "We cannot sponsor new visas",
+    ):
+        verdict = resolve_eligibility(_job("Intern", text))
+        assert verdict.work_auth_flag
+        assert verdict.work_auth_phrase
+
+
+def test_the_work_auth_reason_is_not_the_degree_reason() -> None:
+    from stage.classify.eligibility import resolve_eligibility
+
+    verdict = resolve_eligibility(
+        _job("Intern", "Currently pursuing a Bachelor's degree. US citizenship required.")
+    )
+
+    assert verdict.degree_requirement.value == "bachelors"
+    assert "citizenship" in verdict.work_auth_phrase
+
+
+def test_a_degree_named_without_a_level_still_reads_as_undergraduate() -> None:
+    from stage.classify.eligibility import resolve_eligibility
+
+    for text in (
+        "Currently pursuing a degree in Computer Science",
+        "Pursuing a degree in Computer Science or a related field",
+        "Currently pursuing a technical degree in a quantitative field",
+    ):
+        assert resolve_eligibility(_job("SWE Intern", text)).degree_requirement.value == "bachelors"
+
+
+def test_widening_the_degree_lexicon_quarantines_nothing_new() -> None:
+    from stage.classify.eligibility import screen_degree_scope
+
+    for text in (
+        "Currently pursuing a degree in Computer Science",
+        "Currently pursuing a Bachelor's or Master's degree",
+        "Pursuing a BS, MS, or PhD in Computer Science",
+    ):
+        assert screen_degree_scope(_job("SWE Intern", text)) is None
+
+
+def test_an_export_control_or_residency_limit_is_flagged() -> None:
+    from stage.classify.eligibility import resolve_eligibility
+
+    for text in (
+        "This role is not eligible for visa sponsorship",
+        "This position is subject to export control laws",
+        "Must be a US person or lawful permanent resident of the United States",
+    ):
+        verdict = resolve_eligibility(_job("Intern", text))
+        assert verdict.work_auth_flag, text
+
+
+def test_offering_sponsorship_is_not_a_restriction() -> None:
+    from stage.classify.eligibility import resolve_eligibility
+
+    for text in (
+        "Visa sponsorship is available for this position",
+        "We sponsor work visas for full time positions",
+        "Perks include company sponsored lunches",
+    ):
+        assert not resolve_eligibility(_job("Intern", text)).work_auth_flag, text

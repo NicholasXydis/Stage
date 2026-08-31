@@ -868,3 +868,263 @@ hybrid:
   - Hybride
   - Travail hybride
   - Mode hybride
+
+city_aliases:
+  New York:
+    - new york
+    - new york city
+    - nyc
+    - ny c
+    - new york metro area
+    - new york metropolitan area
+  San Francisco:
+    - san francisco
+    - sf
+    - s f
+    - san francisco bay area
+    - bay area
+    - sfo
+  South San Francisco:
+    - south san francisco
+    - south sf
+  San Jose:
+    - san jose
+    - san jose ca
+  Los Angeles:
+    - los angeles
+    - la
+    - l a
+    - greater los angeles
+  Toronto:
+    - toronto
+    - gta
+    - greater toronto area
+    - toronto on
+  Montreal:
+    - montreal
+    - mtl
+    - ville marie
+    - greater montreal
+  Vancouver:
+    - vancouver
+    - metro vancouver
+    - greater vancouver
+  Ottawa:
+    - ottawa
+    - ottawa gatineau
+  Calgary:
+    - calgary
+  Longueuil:
+    - longueuil
+  Chicago:
+    - chicago
+    - chicagoland
+    - greater chicago area
+  Seattle:
+    - seattle
+    - greater seattle area
+  Bellevue:
+    - bellevue
+  Austin:
+    - austin
+    - greater austin
+  Boston:
+    - boston
+    - greater boston
+    - greater boston area
+  Cambridge:
+    - cambridge
+  Dallas:
+    - dallas
+    - dallas fort worth
+    - dfw
+    - dallas tx
+  Houston:
+    - houston
+  Atlanta:
+    - atlanta
+    - metro atlanta
+  Washington:
+    - washington
+    - washington dc
+    - washington d c
+    - dc
+    - d c
+    - district of columbia
+  Arlington:
+    - arlington
+  McLean:
+    - mclean
+  Charlotte:
+    - charlotte
+  Philadelphia:
+    - philadelphia
+    - philly
+  Phoenix:
+    - phoenix
+    - greater phoenix
+  San Diego:
+    - san diego
+  Miami:
+    - miami
+    - greater miami
+  Denver:
+    - denver
+  Pittsburgh:
+    - pittsburgh
+  Columbus:
+    - columbus
+  Palo Alto:
+    - palo alto
+  Santa Clara:
+    - santa clara
+  Sunnyvale:
+    - sunnyvale
+  Mountain View:
+    - mountain view
+  San Mateo:
+    - san mateo
+  Fremont:
+    - fremont
+  Berkeley:
+    - berkeley
+  Milpitas:
+    - milpitas
+  Foster City:
+    - foster city
+  Irvine:
+    - irvine
+  El Segundo:
+    - el segundo
+  Torrance:
+    - torrance
+  Jersey City:
+    - jersey city
+  Buffalo:
+    - buffalo
+  Rochester:
+    - rochester
+  Poughkeepsie:
+    - poughkeepsie
+  Greenwich:
+    - greenwich
+  Needham:
+    - needham
+  Hartford:
+    - hartford
+  Milwaukee:
+    - milwaukee
+  Cincinnati:
+    - cincinnati
+  Louisville:
+    - louisville
+  Lansing:
+    - lansing
+  St. Louis:
+    - st louis
+    - saint louis
+  Oklahoma City:
+    - oklahoma city
+    - okc
+  Colorado Springs:
+    - colorado springs
+  Baton Rouge:
+    - baton rouge
+  Charleston:
+    - charleston
+  Huntsville:
+    - huntsville
+  Champaign:
+    - champaign
+  Orlando:
+    - orlando
+  Lake Buena Vista:
+    - lake buena vista
+  Sunrise:
+    - sunrise
+  Jupiter:
+    - jupiter
+  Palm Bay:
+    - palm bay
+  Tampa:
+    - tampa
+  Raleigh:
+    - raleigh
+  Richmond:
+    - richmond
+  Scottsdale:
+    - scottsdale
+  Redmond:
+    - redmond
+  Plymouth:
+    - plymouth
+  Alpharetta:
+    - alpharetta
+  Westminster:
+    - westminster
+  London:
+    - london
+  Paris:
+    - paris
+  Dublin:
+    - dublin
+  Amsterdam:
+    - amsterdam
+  Berlin:
+    - berlin
+  Munich:
+    - munich
+  Madrid:
+    - madrid
+  Milan:
+    - milan
+  Rome:
+    - rome
+  Budapest:
+    - budapest
+  Walldorf:
+    - walldorf
+  Veldhoven:
+    - veldhoven
+  Singapore:
+    - singapore
+  Hong Kong:
+    - hong kong
+    - hong kong sar
+    - hk
+  Shanghai:
+    - shanghai
+  Beijing:
+    - beijing
+  Shenzhen:
+    - shenzhen
+  Wuxi:
+    - wuxi
+  Taipei:
+    - taipei
+    - taipei city
+  Seoul:
+    - seoul
+  Tokyo:
+    - tokyo
+  Sydney:
+    - sydney
+  Melbourne:
+    - melbourne
+  Bengaluru:
+    - bengaluru
+    - bangalore
+  Kuala Lumpur:
+    - kuala lumpur
+  Ho Chi Minh City:
+    - ho chi minh
+    - ho chi minh city
+  Hanoi:
+    - hanoi
+    - ha noi
+  Nakhon Ratchasima:
+    - nakhon ratchasima
+  Dubai:
+    - dubai
+  Sao Paulo:
+    - sao paulo

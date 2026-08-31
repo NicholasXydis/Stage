@@ -294,3 +294,71 @@ def test_a_foreign_subdivision_makes_the_next_code_a_country(raw: str, why: str)
 )
 def test_a_real_state_or_province_code_still_resolves(raw: str, expected: LocationBucket) -> None:
     assert resolve_location(raw).bucket is expected, raw
+
+
+def test_common_spellings_collapse_onto_one_city() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("SF") == "San Francisco"
+    assert display_location("NYC") == "New York"
+    assert display_location("New York City, NY") == "New York, NY"
+    assert display_location("bangalore") == "Bengaluru"
+
+
+def test_a_region_suffix_survives_normalization() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("San Jose, CA") == "San Jose, CA"
+    assert display_location("Toronto, ON, Canada") == "Toronto, ON, Canada"
+
+
+def test_an_unknown_city_passes_through_untouched() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("Kitchener, ON") == "Kitchener, ON"
+    assert display_location("Nowhere Special") == "Nowhere Special"
+
+
+def test_normalizing_an_empty_location_stays_empty() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("") == ""
+    assert display_location("   ") == ""
+
+
+def test_a_multi_site_suffix_is_dropped() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("Hong Kong +1") == "Hong Kong"
+    assert display_location("Arlington, VA +2") == "Arlington, VA"
+
+
+def test_metro_names_collapse_onto_the_city() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("GTA") == "Toronto"
+    assert display_location("DFW") == "Dallas"
+    assert display_location("Bay Area") == "San Francisco"
+    assert display_location("Philly") == "Philadelphia"
+
+
+def test_shouting_boards_are_cased_like_the_rest() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("POUGHKEEPSIE") == "Poughkeepsie"
+    assert display_location("TORONTO") == "Toronto"
+    assert display_location("BATON ROUGE") == "Baton Rouge"
+
+
+def test_a_borough_that_names_another_city_is_left_alone() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("Brooklyn, OH") == "Brooklyn, OH"
+    assert display_location("Manhattan Beach, CA") == "Manhattan Beach, CA"
+
+
+def test_two_cities_sharing_a_name_stay_apart() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("Richmond, BC, Canada") == "Richmond, BC, Canada"
+    assert display_location("Richmond, VA") == "Richmond, VA"

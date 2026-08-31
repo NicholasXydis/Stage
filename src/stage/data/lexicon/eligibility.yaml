@@ -8,6 +8,11 @@ degree_required:
     - doctorate required
     - must be enrolled in a phd
     - currently pursuing a phd
+    - currently enrolled in a phd
+    - current phd studies
+    - current phd or msc studies
+    - phd or msc studies
+    - phd or master studies
     - doctorat requis
     - doctorat exige
     - doctorat obligatoire
@@ -19,6 +24,12 @@ degree_required:
     - msc required
     - graduate students only
     - must be enrolled in a master
+    - currently enrolled in a master
+    - currently pursuing a master
+    - last year of a master
+    - final year of a master
+    - enrolled in your last year of a master
+    - graduate degree required
     - maitrise requise
     - maitrise exigee
     - maitrise obligatoire
@@ -28,6 +39,35 @@ degree_required:
     - bachelors degree required
     - bachelor's degree is required
     - must be enrolled in a bachelor
+    - currently pursuing a bachelor
+    - currently pursuing a bachelors
+    - currently pursuing an undergraduate
+    - currently pursuing bachelor
+    - currently enrolled in a bachelor
+    - currently enrolled in a bachelors
+    - currently enrolled in an undergraduate
+    - currently enrolled in bachelor
+    - enrolled in a bachelor
+    - enrolled in a bachelors
+    - enrolled in an undergraduate
+    - pursuing a bachelor
+    - pursuing a bachelors
+    - pursuing an undergraduate
+    - working towards a bachelor
+    - working toward a bachelor
+    - working towards bachelor
+    - working toward a bs
+    - current pursuit of a bachelor
+    - pursuing or have completed a bachelor
+    - currently pursuing a degree in
+    - currently pursuing an degree in
+    - pursuing a degree in
+    - pursuing an degree in
+    - currently pursuing a technical degree
+    - pursuing a technical degree
+    - currently enrolled in any degree
+    - open to undergraduate
+    - years of an undergraduate
     - baccalaureat requis
 
     - baccalaureat exige
@@ -106,6 +146,35 @@ work_auth_excluded:
   - requires an active secret clearance
   - requires ts/sci
   - must be authorized to work in the united states without sponsorship
+  - us citizenship required
+  - u.s. citizenship required
+  - us citizenship is required
+  - must be a us citizen or national
+  - applicant must be a us citizen
+  - eligibility requirements include us citizenship
+  - security clearance
+  - secret clearance
+  - secret level security clearance
+  - top secret clearance
+  - nuclear security clearance
+  - will not sponsor
+  - cannot sponsor
+  - unable to sponsor
+  - does not sponsor
+  - not sponsor a new applicant for employment authorization
+  - cannot sponsor new visas
+  - sponsorship is not available
+  - no visa sponsorship
+  - not eligible for visa sponsorship
+  - does not currently provide employment sponsorship
+  - does not provide employment sponsorship
+  - without sponsorship for an export license
+  - subject to export control
+  - export control laws
+  - export control regulations
+  - must be a us person
+  - must either be a us citizen
+  - lawful permanent resident of the united states
   - citoyennete canadienne requise
   - habilitation de securite requise
 

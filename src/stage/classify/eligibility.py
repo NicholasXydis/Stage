@@ -14,6 +14,7 @@ class EligibilityVerdict:
     degree_requirement: DegreeRequirement
     work_auth_flag: bool
     matched_phrase: str = ""
+    work_auth_phrase: str = ""
 
 
 def _ranked(phrases: frozenset[str]) -> list[str]:
@@ -46,6 +47,7 @@ def resolve_eligibility(job: Job) -> EligibilityVerdict:
         degree_requirement=degree,
         work_auth_flag=bool(excluded),
         matched_phrase=matched or excluded,
+        work_auth_phrase=excluded,
     )
 
 
@@ -65,13 +67,20 @@ def _restricted_hit(haystack: str, phrases: frozenset[str], alternatives: frozen
 def screen_degree_scope(job: Job) -> Rejection | None:
     lexicon = eligibility_lexicon()
 
-    required = _restricted_hit(
-        fold(f"{job.title_raw} {job.description}"),
-        lexicon.phd_required,
-        lexicon.degree_list_tokens,
-    )
+    body = fold(f"{job.title_raw} {job.description}")
+
+    required = _restricted_hit(body, lexicon.phd_required, lexicon.undergraduate_tokens)
     if required:
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=required)
+
+    graduate_only = _restricted_hit(
+        body,
+        lexicon.degree_required.get("phd", frozenset())
+        | lexicon.degree_required.get("masters", frozenset()),
+        lexicon.undergraduate_tokens,
+    )
+    if graduate_only:
+        return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=graduate_only)
 
     title = fold(job.title_raw)
     token = _hit(title, lexicon.phd_title_tokens)
