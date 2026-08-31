@@ -364,19 +364,16 @@ class PostingsScreen(Screen[None]):
 
     @work(exclusive=True)
     async def action_export(self) -> None:
-        import os
         from datetime import UTC, datetime
-        from pathlib import Path
 
-        from stage.services.export import ExportError, export_jobs
+        from stage.services.export import ExportError, export_jobs, export_root
 
         repo = self.repository
         if repo is None or not self._jobs:
             told(self, "Nothing to export.", "warning")
             return
         fmt = ExportFormat(self._export_format)
-        override = os.environ.get("STAGE_EXPORT_DIR", "").strip()
-        root = Path(override).expanduser() if override else Path.cwd()
+        root = export_root()
         stamp = datetime.now(UTC).astimezone().strftime("%Y%m%d-%H%M%S")
         try:
             result = await export_jobs(
