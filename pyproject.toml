@@ -1,9 +1,36 @@
 [project]
 name = "stage-cli"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Aggregates CS internship postings (Canada/US, EN + FR) into a local SQLite database"
+readme = "README.md"
 requires-python = ">=3.12,<3.15"
 license = { text = "MIT" }
+authors = [{ name = "Nicholas Xydis", email = "NicholasXydis@outlook.com" }]
+keywords = [
+    "internship",
+    "stage",
+    "co-op",
+    "cli",
+    "tui",
+    "python",
+    "student",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 dependencies = [
     "beautifulsoup4>=4.15.0",
     "fpdf2>=2.8.4",
@@ -13,8 +40,15 @@ dependencies = [
     "pyyaml>=6.0.2",
     "rich>=13.9.4",
     "tenacity>=9.1.4",
-    "typer>=0.27.1",
+    "textual>=8.2.8",
+    "typer>=0.27.1,<0.28",
 ]
+
+[project.urls]
+Homepage = "https://github.com/NicholasXydis/Stage"
+Repository = "https://github.com/NicholasXydis/Stage"
+Issues = "https://github.com/NicholasXydis/Stage/issues"
+Changelog = "https://github.com/NicholasXydis/Stage/blob/main/CHANGELOG.md"
 
 [project.scripts]
 stage = "stage.cli.app:main"
@@ -38,8 +72,19 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+path = "src/stage/__init__.py"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/stage"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".github",
+    "CLAUDE.md",
+    "packaging",
+    "scripts",
+]
 
 [tool.ruff]
 line-length = 100
@@ -73,6 +118,7 @@ ignore = ["S101", "S311"]
 "src/stage/sources/*.py" = ["ARG002", "N815"]
 "src/stage/services/coverage.py" = ["BLE001"]
 "src/stage/services/sync.py" = ["BLE001"]
+"src/stage/cli/notify.py" = ["S310"]
 "src/stage/cli/schedule.py" = ["S603"]
 "src/stage/paths.py" = ["S603"]
 "src/stage/storage/sqlite_repo.py" = ["S608"]
