@@ -17,7 +17,6 @@ from stage.domain import (
     sanitize,
     truncate,
 )
-from stage.normalize.location import display_location
 from stage.paths import font_path
 from stage.services.query import list_jobs
 from stage.storage import AsyncRepository
@@ -25,10 +24,17 @@ from stage.storage import AsyncRepository
 FORMULA_PREFIXES = ("=", "+", "-", "@")
 FORMULA_GUARD = "'"
 
+
+def _place(raw: str) -> str:
+    from stage.normalize.location import display_location
+
+    return display_location(raw)
+
+
 COLUMNS: tuple[tuple[str, Callable[[Job], str]], ...] = (
     ("company", lambda job: job.company),
     ("title", lambda job: job.title_raw),
-    ("location", lambda job: display_location(job.location_raw)),
+    ("location", lambda job: _place(job.location_raw)),
     ("location_bucket", lambda job: job.location.value),
     ("term", lambda job: job.term),
     ("role", lambda job: job.role.value),

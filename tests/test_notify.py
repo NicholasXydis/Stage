@@ -2,6 +2,7 @@ import json
 import re
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 
 import pytest
 
@@ -166,6 +167,12 @@ def test_a_refused_webhook_is_never_posted_to() -> None:
         notify.post("https://evil.com/api/webhooks/1/x", {"content": "hi"})
 
 
+def _http_error(code: int, reason: str = "x") -> HTTPError:
+    error = HTTPError("https://discord.com", code, reason, {}, None)  # type: ignore[arg-type]
+    error.close()
+    return error
+
+
 def test_discord_errors_are_reported_without_a_traceback(monkeypatch: pytest.MonkeyPatch) -> None:
     from urllib.error import URLError
 
@@ -179,10 +186,8 @@ def test_discord_errors_are_reported_without_a_traceback(monkeypatch: pytest.Mon
 
 
 def test_a_deleted_webhook_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
-    from urllib.error import HTTPError
-
     def explode(request: object, timeout: object = None) -> None:
-        raise HTTPError("https://discord.com", 404, "Not Found", {}, None)  # type: ignore[arg-type]
+        raise _http_error(404, "Not Found")
 
     monkeypatch.setattr(notify, "urlopen", explode)
 
@@ -430,10 +435,8 @@ def test_a_discord_outage_is_reported_not_raised(
 def test_every_discord_status_is_reported_not_swallowed(
     code: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from urllib.error import HTTPError
-
     def explode(request: object, timeout: object = None) -> None:
-        raise HTTPError("https://discord.com", code, "x", {}, None)  # type: ignore[arg-type]
+        raise _http_error(code)
 
     monkeypatch.setattr(notify, "urlopen", explode)
 
@@ -442,10 +445,8 @@ def test_every_discord_status_is_reported_not_swallowed(
 
 
 def test_rate_limiting_says_to_wait(monkeypatch: pytest.MonkeyPatch) -> None:
-    from urllib.error import HTTPError
-
     def explode(request: object, timeout: object = None) -> None:
-        raise HTTPError("https://discord.com", 429, "x", {}, None)  # type: ignore[arg-type]
+        raise _http_error(429)
 
     monkeypatch.setattr(notify, "urlopen", explode)
 
