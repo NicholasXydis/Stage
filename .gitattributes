@@ -11,6 +11,9 @@
 *.cfg     text
 *.ini     text
 *.txt     text
+*.tcss    text
+*.rb      text
+*.svg     text
 .python-version text
 .gitignore      text
 .gitattributes  text
@@ -44,6 +47,5 @@ uv.lock text linguist-generated=true
 tests/fixtures/**  linguist-vendored=true
 tests/golden/**    linguist-generated=true
 
-data/companies.yaml     text
-data/seed_companies.yaml text
-data/lexicon/**         text
+src/stage/data/companies/**  text
+src/stage/data/lexicon/**    text

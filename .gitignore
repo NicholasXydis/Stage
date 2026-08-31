@@ -40,9 +40,19 @@ htmlcov/
 .*.lock
 
 tests/captured/
+captured/
 *.log
 *.log.[0-9]
+*.jsonl
 logs/
+
+stage-export-*.csv
+stage-export-*.json
+stage-export-*.md
+stage-export-*.pdf
+stage-*.csv
+stage-*.pdf
+last-listing.json
 
 .env
 .env.*
@@ -52,6 +62,10 @@ logs/
 *.p12
 secrets.yaml
 secrets.yml
+
+node_modules/
+.direnv/
+*.tmp
 
 .idea/
 .vscode/*
