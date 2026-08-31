@@ -258,3 +258,10 @@ async def test_the_json_views_round_trip_through_a_parser(db_path: Path) -> None
     parsed = json.loads(stats_to_json(stats))
     assert parsed["total_jobs"] == 1
     assert parsed["composition"]["source"]["greenhouse"] == 1
+
+
+def test_the_breakdown_skips_a_column_that_is_always_unknown() -> None:
+    from stage.services.health import COMPOSITION_COLUMNS
+
+    assert "degree_requirement" not in COMPOSITION_COLUMNS
+    assert "role" in COMPOSITION_COLUMNS

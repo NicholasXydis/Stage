@@ -20,7 +20,7 @@ from stage.domain import (
 from stage.storage import AsyncRepository
 
 RUN_HISTORY = 20
-COMPOSITION_COLUMNS = ("source", "location", "role", "term", "language", "degree_requirement")
+COMPOSITION_COLUMNS = ("source", "location", "role", "term", "language")
 
 
 @dataclass(frozen=True, slots=True)

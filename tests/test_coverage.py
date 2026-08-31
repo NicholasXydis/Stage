@@ -1,7 +1,9 @@
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import httpx
 import pytest
+import respx
 
 from stage.domain import (
     STALE_AFTER_DAYS,
@@ -18,6 +20,15 @@ from stage.services.coverage import coverage
 from stage.storage import open_repository
 from stage.storage.repository import SourceBatch
 from stage.storage.sqlite_repo import SqliteRepository
+
+PROBE_HOSTS = [
+    "api.ashbyhq.com",
+    "api.collage.co",
+    "api.lever.co",
+    "api.smartrecruiters.com",
+    "apply.workable.com",
+    "boards-api.greenhouse.io",
+]
 
 NOW = datetime(2026, 8, 8, 12, 0, tzinfo=UTC)
 
@@ -351,13 +362,22 @@ def test_classify_requires_status_and_evidence_except_when_clearing(seeded: Path
     assert "Pass both --status and --note" in missing_note.stdout
 
 
+@respx.mock
 def test_unregistered_discovery_without_adoptions_is_a_success(
-    seeded: Path, tmp_path: Path
+    seeded: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from typer.testing import CliRunner
 
     from stage.cli.app import app
     from stage.companies import write_registry
+    from stage.http import RatePosture
+
+    respx.route().mock(return_value=httpx.Response(404, json={}))
+
+    monkeypatch.setattr(
+        "stage.services.discover.resolve",
+        lambda *_: RatePosture(concurrency=8, min_interval_s=0.0, max_requests_per_run=200),
+    )
 
     runner = CliRunner()
     registry = write_registry(COMPANIES, tmp_path / "companies.yaml")
@@ -402,3 +422,55 @@ async def test_a_board_whose_postings_all_deduplicate_still_counts_as_producing(
     states = _states(report.rows)
     assert states["Empty"] is CoverageState.PRODUCING, "a deduped board still produced"
     assert [row.company for row in report.gaps] == []
+
+
+async def test_apply_urls_returns_only_the_companies_asked_for(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    from stage.domain import Job, JobStatus, QuarantinedJob, RejectionReason
+    from stage.storage import open_repository
+    from stage.storage.repository import SourceBatch
+
+    now = datetime.now(UTC)
+    db = tmp_path / "urls.db"
+    async with open_repository(db) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=now,
+                jobs=tuple(
+                    Job(
+                        id=f"greenhouse:{slug}:1",
+                        source="greenhouse",
+                        company=name,
+                        title_raw="Software Engineering Intern",
+                        title_normalized="software engineering intern",
+                        apply_url_raw=f"https://{slug}.example/1",
+                        description="",
+                        first_seen=now,
+                        last_seen=now,
+                        location_raw="Montreal, QC",
+                        status=JobStatus.OPEN,
+                    )
+                    for slug, name in (("acme", "Acme"), ("globex", "Globex"))
+                ),
+                closable_boards=("greenhouse:acme", "greenhouse:globex"),
+                quarantined=(
+                    QuarantinedJob(
+                        id="greenhouse:acme:2",
+                        source="greenhouse",
+                        company="Acme",
+                        title_raw="Senior Engineer",
+                        apply_url_raw="https://acme.example/2",
+                        reason=RejectionReason.NOT_AN_INTERNSHIP,
+                        first_seen=now,
+                        last_seen=now,
+                    ),
+                ),
+            )
+        )
+        urls = await repository.company_apply_urls(("Acme",))
+
+    assert set(urls) == {"Acme"}
+    assert "https://acme.example/1" in urls["Acme"]
+    assert "https://acme.example/2" in urls["Acme"]

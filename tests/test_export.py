@@ -32,6 +32,12 @@ from stage.storage.sqlite_repo import SqliteRepository
 NOW = datetime(2026, 8, 8, 12, 0, tzinfo=UTC)
 
 
+def _column(rendered: str, name: str) -> str:
+    lines = rendered.splitlines()
+    header = lines[0].lstrip("\ufeff").split(",")
+    return lines[1].split(",")[header.index(name)]
+
+
 def _job(identifier: str, title: str, *, company: str = "Coveo Solutions", age: int = 0) -> Job:
     return Job(
         id=identifier,
@@ -58,7 +64,7 @@ FRENCH_TITLE = "Stagiaire en développement — cœur d’équipe"
 def test_every_formula_prefix_is_guarded_and_plain_text_is_not() -> None:
     for marker in FORMULA_PREFIXES:
         rendered = render_csv([_job("greenhouse:acme:1", f"{marker}cmd 1+1")])
-        title = rendered.splitlines()[1].split(",")[2]
+        title = _column(rendered, "title")
         assert title.startswith(f"'{marker}"), title
 
     plain = render_csv([_job("greenhouse:acme:1", FRENCH_TITLE)])
@@ -68,7 +74,7 @@ def test_every_formula_prefix_is_guarded_and_plain_text_is_not() -> None:
 
 def test_leading_whitespace_cannot_smuggle_a_formula_past_the_guard() -> None:
     rendered = render_csv([_job("greenhouse:acme:1", "\t=1+1")])
-    assert rendered.splitlines()[1].split(",")[2] == "'=1+1"
+    assert _column(rendered, "title") == "'=1+1"
 
 
 def test_csv_carries_a_bom_so_excel_reads_french(tmp_path: Path) -> None:
@@ -241,9 +247,10 @@ def test_a_backslash_before_a_pipe_cannot_break_the_markdown_table() -> None:
         ("A" + chr(92) + "|B", "A" + chr(92) * 2 + chr(92) + "|B"),
         ("back" + chr(92) + "slash", "back" + chr(92) * 2 + "slash"),
     )
+    position = next(index for index, (name, _) in enumerate(COLUMNS) if name == "title")
     for title, expected in cases:
         row = render_markdown([_job("greenhouse:acme:1", title)], generated_at=NOW).splitlines()[-1]
-        cell = row.split(" | ")[2]
+        cell = row.split(" | ")[position]
         assert cell == expected, (title, cell)
         bare = row.replace(chr(92) * 2, "").replace(chr(92) + "|", "")
         assert bare.count("|") == len(COLUMNS) + 1, (title, row)
@@ -352,3 +359,61 @@ def test_the_export_path_is_never_parsed_as_markup() -> None:
     recorder = Console(width=200, no_color=True, force_terminal=False, record=True)
     render_export(recorder, hostile)
     assert str(hostile.path) in recorder.export_text()
+
+
+async def test_exporting_a_search_writes_what_the_search_found(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    from stage.domain import ExportFormat, Job, JobFilters, JobStatus
+    from stage.services.export import export_jobs
+    from stage.storage import open_repository
+    from stage.storage.repository import SourceBatch
+
+    now = datetime.now(UTC)
+    titles = ("Machine Learning Intern", "Warehouse Associate Intern")
+    async with open_repository(tmp_path / "e.db") as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=now,
+                jobs=tuple(
+                    Job(
+                        id=f"greenhouse:acme:{index}",
+                        source="greenhouse",
+                        company="Acme",
+                        title_raw=title,
+                        title_normalized=title.lower(),
+                        apply_url_raw=f"https://e.com/{index}",
+                        description="",
+                        first_seen=now,
+                        last_seen=now,
+                        location_raw="Montreal, QC",
+                        status=JobStatus.OPEN,
+                    )
+                    for index, title in enumerate(titles)
+                ),
+                closable_boards=("greenhouse:acme",),
+            )
+        )
+        everything = await export_jobs(
+            repository,
+            JobFilters(limit=None),
+            fmt=ExportFormat.CSV,
+            destination=tmp_path / "all.csv",
+            window_days=None,
+            force=True,
+        )
+        searched = await export_jobs(
+            repository,
+            JobFilters(limit=None),
+            fmt=ExportFormat.CSV,
+            destination=tmp_path / "search.csv",
+            window_days=None,
+            force=True,
+            query="machine learning",
+        )
+
+    assert everything.count == 2
+    assert searched.count == 1
+    assert "Machine Learning" in (tmp_path / "search.csv").read_text(encoding="utf-8-sig")
+    assert "Warehouse" not in (tmp_path / "search.csv").read_text(encoding="utf-8-sig")

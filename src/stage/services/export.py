@@ -17,6 +17,7 @@ from stage.domain import (
     sanitize,
     truncate,
 )
+from stage.normalize.location import display_location
 from stage.paths import font_path
 from stage.services.query import list_jobs
 from stage.storage import AsyncRepository
@@ -25,19 +26,17 @@ FORMULA_PREFIXES = ("=", "+", "-", "@")
 FORMULA_GUARD = "'"
 
 COLUMNS: tuple[tuple[str, Callable[[Job], str]], ...] = (
-    ("id", lambda job: job.id),
     ("company", lambda job: job.company),
     ("title", lambda job: job.title_raw),
-    ("location", lambda job: job.location_raw),
+    ("location", lambda job: display_location(job.location_raw)),
     ("location_bucket", lambda job: job.location.value),
     ("term", lambda job: job.term),
     ("role", lambda job: job.role.value),
     ("language", lambda job: job.language.value),
-    ("degree", lambda job: job.degree_requirement.value),
-    ("work_auth_restricted", lambda job: "yes" if job.work_auth_flag else "no"),
     ("first_seen", lambda job: job.first_seen.astimezone(UTC).date().isoformat()),
     ("source", lambda job: job.source),
     ("apply_url", lambda job: job.apply_url_raw),
+    ("id", lambda job: job.id),
 )
 
 PDF_COLUMNS = ("company", "title", "location", "term", "first_seen")
@@ -215,10 +214,16 @@ async def export_jobs(
     window_days: int | None = DEFAULT_WINDOW_DAYS,
     force: bool = False,
     now: datetime | None = None,
+    query: str = "",
 ) -> ExportResult:
     moment = now or datetime.now(UTC)
     target = resolve_destination(destination, fmt, moment, force)
-    listing = await list_jobs(repository, filters, window_days=window_days, now=moment)
+    if query.strip():
+        from stage.services.query import search_jobs
+
+        listing = await search_jobs(repository, query, filters, window_days=window_days, now=moment)
+    else:
+        listing = await list_jobs(repository, filters, window_days=window_days, now=moment)
     jobs = listing.jobs
 
     notes: tuple[str, ...] = ()
