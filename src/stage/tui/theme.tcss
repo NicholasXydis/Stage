@@ -1,0 +1,192 @@
+$blue: #4a9eff;
+$blue-deep: #1e5fa8;
+$blue-dim: #2a4a6a;
+$new: #4ade80;
+$warn: #fbbf24;
+$bad: #f87171;
+
+Screen {
+    background: $surface;
+}
+
+Header {
+    background: $blue-deep;
+    color: $text;
+}
+
+#splash {
+    align: center middle;
+    background: $surface;
+}
+
+#splash-art {
+    color: $blue;
+    text-align: center;
+    width: auto;
+}
+
+#splash-stats {
+    color: $text-muted;
+    text-align: center;
+    margin-top: 1;
+    width: auto;
+}
+
+#chips {
+    height: auto;
+    min-height: 1;
+    padding: 0 1;
+    background: $panel;
+    color: $text-muted;
+    border-bottom: solid $blue-dim;
+}
+
+#chips .active {
+    color: $blue;
+    text-style: bold;
+}
+
+#chips.busy {
+    color: $blue;
+}
+
+#overall {
+    margin: 0 1;
+}
+
+#sources {
+    padding: 1;
+}
+
+#warnings {
+    padding: 0 1;
+    color: $warn;
+}
+
+#filters {
+    height: auto;
+    max-height: 14;
+    padding: 0 1;
+    background: $panel;
+    border-bottom: solid $blue-dim;
+}
+
+#filters.hidden {
+    display: none;
+}
+
+#results {
+    height: 1fr;
+    min-height: 3;
+    scrollbar-size-vertical: 1;
+}
+
+#results > .datatable--header {
+    background: $panel;
+    color: $blue;
+    text-style: bold;
+}
+
+#results > .datatable--cursor {
+    background: $blue-deep;
+    color: $text;
+    text-style: bold;
+}
+
+#results > .datatable--hover {
+    background: $blue-dim;
+}
+
+DataTable {
+    height: 1fr;
+}
+
+DataTable > .datatable--cursor {
+    background: $blue-deep;
+    color: $text;
+}
+
+DataTable > .datatable--header {
+    background: $panel;
+    color: $blue;
+    text-style: bold;
+}
+
+#detail {
+    height: 9;
+    min-height: 3;
+    padding: 1 2;
+    background: $panel;
+    border-top: solid $blue;
+}
+
+#detail.expanded {
+    height: 22;
+}
+
+#detail-title {
+    color: $blue;
+    text-style: bold;
+}
+
+#search-bar {
+    height: 3;
+    padding: 0 1;
+    display: none;
+}
+
+#search-bar.visible {
+    display: block;
+}
+
+Input {
+    border: tall $blue-dim;
+}
+
+Input:focus {
+    border: tall $blue;
+}
+
+.empty {
+    color: $text-muted;
+    text-align: center;
+    padding: 2;
+}
+
+#stats-grid {
+    height: 1fr;
+    padding: 1;
+}
+
+.bar {
+    color: $blue;
+}
+
+.stat-label {
+    color: $text-muted;
+}
+
+Footer {
+    background: $panel;
+}
+
+.narrow #filters {
+    max-height: 8;
+}
+
+#help {
+    display: none;
+}
+
+#help.visible {
+    display: block;
+    layer: overlay;
+    dock: top;
+    width: 46;
+    height: auto;
+    margin: 2 0 0 4;
+    padding: 1 2;
+    background: $panel;
+    border: round $blue;
+    color: $text;
+}
