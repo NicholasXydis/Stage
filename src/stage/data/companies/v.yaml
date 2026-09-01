@@ -146,6 +146,13 @@
   workday_dc: wd1
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Verkada
+  platform: greenhouse
+  slug: verkada
+  source_of_record: discover
+  last_verified: 2026-08-31
+  notes: '2026-08-31: verified 282 postings including five 2027 SWE internships in
+    San Mateo.'
 - name: Verition Group
   platform: greenhouse
   slug: veritiongroupllc

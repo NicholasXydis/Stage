@@ -18,6 +18,12 @@
   workday_dc: wd5
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: AbbVie
+  platform: smartrecruiters
+  slug: abbvie
+  source_of_record: discover
+  last_verified: 2026-08-31
+  notes: '2026-08-31: verified 1688 postings on the smartrecruiters board.'
 - name: Abnormal Security
   platform: greenhouse
   slug: abnormalsecurity
