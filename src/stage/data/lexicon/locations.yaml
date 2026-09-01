@@ -169,6 +169,25 @@ canada_country:
   - Canada
   - Canadian
 
+usa_ambiguous:
+  - Athens
+  - Belfast
+  - Berlin
+  - Bristol
+  - Cairo
+  - Delhi
+  - Dublin
+  - Geneva
+  - Hamburg
+  - Lima
+  - Madrid
+  - Manchester
+  - Milan
+  - Moscow
+  - Paris
+  - Rome
+  - Vienna
+
 usa_cities:
   - Tysons
   - Ventura

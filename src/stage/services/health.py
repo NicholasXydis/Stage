@@ -120,12 +120,24 @@ class StatsReport:
     schema_version: int
 
 
+def _live_boards(companies: Sequence[Company]) -> frozenset[str]:
+    from stage.services.sync import _registry_boards
+
+    return frozenset(_registry_boards(companies)[1])
+
+
 async def _board_health(
-    repository: AsyncRepository, now: datetime, stale_after_days: int
+    repository: AsyncRepository,
+    now: datetime,
+    stale_after_days: int,
+    companies: Sequence[Company] = (),
 ) -> dict[str, list[BoardHealth]]:
     visits: list[SourceVisit] = await repository.all_visits()
+    live = _live_boards(companies)
     grouped: dict[str, list[BoardHealth]] = {}
     for visit in visits:
+        if live and visit.board not in live:
+            continue
         grouped.setdefault(visit.source, []).append(
             BoardHealth(
                 source=visit.source,
@@ -154,7 +166,7 @@ async def doctor(
     runs = await repository.run_history(history)
     volumes = await repository.volume_history(history)
     stored = await repository.stored_counts()
-    boards = await _board_health(repository, moment, stale_after_days)
+    boards = await _board_health(repository, moment, stale_after_days, companies)
     rate_state = await repository.load_rate_state()
     workday_crawls = await repository.load_workday_crawls()
 

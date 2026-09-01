@@ -58,6 +58,7 @@ def _index() -> _PhraseIndex:
             "canada_regions": lexicon.canada_regions,
             "canada_country": lexicon.canada_country,
             "canada_overrides": lexicon.canada_overrides,
+            "usa_ambiguous": lexicon.usa_ambiguous,
             "usa_cities": lexicon.usa_cities,
             "usa_regions": lexicon.usa_regions,
             "usa_country": lexicon.usa_country,
@@ -114,6 +115,24 @@ def _code_hits(segment: str, lexicon: LocationLexicon) -> tuple[bool, bool]:
     return canada, usa
 
 
+_FOREIGN_ONLY_CODES = frozenset({"de", "es", "ie", "in", "it", "fr", "uk", "nl", "pl", "br", "cn"})
+
+
+def _trails_a_foreign_code(segment: str) -> bool:
+    lexicon = location_lexicon()
+    fields = [field.strip() for field in _FIELD_SPLIT.split(segment) if field.strip()]
+    if len(fields) < 2:
+        return False
+    known = lexicon.canada_codes | lexicon.usa_codes
+    for field in fields[1:]:
+        folded = fold(field)
+        if folded in _FOREIGN_ONLY_CODES:
+            return True
+        if folded and len(folded) <= 3 and folded not in known and not folded.isdigit():
+            return True
+    return False
+
+
 def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
     folded = fold(segment)
     if not folded:
@@ -147,10 +166,17 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
         any(f" {phrase} " in f" {override} " for override in override_phrases)
         for phrase in named_canada
     )
+    ambiguous_here = bool(found & {"canada_ambiguous", "montreal_ambiguous", "usa_ambiguous"})
+    coded = (
+        (code_canada or code_usa)
+        and ambiguous_here
+        and not _trails_a_foreign_code(segment)
+        and not found & {"international"}
+    )
     canada_context = (
         "canada_country" in found
         or "canada_regions" in found
-        or (code_canada and not international)
+        or (code_canada and (not international or coded))
     ) and not overridden
 
     montreal = ("montreal" in found and not overridden) or (
@@ -163,13 +189,14 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
         or ("canada_ambiguous" in found and canada_context)
     )
     usa = "usa_country" in found or (
-        ("usa_regions" in found or "usa_cities" in found or code_usa) and not international
+        ("usa_regions" in found or "usa_cities" in found or code_usa)
+        and (not international or (code_usa and coded))
     )
     return _Segment(
         montreal=montreal,
         canada=canada,
         usa=usa,
-        international=international,
+        international=international and not (coded and (canada or usa)),
         remote="remote" in found,
     )
 

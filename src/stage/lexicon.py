@@ -149,6 +149,7 @@ class LocationLexicon:
     canada_codes: frozenset[str]
     canada_country: frozenset[str]
     canada_overrides: frozenset[str]
+    usa_ambiguous: frozenset[str]
     usa_cities: frozenset[str]
     usa_regions: frozenset[str]
     usa_codes: frozenset[str]
@@ -322,6 +323,7 @@ def location_lexicon() -> LocationLexicon:
         montreal_ambiguous=_folded_phrases(payload, "montreal_ambiguous", source),
         canada_cities=_folded_phrases(payload, "canada_cities", source),
         canada_ambiguous=_folded_phrases(payload, "canada_ambiguous", source),
+        usa_ambiguous=_folded_phrases(payload, "usa_ambiguous", source),
         canada_regions=_folded_phrases(payload, "canada_regions", source),
         canada_codes=_folded_phrases(payload, "canada_codes", source),
         canada_country=_folded_phrases(payload, "canada_country", source),

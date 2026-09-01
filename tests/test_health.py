@@ -265,3 +265,27 @@ def test_the_breakdown_skips_a_column_that_is_always_unknown() -> None:
 
     assert "degree_requirement" not in COMPOSITION_COLUMNS
     assert "role" in COMPOSITION_COLUMNS
+
+
+async def test_doctor_forgets_a_board_the_registry_no_longer_names(db_path: Path) -> None:
+    from stage.domain import Company, CompanyVisit, Platform
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=NOW,
+                visits=(
+                    CompanyVisit(
+                        board="greenhouse:moved-away",
+                        succeeded=False,
+                        error="HttpStatusError: 404",
+                        label="Temporal Technologies",
+                    ),
+                ),
+            )
+        )
+        moved = Company(name="Temporal Technologies", platform=Platform.ASHBY, slug="temporal")
+        report = await doctor(repository, now=NOW, companies=(moved,))
+
+    assert report.failing_boards == ()

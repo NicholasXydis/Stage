@@ -362,3 +362,28 @@ def test_two_cities_sharing_a_name_stay_apart() -> None:
 
     assert display_location("Richmond, BC, Canada") == "Richmond, BC, Canada"
     assert display_location("Richmond, VA") == "Richmond, VA"
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Dublin, OH", LocationBucket.USA),
+        ("Rome, NY", LocationBucket.USA),
+        ("Athens, GA", LocationBucket.USA),
+        ("Paris, TX", LocationBucket.USA),
+        ("Berlin, NH", LocationBucket.USA),
+        ("London, ON", LocationBucket.CANADA),
+        ("Dublin, Ireland", LocationBucket.INTERNATIONAL),
+        ("Rome, Italy", LocationBucket.INTERNATIONAL),
+        ("Paris, France", LocationBucket.INTERNATIONAL),
+        ("London, UK", LocationBucket.INTERNATIONAL),
+        ("Dublin", LocationBucket.INTERNATIONAL),
+        ("Berlin, DE", LocationBucket.INTERNATIONAL),
+        ("Madrid, MD, ES", LocationBucket.INTERNATIONAL),
+        ("Cork, CO, IE", LocationBucket.INTERNATIONAL),
+    ],
+)
+def test_a_state_code_disambiguates_a_city_two_countries_share(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket
