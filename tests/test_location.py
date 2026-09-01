@@ -381,6 +381,9 @@ def test_two_cities_sharing_a_name_stay_apart() -> None:
         ("Berlin, DE", LocationBucket.INTERNATIONAL),
         ("Madrid, MD, ES", LocationBucket.INTERNATIONAL),
         ("Cork, CO, IE", LocationBucket.INTERNATIONAL),
+        ("Walldorf, DE, 69190", LocationBucket.INTERNATIONAL),
+        ("Wilmington, DE", LocationBucket.USA),
+        ("Newark, DE", LocationBucket.USA),
     ],
 )
 def test_a_state_code_disambiguates_a_city_two_countries_share(
