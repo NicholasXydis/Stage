@@ -1,15 +1,12 @@
 <div align="center">
-<code>
-&nbsp;&nbsp;____&nbsp;&nbsp;_<br>
-&nbsp;/&nbsp;___||&nbsp;|_&nbsp;&nbsp;&nbsp;__&nbsp;_&nbsp;&nbsp;&nbsp;__&nbsp;_&nbsp;&nbsp;&nbsp;___<br>
-&nbsp;&#92;___&nbsp;&#92;|&nbsp;__|&nbsp;/&nbsp;_&#96;&nbsp;|&nbsp;/&nbsp;_&#96;&nbsp;|&nbsp;/&nbsp;_&nbsp;&#92;<br>
-&nbsp;&nbsp;___)&nbsp;|&nbsp;|_&nbsp;|&nbsp;(_|&nbsp;||&nbsp;(_|&nbsp;||&nbsp;&nbsp;__/<br>
-&nbsp;|____/&nbsp;&#92;__|&nbsp;&#92;__,_|&nbsp;&#92;__,&nbsp;|&nbsp;&#92;___|<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|___/
-</code>
-</div>
-
-<div align="center">
+<pre>
+  ____  _
+ / ___|| |_   __ _   __ _   ___
+ &#92;___ &#92;| __| / _&#96; | / _&#96; | / _ &#92;
+  ___) | |_ | (_| || (_| ||  __/
+ |____/ &#92;__| &#92;__,_| &#92;__, | &#92;___|
+                    |___/
+</pre>
 
 ### Every CS internship. One command.
 
@@ -54,7 +51,7 @@ undergrad in Canada or the United States can actually apply to. Everything it
 rejects is saved with the reason, so you can look at what it skipped instead of
 taking its word for it.
 
-The last sync kept **2,127** postings out of **144,811**.
+The last sync kept **2,500** postings out of **146,057**.
 
 ## Install
 

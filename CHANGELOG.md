@@ -14,7 +14,7 @@ them in a SQLite database on your own machine.
 
 - **Fetches from 1,465 employers** across 15 ATS platforms — Greenhouse, Lever,
   Ashby, Workday, SmartRecruiters, Workable and more — plus 11 community feeds.
-- **Filters hard.** A recent sync kept 1,887 postings and rejected 112,988.
+- **Filters hard.** A recent sync kept 2,500 postings and rejected 143,557.
   Postings outside Canada and the United States are rejected too. A posting
   whose location cannot be read is kept, since a board that publishes no place
   is missing data rather than advertising a foreign one. Every rejection records

@@ -361,6 +361,7 @@ def test_the_readme_shows_the_same_banner_as_the_cli() -> None:
     if not readme.is_file():
         return
     body = unescape(readme.read_text(encoding="utf-8"))
+    body = body.replace("\u00a0", " ").replace("<br>", "\n")
 
     for line in WIDE.strip("\n").split("\n"):
         assert line.rstrip() in body, line
