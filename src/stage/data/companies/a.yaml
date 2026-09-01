@@ -129,6 +129,18 @@
     page_param: from
     page_size: 10
     max_pages: 8
+- name: Advanced Space
+  platform: greenhouse
+  slug: advancedspace
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 18 postings including 2027 DevOps and Fall internships.'
+- name: Audax Group
+  platform: greenhouse
+  slug: audaxgroup
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 16 postings including an AI Engineer Co-Op in Boston.'
 - name: Adaption Labs
   platform: ashby
   slug: adaption
@@ -528,6 +540,12 @@
     page_param: offset
     page_size: 100
     max_pages: 10
+- name: American Institutes for Research
+  platform: greenhouse
+  slug: americaninstitutesforresearch
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 14 postings including a Data Science Associate Intern.'
 - name: Ambarella
   platform: workday
   slug: ambarella
@@ -1227,6 +1245,13 @@
   workday_facet: workerSubType:136d83bad7ee010fa71a0c95bf002201
   notes: '2026-08-13: official Workday endpoint verified; its Intern fixed-term facet
     has 28 listings.'
+- name: Awetomaton
+  platform: greenhouse
+  slug: awetomaton
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 10 postings including a Platform Engineering Intern
+    in Beavercreek, OH.'
 - name: Axiom Space
   platform: workday
   slug: axiomspace

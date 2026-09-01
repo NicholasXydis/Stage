@@ -71,13 +71,20 @@
       category: family
     url_template: https://careers.bankofamerica.com/en-us/students/job-detail/{id}/job
 - name: Bank of China USA
-  platform: icims
+  platform: custom_json
   slug: bocusa
   source_of_record: discover
-  enabled: false
-  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
-    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
-    on its icims.com host is 404.'
+  last_verified: 2026-09-01
+  notes: '2026-09-01: iCIMS serves no JSON, so this reads the search page.
+    Verified an Internal Audit Data Analytics intern.'
+  custom:
+    url: https://careers-bocusa.icims.com/jobs/search?ss=1&in_iframe=1
+    format: html
+    row_selector: div.row:has(a.iCIMS_Anchor)
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
 - name: Banyan Software
   platform: greenhouse
   slug: banyansoftware
@@ -409,6 +416,14 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: BNY
+  platform: oracle_cloud
+  slug: eofe
+  source_of_record: discover
+  last_verified: 2026-09-01
+  oracle_host: eofe.fa.us2.oraclecloud.com
+  oracle_site: BNY-Careers
+  notes: '2026-09-01: verified 1401 postings on the Oracle Cloud candidate endpoint.'
 - name: Black Bery
   platform: workday
   slug: bb

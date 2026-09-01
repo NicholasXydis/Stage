@@ -693,6 +693,12 @@
   last_verified: 2026-08-16
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
     a live probe that matched the company name on the returned board'
+- name: Solid Power
+  platform: greenhouse
+  slug: solidpower
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 14 postings including six internships in Colorado.'
 - name: Solar Turbines
   platform: workday
   slug: cat
@@ -949,6 +955,16 @@
   slug: stripe
   source_of_record: manual
   last_verified: *id003
+- name: Stryker
+  platform: workday
+  slug: stryker
+  source_of_record: discover
+  last_verified: 2026-09-01
+  workday_tenant: stryker
+  workday_site: StrykerCareers
+  workday_dc: wd1
+  notes: '2026-09-01: verified 636 postings. Current interns are all overseas, so the
+    location screen carries the weight.'
 - name: Submittable
   platform: greenhouse
   slug: submittable

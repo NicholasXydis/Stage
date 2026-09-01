@@ -935,6 +935,12 @@
   workday_dc: wd5
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (4 posting(s), 0 kept)'
+- name: Compeer Financial
+  platform: greenhouse
+  slug: compeerfinancial
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 48 postings across WI, IL and MN.'
 - name: Co Active Systems
   platform: greenhouse
   slug: coactivesystems

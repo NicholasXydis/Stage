@@ -9,6 +9,12 @@
   enabled: false
   notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
     422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: Xaira Therapeutics
+  platform: greenhouse
+  slug: xairatherapeutics
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 22 postings including an AI Scientist Intern in Seattle.'
 - name: X-energy
   platform: workday
   slug: xenergy

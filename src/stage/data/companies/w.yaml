@@ -160,6 +160,13 @@
   slug: westerndigital
   source_of_record: discover
   last_verified: *id005
+- name: WhiteWater Midstream
+  platform: greenhouse
+  slug: whitewatermidstream
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 26 postings including a Summer 2027 Data Science Intern
+    in Austin.'
 - name: Wicked Workshop
   platform: smartrecruiters
   slug: keywordsaustralia
@@ -291,6 +298,12 @@
   slug: wongdoody
   source_of_record: openjobs
   last_verified: &id008 2026-08-11
+- name: Workland
+  platform: smartrecruiters
+  slug: workland
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 3 Montreal postings.'
 - name: Workato
   platform: greenhouse
   slug: workato

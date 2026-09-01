@@ -121,6 +121,12 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: University of Notre Dame
+  platform: smartrecruiters
+  slug: universityofnotredame
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 99 postings including a Data Science Intern.'
 - name: University of Nevada, Reno
   platform: smartrecruiters
   slug: universityofnevadareno

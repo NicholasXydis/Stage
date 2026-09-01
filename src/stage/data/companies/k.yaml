@@ -172,6 +172,12 @@
   notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
     careers page and the board answered with postings, but ashby publishes no board
     name, so provenance is the evidence rather than a name match'
+- name: Kodiak Robotics
+  platform: greenhouse
+  slug: kodiak
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 72 postings including six Winter 2027 internships.'
 - name: Kognitos
   platform: ashby
   slug: kognitos

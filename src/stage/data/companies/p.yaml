@@ -349,13 +349,20 @@
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
 - name: Persistent Systems
-  platform: icims
+  platform: custom_json
   slug: persistentsystems
   source_of_record: discover
-  enabled: false
-  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
-    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
-    on its icims.com host is 404.'
+  last_verified: 2026-09-01
+  notes: '2026-09-01: iCIMS serves no JSON, so this reads the search page.
+    Verified a Software Test Engineer intern.'
+  custom:
+    url: https://careers-persistentsystems.icims.com/jobs/search?ss=1&in_iframe=1
+    format: html
+    row_selector: div.row:has(a.iCIMS_Anchor)
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
 - name: Persona AI
   platform: ashby
   slug: persona.ai
@@ -383,6 +390,13 @@
   workday_dc: wd1
   notes: '2026-08-31: added. 226 postings; most interns are overseas, so the
     location screen carries the weight.'
+- name: Phoenix Contact
+  platform: greenhouse
+  slug: phoenixcontact
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 39 postings including a Data Science and Analytics
+    intern in Pennsylvania.'
 - name: Philips
   platform: workday
   slug: philips

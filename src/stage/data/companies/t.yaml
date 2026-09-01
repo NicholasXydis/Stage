@@ -298,6 +298,16 @@
   workday_dc: wd5
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (106 posting(s), 0 kept)'
+- name: The Hartford
+  platform: workday
+  slug: thehartford
+  source_of_record: discover
+  last_verified: 2026-09-01
+  workday_tenant: thehartford
+  workday_site: Careers_External
+  workday_dc: wd5
+  notes: '2026-09-01: verified 102 postings including Summer 2027 Software and Data
+    Engineer internships.'
 - name: The Independent Order of Foresters - Canada
   platform: workday
   slug: foresters

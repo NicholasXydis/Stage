@@ -7,13 +7,20 @@
     match the rest of the workable platform, which is parked until 2026-08-18 after
     two 429s in one day.'
 - name: East Penn Manufacturing Company
-  platform: icims
+  platform: custom_json
   slug: eastpennmanufacturing
   source_of_record: discover
-  enabled: false
-  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
-    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
-    on its icims.com host is 404.'
+  last_verified: 2026-09-01
+  notes: '2026-09-01: iCIMS serves no JSON, so this reads the search page.
+    Verified an IT Cybersecurity internship.'
+  custom:
+    url: https://careers-eastpennmanufacturing.icims.com/jobs/search?ss=1&in_iframe=1
+    format: html
+    row_selector: div.row:has(a.iCIMS_Anchor)
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
 - name: Eaton
   platform: custom_json
   slug: eaton

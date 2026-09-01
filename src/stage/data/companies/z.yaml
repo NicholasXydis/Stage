@@ -1,3 +1,9 @@
+- name: Zipline
+  platform: greenhouse
+  slug: flyzipline
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 328 postings with 68 internships in South San Francisco.'
 - name: Zapier
   platform: ashby
   slug: zapier
