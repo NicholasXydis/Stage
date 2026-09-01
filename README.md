@@ -1,11 +1,13 @@
-```
-                        ____  _
-                       / ___|| |_   __ _   __ _   ___
-                       \___ \| __| / _` | / _` | / _ \
-                        ___) | |_ | (_| || (_| ||  __/
-                       |____/ \__| \__,_| \__, | \___|
-                                          |___/
-```
+<div align="center">
+<code>
+&nbsp;&nbsp;____&nbsp;&nbsp;_<br>
+&nbsp;/&nbsp;___||&nbsp;|_&nbsp;&nbsp;&nbsp;__&nbsp;_&nbsp;&nbsp;&nbsp;__&nbsp;_&nbsp;&nbsp;&nbsp;___<br>
+&nbsp;&#92;___&nbsp;&#92;|&nbsp;__|&nbsp;/&nbsp;_&#96;&nbsp;|&nbsp;/&nbsp;_&#96;&nbsp;|&nbsp;/&nbsp;_&nbsp;&#92;<br>
+&nbsp;&nbsp;___)&nbsp;|&nbsp;|_&nbsp;|&nbsp;(_|&nbsp;||&nbsp;(_|&nbsp;||&nbsp;&nbsp;__/<br>
+&nbsp;|____/&nbsp;&#92;__|&nbsp;&#92;__,_|&nbsp;&#92;__,&nbsp;|&nbsp;&#92;___|<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|___/
+</code>
+</div>
 
 <div align="center">
 
@@ -20,7 +22,7 @@ It runs locally. There is no account to make and no server involved.
 
 ![version](https://img.shields.io/static/v1?label=version&message=v1.0.0&color=7c3aed) [![license](https://img.shields.io/static/v1?label=license&message=MIT&color=db2777)](LICENSE) ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=2563eb&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=2%2C274&color=16a34a) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=16a34a) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=2%2C292&color=16a34a) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=16a34a) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -52,7 +54,7 @@ undergrad in Canada or the United States can actually apply to. Everything it
 rejects is saved with the reason, so you can look at what it skipped instead of
 taking its word for it.
 
-The last sync kept **1,887** postings out of **114,875**.
+The last sync kept **2,127** postings out of **144,811**.
 
 ## Install
 
