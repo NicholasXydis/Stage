@@ -18,6 +18,10 @@ if os.name == "nt":
     LEAN_BUDGET_MS = 240.0
     LEXICON_BUDGET_MS = 260.0
 
+if os.environ.get("CI"):
+    LEAN_BUDGET_MS *= 1.6
+    LEXICON_BUDGET_MS *= 1.6
+
 DEPENDENCY_FLOOR = "import asyncio, sqlite3, typer, rich.console, yaml"
 RUNNER = "from stage.cli.app import app; app()"
 

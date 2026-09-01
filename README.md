@@ -1,4 +1,5 @@
 <div align="center">
+<table><tr><td>
 <pre>
   ____  _
  / ___|| |_   __ _   __ _   ___
@@ -7,6 +8,7 @@
  |____/ &#92;__| &#92;__,_| &#92;__, | &#92;___|
                     |___/
 </pre>
+</td></tr></table>
 
 ### Every CS internship. One command.
 
