@@ -12,7 +12,7 @@
 
 ### One command. Thousands of internships.
 
-**Stage reads 1,450+ employer boards, keeps the CS internships a Canadian or US undergrad can actually apply to**
+**Stage reads 1,450+ employer boards, keeps the CS internships a Canadian or US undergrad can apply to**
 
 No account, no server, no telemetry.
 
@@ -82,13 +82,12 @@ astral-sh.uv` on Windows. More options at
 <br>
 
 ```bash
-brew install NicholasXydis/tap/stage    # macOS and Linux
 pipx install stage-cli                  # isolates the tool, like uv
 pip install stage-cli                   # installs into the active environment
 ```
 
-`uv tool install`, Homebrew, and `pipx` all keep Stage away from your system
-Python, which is what you want for a command line tool.
+`uv tool install` and `pipx` both keep Stage away from your system Python, which
+is what you want for a command line tool.
 
 </details>
 
@@ -153,8 +152,8 @@ stage tui
 ```
 
 Press `/` to search and `f` for filters — arrows move, enter picks, escape
-closes. Role, location, language, how far back to look, new-since-last-sync, the
-and the employer you are sitting on all live in that one panel.
+closes. Role, location, language, how far back to look, new-since-last-sync and
+the employer you are sitting on all live in that one panel.
 `space` marks rows and `o` opens every one you marked. `w` expands the full
 description, `e` exports what you are looking at, and `ctrl+t` changes the theme.
 Press `?` for the full key list.
