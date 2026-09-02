@@ -137,6 +137,9 @@ class Repository(Protocol):
     def company_names(self) -> list[str]:
         pass
 
+    def distinct_terms(self) -> list[str]:
+        pass
+
     def previous_sync_at(self) -> datetime | None:
         pass
 

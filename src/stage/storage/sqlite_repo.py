@@ -1118,6 +1118,13 @@ class SqliteRepository:
         ).fetchall()
         return [str(row["company"]) for row in rows]
 
+    def distinct_terms(self) -> list[str]:
+        rows = self._conn.execute(
+            "SELECT DISTINCT term FROM jobs WHERE term IS NOT NULL AND term != '' "
+            "ORDER BY term COLLATE NOCASE"
+        ).fetchall()
+        return [str(row["term"]) for row in rows]
+
     def get_job(self, job_id: str) -> Job | None:
         row = self._conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
         return _row_to_job(row) if row else None
