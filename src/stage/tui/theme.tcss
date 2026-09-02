@@ -20,7 +20,8 @@ Header {
 }
 
 #splash-art {
-    color: $blue;
+    color: $text;
+    text-style: bold;
     text-align: center;
     width: auto;
 }

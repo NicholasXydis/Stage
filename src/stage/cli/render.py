@@ -66,6 +66,12 @@ def terminal() -> Console:
     return Console(emoji=False)
 
 
+def splash(console: Console) -> None:
+    from stage.banner import ACCENT, banner
+
+    console.print(Text(banner(console.width), style=f"bold {ACCENT}"))
+
+
 def sanitize(value: str) -> str:
     return escape(_sanitize(value))
 

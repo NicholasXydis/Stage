@@ -26,4 +26,7 @@ def banner(width: int) -> str:
     return block(WIDE if width >= MIN_WIDE else COMPACT)
 
 
-__all__ = ["COMPACT", "MIN_WIDE", "WIDE", "banner", "block"]
+ACCENT = "default"
+
+
+__all__ = ["ACCENT", "COMPACT", "MIN_WIDE", "WIDE", "banner", "block"]

@@ -89,11 +89,10 @@ def _require_enum[E: StrEnum](value: str, enum: type[E], flag: str) -> E:
 
 class _Banner(TyperGroup):
     def format_help(self, ctx: Any, formatter: Any) -> None:
-        from stage.banner import banner
-        from stage.cli.render import terminal
+        from stage.cli.render import splash, terminal
 
         console = terminal()
-        console.print(f"[bold cyan]{banner(console.width)}[/bold cyan]")
+        splash(console)
         super().format_help(ctx, formatter)
 
 
@@ -645,11 +644,10 @@ def show_help(
 
 
 def _print_guide() -> None:
-    from stage.banner import banner
-    from stage.cli.render import terminal
+    from stage.cli.render import splash, terminal
 
     console = terminal()
-    console.print(f"[bold cyan]{banner(console.width)}[/bold cyan]")
+    splash(console)
     console.print()
     typer.echo(_HELP_GUIDE)
 

@@ -1,18 +1,13 @@
-from typing import TYPE_CHECKING
-
 from textual.app import ComposeResult
 from textual.containers import Center, Middle
 from textual.screen import Screen
 from textual.widgets import Static
 
-if TYPE_CHECKING:
-    pass
-
 from stage.banner import COMPACT, MIN_WIDE
 from stage.banner import WIDE as BANNER
 from stage.banner import block as _block
 
-DISMISS_AFTER = 0.6
+DISMISS_AFTER = 1.2
 
 __all__ = ["BANNER", "COMPACT", "DISMISS_AFTER", "MIN_WIDE", "SplashScreen", "_block"]
 

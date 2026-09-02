@@ -376,3 +376,28 @@ async def test_sync_lines_carry_a_running_count() -> None:
 
     assert "1/3" in rendered
     assert "3/3" in rendered
+
+
+def test_the_banner_follows_the_terminal_foreground() -> None:
+    import io
+    import re
+
+    from rich.console import Console
+
+    from stage.cli.render import splash
+
+    buffer = io.StringIO()
+    console = Console(
+        file=buffer, force_terminal=True, color_system="truecolor", width=80, emoji=False
+    )
+    splash(console)
+    painted = buffer.getvalue()
+
+    assert not re.search(r"38;2;\d+;\d+;\d+", painted)
+    assert "\x1b[1;39m" in painted
+
+
+def test_the_banner_accent_is_the_terminal_default() -> None:
+    from stage.banner import ACCENT
+
+    assert ACCENT == "default"

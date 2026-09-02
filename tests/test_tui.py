@@ -731,8 +731,6 @@ def test_every_shortcut_appears_in_the_help_overlay() -> None:
 
 
 async def test_the_table_columns_fit_the_terminal(tmp_path: Path) -> None:
-    import asyncio
-
     from textual.widgets import DataTable
 
     from stage.tui.app import StageApp, summarize
@@ -742,7 +740,7 @@ async def test_the_table_columns_fit_the_terminal(tmp_path: Path) -> None:
         app = StageApp(db, await summarize(db))
         async with app.run_test(size=(width, 24)) as pilot:
             await pilot.pause()
-            await asyncio.sleep(0.9)
+            await pilot.press("escape")
             await pilot.pause()
             table = app.screen.query_one("#results", DataTable)
             total = sum(column.width for column in table.columns.values())
