@@ -9,13 +9,7 @@ if TYPE_CHECKING:
     from stage.tui.screens.review import ReviewScreen
     from stage.tui.screens.sync import SyncScreen
 
-from stage.tui.state import (
-    FilterState,
-    describe,
-    load_saved,
-    remember,
-    store_saved,
-)
+from stage.tui.state import FilterState
 
 
 def test_toggling_a_filter_twice_clears_it() -> None:
@@ -57,62 +51,6 @@ def test_clearing_resets_query_and_filters() -> None:
 
     assert state.query == ""
     assert not state.values
-
-
-def test_describe_names_the_active_filters() -> None:
-    state = FilterState()
-    assert describe(state) == "all postings"
-
-    state.toggle("role", "swe")
-    state.query = "rust"
-
-    assert describe(state) == '"rust" · swe'
-
-
-def test_a_saved_search_round_trips(tmp_path: Path) -> None:
-    state = FilterState()
-    state.query = "python"
-    state.toggle("role", "swe")
-    target = tmp_path / "searches.json"
-
-    assert store_saved(remember([], "swe python", state), target)
-
-    restored = FilterState()
-    restored.restore(load_saved(target)[0].payload)
-
-    assert restored.query == "python"
-    assert restored.values == {"role": "swe"}
-
-
-def test_saving_the_same_name_replaces_it(tmp_path: Path) -> None:
-    state = FilterState()
-    state.toggle("role", "swe")
-
-    searches = remember([], "mine", state)
-    searches = remember(searches, "mine", state)
-
-    assert len(searches) == 1
-
-
-def test_a_corrupt_saved_file_is_ignored(tmp_path: Path) -> None:
-    target = tmp_path / "searches.json"
-    target.write_text("{not json", encoding="utf-8")
-
-    assert load_saved(target) == []
-
-
-def test_a_saved_file_holding_the_wrong_shape_is_ignored(tmp_path: Path) -> None:
-    target = tmp_path / "searches.json"
-    target.write_text('{"name": "x"}', encoding="utf-8")
-
-    assert load_saved(target) == []
-
-
-def test_saved_entries_missing_fields_are_skipped(tmp_path: Path) -> None:
-    target = tmp_path / "searches.json"
-    target.write_text('[{"name": "ok", "payload": {}}, {"name": 2}, "junk"]', encoding="utf-8")
-
-    assert [item.name for item in load_saved(target)] == ["ok"]
 
 
 def test_stat_bars_render_within_the_requested_width() -> None:
@@ -178,7 +116,7 @@ async def test_the_results_table_takes_focus_so_shortcuts_work(tmp_path: Path) -
         assert isinstance(app.focused, DataTable)
 
 
-async def test_cycling_a_filter_advances_then_clears(tmp_path: Path) -> None:
+async def test_the_filter_panel_applies_the_row_you_pick(tmp_path: Path) -> None:
     from stage.tui.app import StageApp
     from stage.tui.screens.postings import PostingsScreen
 
@@ -189,7 +127,11 @@ async def test_cycling_a_filter_advances_then_clears(tmp_path: Path) -> None:
         screen = app.screen
         assert isinstance(screen, PostingsScreen)
         first = screen.state.values.get("role")
-        await pilot.press("1")
+
+        await pilot.press("f")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
         await pilot.pause()
 
         assert screen.state.values.get("role") != first
@@ -349,23 +291,6 @@ async def test_exporting_with_no_results_warns_instead_of_writing(tmp_path: Path
         assert not list(tmp_path.glob("stage-export.*"))
 
 
-async def test_recalling_an_empty_slot_is_harmless(tmp_path: Path) -> None:
-    from stage.tui.app import StageApp
-    from stage.tui.screens.postings import PostingsScreen
-
-    app = StageApp(tmp_path / "empty.db", "")
-
-    async with app.run_test(size=(120, 40)) as pilot:
-        await pilot.pause()
-        screen = app.screen
-        assert isinstance(screen, PostingsScreen)
-        screen.saved = []
-        await pilot.press("f1")
-        await pilot.pause()
-
-        assert screen.state.values == {}
-
-
 def test_the_source_bar_fills_proportionally() -> None:
     from stage.tui.screens.sync import source_bar
 
@@ -499,23 +424,6 @@ async def test_cycling_the_export_format_wraps(tmp_path: Path) -> None:
             await pilot.pause()
 
         assert screen._export_format == first
-
-
-async def test_nine_saved_search_slots_are_bound(tmp_path: Path) -> None:
-    from stage.tui.app import StageApp
-    from stage.tui.screens.postings import PostingsScreen
-
-    app = StageApp(tmp_path / "empty.db", "")
-
-    async with app.run_test(size=(120, 40)) as pilot:
-        await pilot.pause()
-        screen = app.screen
-        assert isinstance(screen, PostingsScreen)
-        keys = {
-            binding[0] if isinstance(binding, tuple) else binding.key for binding in screen.BINDINGS
-        }
-
-        assert {f"f{n}" for n in range(1, 10)} <= keys
 
 
 def test_the_trend_counts_only_recent_postings() -> None:
@@ -719,9 +627,9 @@ def test_every_shortcut_appears_in_the_help_overlay() -> None:
 
     from stage.tui.screens.postings import HELP_TEXT, PostingsScreen
 
-    names = {"slash": "/", "question_mark": "?"}
+    names = {"slash": "/", "question_mark": "?", "full_stop": "."}
     documented = HELP_TEXT.lower()
-    skipped = {"?"} | {f"f{n}" for n in range(2, 10)}
+    skipped = {"?"} | {f"f{n}" for n in range(1, 10)}
     for binding in PostingsScreen.BINDINGS:
         raw = binding.key if isinstance(binding, Binding) else binding[0]
         key = names.get(raw, raw)
@@ -1202,3 +1110,1024 @@ async def test_a_hostile_source_name_is_never_parsed_as_markup(tmp_path: Path) -
         painted = str(next(iter(table.get_row_at(0))))
 
     assert painted == "[/bold]evil"
+
+
+def test_the_window_cycles_through_the_offered_day_counts() -> None:
+    from stage.tui.state import LAST_DAYS_CHOICES
+
+    state = FilterState()
+    seen = [state.last_days]
+    for _ in LAST_DAYS_CHOICES:
+        seen.append(state.cycle_last_days())
+
+    assert set(LAST_DAYS_CHOICES).issubset(set(seen))
+    assert seen[-1] == seen[0]
+
+
+def test_a_zero_day_window_means_no_window() -> None:
+    state = FilterState()
+    state.last_days = 0
+
+    assert state.window_days is None
+
+
+def test_the_default_window_matches_the_cli() -> None:
+    from stage.domain import DEFAULT_WINDOW_DAYS
+
+    assert FilterState().window_days == DEFAULT_WINDOW_DAYS
+
+
+def test_showing_fewer_stops_at_one_page() -> None:
+    from stage.tui.state import PAGE_SIZE
+
+    state = FilterState()
+    state.widen()
+    assert state.limit == PAGE_SIZE * 2
+
+    assert state.narrow() is True
+    assert state.limit == PAGE_SIZE
+
+    assert state.narrow() is False
+    assert state.limit == PAGE_SIZE
+
+
+def test_showing_every_match_lifts_the_row_cap() -> None:
+    state = FilterState()
+    state.show_all = True
+
+    assert state.as_filters().limit is None
+
+
+def test_an_open_string_filter_reaches_the_domain_filters() -> None:
+    state = FilterState()
+    state.toggle("company", "Coveo Solutions")
+
+    filters = state.as_filters()
+
+    assert filters.company == "Coveo Solutions"
+
+
+def test_an_unknown_open_field_is_ignored() -> None:
+    state = FilterState()
+    state.values["nonsense"] = "value"
+
+    filters = state.as_filters()
+
+    assert not hasattr(filters, "nonsense")
+
+
+def test_clearing_resets_the_window_and_the_toggles() -> None:
+    from stage.domain import DEFAULT_WINDOW_DAYS
+
+    state = FilterState()
+    state.only_new = True
+    state.show_all = True
+    state.last_days = 0
+    state.widen()
+
+    state.clear()
+
+    assert state.only_new is False
+    assert state.show_all is False
+    assert state.last_days == DEFAULT_WINDOW_DAYS
+
+
+def _seed(path: Path, count: int = 3) -> None:
+    from datetime import UTC, datetime
+
+    from stage.domain import DegreeRequirement, Job, Language, LocationBucket, RoleCategory
+    from stage.storage.repository import SourceBatch
+    from stage.storage.sqlite_repo import SqliteRepository
+
+    when = datetime.now(UTC)
+    repo = SqliteRepository.connect(path)
+    repo.apply_source_batch(
+        SourceBatch(
+            source="greenhouse",
+            run_started_at=when,
+            jobs=tuple(
+                Job(
+                    id=f"greenhouse:acme:{index}",
+                    source="greenhouse",
+                    company="Acme" if index else "Beta",
+                    title_raw=f"Software Engineer Intern {index}",
+                    title_normalized=f"software engineer intern {index}",
+                    title_canonical=f"software engineer intern {index}",
+                    apply_url_raw=f"https://boards.example.test/{index}",
+                    description="",
+                    first_seen=when,
+                    last_seen=when,
+                    location_raw="Montréal, QC",
+                    location=LocationBucket.MONTREAL,
+                    language=Language.EN,
+                    role=RoleCategory.SWE,
+                    term="summer-2027" if index else "fall-2026",
+                    degree_requirement=DegreeRequirement.UNKNOWN,
+                )
+                for index in range(count)
+            ),
+        )
+    )
+    repo.close()
+
+
+async def test_marking_a_row_then_opening_uses_every_mark(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "marks.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        await pilot.press("space")
+        await pilot.pause()
+        assert len(screen._marked) == 1
+
+        assert len(screen._open_targets()) == 1
+
+
+async def test_marking_twice_unmarks(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "unmark.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        await pilot.press("space")
+        await pilot.pause()
+        await pilot.press("space")
+        await pilot.pause()
+
+        assert not screen._marked
+
+
+async def test_opening_with_no_marks_falls_back_to_the_cursor(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "cursor.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        assert not screen._marked
+        assert len(screen._open_targets()) == 1
+
+
+async def test_clearing_drops_the_marks(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "clear-marks.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+        await pilot.press("space")
+        await pilot.pause()
+
+        await pilot.press("c")
+        await pilot.pause()
+
+        assert not screen._marked
+
+
+async def test_only_this_employer_narrows_then_releases(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "employer.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        await pilot.press("f")
+        await pilot.pause()
+        row = next(r for r in screen._rows if r[0] == "company")
+
+        screen.state.choose(row[0], row[1])
+        assert "company" in screen.state.values
+
+        screen.state.choose(row[0], row[1])
+        assert "company" not in screen.state.values
+
+
+async def test_showing_more_then_fewer_returns_to_one_page(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+    from stage.tui.state import PAGE_SIZE
+
+    target = tmp_path / "paging.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+        screen.state.widen()
+        assert screen.state.limit > PAGE_SIZE
+
+        await pilot.press("M")
+        await pilot.pause()
+        await pilot.pause()
+
+        assert screen.state.limit == PAGE_SIZE
+
+
+async def test_show_every_match_then_fewer_restores_the_page(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+    from stage.tui.state import PAGE_SIZE
+
+    target = tmp_path / "showall.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        screen.state.choose("show_all", "on")
+        await pilot.pause()
+        armed = screen.state.show_all
+
+        await pilot.press("M")
+        await pilot.pause()
+        await pilot.pause()
+
+        assert armed
+        assert not screen.state.show_all
+        assert screen.state.limit == PAGE_SIZE
+
+
+async def test_the_window_key_changes_the_lookback(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "window.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+        before = screen.state.last_days
+
+        screen.state.choose("last_days", "30")
+        await pilot.pause()
+
+        assert screen.state.last_days != before
+
+
+async def test_the_new_only_key_toggles(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "newonly.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        screen.state.choose("only_new", "on")
+        armed = screen.state.only_new
+
+        screen.state.choose("only_new", "on")
+
+        assert armed
+        assert not screen.state.only_new
+
+
+async def test_export_asks_before_it_writes(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "export.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        await pilot.press("e")
+        await pilot.pause()
+
+        assert screen._arming_export is True
+
+
+async def test_escape_cancels_an_armed_export(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "cancel.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+        await pilot.press("e")
+        await pilot.pause()
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert screen._arming_export is False
+
+
+async def test_a_key_changes_the_format_while_armed(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "format.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+        await pilot.press("e")
+        await pilot.pause()
+        before = screen._export_format
+
+        await pilot.press("g")
+        await pilot.pause()
+
+        assert screen._export_format != before
+        assert screen._arming_export is True
+
+
+async def test_confirming_an_export_writes_a_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "write.db"
+    _seed(target)
+    exports = tmp_path / "exports"
+    exports.mkdir()
+    monkeypatch.setenv("STAGE_EXPORT_DIR", str(exports))
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        await pilot.press("e")
+        await pilot.pause()
+        await pilot.press("e")
+        for _ in range(6):
+            await pilot.pause()
+
+        assert screen._arming_export is False
+
+    assert list(exports.glob("stage-*.csv"))
+
+
+def test_the_footer_only_advertises_a_handful_of_keys() -> None:
+    from textual.binding import Binding
+
+    from stage.tui.screens.postings import PostingsScreen
+
+    shown = [
+        binding
+        for binding in PostingsScreen.BINDINGS
+        if isinstance(binding, Binding) and binding.show
+    ]
+
+    assert len(shown) <= 8
+
+
+def test_every_binding_carries_a_description() -> None:
+    from textual.binding import Binding
+
+    from stage.tui.screens.postings import PostingsScreen
+
+    for binding in PostingsScreen.BINDINGS:
+        assert isinstance(binding, Binding)
+        assert binding.description
+
+
+def test_the_filter_rows_cover_every_filter_the_keys_used_to_reach() -> None:
+    from stage.tui.state import filter_rows
+
+    state = FilterState()
+    names = {row[0] for row in filter_rows(state, "Acme")}
+
+    assert {"role", "location", "language", "last_days", "only_new", "show_all"} <= names
+    assert "company" in names
+
+
+def test_a_filter_row_is_marked_when_it_is_the_active_one() -> None:
+    from stage.tui.state import filter_rows
+
+    state = FilterState()
+    state.toggle("role", "swe")
+
+    chosen = [row for row in filter_rows(state) if row[3]]
+
+    assert ("role", "swe") in [(row[0], row[1]) for row in chosen]
+
+
+def test_the_window_rows_mark_the_current_window() -> None:
+    from stage.domain import DEFAULT_WINDOW_DAYS
+    from stage.tui.state import filter_rows
+
+    state = FilterState()
+
+    marked = [row for row in filter_rows(state) if row[0] == "last_days" and row[3]]
+
+    assert marked and marked[0][1] == str(DEFAULT_WINDOW_DAYS)
+
+
+def test_choosing_a_window_row_sets_the_window() -> None:
+    state = FilterState()
+
+    state.choose("last_days", "30")
+
+    assert state.last_days == 30
+    assert state.window_days == 30
+
+
+def test_choosing_a_toggle_row_flips_it() -> None:
+    state = FilterState()
+
+    state.choose("only_new", "on")
+    assert state.only_new
+
+    state.choose("only_new", "on")
+    assert not state.only_new
+
+
+def test_choosing_a_row_returns_to_the_first_page() -> None:
+    from stage.tui.state import PAGE_SIZE
+
+    state = FilterState()
+    state.widen()
+
+    state.choose("role", "swe")
+
+    assert state.limit == PAGE_SIZE
+
+
+def test_no_employer_row_appears_when_nothing_is_highlighted() -> None:
+    from stage.tui.state import filter_rows
+
+    assert all(row[0] != "company" for row in filter_rows(FilterState()))
+
+
+async def test_the_filter_panel_opens_focused_and_escape_closes_it(tmp_path: Path) -> None:
+    from textual.widgets import DataTable, OptionList
+
+    from stage.tui.app import StageApp
+
+    app = StageApp(tmp_path / "panel.db", "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        panel = app.screen.query_one("#filters", OptionList)
+        assert panel.has_class("hidden")
+
+        await pilot.press("f")
+        await pilot.pause()
+        assert not panel.has_class("hidden")
+        opened_on = type(app.focused).__name__
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert opened_on == OptionList.__name__
+        assert panel.has_class("hidden")
+        assert type(app.focused).__name__ == DataTable.__name__
+
+
+async def test_pressing_the_filter_key_twice_closes_the_panel(tmp_path: Path) -> None:
+    from textual.widgets import OptionList
+
+    from stage.tui.app import StageApp
+
+    app = StageApp(tmp_path / "twice.db", "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        panel = app.screen.query_one("#filters", OptionList)
+
+        await pilot.press("f")
+        await pilot.pause()
+        await pilot.press("f")
+        await pilot.pause()
+
+        assert panel.has_class("hidden")
+
+
+async def test_the_panel_offers_the_employer_you_are_sitting_on(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "panel-employer.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        await pilot.press("f")
+        await pilot.pause()
+
+        assert any(row[0] == "company" for row in screen._rows)
+
+
+async def test_a_hostile_employer_name_cannot_break_the_filter_panel(tmp_path: Path) -> None:
+    from dataclasses import replace as _replace
+
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "panel-hostile.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+        screen._jobs = tuple(_replace(job, company="[/bold]evil") for job in screen._jobs)
+        screen._fill(screen._jobs)
+        await pilot.pause()
+
+        await pilot.press("f")
+        await pilot.pause()
+
+        assert any(row[1] == "[/bold]evil" for row in screen._rows)
+
+
+def test_a_row_action_key_never_becomes_a_filing_key() -> None:
+    from textual.binding import Binding
+
+    from stage.tui.screens.postings import PostingsScreen
+    from stage.tui.screens.review import ReviewScreen
+
+    acted_on = {
+        binding.key
+        for binding in PostingsScreen.BINDINGS
+        if isinstance(binding, Binding) and binding.action in {"open", "mark", "expand"}
+    }
+    filing = {
+        binding.key
+        for binding in ReviewScreen.BINDINGS
+        if isinstance(binding, Binding) and binding.action.startswith("classify")
+    }
+
+    assert not acted_on & filing
+
+
+def test_every_screen_offers_the_same_help_key() -> None:
+    from textual.binding import Binding
+
+    from stage.tui.screens.boards import BoardsScreen
+    from stage.tui.screens.postings import PostingsScreen
+    from stage.tui.screens.review import ReviewScreen
+    from stage.tui.screens.stats import StatsScreen
+    from stage.tui.screens.sync import SyncScreen
+
+    for screen in (PostingsScreen, ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+        keys = {binding.key for binding in screen.BINDINGS if isinstance(binding, Binding)}
+        assert "question_mark" in keys, screen.__name__
+
+
+def test_every_screen_documents_its_own_keys() -> None:
+    from textual.binding import Binding
+
+    from stage.tui.screens.boards import BoardsScreen
+    from stage.tui.screens.review import ReviewScreen
+    from stage.tui.screens.stats import StatsScreen
+    from stage.tui.screens.sync import SyncScreen
+
+    names = {"question_mark": "?", "escape": "escape"}
+    for screen in (ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+        text = screen.HELP_TEXT.lower()
+        for binding in screen.BINDINGS:
+            assert isinstance(binding, Binding)
+            key = names.get(binding.key, binding.key)
+            if key == "?":
+                continue
+            assert key.lower() in text, f"{binding.key} on {screen.__name__}"
+
+
+def test_no_screen_shows_more_than_a_handful_of_keys() -> None:
+    from textual.binding import Binding
+
+    from stage.tui.screens.boards import BoardsScreen
+    from stage.tui.screens.postings import PostingsScreen
+    from stage.tui.screens.review import ReviewScreen
+    from stage.tui.screens.stats import StatsScreen
+    from stage.tui.screens.sync import SyncScreen
+
+    for screen in (PostingsScreen, ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+        shown = [
+            binding for binding in screen.BINDINGS if isinstance(binding, Binding) and binding.show
+        ]
+        assert len(shown) <= 8, screen.__name__
+
+
+async def test_escape_closes_the_help_overlay(tmp_path: Path) -> None:
+    from textual.widgets import Static
+
+    from stage.tui.app import StageApp
+
+    app = StageApp(tmp_path / "help.db", "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        panel = app.screen.query_one("#help", Static)
+
+        await pilot.press("question_mark")
+        await pilot.pause()
+        assert panel.has_class("visible")
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert not panel.has_class("visible")
+
+
+async def test_the_help_key_still_closes_the_overlay(tmp_path: Path) -> None:
+    from textual.widgets import Static
+
+    from stage.tui.app import StageApp
+
+    app = StageApp(tmp_path / "help-toggle.db", "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        panel = app.screen.query_one("#help", Static)
+
+        await pilot.press("question_mark")
+        await pilot.pause()
+        await pilot.press("question_mark")
+        await pilot.pause()
+
+        assert not panel.has_class("visible")
+
+
+async def test_opening_help_closes_the_filter_panel(tmp_path: Path) -> None:
+    from textual.widgets import OptionList, Static
+
+    from stage.tui.app import StageApp
+
+    app = StageApp(tmp_path / "exclusive.db", "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        panel = app.screen.query_one("#filters", OptionList)
+        help_panel = app.screen.query_one("#help", Static)
+
+        await pilot.press("f")
+        await pilot.pause()
+        assert not panel.has_class("hidden")
+
+        await pilot.press("question_mark")
+        await pilot.pause()
+
+        assert panel.has_class("hidden")
+        assert help_panel.has_class("visible")
+
+
+async def test_opening_the_filter_panel_closes_help(tmp_path: Path) -> None:
+    from textual.widgets import OptionList, Static
+
+    from stage.tui.app import StageApp
+
+    app = StageApp(tmp_path / "exclusive2.db", "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        panel = app.screen.query_one("#filters", OptionList)
+        help_panel = app.screen.query_one("#help", Static)
+
+        await pilot.press("question_mark")
+        await pilot.pause()
+
+        await pilot.press("f")
+        await pilot.pause()
+
+        assert not help_panel.has_class("visible")
+        assert not panel.has_class("hidden")
+
+
+async def test_opening_help_cancels_an_armed_export(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    target = tmp_path / "arm-help.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+
+        await pilot.press("e")
+        await pilot.pause()
+        armed = screen._arming_export
+
+        await pilot.press("question_mark")
+        await pilot.pause()
+
+        assert armed
+        assert not screen._arming_export
+
+
+def test_disabling_a_board_needs_a_second_press() -> None:
+    from stage.tui.screens.boards import BoardsScreen
+
+    screen = BoardsScreen()
+
+    assert screen._arming_disable is None
+
+
+async def test_a_board_is_only_disabled_on_the_second_press(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.boards import BoardsScreen
+
+    app = StageApp(tmp_path / "boards-confirm.db", "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        screen = BoardsScreen()
+        app.push_screen(screen)
+        await pilot.pause()
+        screen._companies = ("Acme",)
+
+        screen.action_disable()
+
+        assert screen._arming_disable == "Acme"
+
+
+async def test_moving_the_cursor_forgets_a_pending_disable(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.boards import BoardsScreen
+
+    app = StageApp(tmp_path / "boards-move.db", "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        screen = BoardsScreen()
+        app.push_screen(screen)
+        await pilot.pause()
+        screen._arming_disable = "Acme"
+
+        screen.on_data_table_row_highlighted()
+
+        assert screen._arming_disable is None
+
+
+async def test_enabling_forgets_a_pending_disable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.tui.app import StageApp
+    from stage.tui.screens.boards import BoardsScreen
+
+    registry = tmp_path / "registry"
+    registry.mkdir()
+    monkeypatch.setenv("STAGE_REGISTRY", str(registry))
+    app = StageApp(tmp_path / "boards-enable.db", "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        screen = BoardsScreen()
+        app.push_screen(screen)
+        await pilot.pause()
+        screen._arming_disable = "Acme"
+
+        screen.action_enable()
+
+        assert screen._arming_disable is None
+
+
+def test_the_app_does_not_let_a_widget_take_over_the_screen() -> None:
+    from stage.tui.app import StageApp
+
+    assert StageApp.ALLOW_MAXIMIZE is False
+
+
+def test_no_binding_fights_a_key_textual_reserves() -> None:
+    from textual.binding import Binding
+
+    from stage.tui.screens.boards import BoardsScreen
+    from stage.tui.screens.postings import PostingsScreen
+    from stage.tui.screens.review import ReviewScreen
+    from stage.tui.screens.stats import StatsScreen
+    from stage.tui.screens.sync import SyncScreen
+
+    reserved = {"tab", "shift+tab", "ctrl+c", "ctrl+q", "super+c"}
+    for screen in (PostingsScreen, ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+        for binding in screen.BINDINGS:
+            assert isinstance(binding, Binding)
+            assert binding.key not in reserved, f"{binding.key} on {screen.__name__}"
+
+
+def test_the_footer_stays_out_of_the_way() -> None:
+    from textual.binding import Binding
+
+    from stage.tui.screens.boards import BoardsScreen
+    from stage.tui.screens.postings import PostingsScreen
+    from stage.tui.screens.review import ReviewScreen
+    from stage.tui.screens.stats import StatsScreen
+    from stage.tui.screens.sync import SyncScreen
+
+    for screen in (PostingsScreen, ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+        shown = [
+            binding for binding in screen.BINDINGS if isinstance(binding, Binding) and binding.show
+        ]
+        assert len(shown) <= 6, screen.__name__
+        assert any(binding.key == "question_mark" for binding in shown), screen.__name__
+
+
+def test_no_filter_row_offers_a_term() -> None:
+    from stage.tui.state import filter_rows
+
+    assert all(row[0] != "term" for row in filter_rows(FilterState(), "Acme"))
+
+
+def test_text_on_the_blue_backgrounds_is_pinned() -> None:
+    from pathlib import Path as _Path
+
+    theme = (_Path("src/stage/tui/theme.tcss")).read_text(encoding="utf-8")
+    blocks = [block for block in theme.split("}") if "background: $blue" in block]
+
+    assert blocks
+    for block in blocks:
+        if "color:" in block:
+            assert "$on-blue" in block, block.strip()[:60]
+
+
+def test_every_help_line_fits_the_panel() -> None:
+    from rich.markup import render
+
+    from stage.tui.screens.boards import BoardsScreen
+    from stage.tui.screens.postings import HELP_TEXT
+    from stage.tui.screens.review import ReviewScreen
+    from stage.tui.screens.stats import StatsScreen
+    from stage.tui.screens.sync import SyncScreen
+
+    texts = [HELP_TEXT] + [
+        screen.HELP_TEXT for screen in (ReviewScreen, BoardsScreen, StatsScreen, SyncScreen)
+    ]
+    for text in texts:
+        for line in text.split("\n"):
+            assert len(render(line).plain) <= 42, line
+
+
+def test_help_lines_share_one_shape() -> None:
+    from rich.markup import render
+
+    from stage.tui.screens.boards import BoardsScreen
+    from stage.tui.screens.postings import HELP_TEXT
+    from stage.tui.screens.review import ReviewScreen
+    from stage.tui.screens.sync import SyncScreen
+
+    texts = [HELP_TEXT] + [screen.HELP_TEXT for screen in (ReviewScreen, BoardsScreen, SyncScreen)]
+    for text in texts:
+        for line in text.split("\n"):
+            plain = render(line).plain
+            if not plain.startswith("  "):
+                continue
+            assert plain[2:11].rstrip() == plain[2:11].strip(), line
+            assert plain[11:12] != " ", line
+
+
+def test_the_theme_is_not_a_fixed_palette() -> None:
+    from pathlib import Path as _Path
+
+    theme = _Path("src/stage/tui/theme.tcss").read_text(encoding="utf-8")
+    header = theme.split("Screen {")[0]
+
+    assert "#" not in header, "the palette should follow the active theme"
+
+
+def test_the_theme_choice_round_trips(tmp_path: Path) -> None:
+    from stage.tui.state import load_theme, store_theme
+
+    target = tmp_path / "tui-theme"
+
+    assert store_theme("nord", target)
+    assert load_theme(target) == "nord"
+
+
+def test_a_missing_theme_file_reads_as_no_choice(tmp_path: Path) -> None:
+    from stage.tui.state import load_theme
+
+    assert load_theme(tmp_path / "absent") is None
+
+
+def test_an_empty_theme_file_reads_as_no_choice(tmp_path: Path) -> None:
+    from stage.tui.state import load_theme
+
+    target = tmp_path / "tui-theme"
+    target.write_text("  \n", encoding="utf-8")
+
+    assert load_theme(target) is None
+
+
+async def test_the_theme_key_moves_to_another_theme(tmp_path: Path) -> None:
+    from stage.tui.app import StageApp
+
+    app = StageApp(tmp_path / "theme.db", "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        before = app.theme
+
+        await pilot.press("ctrl+t")
+        await pilot.pause()
+
+        assert app.theme != before
+        assert app.theme in app.available_themes
+
+
+async def test_a_stored_theme_is_used_at_startup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.tui.app import StageApp
+
+    monkeypatch.setattr("stage.tui.state.theme_path", lambda: tmp_path / "tui-theme")
+    (tmp_path / "tui-theme").write_text("nord", encoding="utf-8")
+    app = StageApp(tmp_path / "startup.db", "")
+
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+
+        assert app.theme == "nord"
+
+
+def test_text_on_a_blue_background_reads_on_every_theme() -> None:
+    from textual.app import App
+
+    def luminance(value: str) -> float:
+        value = value.lstrip("#")
+        channels = [int(value[index : index + 2], 16) / 255 for index in (0, 2, 4)]
+        adjusted = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+        return 0.2126 * adjusted[0] + 0.7152 * adjusted[1] + 0.0722 * adjusted[2]
+
+    app = App[None]()
+    for name in app.available_themes:
+        palette = app.available_themes[name].to_color_system().generate()
+        front, back = palette["text-primary"], palette["primary-muted"]
+        if not (front.startswith("#") and back.startswith("#")):
+            continue
+        high, low = sorted((luminance(front), luminance(back)), reverse=True)
+        assert (high + 0.05) / (low + 0.05) >= 4.2, name

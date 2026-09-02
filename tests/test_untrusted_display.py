@@ -232,3 +232,36 @@ def test_a_hostile_posting_id_is_echoed_literally(hostile_db: Path) -> None:
     result = CliRunner().invoke(app, ["show", "[/bold]nope", "--db", str(hostile_db)])
     assert result.exit_code == 1
     assert "[/bold]nope" in result.stdout
+
+
+async def test_a_hostile_employer_name_survives_being_filtered_on(
+    tmp_path: Path,
+) -> None:
+    import sys
+    from dataclasses import replace
+
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    sys.path.insert(0, "tests")
+    from test_tui import _seed
+
+    target = tmp_path / "hostile.db"
+    _seed(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(120, 30)) as pilot:
+        await pilot.pause()
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, PostingsScreen)
+        screen._jobs = tuple(replace(job, company="[/bold]evil") for job in screen._jobs)
+        screen._fill(screen._jobs)
+        await pilot.pause()
+
+        screen.state.choose("company", "[/bold]evil")
+        screen._render_chips()
+        screen._render_filters()
+        await pilot.pause()
+
+        assert screen.state.values.get("company") == "[/bold]evil"
