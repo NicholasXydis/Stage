@@ -96,15 +96,6 @@ class FilterState:
             self.toggle(name, value)
         self.limit = PAGE_SIZE
 
-    def cycle_last_days(self) -> int:
-        order = LAST_DAYS_CHOICES
-        try:
-            index = order.index(self.last_days)
-        except ValueError:
-            index = -1
-        self.last_days = order[(index + 1) % len(order)]
-        return self.last_days
-
     @property
     def window_days(self) -> int | None:
         return self.last_days or None
@@ -128,27 +119,6 @@ class FilterState:
             except ValueError:
                 continue
         return JobFilters(limit=None if self.show_all else self.limit, **chosen)
-
-    def payload(self) -> dict[str, Any]:
-        return {
-            "query": self.query,
-            "values": dict(self.values),
-            "last_days": self.last_days,
-            "only_new": self.only_new,
-            "show_all": self.show_all,
-        }
-
-    def restore(self, payload: dict[str, Any]) -> None:
-        self.query = str(payload.get("query", ""))
-        stored = payload.get("values")
-        self.values = (
-            {str(k): str(v) for k, v in stored.items()} if isinstance(stored, dict) else {}
-        )
-        self.limit = PAGE_SIZE
-        window = payload.get("last_days")
-        self.last_days = window if isinstance(window, int) and window >= 0 else DEFAULT_WINDOW_DAYS
-        self.only_new = bool(payload.get("only_new", False))
-        self.show_all = bool(payload.get("show_all", False))
 
 
 def theme_path() -> Path:

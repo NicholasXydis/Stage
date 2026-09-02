@@ -174,7 +174,8 @@
   last_verified: 2026-08-20
   notes: '2026-08-20: owner-captured Ongig request. The group_id index is multi-employer
     — 40 of its 67 rows are Apex Fintech — so it is filtered to the PEAK6 subdivisions;
-    the apply url template is the one the site''s own bundle builds.'
+    the apply url template is the one the site''s own bundle builds. The bearer is
+    Ongig''s public widget key, not a Stage credential.'
   custom:
     url: https://text-analyzer.ongig.com/api/external/v2/jobs/search
     method: POST

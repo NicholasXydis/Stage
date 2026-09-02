@@ -39,6 +39,9 @@ BLOCKING_STATUSES = frozenset({401, 403})
 BLOCKED_COOLDOWN_S = 1800.0
 DENIED_HOSTS_BEFORE_BLOCK = 2
 MAX_REDIRECTS = 3
+ORIGIN_BOUND_HEADERS = frozenset(
+    {"authorization", "cookie", "origin", "referer", "proxy-authorization", "x-csrf-token"}
+)
 DEFAULT_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=10.0)
 
 
@@ -226,6 +229,10 @@ class HostBudget:
         return state
 
 
+def _origin_of(url: httpx.URL) -> tuple[str, str, int | None]:
+    return (url.scheme, (url.host or "").lower(), url.port)
+
+
 class HttpClient:
     def __init__(
         self,
@@ -333,11 +340,16 @@ class HttpClient:
 
     def _authorize(self, url: str) -> tuple[str, HostBudget]:
         try:
-            host = (urlsplit(url).hostname or "").lower()
+            split = urlsplit(url)
         except ValueError:
-            host = ""
+            raise HostNotAllowedError(f"{url!r} is not a registry host") from None
+        host = (split.hostname or "").lower()
         if host not in self._allowed_hosts:
             raise HostNotAllowedError(f"{host or url!r} is not a registry host")
+        if split.scheme != "https":
+            raise RedirectNotAllowedError(
+                f"{url} is {split.scheme or 'schemeless'}; TLS is never optional (§11)"
+            )
         bucket = self.bucket_for(host)
         return bucket, self._budget_for(bucket)
 
@@ -458,9 +470,10 @@ class HttpClient:
         self, target: httpx.URL, headers: dict[str, str], method: str, body: Any
     ) -> httpx.Response:
         current = target
+        carried = headers
         for _ in range(MAX_REDIRECTS + 1):
             request = self._client.build_request(
-                method, current, headers=headers, json=body if method == "POST" else None
+                method, current, headers=carried, json=body if method == "POST" else None
             )
             response = await self._client.send(request, stream=True)
             if not response.is_redirect:
@@ -469,8 +482,15 @@ class HttpClient:
             if not location:
                 return response
             await response.aclose()
-            current = current.join(location)
-            self._validate_hop(current)
+            following = current.join(location)
+            self._validate_hop(following)
+            if _origin_of(following) != _origin_of(current):
+                carried = {
+                    name: value
+                    for name, value in carried.items()
+                    if name.lower() not in ORIGIN_BOUND_HEADERS
+                }
+            current = following
             method = "GET" if response.status_code in (301, 302, 303) else method
         raise RedirectNotAllowedError(f"{target} exceeded {MAX_REDIRECTS} redirects")
 

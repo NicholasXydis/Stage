@@ -611,7 +611,6 @@ def apply_verification(
 
 
 GENERIC_SLUG_MAX = 6
-IMPLAUSIBLE_BOARD_JOBS = 10
 
 
 @dataclass(frozen=True, slots=True)

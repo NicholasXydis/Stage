@@ -273,3 +273,58 @@ async def test_healthy_slow_responses_do_not_tighten_the_rate() -> None:
             await client.get_json(f"{ENDPOINT}?slow=1&n={index}")
 
     assert budget.metrics.tightenings == 0
+
+
+@respx.mock
+async def test_a_redirect_to_another_host_drops_the_first_hosts_credentials() -> None:
+    first = "https://one.example.test/jobs"
+    second = "https://two.example.test/jobs"
+    respx.post(first).mock(return_value=httpx.Response(302, headers={"location": second}))
+    landed = respx.get(second).mock(return_value=httpx.Response(200, json={"jobs": []}))
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"one.example.test", "two.example.test"}),
+        posture=RatePosture(concurrency=1, min_interval_s=0.0),
+    ) as client:
+        await client.post_json(
+            first,
+            body={},
+            extra_headers={
+                "Authorization": "Bearer secret",
+                "Cookie": "session=secret",
+                "Origin": "https://one.example.test",
+                "Referer": "https://one.example.test/",
+                "X-CSRF-Token": "secret",
+            },
+        )
+
+    sent = landed.calls[0].request.headers
+    for header in ("authorization", "cookie", "origin", "referer", "x-csrf-token"):
+        assert header not in sent, header
+
+
+@respx.mock
+async def test_a_redirect_within_one_host_keeps_the_headers() -> None:
+    first = "https://one.example.test/jobs"
+    second = "https://one.example.test/jobs/page-2"
+    respx.post(first).mock(return_value=httpx.Response(302, headers={"location": second}))
+    landed = respx.get(second).mock(return_value=httpx.Response(200, json={"jobs": []}))
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"one.example.test"}),
+        posture=RatePosture(concurrency=1, min_interval_s=0.0),
+    ) as client:
+        await client.post_json(first, body={}, extra_headers={"Authorization": "Bearer secret"})
+
+    assert landed.calls[0].request.headers["authorization"] == "Bearer secret"
+
+
+async def test_a_plain_http_url_is_refused_before_it_is_sent() -> None:
+    from stage.http.client import RedirectNotAllowedError
+
+    async with HttpClient(
+        allowed_hosts=frozenset({"one.example.test"}),
+        posture=RatePosture(concurrency=1, min_interval_s=0.0),
+    ) as client:
+        with pytest.raises(RedirectNotAllowedError):
+            await client.get_json("http://one.example.test/jobs")

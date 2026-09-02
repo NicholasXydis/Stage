@@ -181,9 +181,6 @@ class AsyncRepository:
     async def company_names(self) -> list[str]:
         return await self._writer.run(lambda repository: repository.company_names())
 
-    async def distinct_terms(self) -> list[str]:
-        return await self._writer.run(lambda repository: repository.distinct_terms())
-
     async def get_job(self, job_id: str) -> Job | None:
         return await self._writer.run(lambda repository: repository.get_job(job_id))
 

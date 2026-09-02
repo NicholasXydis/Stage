@@ -1112,18 +1112,6 @@ async def test_a_hostile_source_name_is_never_parsed_as_markup(tmp_path: Path) -
     assert painted == "[/bold]evil"
 
 
-def test_the_window_cycles_through_the_offered_day_counts() -> None:
-    from stage.tui.state import LAST_DAYS_CHOICES
-
-    state = FilterState()
-    seen = [state.last_days]
-    for _ in LAST_DAYS_CHOICES:
-        seen.append(state.cycle_last_days())
-
-    assert set(LAST_DAYS_CHOICES).issubset(set(seen))
-    assert seen[-1] == seen[0]
-
-
 def test_a_zero_day_window_means_no_window() -> None:
     state = FilterState()
     state.last_days = 0

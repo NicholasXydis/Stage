@@ -20,7 +20,7 @@ No account, no server, no telemetry.
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=2%2C373&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=2%2C375&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -154,12 +154,13 @@ stage tui
 
 Press `/` to search and `f` for filters — arrows move, enter picks, escape
 closes. Role, location, language, how far back to look, new-since-last-sync, the
-employer you are sitting on and your saved searches all live in that one panel.
+and the employer you are sitting on all live in that one panel.
 `space` marks rows and `o` opens every one you marked. `w` expands the full
 description, `e` exports what you are looking at, and `ctrl+t` changes the theme.
 Press `?` for the full key list.
 
-Same database and the same filters as the CLI, apart from `--source`. Row
+Same database as the CLI. The panel covers role, location, language, the date
+window and new-since-last-sync; `--term` and `--source` stay CLI-only. Row
 numbers are a CLI idea — in the TUI you move a cursor instead.
 
 ## Keeping it fresh
@@ -218,7 +219,7 @@ Stage/
 │  ├─ http/                 rate posture, circuit breaker, validator cache
 │  ├─ storage/              SQLite repository, migrations, FTS
 │  └─ data/                 packaged registry (a directory) and lexicons
-├─ tests/                   2,319 tests, 89% branch coverage
+├─ tests/                   2,375 tests, 89% branch coverage
 └─ .github/workflows/       CI, CodeQL, scheduled canary, release
 ```
 
@@ -264,7 +265,7 @@ Stage/
 
 | Workflow | File | Purpose |
 | --- | --- | --- |
-| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, 2,319 tests, coverage floor, badge drift |
+| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, 2,375 tests, coverage floor, badge drift |
 | Supported Pythons | `.github/workflows/ci.yml` | The full suite again on 3.13 and 3.14 |
 | Wheel | `.github/workflows/ci.yml` | Builds and smoke-tests the wheel on Ubuntu, Windows and macOS |
 | CodeQL | `.github/workflows/codeql.yml` | Static analysis for Python and the workflows themselves |

@@ -13,6 +13,7 @@ from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat
 from stage.domain.text import sanitize
 from stage.normalize.location import display_location
+from stage.tui.help import HelpOverlay
 from stage.tui.safe import cell, quoted, told
 from stage.tui.state import (
     DEBOUNCE_SECONDS,
@@ -63,7 +64,8 @@ def age_label(first_seen: datetime, now: datetime) -> str:
     return "new" if days <= 1 else f"{days}d"
 
 
-class PostingsScreen(Screen[None]):
+class PostingsScreen(HelpOverlay, Screen[None]):
+    HELP_TEXT = HELP_TEXT
     BINDINGS = [
         Binding("slash", "search", "search"),
         Binding("f", "filters", "filter"),
@@ -139,8 +141,7 @@ class PostingsScreen(Screen[None]):
     def _render_chips(self) -> None:
         if self._arming_export:
             self.query_one("#chips", Static).update(
-                f"Export [b]{self._export_count()}[/b] posting(s) as "
-                f"[b]{self._export_format}[/b]?   "
+                f"Export every match as [b]{self._export_format}[/b]?   "
                 "[dim]e to confirm, g for another format, escape to cancel[/dim]"
             )
             return
@@ -168,9 +169,6 @@ class PostingsScreen(Screen[None]):
 
     def _is_narrowed(self) -> bool:
         return self.state.only_new or self.state.last_days != DEFAULT_WINDOW_DAYS
-
-    def _export_count(self) -> int:
-        return len(self._marked) if self._marked else len(self._jobs)
 
     def _render_filters(self) -> None:
         panel = self.query_one("#filters", OptionList)
@@ -280,7 +278,7 @@ class PostingsScreen(Screen[None]):
     def on_key(self, event: object) -> None:
         if getattr(event, "key", "") != "escape":
             return
-        if self._close_help():
+        if self.close_help():
             stop = getattr(event, "stop", None)
             if callable(stop):
                 stop()
@@ -321,7 +319,7 @@ class PostingsScreen(Screen[None]):
     def action_filters(self) -> None:
         panel = self.query_one("#filters", OptionList)
         if panel.has_class("hidden"):
-            self._close_help()
+            self.close_help()
             self._render_filters()
             panel.remove_class("hidden")
             if panel.option_count and panel.highlighted is None:
@@ -438,7 +436,7 @@ class PostingsScreen(Screen[None]):
             told(self, "Nothing to export.", "warning")
             return
         if not self._arming_export:
-            self._close_help()
+            self.close_help()
             self._arming_export = True
             self._render_chips()
             return
@@ -501,15 +499,7 @@ class PostingsScreen(Screen[None]):
         summary = getattr(app, "summary", "")
         app.push_screen(SplashScreen(summary or "Stage", dismiss_after=None))
 
-    def action_help(self) -> None:
-        panel = self.query_one("#help", Static)
-        showing = not panel.has_class("visible")
-        if showing:
-            self._dismiss_overlays()
-            panel.update(HELP_TEXT)
-        panel.set_class(showing, "visible")
-
-    def _dismiss_overlays(self) -> None:
+    def dismiss_overlays(self) -> None:
         if not self.query_one("#filters", OptionList).has_class("hidden"):
             self._leave_filters()
         if self.query_one("#search-bar").has_class("visible"):
@@ -517,10 +507,3 @@ class PostingsScreen(Screen[None]):
         if self._arming_export:
             self._arming_export = False
             self._render_chips()
-
-    def _close_help(self) -> bool:
-        panel = self.query_one("#help", Static)
-        if panel.has_class("visible"):
-            panel.remove_class("visible")
-            return True
-        return False

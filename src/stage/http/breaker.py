@@ -15,7 +15,6 @@ class CircuitBreaker:
     cooldown_s: float = 30.0
     consecutive_failures: int = 0
     opened_at: float | None = None
-    trips: int = 0
     _probing: bool = field(default=False, repr=False)
 
     def state(self, now: float | None = None) -> BreakerState:
@@ -49,8 +48,6 @@ class CircuitBreaker:
     def record_failure(self, now: float | None = None) -> None:
         self.consecutive_failures += 1
         self._probing = False
-        if self.consecutive_failures >= self.failure_threshold and self.opened_at is None:
-            self.opened_at = now if now is not None else time.monotonic()
-            self.trips += 1
-        elif self.opened_at is not None:
+        tripped = self.consecutive_failures >= self.failure_threshold
+        if tripped or self.opened_at is not None:
             self.opened_at = now if now is not None else time.monotonic()
