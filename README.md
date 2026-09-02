@@ -19,9 +19,9 @@ It runs locally. There is no account to make and no server involved.
 
 <br>
 
-![version](https://img.shields.io/static/v1?label=version&message=v1.0.0&color=7c3aed) [![license](https://img.shields.io/static/v1?label=license&message=MIT&color=db2777)](LICENSE) ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=2563eb&logo=python&logoColor=white)
+![version](https://img.shields.io/static/v1?label=version&message=v1.0.0&message=MIT)](LICENSE) ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=2%2C292&color=16a34a) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=16a34a) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=2%2C294&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
