@@ -1,9 +1,10 @@
-$blue: #4a9eff;
-$blue-deep: #1e5fa8;
-$blue-dim: #2a4a6a;
-$new: #4ade80;
-$warn: #fbbf24;
-$bad: #f87171;
+$blue: $primary;
+$on-blue: $text-primary;
+$blue-deep: $primary-muted;
+$blue-dim: $primary-darken-2;
+$new: $success;
+$warn: $warning;
+$bad: $error;
 
 Screen {
     background: $surface;
@@ -11,7 +12,7 @@ Screen {
 
 Header {
     background: $blue-deep;
-    color: $text;
+    color: $on-blue;
 }
 
 #splash {
@@ -66,10 +67,21 @@ Header {
 
 #filters {
     height: auto;
-    max-height: 14;
+    max-height: 12;
     padding: 0 1;
     background: $panel;
-    border-bottom: solid $blue-dim;
+    border-bottom: solid $blue;
+    scrollbar-size-vertical: 1;
+}
+
+#filters:focus {
+    border-bottom: solid $blue;
+}
+
+#filters > .option-list--option-highlighted {
+    background: $blue-deep;
+    color: $on-blue;
+    text-style: bold;
 }
 
 #filters.hidden {
@@ -90,7 +102,7 @@ Header {
 
 #results > .datatable--cursor {
     background: $blue-deep;
-    color: $text;
+    color: $on-blue;
     text-style: bold;
 }
 
@@ -104,7 +116,7 @@ DataTable {
 
 DataTable > .datatable--cursor {
     background: $blue-deep;
-    color: $text;
+    color: $on-blue;
 }
 
 DataTable > .datatable--header {

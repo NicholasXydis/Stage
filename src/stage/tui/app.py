@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from textual.app import App
+from textual.binding import Binding
 
 if TYPE_CHECKING:
     from stage.storage import AsyncRepository
@@ -16,8 +17,12 @@ THEME_PATH = Path(__file__).parent / "theme.tcss"
 class StageApp(App[None]):
     CSS_PATH = THEME_PATH
     TITLE = "Stage"
+    ALLOW_MAXIMIZE = False
 
-    BINDINGS = [("q", "quit", "quit")]
+    BINDINGS = [
+        Binding("q", "quit", "quit"),
+        Binding("ctrl+t", "next_theme", "theme", show=False),
+    ]
 
     def __init__(self, database: Path, summary: str = "") -> None:
         super().__init__()
@@ -26,9 +31,23 @@ class StageApp(App[None]):
         self._stack = AsyncExitStack()
         self.repository: AsyncRepository | None = None
 
+    def action_next_theme(self) -> None:
+        from stage.tui.safe import told
+        from stage.tui.state import store_theme
+
+        names = sorted(self.available_themes)
+        index = names.index(self.theme) if self.theme in names else -1
+        self.theme = names[(index + 1) % len(names)]
+        store_theme(self.theme)
+        told(self, f"Theme is now {self.theme}")
+
     async def on_mount(self) -> None:
         from stage.storage import open_repository
+        from stage.tui.state import load_theme
 
+        chosen = load_theme()
+        if chosen in self.available_themes:
+            self.theme = chosen
         self.repository = await self._stack.enter_async_context(open_repository(self.database))
         self.push_screen(PostingsScreen())
         if self.summary:

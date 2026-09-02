@@ -2,10 +2,12 @@ from typing import TYPE_CHECKING
 
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static
 
 from stage.domain.text import sanitize
+from stage.tui.help import HelpOverlay
 from stage.tui.safe import cell, quoted, told
 
 if TYPE_CHECKING:
@@ -14,17 +16,29 @@ if TYPE_CHECKING:
 COLUMNS = ("State", "Company", "Platform", "Postings", "Last success")
 
 
-class BoardsScreen(Screen[None]):
+HELP_TEXT = """[b]Board health[/b]
+  up down  move between employers
+  e        enable this employer
+  d        disable it, twice to confirm
+  r        reload from the database
+
+[dim]? closes this   escape goes back[/dim]"""
+
+
+class BoardsScreen(HelpOverlay, Screen[None]):
+    HELP_TEXT = HELP_TEXT
     BINDINGS = [
-        ("r", "reload", "reload"),
-        ("d", "disable", "disable"),
-        ("e", "enable", "enable"),
-        ("escape", "back", "back"),
+        Binding("e", "enable", "enable"),
+        Binding("d", "disable", "disable"),
+        Binding("question_mark", "help", "keys"),
+        Binding("escape", "back", "back"),
+        Binding("r", "reload", "reload", show=False),
     ]
 
     def __init__(self) -> None:
         super().__init__()
         self._companies: tuple[str, ...] = ()
+        self._arming_disable: str | None = None
 
     @property
     def repository(self) -> "AsyncRepository | None":
@@ -38,6 +52,7 @@ class BoardsScreen(Screen[None]):
         yield Static("", id="chips")
         yield DataTable(id="results", cursor_type="row")
         yield Static("", id="detail")
+        yield Static("", id="help")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -47,6 +62,9 @@ class BoardsScreen(Screen[None]):
 
     def _mark_loading(self) -> None:
         self.query_one("#chips", Static).update("[dim]loading…[/dim]")
+
+    def on_data_table_row_highlighted(self) -> None:
+        self._arming_disable = None
 
     def selected_company(self) -> str | None:
         table = self.query_one("#results", DataTable)
@@ -104,15 +122,25 @@ class BoardsScreen(Screen[None]):
             f"{len(report.gaps)} producing nothing[/dim]"
         )
         self.query_one("#detail", Static).update(
-            "[b]d[/b] disable  [b]e[/b] enable  [b]r[/b] reload\n"
+            "[b]e[/b] enable  [b]d[/b] disable, twice to confirm  [b]?[/b] keys\n"
             "[dim]A board producing nothing is either genuinely empty or a parser has "
             "drifted. Check with stage canary before disabling.[/dim]"
         )
 
     def action_disable(self) -> None:
+        company = self.selected_company()
+        if company is None:
+            told(self, "Highlight a board first.", "warning")
+            return
+        if self._arming_disable != company:
+            self._arming_disable = company
+            told(self, f"Press d again to disable {quoted(company)}.", "warning")
+            return
+        self._arming_disable = None
         self._set_enabled(False)
 
     def action_enable(self) -> None:
+        self._arming_disable = None
         self._set_enabled(True)
 
     def _set_enabled(self, enabled: bool) -> None:
@@ -153,4 +181,6 @@ class BoardsScreen(Screen[None]):
         self.load()
 
     def action_back(self) -> None:
+        if self.close_help():
+            return
         self.dismiss(None)

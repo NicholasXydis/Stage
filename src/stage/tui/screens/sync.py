@@ -2,9 +2,11 @@ from typing import TYPE_CHECKING
 
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, ProgressBar, Static
 
+from stage.tui.help import HelpOverlay
 from stage.tui.safe import cell, quoted
 
 if TYPE_CHECKING:
@@ -22,11 +24,17 @@ def source_bar(done: int, total: int, width: int = BAR_WIDTH) -> str:
     return "#" * filled + "-" * (width - filled)
 
 
-class SyncScreen(Screen[None]):
+class SyncScreen(HelpOverlay, Screen[None]):
+    HELP_TEXT = """[b]Sync[/b]
+  s        start a sync
+  x        cancel the run in progress
+
+[dim]? closes this   escape goes back[/dim]"""
     BINDINGS = [
-        ("s", "start", "start"),
-        ("x", "cancel", "cancel"),
-        ("escape", "back", "back"),
+        Binding("s", "start", "start"),
+        Binding("x", "cancel", "cancel"),
+        Binding("question_mark", "help", "keys"),
+        Binding("escape", "back", "back"),
     ]
 
     def __init__(self, *, dry_run: bool = False) -> None:
@@ -52,6 +60,7 @@ class SyncScreen(Screen[None]):
         yield DataTable(id="sources", cursor_type="row")
         yield Static("", id="warnings")
         yield Static("", id="detail")
+        yield Static("", id="help")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -92,6 +101,8 @@ class SyncScreen(Screen[None]):
         self.query_one("#chips", Static).update("[yellow]Sync cancelled.[/yellow]")
 
     def action_back(self) -> None:
+        if self.close_help():
+            return
         self.workers.cancel_all()
         self.dismiss(None)
 

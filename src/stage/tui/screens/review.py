@@ -2,10 +2,12 @@ from typing import TYPE_CHECKING
 
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static, TabbedContent, TabPane
 
 from stage.domain.text import sanitize
+from stage.tui.help import HelpOverlay
 from stage.tui.safe import cell, quoted, told
 
 if TYPE_CHECKING:
@@ -18,23 +20,44 @@ QUARANTINE_COLUMNS = ("Reason", "Company", "Title", "Source")
 DISPOSITIONS: tuple[tuple[str, str, str], ...] = (
     ("a", "adapter-candidate", "worth a dedicated adapter"),
     ("j", "custom-json-candidate", "reachable with a custom board"),
-    ("o", "feed-only", "covered well enough through a feed"),
+    ("k", "feed-only", "covered well enough through a feed"),
     ("u", "unavailable", "no public board to poll"),
     ("d", "deferred", "revisit later"),
 )
 
 
-class ReviewScreen(Screen[None]):
+HELP_TEXT = """[b]Review[/b]
+  up down  move between rows
+  tab      switch tabs
+
+[b]File an employer[/b]
+  a        worth a dedicated adapter
+  j        reachable with custom json
+  k        covered through a feed
+  u        no public board to poll
+  d        revisit later
+  x        undo the last call
+
+[b]Other[/b]
+  m        load more
+  r        reload from the database
+
+[dim]? closes this   escape goes back[/dim]"""
+
+
+class ReviewScreen(HelpOverlay, Screen[None]):
+    HELP_TEXT = HELP_TEXT
     BINDINGS = [
-        ("r", "reload", "reload"),
-        ("m", "more", "load more"),
-        ("a", "classify('adapter-candidate')", "adapter"),
-        ("j", "classify('custom-json-candidate')", "custom json"),
-        ("o", "classify('feed-only')", "feed only"),
-        ("u", "classify('unavailable')", "unavailable"),
-        ("d", "classify('deferred')", "defer"),
-        ("x", "unclassify", "undo"),
-        ("escape", "back", "back"),
+        Binding("a", "classify('adapter-candidate')", "adapter"),
+        Binding("j", "classify('custom-json-candidate')", "custom json"),
+        Binding("k", "classify('feed-only')", "feed only"),
+        Binding("x", "unclassify", "undo"),
+        Binding("question_mark", "help", "keys"),
+        Binding("escape", "back", "back"),
+        Binding("u", "classify('unavailable')", "unavailable", show=False),
+        Binding("d", "classify('deferred')", "defer", show=False),
+        Binding("r", "reload", "reload", show=False),
+        Binding("m", "more", "load more", show=False),
     ]
 
     def __init__(self) -> None:
@@ -58,6 +81,7 @@ class ReviewScreen(Screen[None]):
             with TabPane("Quarantine", id="tab-quarantine"):
                 yield DataTable(id="quarantine", cursor_type="row")
         yield Static("", id="detail")
+        yield Static("", id="help")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -180,4 +204,6 @@ class ReviewScreen(Screen[None]):
         self.load()
 
     def action_back(self) -> None:
+        if self.close_help():
+            return
         self.dismiss(None)

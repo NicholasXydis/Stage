@@ -1,9 +1,9 @@
-import json
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
 from stage.domain import (
+    DEFAULT_WINDOW_DAYS,
     JobFilters,
     Language,
     LocationBucket,
@@ -12,7 +12,8 @@ from stage.domain import (
 
 DEBOUNCE_SECONDS = 0.04
 PAGE_SIZE = 200
-MAX_SAVED = 9
+
+LAST_DAYS_CHOICES: tuple[int, ...] = (7, 14, 30, 0)
 
 FILTER_FIELDS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ("role", "Role", tuple(value.value for value in RoleCategory if value.value != "hardware")),
@@ -26,12 +27,40 @@ _ENUMS: dict[str, Any] = {
     "language": Language,
 }
 
+_OPEN_FIELDS: tuple[tuple[str, str], ...] = (("company", "Company"),)
+
+
+def filter_rows(
+    state: "FilterState", employer: str | None = None
+) -> tuple[tuple[str, str, str, bool], ...]:
+    rows: list[tuple[str, str, str, bool]] = []
+    for name, label, options in FILTER_FIELDS:
+        for option in options:
+            if option == "unknown":
+                continue
+            rows.append((name, option, f"{label}: {option}", state.values.get(name) == option))
+    window = state.last_days
+    for days in LAST_DAYS_CHOICES:
+        shown = "any date" if days == 0 else f"last {days} days"
+        rows.append(("last_days", str(days), f"Window: {shown}", window == days))
+    rows.append(("only_new", "on", "Only what the last sync brought in", state.only_new))
+    rows.append(("show_all", "on", "Show every match, not just a page", state.show_all))
+    chosen = state.values.get("company")
+    if chosen is not None:
+        rows.append(("company", chosen, f"Employer: {chosen}", True))
+    elif employer is not None:
+        rows.append(("company", employer, f"Employer: {employer}", False))
+    return tuple(rows)
+
 
 @dataclass
 class FilterState:
     query: str = ""
     limit: int = PAGE_SIZE
     values: dict[str, str] = field(default_factory=dict)
+    last_days: int = DEFAULT_WINDOW_DAYS
+    only_new: bool = False
+    show_all: bool = False
 
     def toggle(self, name: str, value: str) -> None:
         if self.values.get(name) == value:
@@ -43,27 +72,71 @@ class FilterState:
         self.values.clear()
         self.query = ""
         self.limit = PAGE_SIZE
+        self.last_days = DEFAULT_WINDOW_DAYS
+        self.only_new = False
+        self.show_all = False
+
+    def widen(self) -> None:
+        self.limit += PAGE_SIZE
+
+    def narrow(self) -> bool:
+        if self.limit <= PAGE_SIZE:
+            return False
+        self.limit = max(PAGE_SIZE, self.limit - PAGE_SIZE)
+        return True
+
+    def choose(self, name: str, value: str) -> None:
+        if name == "last_days":
+            self.last_days = int(value)
+        elif name == "only_new":
+            self.only_new = not self.only_new
+        elif name == "show_all":
+            self.show_all = not self.show_all
+        else:
+            self.toggle(name, value)
+        self.limit = PAGE_SIZE
+
+    def cycle_last_days(self) -> int:
+        order = LAST_DAYS_CHOICES
+        try:
+            index = order.index(self.last_days)
+        except ValueError:
+            index = -1
+        self.last_days = order[(index + 1) % len(order)]
+        return self.last_days
+
+    @property
+    def window_days(self) -> int | None:
+        return self.last_days or None
 
     @property
     def active(self) -> tuple[tuple[str, str], ...]:
-        return tuple(
-            (name, self.values[name]) for name, _, _ in FILTER_FIELDS if name in self.values
-        )
+        named = tuple(name for name, _, _ in FILTER_FIELDS)
+        ordered = (*named, *(name for name, _ in _OPEN_FIELDS))
+        return tuple((name, self.values[name]) for name in ordered if name in self.values)
 
     def as_filters(self) -> JobFilters:
         chosen: dict[str, Any] = {}
         for name, value in self.values.items():
             enum = _ENUMS.get(name)
             if enum is None:
+                if any(name == field_name for field_name, _ in _OPEN_FIELDS):
+                    chosen[name] = value
                 continue
             try:
                 chosen[name] = enum(value)
             except ValueError:
                 continue
-        return JobFilters(limit=self.limit, **chosen)
+        return JobFilters(limit=None if self.show_all else self.limit, **chosen)
 
     def payload(self) -> dict[str, Any]:
-        return {"query": self.query, "values": dict(self.values)}
+        return {
+            "query": self.query,
+            "values": dict(self.values),
+            "last_days": self.last_days,
+            "only_new": self.only_new,
+            "show_all": self.show_all,
+        }
 
     def restore(self, payload: dict[str, Any]) -> None:
         self.query = str(payload.get("query", ""))
@@ -72,73 +145,46 @@ class FilterState:
             {str(k): str(v) for k, v in stored.items()} if isinstance(stored, dict) else {}
         )
         self.limit = PAGE_SIZE
+        window = payload.get("last_days")
+        self.last_days = window if isinstance(window, int) and window >= 0 else DEFAULT_WINDOW_DAYS
+        self.only_new = bool(payload.get("only_new", False))
+        self.show_all = bool(payload.get("show_all", False))
 
 
-def describe(state: FilterState) -> str:
-    parts = [f"{value}" for _, value in state.active]
-    if state.query:
-        parts.insert(0, f'"{state.query}"')
-    return " · ".join(parts) if parts else "all postings"
-
-
-@dataclass(frozen=True, slots=True)
-class SavedSearch:
-    name: str
-    payload: dict[str, Any]
-
-
-def saved_path() -> Path:
+def theme_path() -> Path:
     from stage.paths import data_dir
 
-    return data_dir() / "tui-searches.json"
+    return data_dir() / "tui-theme"
 
 
-def load_saved(path: Path | None = None) -> list[SavedSearch]:
-    target = path or saved_path()
+def load_theme(path: Path | None = None) -> str | None:
+    target = path or theme_path()
     try:
-        raw = json.loads(target.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return []
-    if not isinstance(raw, list):
-        return []
-    found: list[SavedSearch] = []
-    for entry in raw[:MAX_SAVED]:
-        if not isinstance(entry, dict):
-            continue
-        name = entry.get("name")
-        payload = entry.get("payload")
-        if isinstance(name, str) and isinstance(payload, dict):
-            found.append(SavedSearch(name=name, payload=payload))
-    return found
+        name = target.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return name or None
 
 
-def store_saved(searches: list[SavedSearch], path: Path | None = None) -> bool:
-    target = path or saved_path()
-    body = [{"name": item.name, "payload": item.payload} for item in searches[:MAX_SAVED]]
+def store_theme(name: str, path: Path | None = None) -> bool:
+    target = path or theme_path()
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(body, indent=2), encoding="utf-8")
+        target.write_text(name, encoding="utf-8")
     except OSError:
         return False
     return True
 
 
-def remember(searches: list[SavedSearch], name: str, state: FilterState) -> list[SavedSearch]:
-    kept = [item for item in searches if item.name != name]
-    return [SavedSearch(name=name, payload=state.payload()), *kept][:MAX_SAVED]
-
-
 __all__ = [
     "DEBOUNCE_SECONDS",
     "FILTER_FIELDS",
-    "MAX_SAVED",
+    "LAST_DAYS_CHOICES",
     "PAGE_SIZE",
     "FilterState",
-    "SavedSearch",
-    "describe",
-    "load_saved",
-    "remember",
+    "filter_rows",
+    "load_theme",
     "replace",
-    "saved_path",
-    "store_saved",
+    "store_theme",
+    "theme_path",
 ]

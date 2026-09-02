@@ -3,10 +3,12 @@ from typing import TYPE_CHECKING
 
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
+from stage.tui.help import HelpOverlay
 from stage.tui.safe import quoted
 
 SAMPLE = 5000
@@ -41,8 +43,16 @@ def bars(counts: Counter[str], width: int = BAR_WIDTH, top: int = TOP_N) -> str:
     )
 
 
-class StatsScreen(Screen[None]):
-    BINDINGS = [("r", "reload", "reload"), ("escape", "back", "back")]
+class StatsScreen(HelpOverlay, Screen[None]):
+    HELP_TEXT = """[b]Statistics[/b]
+  r        reload from the database
+
+[dim]? closes this   escape goes back[/dim]"""
+    BINDINGS = [
+        Binding("question_mark", "help", "keys"),
+        Binding("escape", "back", "back"),
+        Binding("r", "reload", "reload", show=False),
+    ]
 
     @property
     def repository(self) -> "AsyncRepository | None":
@@ -54,6 +64,7 @@ class StatsScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield VerticalScroll(Static("[dim]loading…[/dim]", id="stats-grid"))
+        yield Static("", id="help")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -108,4 +119,6 @@ class StatsScreen(Screen[None]):
         self.load()
 
     def action_back(self) -> None:
+        if self.close_help():
+            return
         self.dismiss(None)

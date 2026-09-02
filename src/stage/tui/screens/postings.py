@@ -1,26 +1,24 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from textual import work
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.screen import Screen
 from textual.timer import Timer
-from textual.widgets import DataTable, Footer, Header, Input, Static
+from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 
-from stage.domain import ExportFormat
+from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat
 from stage.domain.text import sanitize
 from stage.normalize.location import display_location
 from stage.tui.safe import cell, quoted, told
 from stage.tui.state import (
     DEBOUNCE_SECONDS,
-    FILTER_FIELDS,
     PAGE_SIZE,
     FilterState,
-    describe,
-    load_saved,
-    remember,
-    store_saved,
+    filter_rows,
 )
 
 if TYPE_CHECKING:
@@ -30,27 +28,31 @@ if TYPE_CHECKING:
 COLUMNS = ("#", "Age", "Company", "Title", "Location")
 
 HELP_TEXT = """[b]Find[/b]
-  /          search titles and bodies
-  f          show the filter panel
-  1 2 3      cycle the filters
-  c          clear filters and search
-  r          reload from the database
+  /        search titles and bodies
+  f        filters, arrows then enter
+  c        clear filters and search
+  r        reload from the database
 
 [b]Act on a row[/b]
-  up down    move between postings
-  w          expand the full description
-  o          open it in your browser
-  e          export what you see
-  E          change the export format
+  up down  move between postings
+  space    mark a row
+  w        expand the description
+  o        open marked rows, or this one
+  e        export what you see
+  g        change the export format
 
-[b]Saved searches[/b]
-  s          save the current search
-  F1 - F9    recall a saved search
+[b]How many rows[/b]
+  m        show 200 more
+  M        show 200 fewer
 
 [b]Other screens[/b]
-  y  sync         t  statistics
-  v  review       b  board health
-  A  about        q  quit
+  y        sync
+  t        statistics
+  v        review
+  b        board health
+  A        about
+  ctrl+t   change the theme
+  q        quit
 
 [dim]? closes this[/dim]"""
 NARROW = 80
@@ -63,45 +65,36 @@ def age_label(first_seen: datetime, now: datetime) -> str:
 
 class PostingsScreen(Screen[None]):
     BINDINGS = [
-        ("slash", "search", "search"),
-        ("f", "filters", "filters"),
-        ("1", "cycle('role')", "role"),
-        ("2", "cycle('location')", "location"),
-        ("3", "cycle('language')", "language"),
-        ("o", "open", "open"),
-        ("e", "export", "export"),
-        ("E", "cycle_format", "export format"),
-        ("c", "clear", "clear"),
-        ("r", "reload", "reload"),
-        ("m", "more", "load more"),
-        ("s", "save", "save"),
-        ("f1", "recall(0)", "recall 1"),
-        ("f2", "recall(1)", "recall 2"),
-        ("f3", "recall(2)", "recall 3"),
-        ("f4", "recall(3)", "recall 4"),
-        ("f5", "recall(4)", "recall 5"),
-        ("f6", "recall(5)", "recall 6"),
-        ("f7", "recall(6)", "recall 7"),
-        ("f8", "recall(7)", "recall 8"),
-        ("f9", "recall(8)", "recall 9"),
-        ("t", "stats", "stats"),
-        ("v", "review", "review"),
-        ("b", "boards", "boards"),
-        ("y", "sync", "sync"),
-        ("w", "expand", "full description"),
-        ("question_mark", "help", "help"),
-        ("A", "about", "about"),
+        Binding("slash", "search", "search"),
+        Binding("f", "filters", "filter"),
+        Binding("space", "mark", "mark", show=False),
+        Binding("o", "open", "open"),
+        Binding("w", "expand", "read", show=False),
+        Binding("e", "export", "export"),
+        Binding("question_mark", "help", "keys"),
+        Binding("c", "clear", "clear", show=False),
+        Binding("r", "reload", "reload", show=False),
+        Binding("m", "more", "load more", show=False),
+        Binding("M", "fewer", "load fewer", show=False),
+        Binding("g", "cycle_format", "export format", show=False),
+        Binding("t", "stats", "stats", show=False),
+        Binding("v", "review", "review", show=False),
+        Binding("b", "boards", "boards", show=False),
+        Binding("y", "sync", "sync", show=False),
+        Binding("A", "about", "about", show=False),
     ]
 
     def __init__(self) -> None:
         super().__init__()
         self.state = FilterState()
-        self.saved = load_saved()
         self._jobs: tuple[Job, ...] = ()
         self._export_format = "csv"
         self._expanded = False
         self._total = 0
         self._pending: Timer | None = None
+        self._marked: set[str] = set()
+        self._arming_export = False
+        self._rows: tuple[tuple[str, str, str, bool], ...] = ()
 
     @property
     def repository(self) -> "AsyncRepository | None":
@@ -113,7 +106,7 @@ class PostingsScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Static("", id="chips")
-        yield Static("", id="filters", classes="hidden")
+        yield OptionList(id="filters", classes="hidden")
         yield Horizontal(
             Input(placeholder="search titles, employers, descriptions", id="search"),
             id="search-bar",
@@ -144,29 +137,51 @@ class PostingsScreen(Screen[None]):
             self.query_one("#chips", Static).update("[dim]searching…[/dim]")
 
     def _render_chips(self) -> None:
+        if self._arming_export:
+            self.query_one("#chips", Static).update(
+                f"Export [b]{self._export_count()}[/b] posting(s) as "
+                f"[b]{self._export_format}[/b]?   "
+                "[dim]e to confirm, g for another format, escape to cancel[/dim]"
+            )
+            return
         parts = [f"[reverse] {quoted(value)} [/reverse]" for _, value in self.state.active]
         if self.state.query:
             parts.insert(0, f'[reverse] "{quoted(self.state.query)}" [/reverse]')
+        if self.state.only_new:
+            parts.append("[reverse] new [/reverse]")
+        if self.state.last_days != DEFAULT_WINDOW_DAYS:
+            window = "any date" if self.state.last_days == 0 else f"{self.state.last_days}d"
+            parts.append(f"[reverse] {window} [/reverse]")
         shown = " ".join(parts) if parts else "[dim]all postings[/dim]"
         count = (
             f"[b]{len(self._jobs)}[/b] of [b]{self._total}[/b]"
             if len(self._jobs) < self._total
             else f"[b]{self._total}[/b] posting(s)"
         )
-        clear = "   [dim]c to clear[/dim]" if self.state.active or self.state.query else ""
-        self.query_one("#chips", Static).update(f"{shown}   {count}{clear}")
+        marked = f"   [b]{len(self._marked)}[/b] marked" if self._marked else ""
+        clear = (
+            "   [dim]c to clear[/dim]"
+            if self.state.active or self.state.query or self._is_narrowed()
+            else ""
+        )
+        self.query_one("#chips", Static).update(f"{shown}   {count}{marked}{clear}")
+
+    def _is_narrowed(self) -> bool:
+        return self.state.only_new or self.state.last_days != DEFAULT_WINDOW_DAYS
+
+    def _export_count(self) -> int:
+        return len(self._marked) if self._marked else len(self._jobs)
 
     def _render_filters(self) -> None:
-        lines = []
-        for name, label, options in FILTER_FIELDS:
-            chosen = self.state.values.get(name)
-            rendered = "  ".join(
-                f"[reverse] {option} [/reverse]" if option == chosen else option
-                for option in options
-                if option != "unknown"
-            )
-            lines.append(f"[b]{label:<9}[/b] {rendered}")
-        self.query_one("#filters", Static).update("\n".join(lines))
+        panel = self.query_one("#filters", OptionList)
+        highlighted = panel.highlighted
+        job = self._selected()
+        self._rows = filter_rows(self.state, job.company if job else None)
+        panel.clear_options()
+        for _, _, label, chosen in self._rows:
+            panel.add_option(cell(f"{'[x]' if chosen else '[ ]'} {label}"))
+        if highlighted is not None and self._rows:
+            panel.highlighted = min(highlighted, len(self._rows) - 1)
 
     @work(exclusive=True)
     async def refresh_results(self) -> None:
@@ -177,10 +192,16 @@ class PostingsScreen(Screen[None]):
             return
         self._set_busy(True)
         filters = self.state.as_filters()
+        if self.state.only_new:
+            since = await repo.previous_sync_at()
+            if since is not None:
+                filters = replace(filters, first_seen_after=since)
         if self.state.query.strip():
-            listing = await search_jobs(repo, self.state.query, filters)
+            listing = await search_jobs(
+                repo, self.state.query, filters, window_days=self.state.window_days
+            )
         else:
-            listing = await list_jobs(repo, filters, window_days=None)
+            listing = await list_jobs(repo, filters, window_days=self.state.window_days)
         self._jobs = listing.jobs
         self._total = listing.total_matching
         self._fill(listing.jobs)
@@ -192,8 +213,9 @@ class PostingsScreen(Screen[None]):
         now = datetime.now(UTC)
         width = self._title_width()
         for position, job in enumerate(jobs, start=1):
+            marker = "*" if job.id in self._marked else " "
             table.add_row(
-                cell(str(position)),
+                cell(f"{marker}{position}"),
                 cell(age_label(job.first_seen, now)),
                 cell(job.company, 20),
                 cell(job.title_raw, width),
@@ -258,6 +280,24 @@ class PostingsScreen(Screen[None]):
     def on_key(self, event: object) -> None:
         if getattr(event, "key", "") != "escape":
             return
+        if self._close_help():
+            stop = getattr(event, "stop", None)
+            if callable(stop):
+                stop()
+            return
+        if self._arming_export:
+            self._arming_export = False
+            self._render_chips()
+            stop = getattr(event, "stop", None)
+            if callable(stop):
+                stop()
+            return
+        if not self.query_one("#filters", OptionList).has_class("hidden"):
+            self._leave_filters()
+            stop = getattr(event, "stop", None)
+            if callable(stop):
+                stop()
+            return
         if not self.query_one("#search-bar").has_class("visible"):
             return
         self._leave_search()
@@ -279,28 +319,33 @@ class PostingsScreen(Screen[None]):
         self._show_detail()
 
     def action_filters(self) -> None:
-        self.query_one("#filters").toggle_class("hidden")
-
-    def action_cycle(self, name: str) -> None:
-        options = next((values for field, _, values in FILTER_FIELDS if field == name), ())
-        usable = [value for value in options if value != "unknown"]
-        if not usable:
+        panel = self.query_one("#filters", OptionList)
+        if panel.has_class("hidden"):
+            self._close_help()
+            self._render_filters()
+            panel.remove_class("hidden")
+            if panel.option_count and panel.highlighted is None:
+                panel.highlighted = 0
+            panel.focus()
             return
-        current = self.state.values.get(name)
-        if current is None:
-            self.state.values[name] = usable[0]
-        else:
-            index = usable.index(current) + 1 if current in usable else len(usable)
-            if index < len(usable):
-                self.state.values[name] = usable[index]
-            else:
-                self.state.values.pop(name, None)
-        self.state.limit = PAGE_SIZE
+        self._leave_filters()
+
+    def _leave_filters(self) -> None:
+        self.query_one("#filters", OptionList).add_class("hidden")
+        self.query_one("#results", DataTable).focus()
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        index = event.option_index
+        if index < 0 or index >= len(self._rows):
+            return
+        name, value, _, _ = self._rows[index]
+        self.state.choose(name, value)
         self._render_filters()
         self.refresh_results()
 
     def action_clear(self) -> None:
         self.state.clear()
+        self._marked.clear()
         self.query_one("#search", Input).value = ""
         self._render_filters()
         self.refresh_results()
@@ -312,58 +357,97 @@ class PostingsScreen(Screen[None]):
         if len(self._jobs) >= self._total:
             told(self, "Every match is already listed.", "warning")
             return
-        self.state.limit += PAGE_SIZE
+        self.state.widen()
         self.refresh_results()
+
+    def action_fewer(self) -> None:
+        if self.state.show_all:
+            self.state.show_all = False
+            self.state.limit = PAGE_SIZE
+            self.refresh_results()
+            return
+        if not self.state.narrow():
+            return
+        self.refresh_results()
+
+    def action_mark(self) -> None:
+        job = self._selected()
+        if job is None:
+            told(self, "Nothing selected.", "warning")
+            return
+        table = self.query_one("#results", DataTable)
+        row = table.cursor_row
+        if job.id in self._marked:
+            self._marked.discard(job.id)
+        else:
+            self._marked.add(job.id)
+        self._fill(self._jobs)
+        if 0 <= row < len(self._jobs):
+            table.move_cursor(row=row)
+
+    def _open_targets(self) -> "tuple[Job, ...]":
+        if self._marked:
+            return tuple(job for job in self._jobs if job.id in self._marked)
+        job = self._selected()
+        return (job,) if job is not None else ()
 
     def action_open(self) -> None:
         import webbrowser
 
         from stage.domain import web_url
 
-        job = self._selected()
-        if job is None:
+        targets = self._open_targets()
+        if not targets:
             told(self, "Nothing selected.", "warning")
             return
-        url = web_url(job.apply_url_raw)
-        if url is None:
+        opened = 0
+        refused = 0
+        for job in targets:
+            url = web_url(job.apply_url_raw)
+            if url is None:
+                refused += 1
+                continue
+            if not webbrowser.open(url):
+                told(self, "No browser available on this machine.", "warning")
+                return
+            opened += 1
+        if refused:
             self.notify(
-                "That posting's apply link is not a plain http or https address, "
-                "so it was not opened.",
+                f"{refused} posting(s) had an apply link that is not a plain "
+                "http or https address, so they were not opened.",
                 severity="error",
             )
+        if not opened:
             return
-        if not webbrowser.open(url):
-            told(self, "No browser available on this machine.", "warning")
+        if opened == 1 and len(targets) == 1:
+            told(self, f"Opened {sanitize(targets[0].company)}")
             return
-        told(self, f"Opened {sanitize(job.company)}")
-
-    def action_save(self) -> None:
-        name = describe(self.state)
-        self.saved = remember(self.saved, name, self.state)
-        if store_saved(self.saved):
-            told(self, f"Saved {sanitize(name)} - recall with F1-F9")
-            return
-        told(self, "Could not write the saved searches file.", "warning")
-
-    def action_recall(self, index: int) -> None:
-        if index >= len(self.saved):
-            told(self, "No saved search in that slot.", "warning")
-            return
-        entry = self.saved[index]
-        self.state.restore(entry.payload)
-        self.query_one("#search", Input).value = self.state.query
-        self._render_filters()
-        self.refresh_results()
-        told(self, f"Recalled {sanitize(entry.name)}")
+        told(self, f"Opened {opened} posting(s)")
 
     def action_cycle_format(self) -> None:
         order = [item.value for item in ExportFormat]
         index = (order.index(self._export_format) + 1) % len(order)
         self._export_format = order[index]
+        if self._arming_export:
+            self._render_chips()
+            return
         told(self, f"Export format is now {self._export_format}")
 
+    def action_export(self) -> None:
+        if not self._jobs:
+            told(self, "Nothing to export.", "warning")
+            return
+        if not self._arming_export:
+            self._close_help()
+            self._arming_export = True
+            self._render_chips()
+            return
+        self._arming_export = False
+        self._render_chips()
+        self._write_export()
+
     @work(exclusive=True)
-    async def action_export(self) -> None:
+    async def _write_export(self) -> None:
         from datetime import UTC, datetime
 
         from stage.services.export import ExportError, export_jobs, export_root
@@ -382,7 +466,7 @@ class PostingsScreen(Screen[None]):
                 fmt=fmt,
                 destination=root / f"stage-{stamp}.{fmt.value}",
                 force=True,
-                window_days=None,
+                window_days=self.state.window_days,
                 query=self.state.query,
             )
         except (ExportError, OSError) as exc:
@@ -420,6 +504,23 @@ class PostingsScreen(Screen[None]):
     def action_help(self) -> None:
         panel = self.query_one("#help", Static)
         showing = not panel.has_class("visible")
-        panel.set_class(showing, "visible")
         if showing:
+            self._dismiss_overlays()
             panel.update(HELP_TEXT)
+        panel.set_class(showing, "visible")
+
+    def _dismiss_overlays(self) -> None:
+        if not self.query_one("#filters", OptionList).has_class("hidden"):
+            self._leave_filters()
+        if self.query_one("#search-bar").has_class("visible"):
+            self._leave_search()
+        if self._arming_export:
+            self._arming_export = False
+            self._render_chips()
+
+    def _close_help(self) -> bool:
+        panel = self.query_one("#help", Static)
+        if panel.has_class("visible"):
+            panel.remove_class("visible")
+            return True
+        return False
