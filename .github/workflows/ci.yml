@@ -70,9 +70,9 @@ jobs:
       - name: The README badges must match this run
         run: |
           uv run python scripts/update_badges.py pytest.txt pytest-serial.txt
-          if ! git diff --quiet -- README.md; then
+          if ! git diff --quiet -- README.md assets/ci-flow.svg; then
             echo "badges are stale; run scripts/update_badges.py and commit" >&2
-            git --no-pager diff -- README.md
+            git --no-pager diff -- README.md assets/ci-flow.svg
             exit 1
           fi
       - name: Upload coverage

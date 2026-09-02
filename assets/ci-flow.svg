@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="220" viewBox="0 0 1000 220" role="img" aria-labelledby="title desc">
+  <title id="title">Stage CI flow</title>
+  <desc id="desc">Every push and pull request runs quality checks on Python 3.12, then the full suite again on 3.13 and 3.14, a wheel smoke test on Ubuntu, Windows and macOS, and CodeQL. All gates must pass for CI to pass; any failure fails the run.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#3B82F6"/>
+    </marker>
+    <marker id="fail-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#F85149"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="220" rx="18" fill="#0D1117"/>
+
+  <g font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="600" text-anchor="middle">
+    <rect x="30" y="42" width="150" height="58" rx="12" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+    <text x="105" y="66" fill="#F0F6FC" font-size="14">Push or</text>
+    <text x="105" y="86" fill="#F0F6FC" font-size="14">pull request</text>
+
+    <path d="M180 71H230" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect x="240" y="42" width="180" height="58" rx="12" fill="#111C30" stroke="#3B82F6" stroke-width="2"/>
+    <text x="330" y="66" fill="#F0F6FC" font-size="14">ruff, format, mypy</text>
+    <text x="330" y="86" fill="#F0F6FC" font-size="14">2,373 tests, 89%</text>
+
+    <path d="M420 71H470" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect x="480" y="42" width="170" height="58" rx="12" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+    <text x="565" y="66" fill="#F0F6FC" font-size="14">Python 3.13, 3.14</text>
+    <text x="565" y="86" fill="#F0F6FC" font-size="14">Wheel on 3 OSes</text>
+
+    <path d="M650 71H700" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect x="710" y="42" width="130" height="58" rx="12" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+    <text x="775" y="77" fill="#F0F6FC" font-size="14">CodeQL</text>
+
+    <path d="M840 71H890" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect x="900" y="42" width="80" height="58" rx="12" fill="#102A1C" stroke="#238636" stroke-width="2"/>
+    <text x="940" y="66" fill="#F0F6FC" font-size="14">CI</text>
+    <text x="940" y="86" fill="#F0F6FC" font-size="14">passed</text>
+
+    <path d="M330 100V140" stroke="#F85149" stroke-width="3" marker-end="url(#fail-arrow)"/>
+
+    <rect x="245" y="150" width="170" height="44" rx="12" fill="#2D1619" stroke="#DA3633" stroke-width="2"/>
+    <text x="330" y="178" fill="#F0F6FC" font-size="15">CI failed</text>
+  </g>
+</svg>
