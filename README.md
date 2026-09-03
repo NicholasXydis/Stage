@@ -20,7 +20,7 @@ Free and open source. No account, no server, no telemetry.
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=2%2C375&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=2%2C381&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -233,7 +233,7 @@ Stage/
 │  ├─ http/                 rate posture, circuit breaker, validator cache
 │  ├─ storage/              SQLite repository, migrations, FTS
 │  └─ data/                 packaged registry (a directory) and lexicons
-├─ tests/                   2,375 tests, 89% branch coverage
+├─ tests/                   2,381 tests, 89% branch coverage
 └─ .github/workflows/       CI, CodeQL, scheduled canary, release
 ```
 
@@ -279,7 +279,7 @@ Stage/
 
 | Workflow | File | Purpose |
 | --- | --- | --- |
-| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, 2,375 tests, coverage floor, badge drift |
+| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, 2,381 tests, coverage floor, badge drift |
 | Supported Pythons | `.github/workflows/ci.yml` | The full suite again on 3.13 and 3.14 |
 | Wheel | `.github/workflows/ci.yml` | Builds and smoke-tests the wheel on Ubuntu, Windows and macOS |
 | CodeQL | `.github/workflows/codeql.yml` | Static analysis for Python and the workflows themselves |

@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-03
+
+### Added
+
+- Discord notifications now lead with Montreal postings, then the rest of Canada,
+  and put software engineering ahead of quant inside each place. Nothing is
+  filtered out; the whole batch is still there, in the order you care about.
+- 43 more employers, taking the registry to 1,530. Every one was reached in a
+  live sync before it was added, and none was found by guessing a slug.
+
+### Fixed
+
+- ClickHouse moved off Greenhouse, which now answers 404 for that slug; the row
+  points at its Ashby board, which returns 177 postings. Marqeta, Gloss Genius and
+  Veeda AI answer 404 on every platform and are disabled rather than removed, so
+  discovery does not re-add them.
+- Searching in the TUI no longer stalls. Each keystroke used to queue a query on
+  the single database thread, and cancelling the worker did not cancel the query
+  already running, so typing three letters took about ten seconds. Keystrokes are
+  now collected for 180ms before a search runs.
+
+### Notes
+
+- A Discord message is bounded by the 6,000 characters Discord allows, not by a
+  posting count, so a batch of long titles and URLs shows fewer rows than a batch
+  of short ones.
+
 ## [1.0.0] - 2026-09-01
 
 First release. Stage collects CS internship postings from company job boards
@@ -42,4 +69,5 @@ them in a SQLite database on your own machine.
 
 Python 3.12, 3.13 or 3.14 on macOS, Linux or Windows.
 
+[1.1.0]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.0
 [1.0.0]: https://github.com/NicholasXydis/Stage/releases/tag/v1.0.0

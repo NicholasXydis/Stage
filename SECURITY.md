@@ -4,7 +4,7 @@
 
 | Version | Supported |
 | --- | --- |
-| 1.0.0 | ✅ |
+| 1.1.0 | ✅ |
 
 Only the latest release receives security fixes.
 
@@ -27,6 +27,7 @@ In scope:
 
 - terminal escape or control-character injection from posting titles and descriptions
 - registry fields that build a request target reaching an unintended host
+- a redirect that carries origin-bound headers to a host they were not meant for
 - source payloads that escape validation, the response size ceiling, or the per-host request limit
 - unsafe deserialization of source, registry, or lexicon data
 - path traversal through database, capture, or configuration paths
@@ -42,7 +43,9 @@ Out of scope:
 - automated scanner output without a working reproduction
 - reports requiring access to a machine, database, or configuration you do not own
 
-Stage is a local command-line tool. It has no server, no network listener, no accounts, no
-authentication, and no API keys — none of the sources it reads require credentials. Postings
-are stored in a SQLite database under your own user account, and outbound requests go only to
-hosts listed in the registry shipped with the package.
+Stage is a local command-line tool. It has no server, no network listener, no accounts, and
+no user authentication. Postings are stored in a SQLite database under your own user account.
+
+Outbound requests reach only the hosts the shipped registry names, over https, and a redirect
+that changes origin drops the headers bound to the first one. The two registry rows that send
+a bearer token use a board's own public key, never a credential of yours.
