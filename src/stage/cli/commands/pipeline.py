@@ -143,10 +143,11 @@ async def _announce_new_postings(repository: Any, console: Any) -> None:
     since = await repository.previous_sync_at()
     if since is None:
         return
-    filters = replace(JobFilters(limit=notify.MAX_LISTED), first_seen_after=since)
+    filters = replace(JobFilters(limit=None), first_seen_after=since)
     listing = await list_jobs(repository, filters, window_days=None)
     if not listing.jobs:
         return
+    chosen = sorted(listing.jobs, key=notify.rank)[: notify.MAX_LISTED]
     postings = [
         notify.Posting(
             company=job.company,
@@ -154,7 +155,7 @@ async def _announce_new_postings(repository: Any, console: Any) -> None:
             location=display_location(job.location_raw),
             url=job.apply_url_raw,
         )
-        for job in listing.jobs
+        for job in chosen
     ]
     try:
         notify.post(webhook, notify.compose(postings, listing.total_matching))

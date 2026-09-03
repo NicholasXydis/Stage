@@ -21,11 +21,23 @@ DESCRIPTION_LIMIT = 4096
 DESCRIPTION_BUDGET = 3900
 MAX_LISTED = 40
 TITLE_LIMIT = 200
+LOCATION_ORDER = ("montreal", "canada")
+ROLE_ORDER = ("swe", "quant")
 TIMEOUT_SECONDS = 15
 
 
 class NotifyError(Exception):
     pass
+
+
+def rank(job: object) -> tuple[int, int, float]:
+    location = getattr(getattr(job, "location", None), "value", "")
+    role = getattr(getattr(job, "role", None), "value", "")
+    place = LOCATION_ORDER.index(location) if location in LOCATION_ORDER else len(LOCATION_ORDER)
+    discipline = ROLE_ORDER.index(role) if role in ROLE_ORDER else len(ROLE_ORDER)
+    seen = getattr(job, "first_seen", None)
+    recency = -seen.timestamp() if seen is not None else 0.0
+    return (place, discipline, recency)
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +174,7 @@ __all__ = [
     "compose",
     "forget",
     "post",
+    "rank",
     "read",
     "redact",
     "remember",

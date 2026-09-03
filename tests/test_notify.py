@@ -510,3 +510,76 @@ def test_a_rejected_url_leaves_a_stored_webhook_intact(tmp_path: Path) -> None:
         notify.remember("https://evil.example/api/webhooks/1/tok", target)
 
     assert notify.read(target) == "https://discord.com/api/webhooks/1/tok"
+
+
+def _ranked(location: str, role: str, day: int = 1) -> Any:
+    from dataclasses import dataclass
+    from datetime import UTC, datetime
+
+    from stage.domain import LocationBucket, RoleCategory
+
+    @dataclass
+    class Row:
+        location: LocationBucket
+        role: RoleCategory
+        first_seen: datetime
+
+    return Row(
+        location=LocationBucket(location),
+        role=RoleCategory(role),
+        first_seen=datetime(2026, 9, day, tzinfo=UTC),
+    )
+
+
+def test_montreal_sorts_ahead_of_everywhere_else() -> None:
+    rows = [
+        _ranked("usa", "swe"),
+        _ranked("canada", "swe"),
+        _ranked("montreal", "general-cs"),
+    ]
+
+    order = [row.location.value for row in sorted(rows, key=notify.rank)]
+
+    assert order == ["montreal", "canada", "usa"]
+
+
+def test_software_sorts_ahead_of_quant_within_one_place() -> None:
+    rows = [
+        _ranked("montreal", "data"),
+        _ranked("montreal", "quant"),
+        _ranked("montreal", "swe"),
+    ]
+
+    order = [row.role.value for row in sorted(rows, key=notify.rank)]
+
+    assert order == ["swe", "quant", "data"]
+
+
+def test_place_outranks_discipline() -> None:
+    rows = [_ranked("usa", "swe"), _ranked("montreal", "general-cs")]
+
+    first = sorted(rows, key=notify.rank)[0]
+
+    assert first.location.value == "montreal"
+
+
+def test_the_newest_posting_wins_a_tie() -> None:
+    rows = [_ranked("usa", "swe", day=1), _ranked("usa", "swe", day=5)]
+
+    first = sorted(rows, key=notify.rank)[0]
+
+    assert first.first_seen.day == 5
+
+
+def test_an_unknown_place_or_role_still_ranks() -> None:
+    rows = [_ranked("unknown", "unknown"), _ranked("montreal", "swe")]
+
+    order = [row.location.value for row in sorted(rows, key=notify.rank)]
+
+    assert order == ["montreal", "unknown"]
+
+
+def test_the_search_debounce_stays_under_a_quarter_second() -> None:
+    from stage.tui.state import DEBOUNCE_SECONDS
+
+    assert 0.1 <= DEBOUNCE_SECONDS <= 0.25
