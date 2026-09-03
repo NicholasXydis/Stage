@@ -12,7 +12,7 @@ them in a SQLite database on your own machine.
 
 ### What it does
 
-- **Reads 1,487 employers** across 15 ATS platforms — Greenhouse, Lever, Ashby,
+- **Reads 1,450+ employers** across 15 ATS platforms — Greenhouse, Lever, Ashby,
   Workday, SmartRecruiters, Workable and more — through 13 adapters, plus 11
   community feeds.
 - **Filters hard.** It has kept 4,165 postings and rejected 134,368. Senior
