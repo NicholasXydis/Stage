@@ -129,18 +129,6 @@
     page_param: from
     page_size: 10
     max_pages: 8
-- name: Advanced Space
-  platform: greenhouse
-  slug: advancedspace
-  source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 18 postings including 2027 DevOps and Fall internships.'
-- name: Audax Group
-  platform: greenhouse
-  slug: audaxgroup
-  source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 16 postings including an AI Engineer Co-Op in Boston.'
 - name: Adaption Labs
   platform: ashby
   slug: adaption
@@ -181,6 +169,12 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Advanced Space
+  platform: greenhouse
+  slug: advancedspace
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 18 postings including 2027 DevOps and Fall internships.'
 - name: Advanced Systems Group, LLC
   platform: jobvite
   slug: asgllc
@@ -447,6 +441,14 @@
   slug: alixpartners
   source_of_record: discover
   last_verified: *id008
+- name: Allegheny County
+  platform: bamboohr
+  slug: alleghenycounty
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    bamboohr publishes no board name, so provenance is the evidence (15 job(s))'
 - name: Alpha Sense
   platform: greenhouse
   slug: alphasense
@@ -540,12 +542,6 @@
     page_param: offset
     page_size: 100
     max_pages: 10
-- name: American Institutes for Research
-  platform: greenhouse
-  slug: americaninstitutesforresearch
-  source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 14 postings including a Data Science Associate Intern.'
 - name: Ambarella
   platform: workday
   slug: ambarella
@@ -564,6 +560,14 @@
   enabled: false
   notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
     answers but renders no jv-job-list table, so it is an empty or retired board'
+- name: Ambrook
+  platform: ashby
+  slug: ambrook
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (15 job(s))'
 - name: Amcor
   platform: workday
   slug: amcor
@@ -657,6 +661,12 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: American Institutes for Research
+  platform: greenhouse
+  slug: americaninstitutesforresearch
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 14 postings including a Data Science Associate Intern.'
 - name: AmerisourceBergen
   platform: workday
   slug: myhrabc
@@ -1180,6 +1190,12 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Audax Group
+  platform: greenhouse
+  slug: audaxgroup
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 16 postings including an AI Engineer Co-Op in Boston.'
 - name: Augsburg University
   platform: smartrecruiters
   slug: augsburguniversity-minneapolismn
@@ -1245,6 +1261,13 @@
   workday_facet: workerSubType:136d83bad7ee010fa71a0c95bf002201
   notes: '2026-08-13: official Workday endpoint verified; its Intern fixed-term facet
     has 28 listings.'
+- name: Avery Dennison
+  platform: smartrecruiters
+  slug: averydennison
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; smartrecruiters/averydennison named
+    itself with 433 jobs.'
 - name: Awetomaton
   platform: greenhouse
   slug: awetomaton

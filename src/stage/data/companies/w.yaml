@@ -98,6 +98,14 @@
   notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
     39 jobs and needs-a-manual-check, the expected verdict where the platform publishes
     no board name; token equals the company name'
+- name: Weave
+  platform: ashby
+  slug: weave
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (29 job(s))'
 - name: Webflow
   platform: greenhouse
   slug: webflow
@@ -160,6 +168,13 @@
   slug: westerndigital
   source_of_record: discover
   last_verified: *id005
+- name: Western Magnetics
+  platform: workable
+  slug: western-magnetics
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; workable/western-magnetics named
+    itself with 18 jobs.'
 - name: WhiteWater Midstream
   platform: greenhouse
   slug: whitewatermidstream
@@ -298,12 +313,6 @@
   slug: wongdoody
   source_of_record: openjobs
   last_verified: &id008 2026-08-11
-- name: Workland
-  platform: smartrecruiters
-  slug: workland
-  source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 3 Montreal postings.'
 - name: Workato
   platform: greenhouse
   slug: workato
@@ -329,6 +338,12 @@
   workday_dc: wd503
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Workland
+  platform: smartrecruiters
+  slug: workland
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 3 Montreal postings.'
 - name: Workleap
   platform: greenhouse
   slug: workleap

@@ -13,6 +13,13 @@
   slug: safariai
   source_of_record: openjobs
   last_verified: &id006 2026-08-11
+- name: Sage
+  platform: greenhouse
+  slug: sage49
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/sage49 named itself with
+    11 jobs.'
 - name: Sailpoint
   platform: workday
   slug: sailpoint
@@ -65,6 +72,13 @@
   workday_dc: wd3
   notes: 'Verified by CXS probe: 668 postings, and the tenant advertises an Intern(Empl.)
     worker subtype. Distinct board from greenhouse/samsungsemiconductor.'
+- name: Samsung Research America
+  platform: greenhouse
+  slug: samsungresearchamericainternship
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/samsungresearchamericainternship
+    named itself with 3 jobs.'
 - name: Samsung Semiconductor
   platform: greenhouse
   slug: samsungsemiconductor
@@ -199,6 +213,14 @@
   workday_facet: jobFamilyGroup:df72ee3ddefc1018ed60659348e352d3
   notes: '2026-08-13: official Workday endpoint verified; its Internship job-family
     facet has 25 listings.'
+- name: Scientech Research Capital
+  platform: ashby
+  slug: scientech-research
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (17 job(s))'
 - name: Scientific Games
   platform: workday
   slug: sglottery
@@ -339,6 +361,14 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (46 job(s))'
+- name: Sereact
+  platform: ashby
+  slug: sereact
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (49 job(s))'
 - name: Serval
   platform: ashby
   slug: serval
@@ -360,6 +390,13 @@
   slug: sevenresearch
   source_of_record: discover
   last_verified: *id003
+- name: Sezzle
+  platform: greenhouse
+  slug: sezzle
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/sezzle named itself with
+    183 jobs.'
 - name: SharkNinja
   platform: greenhouse
   slug: sharkninjaoperatingllc
@@ -681,6 +718,13 @@
   enabled: false
   notes: The ashby token answers with zero jobs, which is a placeholder rather than
     a board.
+- name: SOCOTEC UK & Ireland
+  platform: smartrecruiters
+  slug: socotecukireland
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; smartrecruiters/socotecukireland
+    named itself with 121 jobs.'
 - name: sofar sounds
   platform: lever
   slug: sofarsounds
@@ -693,12 +737,13 @@
   last_verified: 2026-08-16
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
     a live probe that matched the company name on the returned board'
-- name: Solid Power
-  platform: greenhouse
-  slug: solidpower
+- name: Softeta
+  platform: workable
+  slug: softeta
   source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 14 postings including six internships in Colorado.'
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; workable/softeta named itself with
+    11 jobs.'
 - name: Solar Turbines
   platform: workday
   slug: cat
@@ -709,6 +754,12 @@
   workday_dc: wd5
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (107 posting(s), 0 kept)'
+- name: Solid Power
+  platform: greenhouse
+  slug: solidpower
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 14 postings including six internships in Colorado.'
 - name: SoloPulse
   platform: lever
   slug: solopulseco
@@ -1138,3 +1189,10 @@
   workday_facet: workerSubType:b014cc62fe6601ac5a96d6b1da283744,6a5d7ea644cc1000511fb8d1d9a00000
   notes: '2026-08-13: official Workday endpoint verified; its intern and student facets
     total 24 listings.'
+- name: Syska Hennessy Group
+  platform: greenhouse
+  slug: syskahennessy
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/syskahennessy named itself
+    with 109 jobs.'

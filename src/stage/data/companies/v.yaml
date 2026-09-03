@@ -73,12 +73,13 @@
 - name: Veeda AI
   platform: ashby
   slug: veeda-labs
+  enabled: false
   source_of_record: discover
   last_verified: *id002
   name_gate_exempt: true
-  notes: '2026-08-14: board token taken from this employer''s own application URL
-    in a feed posting, not from slug guessing; ashby publishes no board name, so the
-    name gate cannot confirm it and provenance is the evidence (6 job(s))'
+  notes: '2026-09-03: disabled — ashby answers 404 for this token and no other platform
+    carries it. 2026-08-14: the token came from this employer''s own application URL
+    in a feed posting, not from slug guessing (6 job(s))'
 - name: Veeva Systems
   platform: lever
   slug: veeva

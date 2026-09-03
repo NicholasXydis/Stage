@@ -1,3 +1,11 @@
+- name: Mach Industries
+  platform: ashby
+  slug: mach
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (106 job(s))'
 - name: Mackenzie Investments
   platform: custom_json
   slug: mackenzieinvestments
@@ -151,10 +159,12 @@
 - name: Marqeta
   platform: greenhouse
   slug: marqeta
+  enabled: false
   source_of_record: discover
   last_verified: 2026-08-21
-  notes: '2026-08-21: official careers page resolves to the live Marqeta Greenhouse
-    board.'
+  notes: '2026-09-03: disabled — greenhouse answers 404 for this slug and no ashby or
+    lever board carries it. 2026-08-21: official careers page resolved to the live
+    Marqeta Greenhouse board.'
 - name: Marsh McLennan
   platform: workday
   slug: mmc
@@ -316,6 +326,13 @@
       location: cities
       url: jobApplyURL
       category: interestCategory
+- name: McWane
+  platform: smartrecruiters
+  slug: mcwaneinc
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; smartrecruiters/mcwaneinc named
+    itself with 121 jobs.'
 - name: MDA
   platform: custom_json
   slug: mda
@@ -443,6 +460,14 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Mercor
+  platform: ashby
+  slug: mercor
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (90 job(s))'
 - name: Mercury
   platform: greenhouse
   slug: mercury

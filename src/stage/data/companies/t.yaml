@@ -537,6 +537,13 @@
   enabled: false
   notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
     Re-probed 2026-08-14 and still dead.'
+- name: Toshiba Global Commerce
+  platform: greenhouse
+  slug: toshibaglobalcommercesolutions
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/toshibaglobalcommercesolutions
+    named itself with 37 jobs.'
 - name: Tower Research Capital
   platform: greenhouse
   slug: towerresearchcapital

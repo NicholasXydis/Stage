@@ -20,6 +20,13 @@
   slug: gameloft
   source_of_record: openjobs
   last_verified: &id008 2026-08-14
+- name: Garda Capital Partners
+  platform: greenhouse
+  slug: gardacp
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/gardacp named itself
+    with 11 jobs.'
 - name: Gardens Interactive
   platform: ashby
   slug: gardens
@@ -155,13 +162,6 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
-- name: General Matter
-  platform: greenhouse
-  slug: generalmatter
-  source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 115 postings including a Summer 2027 Software Engineering
-    internship in Los Angeles.'
 - name: General Dynamics Information Technology
   platform: workday
   slug: gdit
@@ -196,6 +196,13 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (13 job(s))'
+- name: General Matter
+  platform: greenhouse
+  slug: generalmatter
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 115 postings including a Summer 2027 Software Engineering
+    internship in Los Angeles.'
 - name: General Motors
   platform: custom_json
   slug: gm
@@ -407,11 +414,13 @@
 - name: Gloss Genius
   platform: greenhouse
   slug: glossgenius
+  enabled: false
   source_of_record: openjobs
   last_verified: *id006
   name_gate_exempt: true
-  notes: '2026-08-08: board publishes the name ''Genius AI''; the name gate rejects
-    this caption, and the board is confirmed correct'
+  notes: '2026-09-03: disabled — greenhouse answers 404 for this slug and no ashby or
+    lever board carries it. 2026-08-08: the board published the name ''Genius AI'',
+    which the name gate rejects.'
 - name: GOAT Group
   platform: greenhouse
   slug: goatgroup

@@ -284,6 +284,13 @@
   slug: instalilyai
   source_of_record: discover
   last_verified: *id002
+- name: Instawork
+  platform: greenhouse
+  slug: instawork
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/instawork named itself
+    with 53 jobs.'
 - name: Instead
   platform: greenhouse
   slug: instead

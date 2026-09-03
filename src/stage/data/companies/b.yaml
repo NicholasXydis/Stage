@@ -416,14 +416,6 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
-- name: BNY
-  platform: oracle_cloud
-  slug: eofe
-  source_of_record: discover
-  last_verified: 2026-09-01
-  oracle_host: eofe.fa.us2.oraclecloud.com
-  oracle_site: BNY-Careers
-  notes: '2026-09-01: verified 1401 postings on the Oracle Cloud candidate endpoint.'
 - name: Black Bery
   platform: workday
   slug: bb
@@ -618,6 +610,14 @@
     fields:
       title: title
       id: id
+- name: BNY
+  platform: oracle_cloud
+  slug: eofe
+  source_of_record: discover
+  last_verified: 2026-09-01
+  oracle_host: eofe.fa.us2.oraclecloud.com
+  oracle_site: BNY-Careers
+  notes: '2026-09-01: verified 1401 postings on the Oracle Cloud candidate endpoint.'
 - name: Boeing
   platform: workday
   slug: boeing
@@ -857,6 +857,13 @@
   workday_dc: wd3
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: BTI360
+  platform: greenhouse
+  slug: bti36021
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/bti36021 named itself
+    with 13 jobs.'
 - name: Buckman
   platform: smartrecruiters
   slug: buckman

@@ -220,6 +220,13 @@
   workday_dc: wd10
   notes: '2026-08-16: un-parked with the rest of the tenant — the 2026-08-11 budget
     reason expired when the Workday ceiling went 120 to 732'
+- name: Detroit Lions
+  platform: greenhouse
+  slug: detroitlions
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/detroitlions named itself
+    with 8 jobs.'
 - name: DEUNA
   platform: lever
   slug: deuna

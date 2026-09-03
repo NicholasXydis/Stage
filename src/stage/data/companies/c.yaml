@@ -241,6 +241,14 @@
   enabled: false
   notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
     422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: Catalist
+  platform: lever
+  slug: catalist
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (5 job(s))'
 - name: Caterpillar Inc.
   platform: workday
   slug: cat
@@ -824,12 +832,12 @@
   source_of_record: discover
   last_verified: *id009
 - name: ClickHouse
-  platform: greenhouse
+  platform: ashby
   slug: clickhouse
   source_of_record: discover
-  last_verified: 2026-08-17
-  notes: '2026-08-17: found by browser-assisted discovery, then verified by a live
-    probe that matched the company name on the returned board'
+  last_verified: 2026-09-03
+  notes: '2026-09-03: moved off greenhouse, which now answers 404 for this slug; the
+    ashby board under the same slug returned 177 postings on a live probe'
 - name: Clinical Ink
   platform: smartrecruiters
   slug: clinicalink
@@ -865,6 +873,13 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (7 job(s))'
+- name: CloudSEK
+  platform: greenhouse
+  slug: cloudsek
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/cloudsek named itself
+    with 13 jobs.'
 - name: CME Group
   platform: workday
   slug: cmegroup
@@ -935,12 +950,6 @@
   workday_dc: wd5
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (4 posting(s), 0 kept)'
-- name: Compeer Financial
-  platform: greenhouse
-  slug: compeerfinancial
-  source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 48 postings across WI, IL and MN.'
 - name: Co Active Systems
   platform: greenhouse
   slug: coactivesystems
@@ -1038,6 +1047,12 @@
   name_gate_exempt: true
   notes: '2026-08-20: the owner supplied this exact lever board URL, which is the
     provenance lever cannot give because it publishes no board name; 66 postings.'
+- name: Compeer Financial
+  platform: greenhouse
+  slug: compeerfinancial
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 48 postings across WI, IL and MN.'
 - name: Composio
   platform: ashby
   slug: composio
@@ -1056,6 +1071,13 @@
   notes: '2026-08-18: the human check this row was waiting for is done - the owner
     supplied compulsiongames.bamboohr.com/careers directly, which is the employer
     own board.'
+- name: Concentric
+  platform: greenhouse
+  slug: concentric
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/concentric named itself
+    with 11 jobs.'
 - name: Confluent
   platform: ashby
   slug: confluent

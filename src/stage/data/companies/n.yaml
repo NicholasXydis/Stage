@@ -1,3 +1,11 @@
+- name: N1
+  platform: ashby
+  slug: n1
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (9 job(s))'
 - name: Nagarro
   platform: smartrecruiters
   slug: nagarro1
@@ -81,6 +89,14 @@
   name_gate_exempt: true
   notes: '2026-08-17: Navan still posts under its former name TripActions, so the
     board token is tripactions.'
+- name: Navi AI
+  platform: ashby
+  slug: navi
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (9 job(s))'
 - name: Navy Federal
   platform: oracle_cloud
   slug: nfcu
@@ -368,6 +384,14 @@
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
     endpoint has no offline probe, and this host and site come from the employer''s
     own application URL'
+- name: Normal Computing
+  platform: ashby
+  slug: normalcomputing
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (22 job(s))'
 - name: Northeastern University
   platform: workday
   slug: northeastern

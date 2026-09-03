@@ -298,6 +298,13 @@
   workday_dc: wd10
   notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Fooji
+  platform: workable
+  slug: fooji
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; workable/fooji named itself with
+    2 jobs.'
 - name: Ford Motor
   platform: custom_json
   slug: ford
@@ -436,6 +443,14 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 13 job(s)'
+- name: Fullbay
+  platform: bamboohr
+  slug: fullbay
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    bamboohr publishes no board name, so provenance is the evidence (11 job(s))'
 - name: Fundwell
   platform: ashby
   slug: fundwell

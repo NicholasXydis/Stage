@@ -1,3 +1,11 @@
+- name: H3X Technologies
+  platform: ashby
+  slug: h3x-technologies
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (13 job(s))'
 - name: Haize Labs
   platform: greenhouse
   slug: haizelabs

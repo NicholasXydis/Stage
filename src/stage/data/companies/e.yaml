@@ -6,6 +6,14 @@
   notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
     match the rest of the workable platform, which is parked until 2026-08-18 after
     two 429s in one day.'
+- name: E-Space
+  platform: lever
+  slug: espace
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    lever publishes no board name, so provenance is the evidence (145 job(s))'
 - name: East Penn Manufacturing Company
   platform: custom_json
   slug: eastpennmanufacturing
@@ -207,6 +215,13 @@
   slug: ensemble
   source_of_record: discover
   last_verified: *id002
+- name: Enterpret
+  platform: greenhouse
+  slug: enterpret
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/enterpret named itself
+    with 18 jobs.'
 - name: Enverus
   platform: jobvite
   slug: drillinginfo
@@ -408,6 +423,13 @@
     page_start: 1
     page_step: 1
     max_pages: 5
+- name: Eudia
+  platform: greenhouse
+  slug: eudia
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/eudia named itself with
+    19 jobs.'
 - name: Eulerity
   platform: greenhouse
   slug: eulerity

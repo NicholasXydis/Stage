@@ -387,6 +387,14 @@
   name_gate_exempt: true
   notes: '2026-08-18: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (70 job(s))'
+- name: Rivet Industries
+  platform: ashby
+  slug: rivet
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (22 job(s))'
 - name: Rivian
   platform: custom_json
   slug: rivian
@@ -581,3 +589,10 @@
   slug: rushstreetinteractive
   source_of_record: openjobs
   last_verified: *id005
+- name: Rystad Energy
+  platform: workable
+  slug: rystad-energy
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; workable/rystad-energy named itself
+    with 13 jobs.'

@@ -371,16 +371,6 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active teleoperation software-engineering internship
     application verifies the public Ashby board.'
-- name: PGIM
-  platform: workday
-  slug: pru
-  source_of_record: discover
-  last_verified: 2026-08-16
-  workday_tenant: pru
-  workday_site: pgim_careers
-  workday_dc: wd5
-  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
-    verified by a scratch sync (70 posting(s), 0 kept)'
 - name: Pfizer
   platform: workday
   slug: pfizer
@@ -391,13 +381,16 @@
   workday_dc: wd1
   notes: '2026-08-31: added. 226 postings; most interns are overseas, so the
     location screen carries the weight.'
-- name: Phoenix Contact
-  platform: greenhouse
-  slug: phoenixcontact
+- name: PGIM
+  platform: workday
+  slug: pru
   source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 39 postings including a Data Science and Analytics
-    intern in Pennsylvania.'
+  last_verified: 2026-08-16
+  workday_tenant: pru
+  workday_site: pgim_careers
+  workday_dc: wd5
+  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
+    verified by a scratch sync (70 posting(s), 0 kept)'
 - name: Philips
   platform: workday
   slug: philips
@@ -409,6 +402,21 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Phoebe
+  platform: ashby
+  slug: phoebe-work
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (10 job(s))'
+- name: Phoenix Contact
+  platform: greenhouse
+  slug: phoenixcontact
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 39 postings including a Data Science and Analytics
+    intern in Pennsylvania.'
 - name: Phonely
   platform: ashby
   slug: phonely
@@ -497,6 +505,14 @@
   slug: pinterest
   source_of_record: openjobs
   last_verified: *id002
+- name: Pivot Robotics
+  platform: ashby
+  slug: pivotrobotics
+  source_of_record: discover
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    ashby publishes no board name, so provenance is the evidence (6 job(s))'
 - name: Plaid
   platform: ashby
   slug: plaid
@@ -625,6 +641,12 @@
   last_verified: *id007
   notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: Polaris
+  platform: greenhouse
+  slug: polaris
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; greenhouse/polaris named itself with 2 jobs.'
 - name: pony.ai
   platform: workable
   slug: pony-dot-ai
@@ -678,6 +700,13 @@
   workday_site: REC_RTX_Ext_Gateway
   workday_dc: wd5
   name_gate_exempt: true
+- name: Praytell
+  platform: workable
+  slug: praytell
+  source_of_record: discover
+  last_verified: 2026-08-26
+  notes: '2026-08-26: adopted from feed postings; workable/praytell named itself with
+    8 jobs.'
 - name: Prior Labs
   platform: ashby
   slug: prior-labs

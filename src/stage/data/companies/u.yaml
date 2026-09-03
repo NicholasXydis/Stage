@@ -121,17 +121,25 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: University of Nevada, Reno
+  platform: smartrecruiters
+  slug: universityofnevadareno
+  source_of_record: discover
+  last_verified: *id001
 - name: University of Notre Dame
   platform: smartrecruiters
   slug: universityofnotredame
   source_of_record: discover
   last_verified: 2026-09-01
   notes: '2026-09-01: verified 99 postings including a Data Science Intern.'
-- name: University of Nevada, Reno
-  platform: smartrecruiters
-  slug: universityofnevadareno
+- name: University of Pikeville
+  platform: bamboohr
+  slug: upike
   source_of_record: discover
-  last_verified: *id001
+  last_verified: 2026-08-26
+  name_gate_exempt: true
+  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
+    bamboohr publishes no board name, so provenance is the evidence (171 job(s))'
 - name: University of Rochester
   platform: workday
   slug: rochester
