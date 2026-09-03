@@ -10,7 +10,7 @@ from stage.domain import (
     RoleCategory,
 )
 
-DEBOUNCE_SECONDS = 0.04
+DEBOUNCE_SECONDS = 0.18
 PAGE_SIZE = 200
 
 LAST_DAYS_CHOICES: tuple[int, ...] = (7, 14, 30, 0)

@@ -264,13 +264,16 @@ class PostingsScreen(HelpOverlay, Screen[None]):
     def on_data_table_row_highlighted(self) -> None:
         self._show_detail()
 
-    def on_input_changed(self, event: Input.Changed) -> None:
+    def _refresh_soon(self) -> None:
         timer = self._pending
         if timer is not None:
             timer.stop()
+        self._pending = self.set_timer(DEBOUNCE_SECONDS, self.refresh_results)
+
+    def on_input_changed(self, event: Input.Changed) -> None:
         self.state.query = event.value
         self.state.limit = PAGE_SIZE
-        self._pending = self.set_timer(DEBOUNCE_SECONDS, self.refresh_results)
+        self._refresh_soon()
 
     def on_input_submitted(self) -> None:
         self._leave_search()
@@ -339,7 +342,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         name, value, _, _ = self._rows[index]
         self.state.choose(name, value)
         self._render_filters()
-        self.refresh_results()
+        self._refresh_soon()
 
     def action_clear(self) -> None:
         self.state.clear()
