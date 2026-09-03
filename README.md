@@ -12,9 +12,9 @@
 
 ### One command. Thousands of internships.
 
-**Stage reads 1,450+ employer boards, keeps the CS internships a Canadian or US undergrad can apply to**
+**Every CS internship you can actually apply to, in one place.**
 
-No account, no server, no telemetry.
+Free and open source. No account, no server, no telemetry.
 
 <br>
 
@@ -51,7 +51,21 @@ Internships disappear fast. By the time you find the right posting, hundreds of 
 
 Stage scans 1,450+ employer career boards and finds internships CS undergrads in Canada and the U.S. can actually apply to. Every rejected posting is logged with the exact reason it was filtered out.
 
-The last sync kept **2,500** postings out of **146,057**.
+It has kept **4,165** postings out of **138,533** screened so far.
+
+## A look at it
+
+<div align="center">
+  <img src="assets/tui.png" alt="The Stage TUI listing internship postings, with columns for age, company, title and location, a search bar, and the full description of the highlighted posting below" width="100%">
+  <br><sub><b>stage tui</b> — browse everything, filter with <b>f</b>, open with <b>o</b></sub>
+</div>
+
+<br>
+
+<div align="center">
+  <img src="assets/cli.png" alt="The stage command line help, showing commands grouped into Everyday, Keeping current, Registry and maintenance, and Health" width="100%">
+  <br><sub><b>stage --help</b> — commands grouped by what you are doing</sub>
+</div>
 
 ## Install
 
@@ -210,8 +224,9 @@ Stage/
 ├─ src/stage/
 │  ├─ cli/                  Typer commands, Rich rendering, scheduling, notify
 │  ├─ tui/                  Textual screens over the same services; safe.py escapes output
+│  ├─ domain/               the types every layer speaks: jobs, filters, enums, events
 │  ├─ sources/              13 ATS adapters + 11 curated feeds
-│  ├─ services/             sync, discover, coverage, canary, health, export
+│  ├─ services/             sync, discover, query, export, quarantine, health
 │  ├─ classify/             role, internship scope, degree eligibility, location
 │  ├─ normalize/            location, term, language, apply-url canonicalisation
 │  ├─ dedup/                cross-source duplicate resolution
@@ -226,32 +241,32 @@ Stage/
 <pre>
 ┌──────────────────────────────────────────────────────────────┐
 │                    1,450+ employer boards                    │
-│     Greenhouse · Lever · Ashby · Workday · SmartRecruiters   │
-│              + 11 curated internship feeds                   │
+│    Greenhouse · Lever · Ashby · Workday · SmartRecruiters    │
+│                + 11 curated internship feeds                 │
 └───────────────────────────┬──────────────────────────────────┘
                             │  rate-limited, cached, backed off
                             ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                          normalize                           │
-│        location · term · language · canonical apply URL      │
+│       location · term · language · canonical apply URL       │
 └───────────────────────────┬──────────────────────────────────┘
                             ▼
 ┌──────────────────────────────────────────────────────────────┐
-│                          screen                              │
-│   internship? · CS role? · degree scope? · Canada or US?     │
-│         every rejection keeps the rule that caught it        │
+│                            screen                            │
+│    internship? · CS role? · degree scope? · Canada or US?    │
+│        every rejection keeps the rule that caught it         │
 └──────────────┬───────────────────────────────┬───────────────┘
                │ kept                          │ rejected
                ▼                               ▼
         ┌─────────────┐                 ┌─────────────┐
         │    jobs     │                 │ quarantine  │
-        │   2,500     │                 │  143,557    │
+        │    4,165    │                 │   134,368   │
         └──────┬──────┘                 └─────────────┘
                │  dedup collapses the same posting across sources
                ▼
      ┌───────────────────────┐
-     │   SQLite + FTS5       │
-     │   on your machine     │
+     │     SQLite + FTS5     │
+     │    on your machine    │
      └──────┬────────┬───────┘
             ▼        ▼
       stage list   stage tui
@@ -269,7 +284,7 @@ Stage/
 | Wheel | `.github/workflows/ci.yml` | Builds and smoke-tests the wheel on Ubuntu, Windows and macOS |
 | CodeQL | `.github/workflows/codeql.yml` | Static analysis for Python and the workflows themselves |
 | Canary | `.github/workflows/canary.yml` | Probes one live board per platform and opens an issue on drift |
-| Release | `.github/workflows/release.yml` | Re-runs every gate plus pip-audit, ready for a `v*` tag. Nothing is published yet |
+| Release | `.github/workflows/release.yml` | Re-runs every gate plus pip-audit, then publishes from a `v*` tag |
 
 <div align="center">
   <img src="assets/ci-flow.svg" alt="Quality checks on Python 3.12, then the full suite on 3.13 and 3.14, a wheel smoke test on three operating systems, and CodeQL. All gates must pass for CI to pass" width="100%">
@@ -283,9 +298,6 @@ the checkout on Ubuntu, Windows and macOS, checks the registry, lexicons and fon
 resolve from inside the installed package, then runs `help`, `list`, `search`,
 `doctor`, `coverage`, `stats`, a dry-run sync and all four export formats against
 it. What ships is what gets tested.
-
-Stage is not published yet. `release.yml` is wired and rehearsed, but nothing
-reaches PyPI until a `v*` tag is pushed.
 
 ## Good to know
 
