@@ -280,6 +280,12 @@ non_cs:
   - people experience
   - people operations
 excluded_titles:
+  - process engineering
+  - category management
+  - environmental engineering
+  - talent acquisition
+  - investor relations
+  - construction management
   - information technology intern
   - information technology internship
   - it intern

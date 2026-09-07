@@ -121,6 +121,36 @@ def test_a_vehicle_software_engineer_is_not_rejected_as_a_ui_role() -> None:
     assert screen_is_cs_role(_job(title)) is None
 
 
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Process Engineering Intern",
+        "Category Management Project Intern",
+        "Talent Acquisition Intern",
+        "Environmental Engineering Intern",
+        "Construction Management Intern",
+        "Investor Relations Intern",
+    ],
+)
+def test_a_named_non_cs_discipline_is_labelled_rather_than_left_unknown(title: str) -> None:
+    rejection = screen_is_cs_role(_job(title))
+    assert rejection is not None
+    assert rejection.reason is RejectionReason.NOT_A_CS_ROLE
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Supply Chain Applied AI Engineering Intern",
+        "Software Engineer Intern - Logistics",
+        "Staff Software Developer Manufacturing Engineering",
+        "System Design Engineer - AI Cluster Software Engineer",
+    ],
+)
+def test_a_cs_role_in_a_non_cs_domain_is_still_accepted(title: str) -> None:
+    assert screen_is_cs_role(_job(title)) is None
+
+
 def test_an_unknown_non_cs_title_is_quarantined_for_review() -> None:
     rejection = screen_is_cs_role(_job("Cashier Systems Software Intern"))
     assert rejection is not None
