@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-09-07
+
+### Fixed
+
+- A posting that lists several cities is no longer read as foreign when a foreign
+  city happens to be listed first. "London, New York" and "New York, London, or
+  Paris" are US postings. 15 rows come back, among them quant and software
+  internships at Point72, Squarepoint, Xantium, GSA and Booz Allen. Rome, NY and
+  Vienna, VA come back too. A comma still binds a city to its region, so
+  "Toronto, ON", "Berlin, DE" and "San Jose, Costa Rica" read as before. All
+  21,270 stored location strings were replayed against the change; 32 moved, all
+  of them from international to domestic.
+- `doctor` listed boards you had already switched off, and kept listing them for
+  as long as their old failures sat in the database. It now reads the registry the
+  way sync does. Sync itself still sees every row, disabled ones included, because
+  that is how it tells an orphaned posting from a live one.
+- `doctor` and `sync` told you to clear a blocked bucket with
+  `stage sources --clear`. That flag does not exist. Both print
+  `--reset-rate-limit` now.
+- Process engineering, category management, talent acquisition, environmental
+  engineering, construction management and investor relations are named as non-CS
+  work instead of landing in the unknown pile. 109 quarantined rows, no change to
+  what Stage keeps. A software role inside one of those areas still counts as
+  software.
+
 ## [1.1.0] - 2026-09-03
 
 ### Added
@@ -69,5 +94,6 @@ them in a SQLite database on your own machine.
 
 Python 3.12, 3.13 or 3.14 on macOS, Linux or Windows.
 
+[1.1.1]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.1
 [1.1.0]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.0
 [1.0.0]: https://github.com/NicholasXydis/Stage/releases/tag/v1.0.0
