@@ -811,7 +811,7 @@ def render_doctor(
                 f"{_duration(state.blocks_remaining_s(now))} — "
                 f"{first_line(state.reason) or 'no reason recorded'}"
             )
-        console.print("  [dim]Clear one with stage sources --clear <bucket>.[/dim]")
+        console.print("  [dim]Clear one with stage sources --reset-rate-limit <bucket>.[/dim]")
 
     failing = report.failing_boards
     if failing:
@@ -1062,7 +1062,7 @@ async def render_sync(
                 console.print(
                     f"  [dim]{blocked.consecutive_failures} consecutive failure(s): "
                     f"{reason}. Not fetched this run — clear it with "
-                    f"[bold]stage sources --clear {blocked.bucket}[/bold].[/dim]"
+                    f"[bold]stage sources --reset-rate-limit {blocked.bucket}[/bold].[/dim]"
                 )
             case SourceStarted(source=source, companies=companies):
                 console.print(f"\n[bold cyan]{source}[/bold cyan] — {companies} board(s)")
