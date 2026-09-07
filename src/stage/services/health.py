@@ -123,7 +123,7 @@ class StatsReport:
 def _live_boards(companies: Sequence[Company]) -> frozenset[str]:
     from stage.services.sync import _registry_boards
 
-    return frozenset(_registry_boards(companies)[1])
+    return frozenset(_registry_boards([row for row in companies if row.enabled])[1])
 
 
 async def _board_health(

@@ -267,6 +267,39 @@ def test_the_breakdown_skips_a_column_that_is_always_unknown() -> None:
     assert "role" in COMPOSITION_COLUMNS
 
 
+async def test_doctor_forgets_a_board_the_owner_disabled(db_path: Path) -> None:
+    from stage.domain import Company, CompanyVisit, Platform
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=NOW,
+                visits=(
+                    CompanyVisit(
+                        board="greenhouse:marqeta",
+                        succeeded=False,
+                        error="HttpStatusError: 404",
+                        label="Marqeta",
+                    ),
+                ),
+            )
+        )
+        off = Company(name="Marqeta", platform=Platform.GREENHOUSE, slug="marqeta", enabled=False)
+        live = Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")
+        report = await doctor(repository, now=NOW, companies=(off, live))
+
+    assert report.failing_boards == ()
+
+
+def test_orphan_closing_still_sees_a_disabled_board() -> None:
+    from stage.domain import Company, Platform
+    from stage.services.sync import _registry_boards
+
+    off = Company(name="Marqeta", platform=Platform.GREENHOUSE, slug="marqeta", enabled=False)
+    assert "greenhouse:marqeta" in _registry_boards((off,))[1]
+
+
 async def test_doctor_forgets_a_board_the_registry_no_longer_names(db_path: Path) -> None:
     from stage.domain import Company, CompanyVisit, Platform
 
