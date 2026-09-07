@@ -7,6 +7,7 @@ from stage.lexicon import LocationLexicon, fold, location_lexicon
 
 _SEGMENT_SPLIT = re.compile(r"[;/•|\n]+")
 _FIELD_SPLIT = re.compile(r"[,\-]+")
+_LIST_SPLIT = re.compile(r",|\bor\b")
 _SUBDIVISION_CODE = re.compile(r"[A-Z]{1,3}")
 _COUNTRY_PREFIXES = frozenset({"can", "us", "usa"})
 
@@ -244,16 +245,34 @@ def display_location(raw: str) -> str:
     return ", ".join([canonical, *fields[1:]]) + more
 
 
+@lru_cache(maxsize=1)
+def _city_names() -> frozenset[str]:
+    lexicon = location_lexicon()
+    return (
+        lexicon.usa_cities | lexicon.canada_cities | lexicon.montreal | lexicon.international_cities
+    )
+
+
+def _city_list(segment: str, lexicon: LocationLexicon) -> list[_Segment]:
+    fields = [field.strip() for field in _LIST_SPLIT.split(segment) if field.strip()]
+    cities = _city_names()
+    named = [field for field in fields if fold(field) in cities]
+    if len(named) < 2:
+        return []
+    return [_resolve_segment(field, lexicon) for field in named]
+
+
 def resolve_location(raw: str) -> ResolvedLocation:
     if not raw or not raw.strip():
         return ResolvedLocation()
 
     lexicon = location_lexicon()
-    segments = [
-        _resolve_segment(part, lexicon) for part in _SEGMENT_SPLIT.split(raw) if part.strip()
-    ]
+    parts = [part for part in _SEGMENT_SPLIT.split(raw) if part.strip()]
+    segments = [_resolve_segment(part, lexicon) for part in parts]
     if not segments:
         return ResolvedLocation()
+    for part in parts:
+        segments.extend(_city_list(part, lexicon))
 
     scope = _scope(segments)
 

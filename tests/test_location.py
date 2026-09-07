@@ -390,3 +390,27 @@ def test_a_state_code_disambiguates_a_city_two_countries_share(
     raw: str, bucket: LocationBucket
 ) -> None:
     assert resolve_location(raw).bucket is bucket
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("London, New York", LocationBucket.USA),
+        ("New York, London", LocationBucket.USA),
+        ("New York, London, or Paris", LocationBucket.USA),
+        ("London, England, New York, New York", LocationBucket.USA),
+        ("New York, San Francisco, Munich or London", LocationBucket.USA),
+        ("London, Paris, New York, Singapore, Hong Kong", LocationBucket.USA),
+        ("Dubai, London, Paris, Hong Kong, Sydney, Toronto", LocationBucket.CANADA),
+        ("San Jose, Costa Rica", LocationBucket.INTERNATIONAL),
+        ("Costa Rica, San Jose", LocationBucket.INTERNATIONAL),
+        ("Los Angeles, Chile", LocationBucket.INTERNATIONAL),
+        ("San Francisco, Heredia, Costa Rica", LocationBucket.INTERNATIONAL),
+        ("Saint-Louis, Saint-Pierre, Reunion", LocationBucket.INTERNATIONAL),
+        ("Chicago, IL, United States", LocationBucket.USA),
+        ("Toronto, ON", LocationBucket.CANADA),
+        ("Bengaluru, KA, IN", LocationBucket.INTERNATIONAL),
+    ],
+)
+def test_a_list_of_cities_keeps_the_domestic_one(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket
