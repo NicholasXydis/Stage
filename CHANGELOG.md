@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-09-09
+
+### Fixed
+
+- Job Bank has returned nothing since 31 August. Its server drops the connection
+  on any client offering TLS 1.3, so no request ever reached the board. That one
+  host is capped at TLS 1.2 now. Certificates are still checked and every other
+  board still gets TLS 1.3.
+- A connection that died before the server answered was logged as `ConnectError:`
+  with nothing after the colon, which is why Job Bank looked fine for eight days.
+  The cause is carried through now:
+  `ConnectError: ConnectionResetError: [Errno 54] Connection reset by peer`.
+
 ## [1.1.1] - 2026-09-07
 
 ### Fixed
@@ -94,6 +107,7 @@ them in a SQLite database on your own machine.
 
 Python 3.12, 3.13 or 3.14 on macOS, Linux or Windows.
 
+[1.1.2]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.2
 [1.1.1]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.1
 [1.1.0]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.0
 [1.0.0]: https://github.com/NicholasXydis/Stage/releases/tag/v1.0.0

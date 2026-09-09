@@ -1,6 +1,7 @@
 import asyncio
 import json
 import random
+import ssl
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -38,6 +39,7 @@ RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 BLOCKING_STATUSES = frozenset({401, 403})
 BLOCKED_COOLDOWN_S = 1800.0
 DENIED_HOSTS_BEFORE_BLOCK = 2
+TLS12_ONLY_HOSTS = frozenset({"www.jobbank.gc.ca"})
 MAX_REDIRECTS = 3
 ORIGIN_BOUND_HEADERS = frozenset(
     {"authorization", "cookie", "origin", "referer", "proxy-authorization", "x-csrf-token"}
@@ -229,6 +231,25 @@ class HostBudget:
         return state
 
 
+def _tls12_context() -> ssl.SSLContext:
+    context = httpx.create_ssl_context()
+    context.maximum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
+
+def _describe(exc: BaseException) -> str:
+    detail = str(exc)
+    seen = {id(exc)}
+    cause = exc.__cause__ or exc.__context__
+    while not detail and cause is not None and id(cause) not in seen:
+        detail = str(cause)
+        seen.add(id(cause))
+        if detail:
+            return f"{type(exc).__name__}: {type(cause).__name__}: {detail}"
+        cause = cause.__cause__ or cause.__context__
+    return f"{type(exc).__name__}: {detail}"
+
+
 def _origin_of(url: httpx.URL) -> tuple[str, str, int | None]:
     return (url.scheme, (url.host or "").lower(), url.port)
 
@@ -269,11 +290,19 @@ class HttpClient:
             for bucket, state in self._rate_state.items()
             if state.is_blocked(self._now)
         }
+        mounts: dict[str, httpx.AsyncBaseTransport] | None = None
+        if transport is None:
+            capped = self._allowed_hosts & TLS12_ONLY_HOSTS
+            mounts = {
+                f"https://{host}": httpx.AsyncHTTPTransport(verify=_tls12_context())
+                for host in sorted(capped)
+            } or None
         self._client = httpx.AsyncClient(
             timeout=timeout or DEFAULT_TIMEOUT,
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
             follow_redirects=False,
             transport=transport,
+            mounts=mounts or {},
         )
 
     async def __aenter__(self) -> Self:
@@ -556,7 +585,7 @@ class HttpClient:
                     status=None,
                     elapsed_ms=(time.perf_counter() - started) * 1000,
                     attempt=attempt,
-                    error=f"{type(exc).__name__}: {exc}",
+                    error=_describe(exc),
                 )
             )
             raise
@@ -564,7 +593,7 @@ class HttpClient:
             elapsed = (time.perf_counter() - started) * 1000
             budget.metrics.failures += 1
             budget.breaker.record_failure()
-            budget.last_error = f"{type(exc).__name__}: {exc}"
+            budget.last_error = _describe(exc)
             self._log.append(
                 RequestRecord(
                     method=method,
@@ -572,7 +601,7 @@ class HttpClient:
                     status=None,
                     elapsed_ms=elapsed,
                     attempt=attempt,
-                    error=f"{type(exc).__name__}: {exc}",
+                    error=_describe(exc),
                 )
             )
             raise

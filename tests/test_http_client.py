@@ -1,4 +1,5 @@
 import asyncio
+import ssl
 import time
 from collections.abc import AsyncIterator
 
@@ -7,7 +8,7 @@ import pytest
 import respx
 
 from stage.http import HostBudgetExceededError, HttpClient, RatePosture
-from stage.http.client import USER_AGENT
+from stage.http.client import USER_AGENT, _describe, _tls12_context
 
 ENDPOINT = "https://boards-api.greenhouse.io/v1/boards/acme/jobs"
 
@@ -328,3 +329,44 @@ async def test_a_plain_http_url_is_refused_before_it_is_sent() -> None:
     ) as client:
         with pytest.raises(RedirectNotAllowedError):
             await client.get_json("http://one.example.test/jobs")
+
+
+def test_a_tls12_only_host_gets_a_capped_transport() -> None:
+    client = HttpClient(allowed_hosts=frozenset({"www.jobbank.gc.ca"}))
+    mounted = client._client._mounts
+    assert any(key.pattern.endswith("www.jobbank.gc.ca") for key in mounted)
+
+
+def test_an_ordinary_host_keeps_the_default_transport() -> None:
+    client = HttpClient(allowed_hosts=frozenset({"boards-api.greenhouse.io"}))
+    assert not client._client._mounts
+
+
+def test_the_capped_context_still_verifies_certificates() -> None:
+    context = _tls12_context()
+    assert context.maximum_version is ssl.TLSVersion.TLSv1_2
+    assert context.verify_mode is ssl.CERT_REQUIRED
+    assert context.check_hostname
+
+
+def test_an_injected_transport_is_never_overridden() -> None:
+    transport = httpx.MockTransport(lambda _: httpx.Response(200))
+    client = HttpClient(allowed_hosts=frozenset({"www.jobbank.gc.ca"}), transport=transport)
+    assert not client._client._mounts
+
+
+def test_an_empty_error_reports_its_underlying_cause() -> None:
+    try:
+        try:
+            raise ConnectionResetError(54, "Connection reset by peer")
+        except OSError as inner:
+            raise httpx.ConnectError("") from inner
+    except httpx.ConnectError as exc:
+        described = _describe(exc)
+    assert described == "ConnectError: ConnectionResetError: [Errno 54] Connection reset by peer"
+
+
+def test_an_error_that_speaks_for_itself_is_unchanged() -> None:
+    assert _describe(httpx.ConnectError("all attempts failed")) == (
+        "ConnectError: all attempts failed"
+    )
