@@ -43,9 +43,8 @@
   source_of_record: discover
   last_verified: &id004 2026-08-14
   name_gate_exempt: true
-  notes: '2026-08-14: board token taken from this employer''s own application URL
-    in a feed posting, not from slug guessing; ashby publishes no board name, so the
-    name gate cannot confirm it and provenance is the evidence (12 job(s))'
+  enabled: false
+  notes: '2026-09-09: ashby/odin-dynamics 404s while the ashby API is healthy; the employer removed the board'
 - name: Off world studios
   platform: bamboohr
   slug: owi

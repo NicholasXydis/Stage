@@ -11,6 +11,8 @@
   slug: haizelabs
   source_of_record: discover
   last_verified: &id004 2026-08-14
+  enabled: false
+  notes: '2026-09-09: greenhouse/haizelabs 404s and their board page 500s; no ashby or lever board exists'
 - name: Halcyon
   platform: greenhouse
   slug: halcyon
