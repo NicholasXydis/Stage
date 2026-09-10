@@ -1381,7 +1381,8 @@ class SqliteRepository:
 
     def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]:
         rows = self._conn.execute(
-            "SELECT source, stored, deferred, blocked FROM sync_run_sources "
+            "SELECT source, stored, deferred, blocked, fetched, requests, not_modified "
+            "FROM sync_run_sources "
             "WHERE run_id IN (SELECT id FROM sync_runs ORDER BY id DESC LIMIT ?) "
             "ORDER BY run_id DESC",
             (limit,),
@@ -1393,6 +1394,9 @@ class SqliteRepository:
                     stored=int(row["stored"]),
                     deferred=int(row["deferred"]),
                     blocked=bool(row["blocked"]),
+                    fetched=int(row["fetched"]),
+                    requests=int(row["requests"]),
+                    not_modified=int(row["not_modified"]),
                 )
             )
         return history

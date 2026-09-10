@@ -58,6 +58,50 @@ def test_a_blocked_run_cannot_raise_a_volume_alert() -> None:
     assert signal.verdict is not VolumeVerdict.COLLAPSED, "a throttle is not drift"
 
 
+def _idle(count: int) -> list[VolumePoint]:
+    return [VolumePoint(stored=0, fetched=0, requests=0, not_modified=0)] * count
+
+
+def _ran(*stored: int) -> list[VolumePoint]:
+    return [VolumePoint(stored=value, fetched=value, requests=4) for value in stored]
+
+
+def test_a_source_left_out_of_a_run_is_not_a_source_that_collapsed() -> None:
+    signal = assess_volume("greenhouse", _idle(1) + _ran(74, 74, 74, 74))
+    assert signal.verdict is not VolumeVerdict.COLLAPSED
+
+
+def test_a_source_left_out_of_a_run_cannot_drag_the_baseline_down() -> None:
+    signal = assess_volume("greenhouse", _ran(138) + _idle(3) + _ran(231, 223, 219))
+    assert signal.verdict is VolumeVerdict.HEALTHY
+    assert signal.samples == 3
+
+
+def test_a_source_that_never_ran_proves_nothing() -> None:
+    signal = assess_volume("ashby", _idle(5))
+    assert signal.verdict is VolumeVerdict.UNPROVEN
+    assert "fetched" in signal.detail
+
+
+def test_a_source_that_fetched_rows_and_stored_none_still_collapses() -> None:
+    live = VolumePoint(stored=0, fetched=44, requests=1)
+    signal = assess_volume("quebec-emploi", [live] + _ran(40, 41, 40))
+    assert signal.verdict is VolumeVerdict.COLLAPSED
+
+
+def test_a_source_blocked_on_every_run_is_a_throttle_not_a_drop() -> None:
+    history = [VolumePoint(stored=0, blocked=True, requests=4)] * 4
+    signal = assess_volume("workday", history)
+    assert signal.verdict is VolumeVerdict.UNPROVEN
+    assert "throttle" in signal.detail
+
+
+def test_a_run_that_was_all_cache_hits_still_counts_as_having_run() -> None:
+    cached = VolumePoint(stored=0, fetched=0, requests=0, not_modified=12)
+    signal = assess_volume("lever", [cached] + _ran(40, 41, 40))
+    assert signal.verdict is VolumeVerdict.COLLAPSED
+
+
 def test_a_run_predating_the_stored_column_is_not_a_baseline_of_zero() -> None:
     history = [VolumePoint(stored=12)] + _points(*([UNRECORDED_VOLUME] * 6))
     signal = assess_volume("greenhouse", history)
@@ -143,7 +187,7 @@ async def test_doctor_names_the_source_whose_volume_collapsed(db_path: Path) -> 
                     started_at=NOW,
                     finished_at=NOW,
                     outcome=SyncOutcome.SUCCESS,
-                    sources=(SourceRunStats(source="lever", stored=stored),),
+                    sources=(SourceRunStats(source="lever", stored=stored, requests=4),),
                 )
             )
         report = await doctor(repository, now=NOW)

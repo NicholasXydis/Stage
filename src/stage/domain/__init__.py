@@ -65,6 +65,7 @@ from stage.domain.filters import DEFAULT_LIMIT, DEFAULT_WINDOW_DAYS, JobFilters
 from stage.domain.health import (
     MIN_VOLUME_HISTORY,
     STALE_AFTER_DAYS,
+    UNRECORDED_FETCH,
     UNRECORDED_VOLUME,
     VOLUME_DROP_RATIO,
     IntegrityFinding,
@@ -210,6 +211,7 @@ __all__ = [
     "rotate",
     "MIN_VOLUME_HISTORY",
     "STALE_AFTER_DAYS",
+    "UNRECORDED_FETCH",
     "UNRECORDED_VOLUME",
     "VOLUME_DROP_RATIO",
     "IntegrityFinding",

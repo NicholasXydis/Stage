@@ -7,6 +7,7 @@ MIN_VOLUME_HISTORY = 3
 VOLUME_DROP_RATIO = 0.5
 STALE_AFTER_DAYS = 14
 UNRECORDED_VOLUME = -1
+UNRECORDED_FETCH = -1
 
 
 class VolumeVerdict(StrEnum):
@@ -27,10 +28,21 @@ class VolumePoint:
     stored: int
     deferred: int = 0
     blocked: bool = False
+    fetched: int = UNRECORDED_FETCH
+    requests: int = UNRECORDED_FETCH
+    not_modified: int = UNRECORDED_FETCH
+
+    @property
+    def ran(self) -> bool:
+        return self.fetched != 0 or self.requests != 0 or self.not_modified != 0
+
+    @property
+    def rotated(self) -> bool:
+        return self.deferred > 0
 
     @property
     def is_evidence(self) -> bool:
-        return self.stored > UNRECORDED_VOLUME and self.deferred == 0 and not self.blocked
+        return self.stored > UNRECORDED_VOLUME and not self.blocked and self.ran
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,8 +71,9 @@ def assess_volume(source: str, history: list[VolumePoint]) -> VolumeSignal:
             detail=_unproven_reason(history),
         )
 
-    latest = evidence[0].stored
-    prior = [point.stored for point in evidence[1:]]
+    newest = evidence[0]
+    latest = newest.stored
+    prior = [point.stored for point in evidence[1:] if point.rotated == newest.rotated]
     if len(prior) < MIN_VOLUME_HISTORY:
         return VolumeSignal(
             source=source,
@@ -114,10 +127,10 @@ def assess_volume(source: str, history: list[VolumePoint]) -> VolumeSignal:
 def _unproven_reason(history: list[VolumePoint]) -> str:
     if not history:
         return "no runs on record"
-    if any(point.blocked for point in history):
+    if not any(point.ran for point in history):
+        return "no run fetched this source, so none of them can show a drop"
+    if all(point.blocked for point in history if point.ran):
         return "every run was blocked, which is a throttle not a drop"
-    if any(point.deferred for point in history):
-        return "every run deferred members, so rotation explains it"
     return "no run has recorded a stored count yet"
 
 
@@ -157,6 +170,7 @@ class IntegrityFinding:
 __all__ = [
     "MIN_VOLUME_HISTORY",
     "STALE_AFTER_DAYS",
+    "UNRECORDED_FETCH",
     "UNRECORDED_VOLUME",
     "VOLUME_DROP_RATIO",
     "IntegrityFinding",
