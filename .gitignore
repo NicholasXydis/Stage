@@ -88,5 +88,3 @@ desktop.ini
 $RECYCLE.BIN/
 *.lnk
 
-# Local-only release runbook
-packaging/RELEASING.md

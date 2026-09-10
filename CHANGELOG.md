@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-09-09
+
+### Fixed
+
+- `doctor` said greenhouse stored nothing on a run that stored 138. A source
+  left out of a run writes a row of zeroes, and the volume check read those as
+  real while discarding every run that deferred a board. Greenhouse defers on
+  all of them. A run counts now only if the source ran, and a deferred run is
+  measured against other deferred runs.
+- Haize Labs and Odin Dynamics are off. Both boards 404 with nowhere to move to.
+  The two internships they published were already quarantined as non-CS.
+- The PyPI page showed no author. A name and an email in one metadata field get
+  folded into a single header, leaving the author line blank.
+
 ## [1.1.2] - 2026-09-09
 
 ### Fixed
@@ -107,6 +121,7 @@ them in a SQLite database on your own machine.
 
 Python 3.12, 3.13 or 3.14 on macOS, Linux or Windows.
 
+[1.1.3]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.3
 [1.1.2]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.2
 [1.1.1]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.1
 [1.1.0]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.0

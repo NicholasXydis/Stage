@@ -5,7 +5,8 @@ description = "Aggregates CS internship postings (Canada/US, EN + FR) into a loc
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
 license = { text = "MIT" }
-authors = [{ name = "Nicholas Xydis", email = "NicholasXydis@outlook.com" }]
+authors = [{ name = "Nicholas Xydis" }]
+maintainers = [{ name = "Nicholas Xydis", email = "NicholasXydis@outlook.com" }]
 keywords = [
     "internship",
     "stage",
