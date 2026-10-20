@@ -176,7 +176,7 @@ class WorkdayAdapter:
             start = max(0, crawl.next_offset - PAGE_SIZE)
             pages = max(1, (max(0, crawl.total - start) + PAGE_SIZE - 1) // PAGE_SIZE)
             demands.append((min(MAX_CRAWL_PAGES, pages), company.registry_key))
-        for pages, key in sorted(demands, key=lambda item: (-item[0], item[1])):
+        for pages, key in sorted(demands):
             extra = max(0, min(remaining, pages - budgets[key]))
             budgets[key] += extra
             remaining -= extra

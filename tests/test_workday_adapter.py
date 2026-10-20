@@ -137,6 +137,23 @@ def test_a_large_resumable_board_gets_enough_budget_to_finish_on_the_second_sync
     assert sum(budgets.values()) + details + adapter.retry_reserve <= posture.max_requests_per_run
 
 
+def test_spare_pages_finish_the_nearest_crawl_before_feeding_a_giant() -> None:
+    adapter = WorkdayAdapter()
+    small = _company(name="Small", slug="small", workday_tenant="small")
+    large = _company(name="Large", slug="large", workday_tenant="large")
+    crawls = {
+        adapter.board_key(small): WorkdayCrawl(
+            board=adapter.board_key(small), next_offset=20, total=60
+        ),
+        adapter.board_key(large): WorkdayCrawl(
+            board=adapter.board_key(large), next_offset=100, total=1773
+        ),
+    }
+    budgets, _ = adapter.crawl_budgets([small, large], crawls, {}, adapter.retry_reserve + 12)
+    assert budgets[small.registry_key] == 3
+    assert budgets[large.registry_key] == 9
+
+
 def test_a_cached_facet_keeps_a_resumable_board_on_the_two_sync_budget() -> None:
     company = _company()
     adapter = WorkdayAdapter()
