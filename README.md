@@ -20,7 +20,7 @@ Free and open source. No account, no server, no telemetry.
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=2%2C420&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=2%2C429&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -154,7 +154,7 @@ Filters work the same on `list`, `search`, and `export`:
 | `--source` | greenhouse, lever, ashby, workday, and more |
 | `--company` | one exact employer |
 | `--all` | every match, not just the first page |
-| `--last N` | look back N days instead of the default 14; `--last 0` removes the limit. On `search`, which already covers every row, it narrows instead |
+| `--last N` | only postings first seen in the last N days. Stage keeps postings for 14 days, so this narrows the list and cannot reach further back |
 
 Mistype one and Stage tells you what it accepts, rather than showing you an
 empty list.

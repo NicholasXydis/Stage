@@ -426,7 +426,7 @@ def export(
     db: DatabaseOption = None,
 ) -> None:
     from stage.cli.render import failure, render_export, terminal
-    from stage.domain import ExportFormat
+    from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat
     from stage.services.export import ExportError, ExportResult, export_jobs
     from stage.storage import open_repository
 
@@ -465,7 +465,11 @@ def export(
         raise typer.Exit(code=2) from exc
 
     if not result.count:
-        widen = "Relax a filter, or widen the window with [bold]--last[/bold]."
+        widen = (
+            "Relax a filter, or widen the window with [bold]--last[/bold]."
+            if last and last < DEFAULT_WINDOW_DAYS
+            else "Relax a filter."
+        )
         console.print(
             f"[yellow]Nothing matched, so {result.path.name} holds headers only.[/yellow] {widen}"
         )

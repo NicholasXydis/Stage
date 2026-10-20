@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from stage.services.query import JobListing, PostingDetail
 
 from stage.domain import (
+    DEFAULT_WINDOW_DAYS,
     UNKNOWN_TERM,
     BucketPlan,
     CandidateSkipped,
@@ -714,6 +715,8 @@ def render_canary(
             result = "[yellow]unreachable[/yellow]"
         elif probe.is_empty:
             result = "[red]no postings[/red]"
+        elif probe.declared_empty:
+            result = "[dim]none listed[/dim]"
         elif probe.unchanged:
             result = "[dim]unchanged[/dim]"
         else:
@@ -992,10 +995,14 @@ def _empty_state(
     window = f" in the last {window_days} days" if window_days is not None else ""
     if hint:
         return f"[yellow]No matching postings{window}.[/yellow] {hint}"
+    widen = (
+        "Widen the window with [bold]--last[/bold], relax a filter"
+        if window_days is not None and window_days < DEFAULT_WINDOW_DAYS
+        else "Relax a filter"
+    )
     return (
-        f"[yellow]No matching postings{window}.[/yellow] Widen the window with "
-        f"[bold]--last[/bold], relax a filter, or run [bold]stage sync[/bold] "
-        f"(last sync: {when})."
+        f"[yellow]No matching postings{window}.[/yellow] {widen}, or run "
+        f"[bold]stage sync[/bold] (last sync: {when})."
     )
 
 

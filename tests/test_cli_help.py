@@ -387,15 +387,18 @@ def test_a_browsing_command_is_not_described_as_searching() -> None:
         assert "search titles" not in collapsed, command
 
 
-def test_the_window_escape_hatch_is_documented_everywhere() -> None:
+def test_the_window_never_promises_more_than_stage_keeps() -> None:
     from pathlib import Path
 
     output = ANSI_ESCAPE.sub("", CliRunner().invoke(app, ["list", "--help"]).stdout)
-    assert "0 for no limit" in " ".join(output.replace("│", " ").split())
+    assert "Stage keeps 14" in " ".join(output.replace("│", " ").split())
 
     guide = ANSI_ESCAPE.sub("", CliRunner().invoke(app, ["help"]).stdout)
-    assert "--last 0" in guide
+    assert "--last 0" not in guide
+    assert "--last 90" not in guide
 
     readme = Path(__file__).resolve().parent.parent / "README.md"
     if readme.is_file():
-        assert "--last 0" in readme.read_text(encoding="utf-8")
+        text = readme.read_text(encoding="utf-8")
+        assert "--last 0" not in text
+        assert "cannot reach further back" in text

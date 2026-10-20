@@ -238,7 +238,7 @@ LastDaysOption = Annotated[
         "--last",
         metavar="DAYS",
         click_type=_count(0, 3650),
-        help="Look back this many days instead of the default 14; 0 for no limit",
+        help="Only postings first seen in the last DAYS days; Stage keeps 14, the default",
     ),
 ]
 StaleDaysOption = Annotated[
@@ -511,10 +511,10 @@ _HELP_GUIDE = (
     "  stage open 3 5 9                    Open those rows in a browser\n"
     "  stage export --format csv           Save every match to a file\n"
     "\nFilters, on list, search, and export:\n"
-    "  stage list --role swe --last 90     Filters combine\n"
+    "  stage list --role swe --last 3      Filters combine\n"
     '  stage search "python" --lang en     Quote a phrase\n'
     "  stage export --format csv --all     Every match, no cap\n"
-    "  stage list --last 0                 No 14-day window\n"
+    "  stage list --last 1                 Only the last day\n"
     "\n"
     "  [--role --location --term --lang --source --company --new --all --last]\n"
     "\nHealth and maintenance:\n"

@@ -401,3 +401,23 @@ def test_the_banner_accent_is_the_terminal_default() -> None:
     from stage.banner import ACCENT
 
     assert ACCENT == "default"
+
+
+def test_a_feed_that_declares_itself_empty_reads_as_none_listed() -> None:
+    from stage.services.canary import CanaryReport
+
+    report = CanaryReport(probes=(_probe(fetched=0, declared_empty=True),), skipped_platforms=())
+
+    output = _paint(render_canary, report)
+
+    assert "none listed" in output
+    assert "no postings" not in output
+
+
+def test_the_empty_state_offers_a_wider_window_only_below_the_default() -> None:
+    from stage.cli.render import _empty_state
+
+    now = datetime(2026, 10, 20, tzinfo=UTC)
+    assert "--last" in _empty_state(3, now, now)
+    assert "--last" not in _empty_state(14, now, now)
+    assert "--last" not in _empty_state(None, now, now)
