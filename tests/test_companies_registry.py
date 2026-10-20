@@ -312,3 +312,30 @@ def test_no_two_custom_json_rows_share_one_listing_url() -> None:
     )
     shared = {url: count for url, count in urls.items() if count > 1}
     assert not shared, f"one listing url is polled by more than one row: {shared}"
+
+
+def test_an_empty_marker_survives_a_rewrite_and_a_broken_one_is_refused(tmp_path: Path) -> None:
+    from stage.companies import write_registry
+
+    path = tmp_path / "companies.yaml"
+    row = (
+        "- name: Croesus\n"
+        "  platform: custom_json\n"
+        "  slug: croesus\n"
+        "  custom:\n"
+        "    url: https://careers.croesus.com/en/jobs\n"
+        "    format: html\n"
+        "    row_selector: div.vacancy\n"
+        "    empty_marker: {marker}\n"
+        "    fields:\n"
+        "      title: h2\n"
+    )
+    path.write_text(row.format(marker="No vacancies available"), encoding="utf-8")
+    write_registry(load_companies(path), path)
+    custom = load_companies(path)[0].custom
+    assert custom is not None
+    assert custom.empty_marker == "No vacancies available"
+
+    path.write_text(row.format(marker="'('"), encoding="utf-8")
+    with pytest.raises(RegistryError, match="empty_marker"):
+        load_companies(path)

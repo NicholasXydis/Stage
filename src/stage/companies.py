@@ -209,6 +209,14 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
             raise RegistryError(
                 f"registry entry {index}: custom.row_filter is not a valid regex: {exc}"
             ) from exc
+    empty_marker = str(raw.get("empty_marker", "") or "")
+    if empty_marker:
+        try:
+            re.compile(empty_marker)
+        except re.error as exc:
+            raise RegistryError(
+                f"registry entry {index}: custom.empty_marker is not a valid regex: {exc}"
+            ) from exc
     page_param = str(raw.get("page_param", "") or "")
     paging = {
         name: _custom_int(raw, name, index)
@@ -224,6 +232,7 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
         fmt=fmt,
         row_selector=row_selector,
         row_filter=row_filter,
+        empty_marker=empty_marker,
         item_tag=item_tag,
         headers=headers,
         extract=extract,
@@ -351,6 +360,8 @@ def _registry_row(company: Company) -> dict[str, Any]:
             block["row_selector"] = company.custom.row_selector
         if company.custom.row_filter:
             block["row_filter"] = company.custom.row_filter
+        if company.custom.empty_marker:
+            block["empty_marker"] = company.custom.empty_marker
         if company.custom.item_tag != "item":
             block["item_tag"] = company.custom.item_tag
         if company.custom.extract:

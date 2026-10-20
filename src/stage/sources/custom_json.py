@@ -38,6 +38,7 @@ MAX_PAGES = 20
 PAGE_CEILING = 200
 _JSON_PARSE = 'JSON.parse("'
 _UNCHANGED = object()
+_DECLARED_EMPTY = object()
 
 
 class CustomListing(BaseModel):
@@ -436,6 +437,12 @@ class CustomJsonAdapter:
                     return FetchResult(not_modified=True)
                 stale_page = True
                 break
+            if payload is _DECLARED_EMPTY:
+                return FetchResult(
+                    degraded=f"{company.slug} lists no vacancies right now; nothing closes",
+                    authoritative=False,
+                    declared_empty=True,
+                )
             page = _rows(payload, board)
             if not isinstance(page, list):
                 if index:
@@ -554,6 +561,8 @@ class CustomJsonAdapter:
                 return _UNCHANGED
             blocks = html_rows(text.text, board.row_selector)
             if not blocks and index == 0:
+                if board.empty_marker and re.search(board.empty_marker, text.text):
+                    return _DECLARED_EMPTY
                 captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
                 raise PayloadValidationError(
                     f"{self.name}/{company.slug}: selector {board.row_selector!r} matched no "

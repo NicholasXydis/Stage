@@ -210,3 +210,43 @@ async def test_a_later_page_answering_304_keeps_its_rows_but_loses_authority() -
     assert len(result.jobs) == 2, "the rows read before the stale page were dropped"
     assert not result.authoritative, "a walk that ended on a 304 cannot close postings"
     assert "304" in result.degraded, "the stale page was not reported"
+
+
+EMPTY_PAGE = "<html><body><p>No vacancies available</p></body></html>"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_an_html_board_that_says_it_is_empty_is_not_drift() -> None:
+    board = CustomBoard(
+        url=URL,
+        fmt="html",
+        row_selector="li.row",
+        empty_marker="No vacancies available",
+        fields=dict(HTML_BOARD.fields),
+    )
+    result = await _fetch(board, EMPTY_PAGE)
+    assert result.jobs == ()
+    assert result.declared_empty
+    assert not result.authoritative
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_an_empty_marker_never_hides_a_page_that_lost_its_rows() -> None:
+    board = CustomBoard(
+        url=URL,
+        fmt="html",
+        row_selector="li.row",
+        empty_marker="No vacancies available",
+        fields=dict(HTML_BOARD.fields),
+    )
+    with pytest.raises(PayloadValidationError, match="matched no rows"):
+        await _fetch(board, "<html><body><p>Site redesign</p></body></html>")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_an_html_board_without_a_marker_still_raises_on_an_empty_page() -> None:
+    with pytest.raises(PayloadValidationError, match="matched no rows"):
+        await _fetch(HTML_BOARD, EMPTY_PAGE)
