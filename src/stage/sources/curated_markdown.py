@@ -170,7 +170,7 @@ class NegarFeed(_GitHubMarkdownFeed):
     name: ClassVar[str] = "negar"
 
     def plan(self, now: datetime) -> tuple[str, ...]:
-        repository = "negarprh/Canadian-Tech-Internships-2026"
+        repository = "negarprh/Canadian-Tech-Internships-2027"
         return (
             CONTENT_URL.format(repository=repository, path=f"README-{self.season_year(now)}.md"),
             CONTENT_URL.format(repository=repository, path="README.md"),

@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
 from typing import ClassVar
+from urllib.parse import parse_qsl, urlencode
 
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -17,9 +18,12 @@ POSTING = f"https://{HOST}/jobsearch/jobposting/{{id}}"
 TERMS = ("programmer", "developer", "software", "informatique", "programmeur", "développeur")
 PROVINCES = ("QC", "ON", "BC", "AB")
 PAGE_CAP = 2
+FILTER_PAGE_CAP = 4
 MAX_ROWS = 2000
 _ARTICLE_ID = re.compile(r"^article-(\d+)$")
 KEPT_FLAGS = ("jobinternshipflag", "jobstudentflag")
+COUNTED_TYPES = ("job-types_1", "job-types_intern")
+_COUNT = re.compile(r"\d[\d,]*")
 
 
 def posting_id(article: Tag) -> str:
@@ -33,6 +37,23 @@ def declared_term(article: Tag) -> str:
         if found is not None:
             return collapse_whitespace(found.get_text(" ", strip=True))
     return ""
+
+
+def type_counts(page: BeautifulSoup) -> dict[str, int] | None:
+    counts: dict[str, int] = {}
+    for target in COUNTED_TYPES:
+        badge = page.select_one(f'label[for="{target}"] .badge')
+        found = _COUNT.search(badge.get_text(" ", strip=True)) if badge is not None else None
+        if found is None:
+            return None
+        counts[target] = int(found.group(0).replace(",", ""))
+    return counts
+
+
+def filtered_url(query: str, page: int) -> str:
+    pairs = [(key, value) for key, value in parse_qsl(query, keep_blank_values=True)]
+    pairs = [(key, value) for key, value in pairs if key != "page"]
+    return f"{SEARCH}?{urlencode([*pairs, ('page', str(page))])}"
 
 
 def field(article: Tag, selector: str) -> str:
@@ -66,31 +87,46 @@ class JobBankFeed:
         malformed = 0
         truncated = False
         searched = False
+        counted_none = True
+        unread = 0
         empty: list[str] = []
         last_empty = ""
         for province in PROVINCES:
             for term in TERMS:
-                for page in range(1, PAGE_CAP + 1):
-                    url = f"{SEARCH}?searchstring={term}&fprov={province}&page={page}"
-                    text = await client.get_text(url, revalidate=page > 1)
-                    if text.not_modified:
-                        break
-                    rows = self._articles(text.text)
-                    if not rows:
-                        if page == 1:
-                            empty.append(f"{province}/{term}")
-                            last_empty = text.text
-                        break
-                    searched = True
-                    for article in rows:
-                        job, dropped = self._to_job(article, now)
-                        malformed += dropped
-                        if job is not None:
-                            seen.setdefault(job.id, job)
-                    if len(seen) >= MAX_ROWS:
-                        truncated = True
-                        break
-                if truncated:
+                search = f"{SEARCH}?searchstring={term}&fprov={province}"
+                text = await client.get_text(f"{search}&page=1")
+                if text.not_modified:
+                    continue
+                page = BeautifulSoup(text.text, "html.parser")
+                rows = page.select("article")
+                if not rows:
+                    empty.append(f"{province}/{term}")
+                    last_empty = text.text
+                    continue
+                searched = True
+                counts = type_counts(page)
+                if counts is None:
+                    counted_none = False
+                    for number in range(2, PAGE_CAP + 1):
+                        more = await self._rows(client, f"{search}&page={number}", revalidate=True)
+                        if not more:
+                            break
+                        rows.extend(more)
+                else:
+                    for target, count in counts.items():
+                        if not count:
+                            continue
+                        counted_none = False
+                        found = await self._filtered(client, page, target, count)
+                        unread += max(0, count - sum(1 for row in found if declared_term(row)))
+                        rows.extend(found)
+                for article in rows:
+                    job, dropped = self._to_job(article, now)
+                    malformed += dropped
+                    if job is not None:
+                        seen.setdefault(job.id, job)
+                if len(seen) >= MAX_ROWS:
+                    truncated = True
                     break
             if truncated:
                 break
@@ -109,15 +145,41 @@ class JobBankFeed:
             notes.append(f"stopped at the {MAX_ROWS}-posting cap for one run")
         if malformed:
             notes.append(malformed_note(malformed))
+        if unread:
+            notes.append(f"{unread} counted student or internship job(s) could not be read")
+        declared_empty = counted_none and not seen and not malformed
+        if declared_empty:
+            notes.append("Job Bank lists no student jobs or internships for these searches")
         return FetchResult(
             jobs=tuple(seen.values()),
             authoritative=False,
             degraded="; ".join(notes),
+            declared_empty=declared_empty,
         )
 
+    async def _filtered(
+        self, client: HttpClient, page: BeautifulSoup, target: str, count: int
+    ) -> list[Tag]:
+        control = page.select_one(f"input#{target}")
+        query = str(control.get("data-url") or "") if control is not None else ""
+        if not query:
+            return []
+        rows: list[Tag] = []
+        for number in range(1, FILTER_PAGE_CAP + 1):
+            found = await self._rows(client, filtered_url(query, number))
+            if not found:
+                break
+            rows.extend(found)
+            if len(rows) >= count:
+                break
+        return rows
+
     @staticmethod
-    def _articles(text: str) -> list[Tag]:
-        return BeautifulSoup(text, "html.parser").select("article")
+    async def _rows(client: HttpClient, url: str, *, revalidate: bool = False) -> list[Tag]:
+        text = await client.get_text(url, revalidate=revalidate)
+        if text.not_modified:
+            return []
+        return BeautifulSoup(text.text, "html.parser").select("article")
 
     def _to_job(self, article: Tag, now: datetime) -> tuple[Job | None, int]:
         identifier = posting_id(article)

@@ -6,7 +6,7 @@ import pytest
 import respx
 
 from stage.http import HttpClient, RatePosture, ValidatorCache
-from stage.sources.base import PayloadValidationError
+from stage.sources.base import FetchResult, PayloadValidationError
 from stage.sources.jobbank import SEARCH, JobBankFeed
 from stage.sources.themuse import SEARCH as MUSE_SEARCH
 from stage.sources.themuse import TheMuseFeed
@@ -134,6 +134,81 @@ def test_job_bank_raises_when_no_search_returns_a_row_at_all() -> None:
 
     with pytest.raises(PayloadValidationError, match="changed"):
         asyncio.run(run())
+
+
+def _counts(students: int, interns: int) -> str:
+    return (
+        f'<label for="job-types_1">Student jobs <span class="badge">{students} '
+        f'<span class="wb-inv">jobs found</span></span></label>'
+        f'<label for="job-types_intern">Internships <span class="badge">{interns} '
+        f'<span class="wb-inv">jobs found</span></span></label>'
+    )
+
+
+def _student_filter(query: str) -> str:
+    return f'<input id="job-types_1" type="checkbox" data-url="{query}" />'
+
+
+async def _job_bank(page: str) -> FetchResult:
+    respx.get(url__startswith=SEARCH).mock(return_value=httpx.Response(200, text=page))
+    async with _client(JobBankFeed.hosts) as client:
+        return await JobBankFeed().fetch(client, NOW)
+
+
+def _requested() -> list[str]:
+    return [str(call.request.url) for call in respx.calls]
+
+
+@respx.mock
+def test_job_bank_that_counts_no_student_jobs_is_declared_empty() -> None:
+    page = _page(_counts(0, 0), _row("1", "software developer", "Acme", flag=""))
+    result = asyncio.run(_job_bank(page))
+    assert result.jobs == ()
+    assert result.declared_empty
+    assert len(_requested()) == 24
+
+
+@respx.mock
+def test_job_bank_that_counts_interns_it_cannot_read_is_not_declared_empty() -> None:
+    page = _page(_counts(0, 3), _row("1", "software developer", "Acme", flag=""))
+    result = asyncio.run(_job_bank(page))
+    assert result.jobs == ()
+    assert not result.declared_empty
+    assert "could not be read" in result.degraded
+
+
+@respx.mock
+def test_job_bank_without_its_counts_reads_a_second_page_and_is_never_empty() -> None:
+    page = _page(_row("1", "software developer", "Acme", flag=""))
+    result = asyncio.run(_job_bank(page))
+    assert not result.declared_empty
+    assert any("page=2" in url for url in _requested())
+
+
+@respx.mock
+def test_job_bank_follows_its_own_filter_to_a_student_job_past_page_one() -> None:
+    first = _page(
+        _counts(1, 0),
+        _student_filter("fjsf=1&amp;term=informatique&amp;fprov=QC&amp;page=1"),
+        _row("1", "software developer", "Acme", flag=""),
+    )
+    filtered = _page(_row("777", "stagiaire développeur", "Beta", flag="jobstudentflag"))
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=filtered if "fjsf" in request.url.params else first)
+
+    respx.get(url__startswith=SEARCH).mock(side_effect=answer)
+
+    async def run() -> FetchResult:
+        async with _client(JobBankFeed.hosts) as client:
+            return await JobBankFeed().fetch(client, NOW)
+
+    result = asyncio.run(run())
+    assert [job.title_raw for job in result.jobs] == ["stagiaire développeur"]
+    assert not result.declared_empty
+    requested = _requested()
+    assert not any("searchstring" in url and "page=2" in url for url in requested)
+    assert all("page=1" in url for url in requested if "fjsf" in url)
 
 
 @respx.mock
