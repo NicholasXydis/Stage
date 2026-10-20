@@ -268,6 +268,44 @@ async def test_our_own_exhausted_budget_is_never_recorded_as_a_board_failing(
     )
 
 
+@respx.mock
+async def test_a_board_the_open_breaker_refused_is_deferred_not_failed(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import Company, CompanyDeferred, CompanyFailed, Platform
+    from stage.http import RatePosture
+    from stage.services import sync as sync_module
+    from stage.storage import open_repository
+
+    respx.get(url__regex=r"https://boards-api\.greenhouse\.io/.*").mock(
+        side_effect=httpx.ConnectError("down")
+    )
+    monkeypatch.setattr(sync_module, "get_feeds", dict)
+    monkeypatch.setattr(
+        sync_module,
+        "resolve",
+        lambda *_, **__: RatePosture(concurrency=1, min_interval_s=0.0, max_requests_per_run=300),
+    )
+    boards = [
+        Company(name=f"Board {index}", platform=Platform.GREENHOUSE, slug=f"board{index}")
+        for index in range(8)
+    ]
+    async with open_repository(db_path) as repository:
+        events = [
+            event
+            async for event in sync_module.sync(
+                repository, boards, sources=["greenhouse"], now_fn=lambda: NOW
+            )
+        ]
+        visits = await repository.all_visits()
+
+    failed = [event for event in events if isinstance(event, CompanyFailed)]
+    deferred = [event for event in events if isinstance(event, CompanyDeferred)]
+    assert failed and all("ConnectError" in event.error for event in failed)
+    assert deferred and all("BreakerOpenError" in event.reason for event in deferred)
+    assert len(visits) == len(failed)
+
+
 def test_the_daily_cap_spans_every_bucket_a_source_fetches() -> None:
     from stage.http.profiles import profile
     from stage.services.sync import DAILY_RUNS, _daily_allowance

@@ -68,6 +68,7 @@ class FetchResult:
     not_modified: bool = False
     authoritative: bool = True
     degraded: str = ""
+    declared_empty: bool = False
     stale_urls: tuple[str, ...] = field(default_factory=tuple)
     detail_fetches: tuple[object, ...] = field(default_factory=tuple)
     facets: tuple[object, ...] = field(default_factory=tuple)

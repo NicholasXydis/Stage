@@ -57,6 +57,7 @@ from stage.domain import (
 )
 from stage.http import (
     CEILING_BACKSTOP,
+    BreakerOpenError,
     HostBudget,
     HostBudgetExceededError,
     HttpClient,
@@ -321,7 +322,7 @@ async def _fetch_company(
                 )
         else:
             result = await adapter.fetch(company, client, now, facets, details)
-    except HostBudgetExceededError as exc:
+    except (HostBudgetExceededError, BreakerOpenError) as exc:
         elapsed = (time.perf_counter() - started) * 1000
         return company, None, f"{type(exc).__name__}: {exc}", elapsed, False, True
     except Exception as exc:
@@ -840,6 +841,7 @@ async def _run_company_source(
                     fetched=len(result.jobs),
                     elapsed_ms=elapsed,
                     degraded=result.degraded,
+                    declared_empty=result.declared_empty,
                 )
 
         metrics = _client_metrics(client)
@@ -1003,6 +1005,7 @@ async def _run_feed_source(
                 fetched=len(result.jobs),
                 elapsed_ms=elapsed,
                 degraded=result.degraded,
+                declared_empty=result.declared_empty,
             )
 
         metrics = _client_metrics(client)

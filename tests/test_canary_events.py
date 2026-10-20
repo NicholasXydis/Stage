@@ -5,6 +5,7 @@ import pytest
 
 from stage.domain import (
     Company,
+    CompanyDeferred,
     CompanyFailed,
     CompanyFinished,
     CompanyUnchanged,
@@ -70,3 +71,20 @@ async def test_probes_are_ordered_so_two_runs_read_the_same() -> None:
     keys = [(probe.source, probe.company) for probe in first.probes]
     assert keys == sorted(keys), "probe order must be stable, not arrival order"
     assert keys == [(probe.source, probe.company) for probe in second.probes]
+
+
+async def test_a_declared_empty_feed_and_a_refused_board_pass_the_canary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events = (
+        CompanyFinished(
+            source="greenhouse", company="Acme", fetched=0, elapsed_ms=1.0, declared_empty=True
+        ),
+        CompanyDeferred(source="lever", company="Beta", reason="BreakerOpenError: open"),
+    )
+    monkeypatch.setattr("stage.services.sync.sync", _fake_sync(events))
+    report = await canary_module.canary(None, _companies())  # type: ignore[arg-type]
+    keyed = {probe.company: probe for probe in report.probes}
+    assert not keyed["Acme"].is_empty
+    assert keyed["Beta"].is_unreachable
+    assert report.passed

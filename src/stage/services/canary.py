@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 from stage.domain import (
     Company,
+    CompanyDeferred,
     CompanyFailed,
     CompanyFinished,
     CompanyUnchanged,
@@ -22,6 +23,7 @@ class BoardProbe:
     degraded: str = ""
     unchanged: bool = False
     unreachable: bool = False
+    declared_empty: bool = False
 
     @property
     def is_failure(self) -> bool:
@@ -33,7 +35,9 @@ class BoardProbe:
 
     @property
     def is_empty(self) -> bool:
-        return not self.error and not self.unchanged and self.fetched == 0
+        return (
+            not self.error and not self.unchanged and not self.declared_empty and self.fetched == 0
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +103,7 @@ async def canary(
                 company=event.company,
                 fetched=event.fetched,
                 degraded=event.degraded,
+                declared_empty=event.declared_empty,
             )
         elif isinstance(event, CompanyFailed):
             probes[(event.source, event.company)] = BoardProbe(
@@ -106,6 +111,13 @@ async def canary(
                 company=event.company,
                 error=event.error,
                 unreachable=event.unreachable,
+            )
+        elif isinstance(event, CompanyDeferred):
+            probes[(event.source, event.company)] = BoardProbe(
+                source=event.source,
+                company=event.company,
+                error=event.reason,
+                unreachable=True,
             )
         elif isinstance(event, CompanyUnchanged):
             probes[(event.source, event.company)] = BoardProbe(

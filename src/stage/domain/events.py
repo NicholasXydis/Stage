@@ -30,6 +30,7 @@ class CompanyFinished:
     fetched: int
     elapsed_ms: float
     degraded: str = ""
+    declared_empty: bool = False
 
 
 @dataclass(frozen=True, slots=True)

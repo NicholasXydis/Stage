@@ -720,13 +720,13 @@ class HttpClient:
             exc = outcome.exception() if outcome is not None else None
             if isinstance(exc, RetryableStatusError) and exc.retry_after is not None:
                 return exc.retry_after
-            return float(wait_exponential_jitter(initial=0.5, max=8.0)(state))
+            return float(wait_exponential_jitter(multiplier=0.5, max=8.0)(state))
 
         def should_retry(state: RetryCallState) -> bool:
             outcome = state.outcome
             if outcome is None or not outcome.failed:
                 return False
-            if budget.deferred_s > 0:
+            if budget.deferred_s > 0 or budget.breaker.is_open():
                 return False
             return isinstance(outcome.exception(), RetryableStatusError | httpx.TransportError)
 

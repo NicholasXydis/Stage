@@ -167,6 +167,7 @@ async def test_a_feed_that_declares_itself_empty_is_not_drift(run_time: datetime
     assert result.jobs == (), "the publisher lists no roles, so the feed carries none"
     assert not result.authoritative, "an empty feed must never close what it cannot see"
     assert "no roles right now" in result.degraded
+    assert result.declared_empty
 
 
 @respx.mock

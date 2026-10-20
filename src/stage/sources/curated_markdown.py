@@ -108,6 +108,7 @@ class _GitHubMarkdownFeed:
             return FetchResult(
                 degraded=f"{self.name} publishes no roles right now; the feed closes nothing",
                 authoritative=False,
+                declared_empty=True,
             )
         jobs = tuple(self._to_job(listing, now) for listing in listings)
         return FetchResult(
