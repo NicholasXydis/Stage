@@ -202,8 +202,8 @@
   platform: workday
   slug: desjardins
   source_of_record: discover
-  last_verified: 2026-08-16
-  recheck_after: &id004 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: desjardins
   workday_site: Desjardins
   workday_dc: wd10
@@ -213,8 +213,8 @@
   platform: workday
   slug: desjardins
   source_of_record: discover
-  last_verified: 2026-08-16
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: desjardins
   workday_site: EtudiantsetStagiaires
   workday_dc: wd10
@@ -398,8 +398,8 @@
   platform: workday
   slug: draftkings
   source_of_record: openjobs
-  last_verified: 2026-08-14
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: draftkings
   workday_site: DraftKings
   workday_dc: wd1

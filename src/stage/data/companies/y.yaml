@@ -2,8 +2,8 @@
   platform: workday
   slug: ouryahoo
   source_of_record: openjobs
-  last_verified: 2026-08-14
-  recheck_after: 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: ouryahoo
   workday_site: careers
   workday_dc: wd5

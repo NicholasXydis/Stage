@@ -167,8 +167,8 @@
   platform: workday
   slug: illumina
   source_of_record: openjobs
-  last_verified: &id010 2026-08-14
-  recheck_after: &id006 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: illumina
   workday_site: illumina-careers
   workday_dc: wd1
@@ -309,8 +309,8 @@
   platform: workday
   slug: intactfc
   source_of_record: discover
-  last_verified: 2026-08-16
-  recheck_after: *id006
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: intactfc
   workday_site: intactfc
   workday_dc: wd3
@@ -475,8 +475,8 @@
   platform: workday
   slug: ironmountain
   source_of_record: openjobs
-  last_verified: *id010
-  recheck_after: *id006
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: ironmountain
   workday_site: iron-mountain-jobs
   workday_dc: wd5
@@ -492,8 +492,8 @@
   platform: workday
   slug: issgovernance
   source_of_record: openjobs
-  last_verified: *id010
-  recheck_after: *id006
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: issgovernance
   workday_site: ISScareers
   workday_dc: wd1

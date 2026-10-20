@@ -79,7 +79,7 @@
   platform: workday
   slug: activision
   source_of_record: openjobs
-  recheck_after: &id002 2026-10-01
+  recheck_after: 2027-01-20
   workday_tenant: activision
   workday_site: External
   workday_dc: wd1
@@ -162,8 +162,8 @@
   platform: workday
   slug: adtran
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: adtran
   workday_site: ADTRAN
   workday_dc: wd3
@@ -458,8 +458,8 @@
   platform: workday
   slug: alphawave
   source_of_record: openjobs
-  last_verified: &id011 2026-08-14
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: alphawave
   workday_site: Alphawave_External
   workday_dc: wd10
@@ -688,12 +688,12 @@
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
 - name: Amplitude
-  platform: greenhouse
+  platform: ashby
   slug: amplitude
-  source_of_record: openjobs
-  last_verified: 2026-08-16
-  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
-    a live probe that matched the company name on the returned board'
+  source_of_record: discover
+  last_verified: 2026-10-20
+  notes: '2026-10-20: greenhouse/amplitude answers 404; amplitude.com/careers now
+    links jobs.ashbyhq.com/amplitude, which lists 39 roles.'
 - name: Analog Devices Thailand
   platform: workday
   slug: analogdevices
@@ -867,8 +867,8 @@
   platform: workday
   slug: aptiv
   source_of_record: openjobs
-  last_verified: *id011
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: aptiv
   workday_site: APTIV_CAREERS
   workday_dc: wd5
@@ -967,8 +967,8 @@
   platform: workday
   slug: aristocrat
   source_of_record: openjobs
-  last_verified: *id011
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: aristocrat
   workday_site: AristocratExternalCareersSite
   workday_dc: wd3

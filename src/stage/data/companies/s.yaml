@@ -24,8 +24,8 @@
   platform: workday
   slug: sailpoint
   source_of_record: openjobs
-  last_verified: &id001 2026-08-14
-  recheck_after: &id002 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: sailpoint
   workday_site: SailPoint
   workday_dc: wd1
@@ -45,8 +45,8 @@
   platform: workday
   slug: salesforce
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: salesforce
   workday_site: External_Career_Site
   workday_dc: wd12
@@ -118,8 +118,10 @@
   slug: sap
   source_of_record: discover
   last_verified: 2026-08-19
-  notes: jobs.sap.com/sitemap.xml is a Google-jobs RSS feed, not a sitemap; it carries
-    the Montreal iXp internships in both English and French.
+  recheck_after: 2027-01-20
+  enabled: false
+  notes: '2026-10-20: jobs.sap.com now sits behind a Cloudflare challenge; only a
+    title-only sitemap with no locations is readable, so the row is parked.'
   custom:
     url: https://jobs.sap.com/sitemap.xml
     format: rss
@@ -225,8 +227,8 @@
   platform: workday
   slug: sglottery
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: sglottery
   workday_site: ScientificGamesExternalCareers
   workday_dc: wd5
@@ -339,7 +341,7 @@
   platform: workday
   slug: sensata
   source_of_record: discover
-  last_verified: *id001
+  last_verified: &id001 2026-08-14
   workday_tenant: sensata
   workday_site: Sensata-Careers
   workday_dc: wd1
@@ -551,8 +553,8 @@
   platform: workday
   slug: silabs
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: silabs
   workday_site: SiliconlabsCareers
   workday_dc: wd1
@@ -569,8 +571,8 @@
   platform: workday
   slug: simcorp
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: simcorp
   workday_site: SimCorp_Jobs
   workday_dc: wd3
@@ -643,9 +645,9 @@
   platform: custom_json
   slug: skyworks
   source_of_record: discover
-  last_verified: 2026-08-16
-  notes: '2026-08-16: successfactors — CSRF handshake. GET the careers page for the
-    token and JSESSIONID, then POST.'
+  last_verified: 2026-10-20
+  notes: '2026-10-20: successfactors — CSRF handshake. Category 9923100 now answers
+    totalJobs 0 while its interns are live, so this searches the keyword instead.'
   custom:
     url: https://careers.skyworksinc.com/services/recruiting/v1/jobs
     method: POST
@@ -653,12 +655,11 @@
       locale: en_US
       pageNumber: 0
       sortBy: ''
-      keywords: ''
+      keywords: intern
       location: ''
       facetFilters: {}
       brand: ''
       alertId: ''
-      categoryId: 9923100
       rcmCandidateId: ''
       skills: []
     handshake_url: https://careers.skyworksinc.com/go/internships-and-Recent-College-Grads/9923100/
@@ -673,6 +674,7 @@
     url_template: https://careers.skyworksinc.com/job/{id}/
     page_param: pageNumber
     page_size: 10
+    page_step: 1
 - name: Smoking Gun Interactive
   platform: workable
   slug: smoking-gun-interactive-1
@@ -786,8 +788,8 @@
   platform: workday
   slug: spe
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: spe
   workday_site: SonyPicturesEntertainment
   workday_dc: wd1
@@ -861,8 +863,8 @@
   platform: workday
   slug: sprinklr
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: sprinklr
   workday_site: careers
   workday_dc: wd1
@@ -1147,8 +1149,8 @@
   platform: workday
   slug: synechron
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: synechron
   workday_site: SynechronCareers
   workday_dc: wd1

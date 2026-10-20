@@ -98,28 +98,15 @@
   last_verified: 2026-09-01
   notes: '2026-09-01: verified 328 postings with 68 internships in South San Francisco.'
 - name: Zoom
-  platform: custom_json
+  platform: workday
   slug: zoom
   source_of_record: discover
-  last_verified: 2026-08-21
-  notes: '2026-08-21: the official job search page server-renders its listings; the
-    existing HTML route returned stable rows and page pagination.'
-  custom:
-    url: https://careers.zoom.us/jobs/search
-    format: html
-    row_selector: article.job-search-results-card-col
-    fields:
-      title: h3.job-search-results-card-title a
-      id: .job-component-requisition-identifier span
-      url: h3.job-search-results-card-title a::attr(href)
-      location: .job-component-location span
-      description: p.job-search-results-summary
-      category: .job-component-category span
-    page_param: page
-    page_size: 30
-    page_start: 1
-    page_step: 1
-    max_pages: 5
+  last_verified: 2026-10-20
+  workday_tenant: zoom
+  workday_site: Zoom
+  workday_dc: wd5
+  notes: '2026-10-20: careers.zoom.us now redirects to a Shazamme widget site with
+    client-side listings; the Workday tenant behind it answers CXS directly.'
 - name: Zoox
   platform: lever
   slug: zoox

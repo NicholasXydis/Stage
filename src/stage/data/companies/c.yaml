@@ -16,8 +16,8 @@
   platform: workday
   slug: cadence
   source_of_record: openjobs
-  last_verified: &id001 2026-08-14
-  recheck_after: &id002 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: cadence
   workday_site: External_Careers
   workday_dc: wd1
@@ -41,8 +41,8 @@
   platform: workday
   slug: calix
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: calix
   workday_site: External
   workday_dc: wd1
@@ -58,11 +58,11 @@
     the name gate cannot confirm it and provenance is the evidence (20 job(s))'
 - name: CALSTART
   platform: lever
-  slug: calstart
-  source_of_record: manual
-  last_verified: 2026-08-13
-  notes: '2026-08-13: official active web-development internship application verifies
-    the public Lever board.'
+  slug: CatalystMobility
+  source_of_record: discover
+  last_verified: 2026-10-20
+  notes: '2026-10-20: lever/calstart answers 404; calstart.org/careers now redirects
+    to jobs.lever.co/CatalystMobility, and Lever slugs are case-sensitive.'
 - name: Cambium Learning Group
   platform: workday
   slug: cambiumlearning
@@ -198,10 +198,21 @@
   source_of_record: openjobs
   last_verified: *id004
 - name: Carbon Engineering Ltd.
-  platform: greenhouse
+  platform: custom_json
   slug: carbon
   source_of_record: discover
-  last_verified: &id009 2026-08-14
+  last_verified: 2026-10-20
+  notes: '2026-10-20: the greenhouse board answers 404; the careers page now links a
+    JazzHR board at carbonengineering.applytojob.com, which server-renders its list.
+    Verified 9 roles including an IT Admin Co-op in Squamish.'
+  custom:
+    url: https://carbonengineering.applytojob.com/apply
+    format: html
+    row_selector: li.list-group-item
+    fields:
+      title: h3 a
+      url: h3 a::attr(href)
+      location: li:has(> i.fa-map-marker)
 - name: CarbonCure
   platform: bamboohr
   slug: carboncure
@@ -372,8 +383,8 @@
   platform: workday
   slug: cerence
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: cerence
   workday_site: Cerence
   workday_dc: wd5
@@ -534,8 +545,8 @@
   platform: workday
   slug: cibc
   source_of_record: discover
-  last_verified: 2026-08-11
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2026-11-20
   workday_tenant: cibc
   workday_site: campus
   workday_dc: wd3
@@ -557,8 +568,8 @@
   platform: workday
   slug: cineplex
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: cineplex
   workday_site: Cineplex
   workday_dc: wd3
@@ -670,7 +681,7 @@
   platform: greenhouse
   slug: circleci
   source_of_record: discover
-  last_verified: *id009
+  last_verified: &id009 2026-08-14
 - name: Cirque du Soleil
   platform: lever
   slug: cirquedusoleil
@@ -1324,13 +1335,15 @@
   platform: custom_json
   slug: croesus
   source_of_record: discover
-  last_verified: 2026-08-20
-  notes: '2026-08-20: Cezanne/Intervieweb board, server-rendered with no JSON or RSS
-    contract, so the page itself is the listing.'
+  last_verified: 2026-10-20
+  notes: '2026-10-20: Cezanne/Intervieweb board, server-rendered with no JSON or RSS
+    contract, so the page itself is the listing. It reads No vacancies available
+    when nothing is open, which empty_marker treats as an empty board, not drift.'
   custom:
     url: https://cezanneondemand.intervieweb.it/croesus/en/career
     format: html
     row_selector: div.vacancy__header
+    empty_marker: No vacancies available
     fields:
       title: div.vacancy__title h3
       url: div.vacancy__title a::attr(href)
@@ -1350,8 +1363,8 @@
   platform: workday
   slug: crowdstrike
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: crowdstrike
   workday_site: crowdstrikecareers
   workday_dc: wd5
@@ -1377,8 +1390,8 @@
   platform: workday
   slug: cubic
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id002
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: cubic
   workday_site: cubic_global_careers
   workday_dc: wd1
@@ -1391,9 +1404,3 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (15 job(s))'
-- name: Cybereason
-  platform: greenhouse
-  slug: cybereason
-  source_of_record: discover
-  last_verified: 2026-08-21
-  notes: '2026-08-21: official careers markup exposes the Cybereason Greenhouse board.'

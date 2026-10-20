@@ -174,8 +174,8 @@
   platform: workday
   slug: vertexinc
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: vertexinc
   workday_site: VertexInc
   workday_dc: wd1

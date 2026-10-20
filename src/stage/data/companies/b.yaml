@@ -420,8 +420,8 @@
   platform: workday
   slug: bb
   source_of_record: openjobs
-  last_verified: &id011 2026-08-14
-  recheck_after: &id009 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: bb
   workday_site: QNX
   workday_dc: wd3
@@ -588,8 +588,8 @@
   platform: workday
   slug: bmo
   source_of_record: discover
-  last_verified: 2026-08-11
-  recheck_after: *id009
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: bmo
   workday_site: External
   workday_dc: wd3
@@ -821,8 +821,8 @@
   platform: workday
   slug: broadcom
   source_of_record: openjobs
-  last_verified: *id011
-  recheck_after: *id009
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: broadcom
   workday_site: External_Career
   workday_dc: wd1

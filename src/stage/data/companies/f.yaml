@@ -63,16 +63,17 @@
   slug: felixandpaul
   source_of_record: discover
   last_verified: 2026-08-18
+  recheck_after: 2027-01-20
   name_gate_exempt: true
-  notes: '2026-08-18: felixandpaul.com/careers links felixandpaul.bamboohr.com, which
-    is the employer own site naming its own board - the provenance BambooHR cannot
-    supply itself.'
+  enabled: false
+  notes: '2026-10-20: felixandpaul.bamboohr.com redirects to a suspended-account page,
+    so the board answers 401; parked until the studio posts roles again.'
 - name: FICO
   platform: workday
   slug: fico
   source_of_record: openjobs
-  last_verified: &id004 2026-08-14
-  recheck_after: &id005 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: fico
   workday_site: External
   workday_dc: wd1
@@ -233,8 +234,8 @@
   platform: workday
   slug: flexerasoftware
   source_of_record: openjobs
-  last_verified: *id004
-  recheck_after: *id005
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: flexerasoftware
   workday_site: FlexeraSoftware
   workday_dc: wd1
@@ -365,8 +366,8 @@
   platform: workday
   slug: foxfactory
   source_of_record: openjobs
-  last_verified: *id004
-  recheck_after: *id005
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: foxfactory
   workday_site: FOX
   workday_dc: wd1

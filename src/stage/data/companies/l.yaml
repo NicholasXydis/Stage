@@ -120,12 +120,13 @@
   platform: workday
   slug: leidos
   source_of_record: discover
-  last_verified: &id006 2026-08-14
+  last_verified: 2026-10-20
   workday_tenant: leidos
   workday_site: External
   workday_dc: wd5
-  notes: '2026-08-14: verified by a real sync — this board returned postings, which
-    is the only verification a Workday tenant can have without an offline probe'
+  workday_facet: jobFamilyGroup:628672aa96cf106cf05cd4c3de06246b
+  notes: '2026-10-20: the whole board is 2,000 rows; the Internship job family group
+    holds its 18 internships on one page.'
 - name: Leland
   platform: ashby
   slug: leland
@@ -134,6 +135,37 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (187 job(s))'
+- name: LevelBlue
+  platform: custom_json
+  slug: dayforce-twh
+  source_of_record: discover
+  last_verified: 2026-10-20
+  rate_profile: conservative
+  notes: '2026-10-20: formerly the Cybereason row. greenhouse/cybereason answers 404
+    since Cybereason became part of LevelBlue; levelblue.com/company/careers links
+    the Dayforce portal under the twh namespace, reached by sending the
+    /api/auth/csrf token as x-csrf-token.'
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/twh/jobposting/search
+    method: POST
+    body:
+      clientNamespace: twh
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-US
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-US/twh/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
 - name: Liberty University
   platform: workday
   slug: liberty
@@ -265,7 +297,7 @@
   platform: workday
   slug: logitech
   source_of_record: discover
-  last_verified: *id006
+  last_verified: &id006 2026-08-14
   workday_tenant: logitech
   workday_site: logitech
   workday_dc: wd5
@@ -285,8 +317,8 @@
   platform: workday
   slug: lseg
   source_of_record: openjobs
-  last_verified: *id006
-  recheck_after: 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: lseg
   workday_site: Careers
   workday_dc: wd3

@@ -2,7 +2,7 @@
   platform: workday
   slug: twitter
   source_of_record: openjobs
-  recheck_after: 2026-10-01
+  recheck_after: 2027-01-20
   workday_tenant: twitter
   workday_site: X
   workday_dc: wd5

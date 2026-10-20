@@ -1,11 +1,10 @@
 - name: Mach Industries
-  platform: ashby
-  slug: mach
+  platform: greenhouse
+  slug: machindustries
   source_of_record: discover
-  last_verified: 2026-08-26
-  name_gate_exempt: true
-  notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
-    ashby publishes no board name, so provenance is the evidence (106 job(s))'
+  last_verified: 2026-10-20
+  notes: '2026-10-20: ashby/mach answers 404; machindustries.com/careers now links
+    job-boards.greenhouse.io/machindustries, 157 roles in Huntington Beach.'
 - name: Mackenzie Investments
   platform: custom_json
   slug: mackenzieinvestments
@@ -34,8 +33,8 @@
   platform: workday
   slug: maersk
   source_of_record: openjobs
-  last_verified: &id001 2026-08-14
-  recheck_after: &id003 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: maersk
   workday_site: Maersk_Careers
   workday_dc: wd3
@@ -52,7 +51,7 @@
   platform: workday
   slug: magna
   source_of_record: discover
-  last_verified: *id001
+  last_verified: &id001 2026-08-14
   workday_tenant: magna
   workday_site: magna
   workday_dc: wd3
@@ -169,8 +168,8 @@
   platform: workday
   slug: mmc
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id003
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: mmc
   workday_site: MMC
   workday_dc: wd1
@@ -193,8 +192,8 @@
   platform: workday
   slug: mastercard
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id003
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: mastercard
   workday_site: CUOReqSite
   workday_dc: wd1
@@ -204,8 +203,8 @@
   platform: workday
   slug: mastercard
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id003
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: mastercard
   workday_site: CorporateCareers
   workday_dc: wd1
@@ -612,8 +611,8 @@
   platform: workday
   slug: mimecast
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id003
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: mimecast
   workday_site: Mimecast-Careers
   workday_dc: wd5
@@ -885,8 +884,8 @@
   platform: workday
   slug: morningstar
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id003
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: morningstar
   workday_site: Americas
   workday_dc: wd5
@@ -896,13 +895,37 @@
   platform: workday
   slug: motorolasolutions
   source_of_record: openjobs
-  last_verified: *id001
-  recheck_after: *id003
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: motorolasolutions
   workday_site: Careers
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Motorola Solutions (internships)
+  platform: custom_json
+  slug: motorolasolutions-internships
+  source_of_record: discover
+  last_verified: 2026-10-20
+  notes: '2026-10-20: the Workday board lists about 900 jobs newest first, so its
+    2027 internships, posted a month earlier, sit past the pages a sync reads. This
+    reads the board''s own Internship search; the workday row stays for the rest.'
+  custom:
+    url: https://motorolasolutions.wd5.myworkdayjobs.com/wday/cxs/motorolasolutions/Careers/jobs
+    method: POST
+    body:
+      appliedFacets: {}
+      limit: 20
+      offset: 0
+      searchText: Internship
+    jobs_path: jobPostings
+    fields:
+      title: title
+      id: externalPath
+      location: locationsText
+    url_template: https://motorolasolutions.wd5.myworkdayjobs.com/Careers{id}
+    page_param: offset
+    page_size: 20
 - name: Mozilla
   platform: greenhouse
   slug: mozilla

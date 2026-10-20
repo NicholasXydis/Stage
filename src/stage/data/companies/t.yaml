@@ -16,8 +16,8 @@
   platform: workday
   slug: tag
   source_of_record: openjobs
-  last_verified: &id005 2026-08-14
-  recheck_after: &id004 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: tag
   workday_site: Tag_Careers
   workday_dc: wd3
@@ -87,8 +87,8 @@
   platform: workday
   slug: td
   source_of_record: discover
-  last_verified: 2026-08-11
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: td
   workday_site: TD_Bank_Careers
   workday_dc: wd3
@@ -120,7 +120,7 @@
   platform: workday
   slug: tti
   source_of_record: discover
-  last_verified: *id005
+  last_verified: &id005 2026-08-14
   workday_tenant: tti
   workday_site: tti_pe
   workday_dc: wd1
@@ -177,8 +177,8 @@
   platform: workday
   slug: lifeworks
   source_of_record: discover
-  last_verified: 2026-08-16
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: lifeworks
   workday_site: External
   workday_dc: wd3
@@ -202,8 +202,8 @@
   platform: workday
   slug: tencent
   source_of_record: openjobs
-  last_verified: *id005
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: tencent
   workday_site: Tencent_Careers
   workday_dc: wd1
@@ -260,8 +260,8 @@
   platform: workday
   slug: thales
   source_of_record: openjobs
-  last_verified: *id005
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: thales
   workday_site: Careers
   workday_dc: wd3
@@ -271,8 +271,8 @@
   platform: workday
   slug: scripps
   source_of_record: openjobs
-  last_verified: 2026-08-18
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: scripps
   workday_site: Scripps_Careers
   workday_dc: wd115
@@ -337,8 +337,8 @@
   platform: workday
   slug: disney
   source_of_record: openjobs
-  last_verified: 2026-08-14
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: disney
   workday_site: disneycareer
   workday_dc: wd5
@@ -523,8 +523,8 @@
   platform: workday
   slug: toppanmerrill
   source_of_record: openjobs
-  last_verified: *id005
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: toppanmerrill
   workday_site: Toppan_Merrill
   workday_dc: wd5
@@ -608,8 +608,8 @@
   platform: workday
   slug: transunion
   source_of_record: openjobs
-  last_verified: *id005
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: transunion
   workday_site: TransUnion
   workday_dc: wd5
@@ -619,8 +619,8 @@
   platform: workday
   slug: trekbikes
   source_of_record: openjobs
-  last_verified: *id005
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: trekbikes
   workday_site: TREK
   workday_dc: wd1
@@ -630,8 +630,8 @@
   platform: workday
   slug: trellix
   source_of_record: openjobs
-  last_verified: *id005
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: trellix
   workday_site: EnterpriseCareers
   workday_dc: wd1
@@ -641,8 +641,8 @@
   platform: workday
   slug: trendmicro
   source_of_record: openjobs
-  last_verified: *id005
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: trendmicro
   workday_site: External
   workday_dc: wd3
@@ -772,8 +772,8 @@
   platform: workday
   slug: tvh
   source_of_record: openjobs
-  last_verified: *id005
-  recheck_after: *id004
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: tvh
   workday_site: JobsatTVH
   workday_dc: wd3

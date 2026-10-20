@@ -341,16 +341,12 @@
   source_of_record: discover
   last_verified: 2026-08-21
 - name: Nio
-  platform: workday
-  slug: nio
-  source_of_record: manual
-  last_verified: 2026-08-13
-  workday_tenant: nio
-  workday_site: NIO_Careers
-  workday_dc: wd3
-  workday_facet: workerSubType:0e6a0783031c1002034cb2de456e0000,7ac7128699f61006f6e20a25c28693c8
-  notes: '2026-08-13: official Workday endpoint verified; its intern facets total
-    five listings.'
+  platform: lever
+  slug: nio-usa
+  source_of_record: discover
+  last_verified: 2026-10-20
+  notes: '2026-10-20: the NIO_Careers Workday site answers 422 and its page 500s;
+    nio.com/careers now links lever.co/nio-usa, five roles in San Jose.'
 - name: Nissan Global
   platform: workday
   slug: alliance
@@ -530,8 +526,8 @@
   platform: workday
   slug: nvidia
   source_of_record: openjobs
-  last_verified: 2026-08-20
-  recheck_after: 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: nvidia
   workday_site: NVIDIAExternalCareerSite
   workday_dc: wd5
@@ -564,8 +560,8 @@
   platform: workday
   slug: nxp
   source_of_record: openjobs
-  last_verified: *id002
-  recheck_after: 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: nxp
   workday_site: careers
   workday_dc: wd3

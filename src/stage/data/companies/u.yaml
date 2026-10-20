@@ -73,8 +73,8 @@
   platform: workday
   slug: unilever
   source_of_record: openjobs
-  last_verified: *id002
-  recheck_after: &id003 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: unilever
   workday_site: Unilever_Experienced_Professionals
   workday_dc: wd3
@@ -84,8 +84,8 @@
   platform: workday
   slug: unisys
   source_of_record: openjobs
-  last_verified: *id002
-  recheck_after: *id003
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: unisys
   workday_site: External
   workday_dc: wd5

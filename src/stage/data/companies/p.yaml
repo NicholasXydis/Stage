@@ -281,8 +281,8 @@
   platform: workday
   slug: pentair
   source_of_record: openjobs
-  last_verified: *id003
-  recheck_after: &id005 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: pentair
   workday_site: Pentair_Careers
   workday_dc: wd5
@@ -395,8 +395,8 @@
   platform: workday
   slug: philips
   source_of_record: openjobs
-  last_verified: *id003
-  recheck_after: *id005
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: philips
   workday_site: jobs-and-careers
   workday_dc: wd3
@@ -558,8 +558,8 @@
   platform: workday
   slug: plugpower
   source_of_record: openjobs
-  last_verified: *id003
-  recheck_after: *id005
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: plugpower
   workday_site: Plug_Power_Inc
   workday_dc: wd5
@@ -578,8 +578,8 @@
   platform: workday
   slug: pluralsight
   source_of_record: openjobs
-  last_verified: *id003
-  recheck_after: *id005
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: pluralsight
   workday_site: Careers
   workday_dc: wd1
@@ -680,10 +680,15 @@
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (28 job(s))'
 - name: Postman
-  platform: greenhouse
+  platform: workday
   slug: postman
-  source_of_record: openjobs
-  last_verified: *id002
+  source_of_record: discover
+  last_verified: 2026-10-20
+  workday_tenant: postman
+  workday_site: careers
+  workday_dc: wd108
+  notes: '2026-10-20: greenhouse/postman answers 404; postman.com open positions now
+    link the wd108 Workday tenant.'
 - name: Potloc
   platform: lever
   slug: Potloc
@@ -836,8 +841,8 @@
   platform: workday
   slug: pwc
   source_of_record: openjobs
-  last_verified: *id003
-  recheck_after: *id005
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: pwc
   workday_site: Global_Experienced_Careers
   workday_dc: wd3

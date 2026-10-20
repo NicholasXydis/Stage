@@ -93,8 +93,8 @@
   platform: workday
   slug: olg
   source_of_record: openjobs
-  last_verified: &id002 2026-08-14
-  recheck_after: &id003 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: olg
   workday_site: Careers
   workday_dc: wd3
@@ -284,8 +284,8 @@
   platform: workday
   slug: optiv
   source_of_record: openjobs
-  last_verified: *id002
-  recheck_after: *id003
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: optiv
   workday_site: Optiv_Careers
   workday_dc: wd5
@@ -353,7 +353,7 @@
   platform: workday
   slug: oshkoshcorporation
   source_of_record: discover
-  last_verified: *id002
+  last_verified: &id002 2026-08-14
   workday_tenant: oshkoshcorporation
   workday_site: oshkosh
   workday_dc: wd5

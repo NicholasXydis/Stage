@@ -52,8 +52,8 @@
   platform: workday
   slug: ebay
   source_of_record: openjobs
-  last_verified: 2026-08-14
-  recheck_after: &id007 2026-10-01
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: ebay
   workday_site: apply
   workday_dc: wd5
@@ -68,8 +68,10 @@
   slug: egra
   source_of_record: manual
   last_verified: 2026-08-13
-  notes: '2026-08-13: official active AI research internship application verifies
-    the public Ashby board.'
+  recheck_after: 2027-01-20
+  enabled: false
+  notes: '2026-10-20: ashby/egra answers 404 and egra.ai is now a single page with
+    no careers link; parked until it hires again.'
 - name: Eidos-Montreal
   platform: custom_json
   slug: dayforce-eic
@@ -499,8 +501,8 @@
   platform: workday
   slug: expedia
   source_of_record: openjobs
-  last_verified: 2026-08-18
-  recheck_after: *id007
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: expedia
   workday_site: search
   workday_dc: wd108

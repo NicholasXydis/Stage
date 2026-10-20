@@ -30,7 +30,7 @@
   platform: workday
   slug: walmart
   source_of_record: openjobs
-  recheck_after: &id007 2026-10-01
+  recheck_after: 2027-01-20
   workday_tenant: walmart
   workday_site: WalmartExternal
   workday_dc: wd5
@@ -281,8 +281,8 @@
   platform: workday
   slug: wk
   source_of_record: openjobs
-  last_verified: *id004
-  recheck_after: *id007
+  last_verified: 2026-10-20
+  recheck_after: 2027-01-20
   workday_tenant: wk
   workday_site: External
   workday_dc: wd3
