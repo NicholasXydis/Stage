@@ -1725,7 +1725,8 @@ def test_a_row_action_key_never_becomes_a_filing_key() -> None:
     acted_on = {
         binding.key
         for binding in PostingsScreen.BINDINGS
-        if isinstance(binding, Binding) and binding.action in {"open", "mark", "expand"}
+        if isinstance(binding, Binding)
+        and binding.action in {"open", "mark", "expand", "save", "applied", "hide", "undo"}
     }
     filing = {
         binding.key
@@ -1739,13 +1740,21 @@ def test_a_row_action_key_never_becomes_a_filing_key() -> None:
 def test_every_screen_offers_the_same_help_key() -> None:
     from textual.binding import Binding
 
+    from stage.tui.screens.applications import ApplicationsScreen
     from stage.tui.screens.boards import BoardsScreen
     from stage.tui.screens.postings import PostingsScreen
     from stage.tui.screens.review import ReviewScreen
     from stage.tui.screens.stats import StatsScreen
     from stage.tui.screens.sync import SyncScreen
 
-    for screen in (PostingsScreen, ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+    for screen in (
+        PostingsScreen,
+        ReviewScreen,
+        BoardsScreen,
+        StatsScreen,
+        SyncScreen,
+        ApplicationsScreen,
+    ):
         keys = {binding.key for binding in screen.BINDINGS if isinstance(binding, Binding)}
         assert "question_mark" in keys, screen.__name__
 
@@ -1753,13 +1762,14 @@ def test_every_screen_offers_the_same_help_key() -> None:
 def test_every_screen_documents_its_own_keys() -> None:
     from textual.binding import Binding
 
+    from stage.tui.screens.applications import ApplicationsScreen
     from stage.tui.screens.boards import BoardsScreen
     from stage.tui.screens.review import ReviewScreen
     from stage.tui.screens.stats import StatsScreen
     from stage.tui.screens.sync import SyncScreen
 
     names = {"question_mark": "?", "escape": "escape"}
-    for screen in (ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+    for screen in (ReviewScreen, BoardsScreen, StatsScreen, SyncScreen, ApplicationsScreen):
         text = screen.HELP_TEXT.lower()
         for binding in screen.BINDINGS:
             assert isinstance(binding, Binding)
@@ -1772,13 +1782,21 @@ def test_every_screen_documents_its_own_keys() -> None:
 def test_no_screen_shows_more_than_a_handful_of_keys() -> None:
     from textual.binding import Binding
 
+    from stage.tui.screens.applications import ApplicationsScreen
     from stage.tui.screens.boards import BoardsScreen
     from stage.tui.screens.postings import PostingsScreen
     from stage.tui.screens.review import ReviewScreen
     from stage.tui.screens.stats import StatsScreen
     from stage.tui.screens.sync import SyncScreen
 
-    for screen in (PostingsScreen, ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+    for screen in (
+        PostingsScreen,
+        ReviewScreen,
+        BoardsScreen,
+        StatsScreen,
+        SyncScreen,
+        ApplicationsScreen,
+    ):
         shown = [
             binding for binding in screen.BINDINGS if isinstance(binding, Binding) and binding.show
         ]
@@ -1971,6 +1989,7 @@ def test_the_app_does_not_let_a_widget_take_over_the_screen() -> None:
 def test_no_binding_fights_a_key_textual_reserves() -> None:
     from textual.binding import Binding
 
+    from stage.tui.screens.applications import ApplicationsScreen
     from stage.tui.screens.boards import BoardsScreen
     from stage.tui.screens.postings import PostingsScreen
     from stage.tui.screens.review import ReviewScreen
@@ -1978,7 +1997,14 @@ def test_no_binding_fights_a_key_textual_reserves() -> None:
     from stage.tui.screens.sync import SyncScreen
 
     reserved = {"tab", "shift+tab", "ctrl+c", "ctrl+q", "super+c"}
-    for screen in (PostingsScreen, ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+    for screen in (
+        PostingsScreen,
+        ReviewScreen,
+        BoardsScreen,
+        StatsScreen,
+        SyncScreen,
+        ApplicationsScreen,
+    ):
         for binding in screen.BINDINGS:
             assert isinstance(binding, Binding)
             assert binding.key not in reserved, f"{binding.key} on {screen.__name__}"
@@ -1987,13 +2013,21 @@ def test_no_binding_fights_a_key_textual_reserves() -> None:
 def test_the_footer_stays_out_of_the_way() -> None:
     from textual.binding import Binding
 
+    from stage.tui.screens.applications import ApplicationsScreen
     from stage.tui.screens.boards import BoardsScreen
     from stage.tui.screens.postings import PostingsScreen
     from stage.tui.screens.review import ReviewScreen
     from stage.tui.screens.stats import StatsScreen
     from stage.tui.screens.sync import SyncScreen
 
-    for screen in (PostingsScreen, ReviewScreen, BoardsScreen, StatsScreen, SyncScreen):
+    for screen in (
+        PostingsScreen,
+        ReviewScreen,
+        BoardsScreen,
+        StatsScreen,
+        SyncScreen,
+        ApplicationsScreen,
+    ):
         shown = [
             binding for binding in screen.BINDINGS if isinstance(binding, Binding) and binding.show
         ]
@@ -2022,6 +2056,7 @@ def test_text_on_the_blue_backgrounds_is_pinned() -> None:
 def test_every_help_line_fits_the_panel() -> None:
     from rich.markup import render
 
+    from stage.tui.screens.applications import ApplicationsScreen
     from stage.tui.screens.boards import BoardsScreen
     from stage.tui.screens.postings import HELP_TEXT
     from stage.tui.screens.review import ReviewScreen
@@ -2029,22 +2064,26 @@ def test_every_help_line_fits_the_panel() -> None:
     from stage.tui.screens.sync import SyncScreen
 
     texts = [HELP_TEXT] + [
-        screen.HELP_TEXT for screen in (ReviewScreen, BoardsScreen, StatsScreen, SyncScreen)
+        screen.HELP_TEXT
+        for screen in (ReviewScreen, BoardsScreen, StatsScreen, SyncScreen, ApplicationsScreen)
     ]
     for text in texts:
         for line in text.split("\n"):
-            assert len(render(line).plain) <= 42, line
+            assert len(render(line).plain) <= 40, line
 
 
 def test_help_lines_share_one_shape() -> None:
     from rich.markup import render
 
+    from stage.tui.screens.applications import ApplicationsScreen
     from stage.tui.screens.boards import BoardsScreen
     from stage.tui.screens.postings import HELP_TEXT
     from stage.tui.screens.review import ReviewScreen
     from stage.tui.screens.sync import SyncScreen
 
-    texts = [HELP_TEXT] + [screen.HELP_TEXT for screen in (ReviewScreen, BoardsScreen, SyncScreen)]
+    texts = [HELP_TEXT] + [
+        screen.HELP_TEXT for screen in (ReviewScreen, BoardsScreen, SyncScreen, ApplicationsScreen)
+    ]
     for text in texts:
         for line in text.split("\n"):
             plain = render(line).plain
