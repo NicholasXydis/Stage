@@ -65,7 +65,7 @@ Header {
     color: $warn;
 }
 
-#filters {
+#filters, #picker {
     height: auto;
     max-height: 12;
     padding: 0 1;
@@ -74,17 +74,18 @@ Header {
     scrollbar-size-vertical: 1;
 }
 
-#filters:focus {
+#filters:focus, #picker:focus {
     border-bottom: solid $blue;
 }
 
-#filters > .option-list--option-highlighted {
+#filters > .option-list--option-highlighted,
+#picker > .option-list--option-highlighted {
     background: $blue-deep;
     color: $on-blue;
     text-style: bold;
 }
 
-#filters.hidden {
+#filters.hidden, #picker.hidden {
     display: none;
 }
 
@@ -142,13 +143,13 @@ DataTable > .datatable--header {
     text-style: bold;
 }
 
-#search-bar {
+#search-bar, #note-bar {
     height: 3;
     padding: 0 1;
     display: none;
 }
 
-#search-bar.visible {
+#search-bar.visible, #note-bar.visible {
     display: block;
 }
 
@@ -183,7 +184,7 @@ Footer {
     background: $panel;
 }
 
-.narrow #filters {
+.narrow #filters, .narrow #picker {
     max-height: 8;
 }
 
