@@ -15,12 +15,12 @@ from stage.domain import Job, JobFilters, LocationBucket, RoleCategory
 from stage.domain.preferences import (
     MAX_ABOUT,
     MAX_COMPANIES,
-    Employer,
+    ChosenCompany,
     PreferenceError,
     Preferences,
     check_overlap,
     parse_about,
-    parse_employers,
+    parse_companies,
     parse_locations,
     parse_roles,
     parse_terms,
@@ -118,8 +118,8 @@ MINE = Preferences(
     locations=(LocationBucket.CANADA,),
     roles=(RoleCategory.SWE, RoleCategory.QUANT),
     terms=("summer-2027",),
-    follow=(Employer("Cisco", "cisco"),),
-    avoid=(Employer("Acme Corp", "acme corp"),),
+    follow=(ChosenCompany("Cisco", "cisco"),),
+    avoid=(ChosenCompany("Acme Corp", "acme corp"),),
 )
 
 
@@ -180,7 +180,7 @@ def test_an_explicit_flag_wins_over_its_preference() -> None:
 
 
 def test_following_only_matters_alongside_saved_places() -> None:
-    followed = (Employer("Cisco", "cisco"),)
+    followed = (ChosenCompany("Cisco", "cisco"),)
     placed = Preferences(locations=(LocationBucket.USA,), follow=followed)
 
     assert Preferences(follow=followed).apply(JobFilters()).follow_companies == frozenset()
@@ -254,22 +254,22 @@ def test_terms_are_lowercased_unknown_is_implied_and_garbage_is_refused() -> Non
 
 
 def test_employers_are_cleaned_deduplicated_and_bounded() -> None:
-    found = parse_employers(["Shopify​", "shopify", "Acme\tCorp"], _fold)
+    found = parse_companies(["Shopify​", "shopify", "Acme\tCorp"], _fold)
 
-    assert [employer.name for employer in found] == ["Shopify", "Acme Corp"]
+    assert [company.name for company in found] == ["Shopify", "Acme Corp"]
     with pytest.raises(PreferenceError, match="no letters or digits"):
-        parse_employers(["!!!"], _fold)
+        parse_companies(["!!!"], _fold)
     with pytest.raises(PreferenceError, match="at most 120 characters"):
-        parse_employers(["x" * 121], _fold)
+        parse_companies(["x" * 121], _fold)
     with pytest.raises(PreferenceError, match=f"At most {MAX_COMPANIES} employers"):
-        parse_employers([f"Employer {index}" for index in range(MAX_COMPANIES + 1)], _fold)
+        parse_companies([f"Employer {index}" for index in range(MAX_COMPANIES + 1)], _fold)
 
 
 def test_a_comma_inside_a_stored_employer_name_keeps_it_whole() -> None:
     known = {"src inc": "SRC, Inc", "shopify": "Shopify"}
 
-    found = parse_employers(["SRC, Inc, shopify"], _fold, known)
-    split = parse_employers(["SRC, Inc"], _fold)
+    found = parse_companies(["SRC, Inc, shopify"], _fold, known)
+    split = parse_companies(["SRC, Inc"], _fold)
 
     assert [e.name for e in found] == ["SRC, Inc", "Shopify"]
     assert [e.name for e in split] == ["SRC", "Inc"]
@@ -283,13 +283,13 @@ def test_a_huge_paste_stops_at_the_cap_without_folding_everything() -> None:
         return _fold(value)
 
     with pytest.raises(PreferenceError, match=str(MAX_COMPANIES)):
-        parse_employers([",".join(f"e{index}" for index in range(10_000))], counting)
+        parse_companies([",".join(f"e{index}" for index in range(10_000))], counting)
 
     assert len(calls) < 1_000
 
 
 def test_an_employer_cannot_be_both_followed_and_avoided() -> None:
-    cisco = (Employer("Cisco", "cisco"),)
+    cisco = (ChosenCompany("Cisco", "cisco"),)
 
     with pytest.raises(PreferenceError, match="Cisco cannot be both followed and avoided."):
         check_overlap(cisco, cisco)
@@ -352,7 +352,7 @@ def test_one_bad_field_does_not_lose_the_others(tmp_path: Path) -> None:
     loaded = load_preferences(path)
 
     assert loaded.preferences.terms == ("summer-2027",)
-    assert [e.key for e in loaded.preferences.follow] == ["shopify", "ubisoft"]
+    assert [e.folded for e in loaded.preferences.follow] == ["shopify", "ubisoft"]
     assert loaded.preferences.locations == ()
     assert (
         "preferences.json: locations was ignored. Unknown location 'mars'. "
@@ -392,8 +392,8 @@ def test_a_hand_edited_overlap_is_avoided(tmp_path: Path) -> None:
 
     loaded = load_preferences(path)
 
-    assert [e.key for e in loaded.preferences.follow] == ["ubisoft"]
-    assert [e.key for e in loaded.preferences.avoid] == ["shopify"]
+    assert [e.folded for e in loaded.preferences.follow] == ["ubisoft"]
+    assert [e.folded for e in loaded.preferences.avoid] == ["shopify"]
     assert loaded.problems
 
 
@@ -464,7 +464,7 @@ async def test_without_saved_places_nothing_is_left_out(db_path: Path) -> None:
     from stage.storage import open_repository
 
     _store(db_path, _catalogue())
-    roles_only = Preferences(roles=(RoleCategory.SWE,), follow=(Employer("Cisco", "cisco"),))
+    roles_only = Preferences(roles=(RoleCategory.SWE,), follow=(ChosenCompany("Cisco", "cisco"),))
 
     async with open_repository(db_path) as repository:
         listed = await list_jobs(repository, roles_only.apply(JobFilters()), window_days=None)
@@ -614,7 +614,7 @@ def test_the_guided_setup_keeps_changes_clears_and_retries() -> None:
 def test_pressing_enter_keeps_a_saved_employer_even_when_the_database_forgot_it() -> None:
     from stage.cli.commands.preferences import _guided
 
-    current = Preferences(follow=(Employer("SRC, Inc", "src inc"),))
+    current = Preferences(follow=(ChosenCompany("SRC, Inc", "src inc"),))
 
     result = _guided(current, {}, lambda _, shown: shown, lambda _: None)
 
@@ -624,14 +624,16 @@ def test_pressing_enter_keeps_a_saved_employer_even_when_the_database_forgot_it(
 def test_the_guided_setup_refuses_to_avoid_what_it_just_followed() -> None:
     from stage.cli.commands.preferences import _guided
 
-    current = Preferences(avoid=(Employer("Shopify", "shopify"), Employer("Acme", "acme")))
+    current = Preferences(
+        avoid=(ChosenCompany("Shopify", "shopify"), ChosenCompany("Acme", "acme"))
+    )
     answers = iter(["", "", "", "Shopify", "shopify", "Acme, Ubisoft", ""])
     warnings: list[str] = []
 
     result = _guided(current, {}, lambda _, shown: next(answers) or shown, warnings.append)
 
-    assert [e.key for e in result.follow] == ["shopify"]
-    assert [e.key for e in result.avoid] == ["acme", "ubisoft"]
+    assert [e.folded for e in result.follow] == ["shopify"]
+    assert [e.folded for e in result.avoid] == ["acme", "ubisoft"]
     assert warnings == ["Shopify cannot be both followed and avoided."]
 
 
@@ -770,7 +772,9 @@ def test_prefs_never_creates_a_database(tmp_path: Path) -> None:
 
 def test_prefs_show_counts_open_postings_per_employer(db_path: Path) -> None:
     db = _store(db_path, _catalogue())
-    save_preferences(Preferences(follow=(Employer("Cisco", "cisco"), Employer("Nope", "nope"))))
+    save_preferences(
+        Preferences(follow=(ChosenCompany("Cisco", "cisco"), ChosenCompany("Nope", "nope")))
+    )
     elsewhere = str(db_path.with_name("x.db"))
 
     shown = _plain(CliRunner().invoke(app, ["prefs", "--show", "--db", db]).stdout)
@@ -946,10 +950,10 @@ def test_list_mine_stays_off_the_lexicon_and_the_renderer_in_json() -> None:
     probe = (
         "import sys\n"
         "from stage.domain import LocationBucket\n"
-        "from stage.domain.preferences import Employer, Preferences\n"
+        "from stage.domain.preferences import ChosenCompany, Preferences\n"
         "from stage.services.preferences import save_preferences\n"
         "save_preferences(Preferences(locations=(LocationBucket.CANADA,),"
-        " follow=(Employer('Shopify', 'shopify'),)))\n"
+        " follow=(ChosenCompany('Shopify', 'shopify'),)))\n"
         "from stage.cli.app import app\n"
         "try:\n"
         "    app(['list', '--mine', '--json'])\n"
@@ -1011,7 +1015,7 @@ async def test_the_tui_mine_row_filters_and_explains(db_path: Path) -> None:
         await pilot.pause()
         refresh = type(screen).refresh_results.__wrapped__  # type: ignore[attr-defined]
         await refresh(screen)
-        await refresh(screen)
+        await pilot.pause()
         messages = [str(note.message) for note in app_under_test._notifications]
 
         assert screen.state.mine
@@ -1054,3 +1058,96 @@ async def test_the_tui_warns_about_a_damaged_preferences_file(tmp_path: Path) ->
         messages = [str(note.message) for note in app_under_test._notifications]
 
     assert DAMAGED in messages
+
+
+async def test_a_refresh_started_before_mine_never_speaks_for_it(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    from textual.widgets import OptionList
+
+    from stage.services import query
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    db = _seeded(db_path)
+    gate = asyncio.Event()
+    real = query.list_jobs
+    calls: list[JobFilters] = []
+
+    async def first_one_waits(*args: object, **kwargs: object) -> object:
+        calls.append(args[1])  # type: ignore[arg-type]
+        if len(calls) == 1:
+            await gate.wait()
+        return await real(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(query, "list_jobs", first_one_waits)
+    app_under_test = StageApp(Path(db), "")
+
+    async with app_under_test.run_test(size=(110, 32)) as pilot:
+        await pilot.pause()
+        screen = app_under_test.screen
+        assert isinstance(screen, PostingsScreen)
+        await pilot.press("f")
+        await pilot.pause()
+        screen.query_one("#filters", OptionList).highlighted = 0
+        await pilot.press("enter")
+        gate.set()
+        await pilot.pause()
+        await pilot.pause()
+        await type(screen).refresh_results.__wrapped__(screen)  # type: ignore[attr-defined]
+        await pilot.pause()
+        messages = [str(note.message) for note in app_under_test._notifications]
+
+    assert messages == [
+        f"{HEADER}. 2 with no location given are left out; turn Mine off to see them."
+    ]
+
+
+async def test_a_cancelled_refresh_hands_the_mine_notice_to_the_next_one(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+
+    from stage.services import query
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    db = _seeded(db_path)
+    app_under_test = StageApp(Path(db), "")
+
+    async with app_under_test.run_test(size=(110, 32)) as pilot:
+        await pilot.pause()
+        screen = app_under_test.screen
+        assert isinstance(screen, PostingsScreen)
+        gate = asyncio.Event()
+
+        async def waits(*args: object, **kwargs: object) -> object:
+            await gate.wait()
+            raise AssertionError
+
+        monkeypatch.setattr(query, "list_jobs", waits)
+        screen.state.choose("mine", "on")
+        screen._announce_mine = True
+        refresh = type(screen).refresh_results.__wrapped__  # type: ignore[attr-defined]
+        pending = asyncio.ensure_future(refresh(screen))
+        await asyncio.sleep(0)
+        assert not screen._announce_mine
+        pending.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await pending
+
+        assert screen._announce_mine
+
+
+def test_a_file_saved_in_the_first_format_still_loads(tmp_path: Path) -> None:
+    path = tmp_path / "preferences.json"
+    old = {"follow": [{"name": "Société Générale", "key": "stale"}], "locations": ["canada"]}
+    path.write_text(json.dumps(old), encoding="utf-8")
+
+    loaded = load_preferences(path)
+
+    assert [company.folded for company in loaded.preferences.follow] == ["societe generale"]
+    assert loaded.preferences.locations == (LocationBucket.CANADA,)
+    assert loaded.problems == ()

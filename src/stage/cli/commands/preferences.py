@@ -106,7 +106,7 @@ def prefs(
     current = loaded.preferences
 
     if changing:
-        known = _stored_employers(db) if follow or avoid else {}
+        known = _stored_companies(db) if follow or avoid else {}
         try:
             updated = _updated(current, known, location, role, term, follow, avoid, about)
         except (PreferenceError, InvalidOptionError) as exc:
@@ -116,7 +116,7 @@ def prefs(
         return
 
     if not (show or as_json) and _interactive():
-        known = _stored_employers(db)
+        known = _stored_companies(db)
         _say(KEEP_OR_CLEAR, "dim")
         _finish(_guided(current, known, _ask, _warn), known, db, as_json)
         return
@@ -143,7 +143,7 @@ def _updated(
         Preferences,
         check_overlap,
         parse_about,
-        parse_employers,
+        parse_companies,
         parse_locations,
         parse_roles,
     )
@@ -153,8 +153,8 @@ def _updated(
         locations=parse_locations(location) if location else current.locations,
         roles=parse_roles(role) if role else current.roles,
         terms=_terms(term) if term else current.terms,
-        follow=parse_employers(follow, fold, known) if follow else current.follow,
-        avoid=parse_employers(avoid, fold, known) if avoid else current.avoid,
+        follow=parse_companies(follow, fold, known) if follow else current.follow,
+        avoid=parse_companies(avoid, fold, known) if avoid else current.avoid,
         about=parse_about(about) if about is not None else current.about,
     )
     check_overlap(updated.follow, updated.avoid)
@@ -179,13 +179,13 @@ def _guided(
     from stage.domain.preferences import (
         CHOOSABLE_LOCATIONS,
         CHOOSABLE_ROLES,
-        EMPLOYER_SEPARATOR,
-        Employer,
+        COMPANY_SEPARATOR,
+        ChosenCompany,
         PreferenceError,
         Preferences,
         check_overlap,
         parse_about,
-        parse_employers,
+        parse_companies,
         parse_locations,
         parse_roles,
     )
@@ -201,8 +201,8 @@ def _guided(
             except (PreferenceError, InvalidOptionError) as exc:
                 warn(str(exc))
 
-    def avoided(values: list[str]) -> tuple[Employer, ...]:
-        chosen = parse_employers(values, fold, known)
+    def avoided(values: list[str]) -> tuple[ChosenCompany, ...]:
+        chosen = parse_companies(values, fold, known)
         check_overlap(follow, chosen)
         return chosen
 
@@ -224,14 +224,14 @@ def _guided(
     follow = step(
         "Employers to follow, included from any place",
         current.follow,
-        EMPLOYER_SEPARATOR.join(e.name for e in current.follow),
-        lambda values: parse_employers(values, fold, known),
+        COMPANY_SEPARATOR.join(e.name for e in current.follow),
+        lambda values: parse_companies(values, fold, known),
     )
-    kept_avoid = tuple(e for e in current.avoid if e.key not in {f.key for f in follow})
+    kept_avoid = tuple(e for e in current.avoid if e.folded not in {f.folded for f in follow})
     avoid = step(
         "Employers to leave out",
         kept_avoid,
-        EMPLOYER_SEPARATOR.join(e.name for e in kept_avoid),
+        COMPANY_SEPARATOR.join(e.name for e in kept_avoid),
         avoided,
     )
     about = step(
@@ -253,16 +253,16 @@ def _finish(
         path = save_preferences(preferences)
     except OSError as exc:
         _could_not(exc, "save")
-    for warning in _unseen_employers(preferences, known):
+    for warning in _unseen_companies(preferences, known):
         _print_warning(warning, as_json)
     if as_json:
         emit(preferences_to_json(preferences))
         return
-    from stage.cli.render import render_preferences, terminal
+    from stage.cli.render import plain, render_preferences, terminal
 
-    render_preferences(
-        terminal(), preferences, saved=True, path=path, counts=_open_counts(preferences, db)
-    )
+    console = terminal()
+    render_preferences(console, preferences, saved=True, counts=_open_counts(preferences, db))
+    console.print(plain(f"Stored in {path}", "dim"))
 
 
 def _could_not(exc: OSError, verb: str) -> NoReturn:
@@ -273,7 +273,7 @@ def _could_not(exc: OSError, verb: str) -> NoReturn:
     raise typer.Exit(code=1) from exc
 
 
-def _stored_employers(db: "Path | None") -> dict[str, str]:
+def _stored_companies(db: "Path | None") -> dict[str, str]:
     from stage.lexicon import fold
     from stage.storage import open_repository
 
@@ -291,30 +291,30 @@ def _stored_employers(db: "Path | None") -> dict[str, str]:
 def _open_counts(preferences: "Preferences", db: "Path | None") -> dict[str, int] | None:
     from stage.storage import open_repository
 
-    keys = {employer.key for employer in (*preferences.follow, *preferences.avoid)}
+    wanted = {company.folded for company in (*preferences.follow, *preferences.avoid)}
     database = _database(db)
-    if not keys or not database.exists():
+    if not wanted or not database.exists():
         return None
 
     async def counts() -> dict[str, int]:
         async with open_repository(database) as repository:
-            return await repository.open_counts_by_company(keys)
+            return await repository.open_counts_by_company(wanted)
 
     return run_async(counts())
 
 
-def _unseen_employers(preferences: "Preferences", known: "Mapping[str, str]") -> list[str]:
+def _unseen_companies(preferences: "Preferences", known: "Mapping[str, str]") -> list[str]:
     from difflib import get_close_matches
 
     if not known:
         return []
     warnings: list[str] = []
-    for employer in (*preferences.follow, *preferences.avoid):
-        if employer.key in known:
+    for company in (*preferences.follow, *preferences.avoid):
+        if company.folded in known:
             continue
-        near = get_close_matches(employer.key, list(known), n=1, cutoff=0.75)
+        near = get_close_matches(company.folded, list(known), n=1, cutoff=0.75)
         hint = f" Did you mean {known[near[0]]!r}?" if near else ""
-        warnings.append(f"Saved {employer.name!r}, but Stage has no postings from it yet.{hint}")
+        warnings.append(f"Saved {company.name!r}, but Stage has no postings from it yet.{hint}")
     return warnings
 
 

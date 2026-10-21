@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -215,24 +216,30 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         if repo is None:
             return
         self._set_busy(True)
-        filters = self.state.as_filters(self._preferences)
-        if self.state.only_new:
-            since = await repo.previous_sync_at()
-            if since is not None:
-                filters = replace(filters, first_seen_after=since)
-        if self.state.query.strip():
-            listing = await search_jobs(
-                repo, self.state.query, filters, window_days=self.state.window_days
-            )
-        else:
-            listing = await list_jobs(repo, filters, window_days=self.state.window_days)
+        announce = self._announce_mine and self.state.mine
+        self._announce_mine = False
+        preferences = self._preferences
+        filters = self.state.as_filters(preferences)
+        try:
+            if self.state.only_new:
+                since = await repo.previous_sync_at()
+                if since is not None:
+                    filters = replace(filters, first_seen_after=since)
+            if self.state.query.strip():
+                listing = await search_jobs(
+                    repo, self.state.query, filters, window_days=self.state.window_days
+                )
+            else:
+                listing = await list_jobs(repo, filters, window_days=self.state.window_days)
+        except asyncio.CancelledError:
+            self._announce_mine = self._announce_mine or announce
+            raise
         self._jobs = listing.jobs
         self._total = listing.total_matching
         self._fill(listing.jobs)
         self._set_busy(False)
-        if self._announce_mine and self.state.mine and self._preferences is not None:
-            self._announce_mine = False
-            told(self, _mine_notice(self._preferences, filters, listing.no_location))
+        if announce and preferences is not None:
+            told(self, _mine_notice(preferences, filters, listing.no_location))
 
     def _fill(self, jobs: "tuple[Job, ...]") -> None:
         table = self.query_one("#results", DataTable)

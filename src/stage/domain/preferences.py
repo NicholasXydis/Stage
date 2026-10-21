@@ -18,7 +18,7 @@ CHOOSABLE_ROLES = tuple(
 )
 ALWAYS_ROLES = frozenset({RoleCategory.GENERAL_CS, RoleCategory.UNKNOWN})
 COVERED_BY = {LocationBucket.CANADA: (LocationBucket.MONTREAL,)}
-EMPLOYER_SEPARATOR = "; "
+COMPANY_SEPARATOR = "; "
 
 _TERM = re.compile(r"^[a-z]+-\d{4}$")
 _SEPARATOR = re.compile(r"[,;]")
@@ -30,9 +30,9 @@ class PreferenceError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
-class Employer:
+class ChosenCompany:
     name: str
-    key: str
+    folded: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,8 +40,8 @@ class Preferences:
     locations: tuple[LocationBucket, ...] = ()
     roles: tuple[RoleCategory, ...] = ()
     terms: tuple[str, ...] = ()
-    follow: tuple[Employer, ...] = ()
-    avoid: tuple[Employer, ...] = ()
+    follow: tuple[ChosenCompany, ...] = ()
+    avoid: tuple[ChosenCompany, ...] = ()
     about: str = ""
 
     @property
@@ -60,8 +60,8 @@ class Preferences:
             locations=self._locations() if placed else frozenset(),
             roles=self._roles() if filters.role is None else frozenset(),
             terms=self._terms() if filters.term is None else frozenset(),
-            avoid_companies=frozenset(e.key for e in self.avoid) if named else frozenset(),
-            follow_companies=frozenset(e.key for e in self.follow)
+            avoid_companies=frozenset(e.folded for e in self.avoid) if named else frozenset(),
+            follow_companies=frozenset(e.folded for e in self.follow)
             if named and placed
             else frozenset(),
         )
@@ -77,9 +77,9 @@ class Preferences:
             parts.append(", ".join(self.terms))
         if filters.company is None:
             if self.follow and placed:
-                parts.append("following " + EMPLOYER_SEPARATOR.join(e.name for e in self.follow))
+                parts.append("following " + COMPANY_SEPARATOR.join(e.name for e in self.follow))
             if self.avoid:
-                parts.append("leaving out " + EMPLOYER_SEPARATOR.join(e.name for e in self.avoid))
+                parts.append("leaving out " + COMPANY_SEPARATOR.join(e.name for e in self.avoid))
         if not parts:
             return "Mine: the filters you typed replace your saved preferences"
         return "Mine: " + " | ".join(parts)
@@ -152,29 +152,29 @@ def parse_terms(values: Iterable[str]) -> tuple[str, ...]:
     return unique
 
 
-def parse_employers(
+def parse_companies(
     values: Iterable[str],
     fold: Callable[[str], str],
     known: Mapping[str, str] | None = None,
-) -> tuple[Employer, ...]:
+) -> tuple[ChosenCompany, ...]:
     stored = known or {}
-    chosen: dict[str, Employer] = {}
-    for value in _employer_names(_pieces(values), fold, stored):
+    chosen: dict[str, ChosenCompany] = {}
+    for value in _company_names(_pieces(values), fold, stored):
         name = clean_text(value)
         if len(name) > MAX_COMPANY_NAME:
             raise PreferenceError(f"Employer names can be at most {MAX_COMPANY_NAME} characters.")
-        key = fold(name)
-        if not key:
+        folded = fold(name)
+        if not folded:
             raise PreferenceError(
                 f"{value!r} has no letters or digits, so it cannot match an employer."
             )
-        chosen.setdefault(key, Employer(name=stored.get(key, name), key=key))
+        chosen.setdefault(folded, ChosenCompany(name=stored.get(folded, name), folded=folded))
         if len(chosen) > MAX_COMPANIES:
             raise PreferenceError(f"At most {MAX_COMPANIES} employers can be saved in each list.")
     return tuple(chosen.values())
 
 
-def _employer_names(
+def _company_names(
     pieces: list[str], fold: Callable[[str], str], known: Mapping[str, str]
 ) -> Iterator[str]:
     start = 0
@@ -192,12 +192,12 @@ def _employer_names(
         start = end
 
 
-def check_overlap(follow: Iterable[Employer], avoid: Iterable[Employer]) -> None:
-    avoided = {employer.key for employer in avoid}
-    both = [employer.name for employer in follow if employer.key in avoided]
+def check_overlap(follow: Iterable[ChosenCompany], avoid: Iterable[ChosenCompany]) -> None:
+    avoided = {company.folded for company in avoid}
+    both = [company.name for company in follow if company.folded in avoided]
     if both:
         raise PreferenceError(
-            f"{EMPLOYER_SEPARATOR.join(both)} cannot be both followed and avoided."
+            f"{COMPANY_SEPARATOR.join(both)} cannot be both followed and avoided."
         )
 
 
@@ -216,16 +216,16 @@ __all__ = [
     "ALWAYS_ROLES",
     "CHOOSABLE_LOCATIONS",
     "CHOOSABLE_ROLES",
-    "EMPLOYER_SEPARATOR",
+    "COMPANY_SEPARATOR",
     "MAX_ABOUT",
     "MAX_COMPANIES",
-    "Employer",
+    "ChosenCompany",
     "PreferenceError",
     "Preferences",
     "check_overlap",
     "clean_text",
     "parse_about",
-    "parse_employers",
+    "parse_companies",
     "parse_locations",
     "parse_roles",
     "parse_terms",

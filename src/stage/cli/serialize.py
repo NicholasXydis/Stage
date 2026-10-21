@@ -72,8 +72,8 @@ def preferences_to_json(preferences: "Preferences | None", *, cleared: bool = Fa
             "locations": [location.value for location in preferences.locations],
             "roles": [role.value for role in preferences.roles],
             "terms": list(preferences.terms),
-            "follow": [employer.name for employer in preferences.follow],
-            "avoid": [employer.name for employer in preferences.avoid],
+            "follow": [company.name for company in preferences.follow],
+            "avoid": [company.name for company in preferences.avoid],
             "about": preferences.about,
         }
     )

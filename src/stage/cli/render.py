@@ -1,5 +1,5 @@
 import json
-from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, TextIO
 
@@ -9,8 +9,6 @@ from rich.table import Table
 from rich.text import Text
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from stage.domain import WorkdayCrawl
     from stage.domain.preferences import Preferences
     from stage.services.canary import CanaryReport
@@ -378,25 +376,24 @@ def render_preferences(
     preferences: "Preferences",
     *,
     saved: bool,
-    path: "Path | None" = None,
-    counts: "Mapping[str, int] | None" = None,
+    counts: dict[str, int] | None = None,
 ) -> None:
-    from stage.domain.preferences import EMPLOYER_SEPARATOR
+    from stage.domain.preferences import COMPANY_SEPARATOR
 
     def listed(values: Sequence[str], separator: str = ", ") -> str:
         return separator.join(values) if values else "-"
 
-    def employer(name: str, key: str) -> str:
-        return name if counts is None else f"{name} ({counts.get(key, 0):,} open)"
+    def counted(name: str, folded: str) -> str:
+        return name if counts is None else f"{name} ({counts.get(folded, 0):,} open)"
 
     console.print(plain("Saved your preferences." if saved else "Your preferences", "bold"))
     console.print(_field("Locations", listed([v.value for v in preferences.locations])))
     console.print(_field("Roles", listed([v.value for v in preferences.roles])))
     console.print(_field("Terms", listed(list(preferences.terms))))
-    follow = [employer(e.name, e.key) for e in preferences.follow]
-    avoid = [employer(e.name, e.key) for e in preferences.avoid]
-    console.print(_field("Following", listed(follow, EMPLOYER_SEPARATOR)))
-    console.print(_field("Leaving out", listed(avoid, EMPLOYER_SEPARATOR)))
+    follow = [counted(e.name, e.folded) for e in preferences.follow]
+    avoid = [counted(e.name, e.folded) for e in preferences.avoid]
+    console.print(_field("Following", listed(follow, COMPANY_SEPARATOR)))
+    console.print(_field("Leaving out", listed(avoid, COMPANY_SEPARATOR)))
     about = f"{len(preferences.about):,} characters" if preferences.about else "-"
     console.print(_field("About you", about))
     console.print()
@@ -416,8 +413,6 @@ def render_preferences(
             "[dim]Nothing chosen yet. Run [bold]stage prefs[/bold] in a terminal, or pass "
             "--location, --role and --term.[/dim]"
         )
-    if path is not None:
-        console.print(plain(f"Stored in {path}", "dim"))
 
 
 def render_export(console: Console, result: "ExportResult") -> None:

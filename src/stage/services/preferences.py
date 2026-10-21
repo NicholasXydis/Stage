@@ -8,7 +8,7 @@ from typing import Any
 
 from stage.domain.preferences import (
     MAX_COMPANIES,
-    Employer,
+    ChosenCompany,
     PreferenceError,
     Preferences,
     clean_text,
@@ -94,8 +94,8 @@ def _payload(preferences: Preferences) -> dict[str, Any]:
         "locations": [location.value for location in preferences.locations],
         "roles": [role.value for role in preferences.roles],
         "terms": list(preferences.terms),
-        "follow": [{"name": e.name, "key": e.key} for e in preferences.follow],
-        "avoid": [{"name": e.name, "key": e.key} for e in preferences.avoid],
+        "follow": [{"name": e.name, "folded": e.folded} for e in preferences.follow],
+        "avoid": [{"name": e.name, "folded": e.folded} for e in preferences.avoid],
         "about": preferences.about,
     }
 
@@ -124,10 +124,10 @@ def _from_payload(payload: dict[str, Any], label: str) -> LoadedPreferences:
     else:
         problems.append(f"{label}: about was ignored because it is not text.")
 
-    follow = _employers(payload.get("follow", []), "follow", label, problems)
-    avoid = _employers(payload.get("avoid", []), "avoid", label, problems)
-    avoided = {employer.key for employer in avoid}
-    both = [employer.name for employer in follow if employer.key in avoided]
+    follow = _companies(payload.get("follow", []), "follow", label, problems)
+    avoid = _companies(payload.get("avoid", []), "avoid", label, problems)
+    avoided = {company.folded for company in avoid}
+    both = [company.name for company in follow if company.folded in avoided]
     if both:
         problems.append(
             f"{label}: {', '.join(both)} is in both follow and avoid, so it is avoided."
@@ -136,30 +136,30 @@ def _from_payload(payload: dict[str, Any], label: str) -> LoadedPreferences:
         locations=field("locations", parse_locations, ()),
         roles=field("roles", parse_roles, ()),
         terms=field("terms", parse_terms, ()),
-        follow=tuple(employer for employer in follow if employer.key not in avoided),
+        follow=tuple(company for company in follow if company.folded not in avoided),
         avoid=avoid,
         about=about,
     )
     return LoadedPreferences(preferences, tuple(problems))
 
 
-def _employers(value: Any, name: str, label: str, problems: list[str]) -> tuple[Employer, ...]:
+def _companies(value: Any, name: str, label: str, problems: list[str]) -> tuple[ChosenCompany, ...]:
     if not isinstance(value, list):
         problems.append(f"{label}: {name} was ignored because it is not a list.")
         return ()
-    found: dict[str, Employer] = {}
+    found: dict[str, ChosenCompany] = {}
     for entry in value:
-        employer = _employer(entry)
-        if employer is None:
+        company = _company(entry)
+        if company is None:
             problems.append(f"{label}: an entry in {name} was skipped because it has no name.")
             continue
-        found.setdefault(employer.key, employer)
+        found.setdefault(company.folded, company)
     if len(found) > MAX_COMPANIES:
         problems.append(f"{label}: {name} keeps only its first {MAX_COMPANIES} employers.")
     return tuple(found.values())[:MAX_COMPANIES]
 
 
-def _employer(entry: Any) -> Employer | None:
+def _company(entry: Any) -> ChosenCompany | None:
     if isinstance(entry, str):
         entry = {"name": entry}
     if not isinstance(entry, dict):
@@ -167,12 +167,12 @@ def _employer(entry: Any) -> Employer | None:
     name = entry.get("name")
     if not isinstance(name, str) or not clean_text(name):
         return None
-    key = entry.get("key")
-    if not isinstance(key, str) or not key:
+    folded = entry.get("folded")
+    if not isinstance(folded, str) or not folded:
         from stage.lexicon import fold
 
-        key = fold(name)
-    return Employer(name=clean_text(name), key=key) if key else None
+        folded = fold(name)
+    return ChosenCompany(name=clean_text(name), folded=folded) if folded else None
 
 
 __all__ = [
