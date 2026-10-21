@@ -1263,14 +1263,12 @@ def test_open_allows_exactly_the_cap_and_print_skips_it(tmp_path: Path) -> None:
 
 
 def test_ranges_resolve_against_a_real_listing_in_order(tmp_path: Path) -> None:
-    import json
-
     db = _seeded(tmp_path / "r.db", count=3)
     runner = CliRunner()
     runner.invoke(app, ["list", "--db", db])
 
-    both = json.loads(runner.invoke(app, ["show", "1-2", "--json", "--db", db]).stdout)
-    one = json.loads(runner.invoke(app, ["show", "2-2", "--json", "--db", db]).stdout)
+    both = loads(runner.invoke(app, ["show", "1-2", "--json", "--db", db]).stdout)
+    one = loads(runner.invoke(app, ["show", "2-2", "--json", "--db", db]).stdout)
     printed = runner.invoke(app, ["open", "3", "1-2", "1", "--print", "--db", db]).stdout
     past = runner.invoke(app, ["open", "1-5", "--print", "--db", db])
 
@@ -1374,8 +1372,6 @@ def test_an_export_keeps_the_newest_posted_order(tmp_path: Path) -> None:
 def test_the_first_sync_note_reaches_search_but_not_json_or_an_empty_database(
     tmp_path: Path,
 ) -> None:
-    import json
-
     once = _seeded(tmp_path / "once.db", count=3, runs=1)
     empty = _seeded(tmp_path / "empty.db", count=0, runs=0)
     runner = CliRunner()
@@ -1385,5 +1381,5 @@ def test_the_first_sync_note_reaches_search_but_not_json_or_an_empty_database(
     nothing = runner.invoke(app, ["list", "--new", "--db", empty]).stdout
 
     assert "Only one sync so far" in ANSI_ESCAPE.sub("", searched)
-    assert len(json.loads(as_json)) == 3
+    assert len(loads(as_json)) == 3
     assert "Only one sync so far" not in nothing
