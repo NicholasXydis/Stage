@@ -7,7 +7,6 @@ from pathlib import Path
 
 MAX_REMEMBERED = 100_000
 _RANGE = re.compile(r"^(\d+)-(\d+)$")
-_RANGE_LIKE = re.compile(r"^[\d-]*-[\d-]*$")
 
 
 class StaleSelectionError(Exception):
@@ -80,6 +79,10 @@ def resolve(row: int, synced_at: datetime | None, path: Path | None = None) -> s
     return selection.ids[row - 1]
 
 
+def _looks_like_a_range(text: str) -> bool:
+    return "-" in text and all(char == "-" or char.isdecimal() for char in text)
+
+
 def _row(text: str) -> int:
     if len(text.lstrip("0")) > len(str(MAX_REMEMBERED)):
         raise BadRangeError(f"A listing holds at most {MAX_REMEMBERED:,} rows.")
@@ -91,7 +94,7 @@ def expand(references: Sequence[str]) -> list[str]:
     for reference in references:
         found = _RANGE.match(reference)
         if found is None:
-            if _RANGE_LIKE.match(reference):
+            if _looks_like_a_range(reference):
                 raise BadRangeError(f"{reference!r} is not a range; write one like 1-5.")
             expanded.setdefault(str(_row(reference)) if reference.isdecimal() else reference)
             continue

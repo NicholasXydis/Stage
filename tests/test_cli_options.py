@@ -806,6 +806,19 @@ def test_a_backwards_or_oversized_range_is_refused() -> None:
         expand(["1-999999"])
 
 
+@pytest.mark.serial
+def test_a_long_argument_is_classified_in_linear_time() -> None:
+    import time
+
+    from stage.cli.selection import BadRangeError, expand
+
+    started = time.perf_counter()
+    with pytest.raises(BadRangeError):
+        expand(["-" * 200_000])
+    assert expand(["-" * 200_000 + "x"]) == ["-" * 200_000 + "x"]
+    assert time.perf_counter() - started < 1.0
+
+
 def test_a_row_number_too_long_to_convert_is_refused_not_crashed() -> None:
     from stage.cli.selection import BadRangeError, expand
 
@@ -1270,7 +1283,7 @@ def test_ranges_resolve_against_a_real_listing_in_order(tmp_path: Path) -> None:
     ]
     assert past.exit_code == 2
     assert "out of range" in ANSI_ESCAPE.sub("", past.stdout + past.stderr)
-    assert "example.com" not in past.stdout
+    assert not [line for line in past.stdout.split() if line.startswith("https://")]
 
 
 def test_a_superscript_digit_is_a_missing_id_not_a_crash(tmp_path: Path) -> None:
