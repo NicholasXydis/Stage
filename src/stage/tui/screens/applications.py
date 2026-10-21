@@ -11,6 +11,7 @@ from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 from stage.domain.tracker import ApplicationStatus, PostingState, TrackerError, parse_note
 from stage.normalize.location import display_location
 from stage.services.tracker import TrackerListing, TrackerRow
+from stage.tui.context import repository_of
 from stage.tui.help import HelpOverlay
 from stage.tui.safe import cell, quoted, told
 
@@ -56,10 +57,7 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
 
     @property
     def repository(self) -> "AsyncRepository | None":
-        from stage.tui.app import StageApp
-
-        app = self.app
-        return app.repository if isinstance(app, StageApp) else None
+        return repository_of(self.app)
 
     def compose(self) -> ComposeResult:
         yield Header()

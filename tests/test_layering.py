@@ -48,6 +48,11 @@ def test_domain_depends_on_nothing_outside_itself() -> None:
             )
 
 
+def test_no_screen_imports_the_app_that_imports_it() -> None:
+    for path in sorted((SRC / "tui" / "screens").glob("*.py")):
+        assert "stage.tui.app" not in path.read_text(encoding="utf-8"), path.name
+
+
 def test_sources_do_not_import_normalize() -> None:
     for path in sorted((SRC / "sources").rglob("*.py")):
         assert "stage.normalize" not in path.read_text(encoding="utf-8"), path.name

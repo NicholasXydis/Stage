@@ -18,6 +18,7 @@ from stage.domain.text import sanitize
 from stage.domain.tracker import MARKERS, ApplicationStatus
 from stage.normalize.location import display_location
 from stage.services.tracker import Change, ChangeReport, TrackerView
+from stage.tui.context import repository_of
 from stage.tui.help import HelpOverlay
 from stage.tui.safe import cell, quoted, told
 from stage.tui.state import (
@@ -142,10 +143,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
 
     @property
     def repository(self) -> "AsyncRepository | None":
-        from stage.tui.app import StageApp
-
-        app = self.app
-        return app.repository if isinstance(app, StageApp) else None
+        return repository_of(self.app)
 
     def compose(self) -> ComposeResult:
         yield Header()

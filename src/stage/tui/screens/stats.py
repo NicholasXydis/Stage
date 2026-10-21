@@ -8,6 +8,7 @@ from textual.containers import VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
+from stage.tui.context import repository_of
 from stage.tui.help import HelpOverlay
 from stage.tui.safe import quoted
 
@@ -56,10 +57,7 @@ class StatsScreen(HelpOverlay, Screen[None]):
 
     @property
     def repository(self) -> "AsyncRepository | None":
-        from stage.tui.app import StageApp
-
-        app = self.app
-        return app.repository if isinstance(app, StageApp) else None
+        return repository_of(self.app)
 
     def compose(self) -> ComposeResult:
         yield Header()
