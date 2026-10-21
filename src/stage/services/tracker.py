@@ -58,6 +58,7 @@ class TrackerView:
 class Change:
     entry: TrackedPosting
     before: ApplicationStatus | None
+    previous: TrackedPosting | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,13 +226,27 @@ def _plan(
         writes.append(entry)
         if change is not None:
             history.append((target.posting_id, change))
-        changed.append(Change(entry, None if record is None else record.status))
+        changed.append(Change(entry, None if record is None else record.status, record))
     return _Plan(
         ChangeReport(changed=tuple(changed), unchanged=tuple(unchanged)),
         tuple(writes),
         tuple(history),
         renamed,
     )
+
+
+def undo_changes(changes: Sequence[Change]) -> None:
+    if not changes:
+        return
+    path = tracker_path()
+    try:
+        with TrackerStore.connect(path) as store:
+            store.restore(
+                [change.entry.posting_id for change in changes],
+                [change.previous for change in changes if change.previous is not None],
+            )
+    except TrackerUnreadableError as exc:
+        raise _problem(exc) from exc
 
 
 async def remove_tracked(repository: AsyncRepository, references: Sequence[str]) -> RemoveReport:
@@ -507,4 +522,5 @@ __all__ = [
     "tracker_markdown",
     "tracker_path",
     "tracker_view",
+    "undo_changes",
 ]

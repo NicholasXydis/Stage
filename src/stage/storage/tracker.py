@@ -40,6 +40,20 @@ CREATE INDEX IF NOT EXISTS history_by_posting ON history (posting_id, recorded_a
 """
 
 
+_UPSERT = (
+    "INSERT INTO tracked (posting_id, status, on_day, changed_at, note, "
+    "company, title, location, apply_url, source, term) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+    "ON CONFLICT (posting_id) DO UPDATE SET status = excluded.status, "
+    "on_day = excluded.on_day, changed_at = excluded.changed_at, "
+    "note = excluded.note, company = excluded.company, "
+    "title = excluded.title, location = excluded.location, "
+    "apply_url = excluded.apply_url, source = excluded.source, "
+    "term = excluded.term"
+)
+_HISTORY = "INSERT INTO history (posting_id, status, on_day, recorded_at) VALUES (?, ?, ?, ?)"
+
+
 class TrackerUnreadableError(Exception):
     pass
 
@@ -119,31 +133,24 @@ class TrackerStore:
                     self._conn.execute(
                         "UPDATE tracked SET posting_id = ? WHERE posting_id = ?", (new, old)
                     )
-                for entry in entries:
-                    self._conn.execute(
-                        "INSERT INTO tracked (posting_id, status, on_day, changed_at, note, "
-                        "company, title, location, apply_url, source, term) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                        "ON CONFLICT (posting_id) DO UPDATE SET status = excluded.status, "
-                        "on_day = excluded.on_day, changed_at = excluded.changed_at, "
-                        "note = excluded.note, company = excluded.company, "
-                        "title = excluded.title, location = excluded.location, "
-                        "apply_url = excluded.apply_url, source = excluded.source, "
-                        "term = excluded.term",
-                        _row(entry),
-                    )
+                self._conn.executemany(_UPSERT, [_row(entry) for entry in entries])
                 self._conn.executemany(
-                    "INSERT INTO history (posting_id, status, on_day, recorded_at) "
-                    "VALUES (?, ?, ?, ?)",
-                    [
-                        (
-                            posting_id,
-                            change.status.value,
-                            change.on.isoformat(),
-                            change.recorded_at.isoformat(),
-                        )
-                        for posting_id, change in changes
-                    ],
+                    _HISTORY, [_history_row(posting_id, change) for posting_id, change in changes]
+                )
+        except sqlite3.Error as exc:
+            raise TrackerUnreadableError(str(exc)) from exc
+
+    def restore(self, removed: Collection[str], entries: Sequence[TrackedPosting]) -> None:
+        try:
+            with self._conn:
+                self._conn.executemany(
+                    "DELETE FROM tracked WHERE posting_id = ?",
+                    [(key,) for key in sorted({*removed, *(e.posting_id for e in entries)})],
+                )
+                self._conn.executemany(_UPSERT, [_row(entry) for entry in entries])
+                self._conn.executemany(
+                    _HISTORY,
+                    [_history_row(e.posting_id, change) for e in entries for change in e.history],
                 )
         except sqlite3.Error as exc:
             raise TrackerUnreadableError(str(exc)) from exc
@@ -234,6 +241,10 @@ def _entry(row: sqlite3.Row, history: tuple[StatusChange, ...]) -> TrackedPostin
         ),
         history=history,
     )
+
+
+def _history_row(posting_id: str, change: StatusChange) -> tuple[str, ...]:
+    return (posting_id, change.status.value, change.on.isoformat(), change.recorded_at.isoformat())
 
 
 def _row(entry: TrackedPosting) -> tuple[str, ...]:
