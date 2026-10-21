@@ -47,6 +47,7 @@ from stage.storage.repository import SourceBatch, SourceBatchResult
 from stage.storage.search import FTS_COLUMN_WEIGHTS, match_expression, search_terms
 
 _BM25_WEIGHTS = ", ".join(f"{weight:.1f}" for weight in FTS_COLUMN_WEIGHTS)
+_POSTED_ORDER = "CASE WHEN {0}source_posted_at <= {0}last_seen THEN {0}source_posted_at END DESC"
 
 _COMPOSITION_COLUMNS = frozenset(
     {"source", "location", "role", "term", "language", "status", "degree_requirement"}
@@ -1100,7 +1101,8 @@ class SqliteRepository:
         where, params = self._where(filters)
         limit, limit_params = _limit_clause(filters.limit)
         rows = self._conn.execute(
-            f"SELECT * FROM jobs{where} ORDER BY first_seen DESC, id ASC{limit}",
+            f"SELECT * FROM jobs{where} ORDER BY first_seen DESC, "
+            f"{_POSTED_ORDER.format('')}, id ASC{limit}",
             (*params, *limit_params),
         ).fetchall()
         return [_row_to_job(row) for row in rows]
@@ -1145,7 +1147,8 @@ class SqliteRepository:
         limit, limit_params = _limit_clause(filters.limit)
         rows = self._conn.execute(
             f"SELECT jobs.* {source} "
-            f"ORDER BY bm25(jobs_fts, {_BM25_WEIGHTS}), jobs.first_seen DESC, jobs.id ASC"
+            f"ORDER BY bm25(jobs_fts, {_BM25_WEIGHTS}), jobs.first_seen DESC, "
+            f"{_POSTED_ORDER.format('jobs.')}, jobs.id ASC"
             f"{limit}",
             (expression, *params, *limit_params),
         ).fetchall()

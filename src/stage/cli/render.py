@@ -250,7 +250,7 @@ def render_jobs(
     capped = f"  Only the first {addressable} are numbered." if addressable < shown else ""
     console.print(
         f"\n[dim]{shown} posting(s){suffix}.  "
-        f"stage show 1 or stage open 1 acts on a numbered row.{capped}[/dim]"
+        f"stage show 1 or stage open 1-5 acts on numbered rows.{capped}[/dim]"
     )
 
 

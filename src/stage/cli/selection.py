@@ -1,12 +1,20 @@
 import json
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 MAX_REMEMBERED = 100_000
+_RANGE = re.compile(r"^(\d+)-(\d+)$")
+_RANGE_LIKE = re.compile(r"^[\d-]*-[\d-]*$")
 
 
 class StaleSelectionError(Exception):
+    pass
+
+
+class BadRangeError(ValueError):
     pass
 
 
@@ -72,10 +80,37 @@ def resolve(row: int, synced_at: datetime | None, path: Path | None = None) -> s
     return selection.ids[row - 1]
 
 
+def _row(text: str) -> int:
+    if len(text.lstrip("0")) > len(str(MAX_REMEMBERED)):
+        raise BadRangeError(f"A listing holds at most {MAX_REMEMBERED:,} rows.")
+    return int(text)
+
+
+def expand(references: Sequence[str]) -> list[str]:
+    expanded: dict[str, None] = {}
+    for reference in references:
+        found = _RANGE.match(reference)
+        if found is None:
+            if _RANGE_LIKE.match(reference):
+                raise BadRangeError(f"{reference!r} is not a range; write one like 1-5.")
+            expanded.setdefault(str(_row(reference)) if reference.isdecimal() else reference)
+            continue
+        start, end = _row(found.group(1)), _row(found.group(2))
+        if start > end:
+            raise BadRangeError(f"{reference} counts backwards; write {end}-{start}.")
+        if end > MAX_REMEMBERED:
+            raise BadRangeError(f"A listing holds at most {MAX_REMEMBERED:,} rows.")
+        for row in range(start, end + 1):
+            expanded.setdefault(str(row))
+    return list(expanded)
+
+
 __all__ = [
     "MAX_REMEMBERED",
+    "BadRangeError",
     "Selection",
     "StaleSelectionError",
+    "expand",
     "read",
     "remember",
     "resolve",

@@ -769,6 +769,70 @@ def test_open_refuses_more_tabs_than_it_should(tmp_path: Path) -> None:
     assert "--print" in output
 
 
+def test_a_row_range_expands_in_place_and_leaves_ids_alone() -> None:
+    from stage.cli.selection import expand
+
+    assert expand(["1-3", "7", "workday:3m-search:r1"]) == [
+        "1",
+        "2",
+        "3",
+        "7",
+        "workday:3m-search:r1",
+    ]
+    assert expand(["4-4"]) == ["4"]
+    assert expand(["01-03", "007"]) == ["1", "2", "3", "7"]
+
+
+def test_a_row_asked_for_twice_is_kept_once_in_first_order() -> None:
+    from stage.cli.selection import expand
+
+    assert expand(["3", "1-3", "01", "2-4"]) == ["3", "1", "2", "4"]
+
+
+@pytest.mark.parametrize("text", ["1-", "-", "1-5-9", "1--5", "-3-"])
+def test_text_shaped_like_a_range_is_refused(text: str) -> None:
+    from stage.cli.selection import BadRangeError, expand
+
+    with pytest.raises(BadRangeError, match="not a range"):
+        expand([text])
+
+
+def test_a_backwards_or_oversized_range_is_refused() -> None:
+    from stage.cli.selection import BadRangeError, expand
+
+    with pytest.raises(BadRangeError, match="backwards"):
+        expand(["9-3"])
+    with pytest.raises(BadRangeError, match="at most"):
+        expand(["1-999999"])
+
+
+def test_a_row_number_too_long_to_convert_is_refused_not_crashed() -> None:
+    from stage.cli.selection import BadRangeError, expand
+
+    for text in ("9" * 5000, "1-" + "9" * 5000, "9999999"):
+        with pytest.raises(BadRangeError, match="at most"):
+            expand([text])
+    assert expand(["0000001"]) == ["1"]
+
+
+def test_open_counts_the_rows_a_range_expands_to(tmp_path: Path) -> None:
+    from stage.cli.commands.postings import MAX_OPEN_AT_ONCE
+
+    db = str(tmp_path / "o.db")
+    wide = CliRunner().invoke(app, ["open", f"1-{MAX_OPEN_AT_ONCE + 1}", "--db", db])
+    backwards = CliRunner().invoke(app, ["open", "9-3", "--db", db])
+
+    assert MAX_OPEN_AT_ONCE == 25
+    later = CliRunner().invoke(app, ["open", "30-60", "--db", db])
+    assert "stage open 30-54" in " ".join(ANSI_ESCAPE.sub("", later.stdout).split())
+    assert wide.exit_code == 2
+    said = " ".join(ANSI_ESCAPE.sub("", wide.stdout).split())
+    assert f"open {MAX_OPEN_AT_ONCE + 1} tabs" in said
+    assert f"stage open 1-{MAX_OPEN_AT_ONCE}" in said
+    assert backwards.exit_code == 2
+    assert "backwards" in ANSI_ESCAPE.sub("", backwards.stdout + backwards.stderr)
+
+
 def test_open_accepts_several_rows() -> None:
     import inspect
 
@@ -1115,3 +1179,198 @@ def test_a_sync_writes_the_request_log_when_asked(tmp_path: Path) -> None:
 
     assert result.exit_code in (0, 1)
     assert log.exists()
+
+
+async def test_a_sync_lists_its_postings_newest_posted_first(db_path: Path) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from stage.domain import Job, JobFilters, JobStatus
+    from stage.storage import open_repository
+    from stage.storage.repository import SourceBatch
+
+    synced = datetime(2026, 10, 20, 12, tzinfo=UTC)
+
+    def job(name: str, seen: datetime, posted: datetime | None) -> Job:
+        return Job(
+            id=f"greenhouse:acme:{name}",
+            source="greenhouse",
+            company="Acme",
+            title_raw=f"Software Intern {name}",
+            title_normalized=f"software intern {name}",
+            apply_url_raw=f"https://example.com/{name}",
+            description="",
+            first_seen=seen,
+            last_seen=seen,
+            source_posted_at=posted,
+            status=JobStatus.OPEN,
+        )
+
+    later = synced + timedelta(hours=6)
+    jobs = (
+        job("a", synced, datetime(2026, 10, 1, tzinfo=UTC)),
+        job("b", synced, datetime(2026, 10, 10, tzinfo=UTC)),
+        job("c", synced, None),
+        job("d", later, datetime(2026, 9, 1, tzinfo=UTC)),
+    )
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=later, jobs=jobs)
+        )
+        listed = await repository.list_jobs(JobFilters())
+
+    assert [item.id.rsplit(":", 1)[1] for item in listed] == ["d", "b", "a", "c"]
+
+
+def test_new_after_a_single_sync_says_everything_is_new(tmp_path: Path) -> None:
+    once = _seeded(tmp_path / "once.db", count=3, runs=1)
+    twice = _seeded(tmp_path / "twice.db", count=3, runs=2)
+    runner = CliRunner()
+
+    first = ANSI_ESCAPE.sub("", runner.invoke(app, ["list", "--new", "--db", once]).stdout)
+    later = ANSI_ESCAPE.sub("", runner.invoke(app, ["list", "--new", "--db", twice]).stdout)
+    plain = ANSI_ESCAPE.sub("", runner.invoke(app, ["list", "--db", once]).stdout)
+
+    assert "Only one sync so far" in first
+    assert "Only one sync so far" not in later
+    assert "Only one sync so far" not in plain
+
+
+def test_open_allows_exactly_the_cap_and_print_skips_it(tmp_path: Path) -> None:
+    from stage.cli.commands.postings import MAX_OPEN_AT_ONCE
+
+    db = str(tmp_path / "o.db")
+    runner = CliRunner()
+    at_cap = runner.invoke(app, ["open", f"1-{MAX_OPEN_AT_ONCE}", "--db", db])
+    printed = runner.invoke(app, ["open", "1-30", "--print", "--db", db])
+
+    for result in (at_cap, printed):
+        said = " ".join(ANSI_ESCAPE.sub("", result.stdout + result.stderr).split())
+        assert "at most" not in said
+        assert "No listing" in said
+
+
+def test_ranges_resolve_against_a_real_listing_in_order(tmp_path: Path) -> None:
+    import json
+
+    db = _seeded(tmp_path / "r.db", count=3)
+    runner = CliRunner()
+    runner.invoke(app, ["list", "--db", db])
+
+    both = json.loads(runner.invoke(app, ["show", "1-2", "--json", "--db", db]).stdout)
+    one = json.loads(runner.invoke(app, ["show", "2-2", "--json", "--db", db]).stdout)
+    printed = runner.invoke(app, ["open", "3", "1-2", "1", "--print", "--db", db]).stdout
+    past = runner.invoke(app, ["open", "1-5", "--print", "--db", db])
+
+    assert [item["job"]["id"] for item in both] == ["greenhouse:acme:0", "greenhouse:acme:1"]
+    assert one["job"]["id"] == "greenhouse:acme:1"
+    assert printed.split() == [
+        "https://example.com/2",
+        "https://example.com/0",
+        "https://example.com/1",
+    ]
+    assert past.exit_code == 2
+    assert "out of range" in ANSI_ESCAPE.sub("", past.stdout + past.stderr)
+    assert "example.com" not in past.stdout
+
+
+def test_a_superscript_digit_is_a_missing_id_not_a_crash(tmp_path: Path) -> None:
+    result = CliRunner().invoke(app, ["show", "\u00b2", "--db", str(tmp_path / "s.db")])
+
+    assert result.exit_code == 1
+    assert not isinstance(result.exception, ValueError)
+
+
+def _same_title_batch() -> tuple["Job", ...]:
+    from datetime import UTC, datetime, timedelta
+
+    from stage.domain import Job, JobStatus
+
+    seen = datetime.now(UTC) - timedelta(hours=1)
+
+    def job(name: str, posted: datetime | None) -> Job:
+        return Job(
+            id=f"greenhouse:acme:{name}",
+            source="greenhouse",
+            company="Acme",
+            title_raw="Data Intern",
+            title_normalized="data intern",
+            apply_url_raw=f"https://example.com/{name}",
+            description="",
+            first_seen=seen,
+            last_seen=seen,
+            location_raw="Montreal, QC",
+            source_posted_at=posted,
+            status=JobStatus.OPEN,
+        )
+
+    return (
+        job("a", datetime(2026, 10, 1, tzinfo=UTC)),
+        job("b", datetime(2026, 10, 10, tzinfo=UTC)),
+        job("c", None),
+        job("z", datetime(2099, 1, 1, tzinfo=UTC)),
+    )
+
+
+async def _store(path: Path, jobs: tuple["Job", ...]) -> str:
+    from datetime import UTC, datetime
+
+    from stage.domain import SyncOutcome, SyncRun
+    from stage.storage import open_repository
+    from stage.storage.repository import SourceBatch
+
+    now = datetime.now(UTC)
+    async with open_repository(path) as repository:
+        await repository.record_sync_run(
+            SyncRun(started_at=now, finished_at=now, outcome=SyncOutcome.SUCCESS)
+        )
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=now, jobs=jobs)
+        )
+    return str(path)
+
+
+async def test_a_future_posted_date_cannot_jump_its_sync(db_path: Path) -> None:
+    from stage.domain import JobFilters
+    from stage.services.query import search_jobs
+    from stage.storage import open_repository
+
+    await _store(db_path, _same_title_batch())
+    async with open_repository(db_path) as repository:
+        listed = await repository.list_jobs(JobFilters())
+        searched = await search_jobs(repository, "data intern", JobFilters(), window_days=None)
+
+    expected = ["b", "a", "c", "z"]
+    assert [job.id.rsplit(":", 1)[1] for job in listed] == expected
+    assert [job.id.rsplit(":", 1)[1] for job in searched.jobs] == expected
+
+
+def test_an_export_keeps_the_newest_posted_order(tmp_path: Path) -> None:
+    import asyncio
+    import csv
+
+    db = asyncio.run(_store(tmp_path / "x.db", _same_title_batch()))
+    out = tmp_path / "out.csv"
+    result = CliRunner().invoke(app, ["export", "--format", "csv", "--out", str(out), "--db", db])
+
+    assert result.exit_code == 0
+    with out.open(encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [row["id"].rsplit(":", 1)[1] for row in rows] == ["b", "a", "c", "z"]
+
+
+def test_the_first_sync_note_reaches_search_but_not_json_or_an_empty_database(
+    tmp_path: Path,
+) -> None:
+    import json
+
+    once = _seeded(tmp_path / "once.db", count=3, runs=1)
+    empty = _seeded(tmp_path / "empty.db", count=0, runs=0)
+    runner = CliRunner()
+
+    searched = runner.invoke(app, ["search", "software", "--new", "--db", once]).stdout
+    as_json = runner.invoke(app, ["list", "--new", "--json", "--db", once]).stdout
+    nothing = runner.invoke(app, ["list", "--new", "--db", empty]).stdout
+
+    assert "Only one sync so far" in ANSI_ESCAPE.sub("", searched)
+    assert len(json.loads(as_json)) == 3
+    assert "Only one sync so far" not in nothing

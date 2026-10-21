@@ -50,6 +50,19 @@ def acme() -> Company:
 
 @pytest.fixture(autouse=True)
 def isolated_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    from types import SimpleNamespace
+
+    from stage import paths
+
+    home = tmp_path / "home"
     monkeypatch.setenv("STAGE_DB", str(tmp_path / "env-stage.db"))
     monkeypatch.setenv("STAGE_CAPTURE_DIR", str(tmp_path / "captured"))
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local" / "share"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
+    monkeypatch.setattr(
+        paths,
+        "_DIRS",
+        SimpleNamespace(user_data_dir=str(home / "data"), user_config_dir=str(home / "config")),
+    )
     yield

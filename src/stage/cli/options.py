@@ -330,7 +330,7 @@ def _filters(
 async def _resolve_posting(reference: str, repository: Any) -> str:
     from stage.cli.selection import resolve
 
-    if not reference.isdigit():
+    if not reference.isdecimal():
         return reference
     return resolve(int(reference), await repository.last_sync_at())
 
@@ -508,7 +508,7 @@ _HELP_GUIDE = (
     "  stage list --new                    Only what appeared since the last sync\n"
     '  stage search "machine learning"     Search titles, employers, bodies\n'
     "  stage show 3                        Inspect row 3 of the last listing\n"
-    "  stage open 3 5 9                    Open those rows in a browser\n"
+    "  stage open 1-5 9                    Open a range of rows in a browser\n"
     "  stage export --format csv           Save every match to a file\n"
     "\nFilters, on list, search, and export:\n"
     "  stage list --role swe --last 3      Filters combine\n"

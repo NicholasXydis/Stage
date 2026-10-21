@@ -30,7 +30,8 @@ from stage.cli.options import (
     run_async,
 )
 
-MAX_OPEN_AT_ONCE = 10
+MAX_OPEN_AT_ONCE = 25
+FIRST_SYNC_NOTE = "Only one sync so far, so every posting is new; newest posted first."
 
 
 async def _closed_since_you_looked(repository: Any) -> str:
@@ -129,19 +130,22 @@ def list_postings(
         _print_failure(exc)
         raise typer.Exit(code=2) from exc
 
-    async def run() -> tuple[JobListing, str, str]:
+    async def run() -> tuple[JobListing, str, str, str]:
         async with open_repository(_database(db)) as repository:
             scoped = filters
+            first_sync = False
             if only_new:
                 since = await repository.previous_sync_at()
+                first_sync = since is None
                 if since is not None:
                     scoped = _replace(filters, first_seen_after=since)
             found = await list_jobs(repository, scoped, window_days=_window(last))
             hint = "" if found.jobs else await _company_hint(company, repository)
             closed = await _closed_since_you_looked(repository)
-            return found, hint, closed
+            note = FIRST_SYNC_NOTE if first_sync and found.last_sync_at else ""
+            return found, hint, closed, note
 
-    listing, hint, closed = run_async(run())
+    listing, hint, closed, note = run_async(run())
     numbered = remember(tuple(job.id for job in listing.jobs), listing.last_sync_at)
 
     if as_json:
@@ -153,6 +157,8 @@ def list_postings(
     console = terminal()
     if closed:
         console.print(f"[dim]{closed}[/dim]")
+    if note:
+        console.print(f"[dim]{note}[/dim]")
     render_jobs(
         console,
         listing.jobs,
@@ -225,18 +231,21 @@ def search(
         _print_failure(exc)
         raise typer.Exit(code=2) from exc
 
-    async def run() -> tuple[JobListing, str]:
+    async def run() -> tuple[JobListing, str, str]:
         async with open_repository(_database(db)) as repository:
             scoped = filters
+            first_sync = False
             if only_new:
                 since = await repository.previous_sync_at()
+                first_sync = since is None
                 if since is not None:
                     scoped = _replace(filters, first_seen_after=since)
             found = await search_service(repository, query, scoped, window_days=last or None)
             hint = "" if found.jobs else await _company_hint(company, repository)
-            return found, hint
+            note = FIRST_SYNC_NOTE if first_sync and found.last_sync_at else ""
+            return found, hint, note
 
-    listing, hint = run_async(run())
+    listing, hint, note = run_async(run())
     numbered = remember(tuple(job.id for job in listing.jobs), listing.last_sync_at)
 
     if as_json:
@@ -245,7 +254,10 @@ def search(
 
     from stage.cli.render import render_search, terminal
 
-    render_search(terminal(), listing, numbered=numbered, hint=hint)
+    console = terminal()
+    if note:
+        console.print(f"[dim]{note}[/dim]")
+    render_search(console, listing, numbered=numbered, hint=hint)
 
 
 @app.command(help="Show every stored detail for one posting", rich_help_panel="Everyday")
@@ -255,18 +267,23 @@ def show(
         typer.Argument(
             metavar="ROW...",
             click_type=WORD,
-            help="Row numbers from the last listing, or full posting IDs",
+            help="Row numbers or ranges like 1-5, or full posting IDs",
         ),
     ] = None,
     as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
     from stage.cli.render import terminal
-    from stage.cli.selection import StaleSelectionError
+    from stage.cli.selection import BadRangeError, StaleSelectionError, expand
 
     if not postings:
         terminal().print(_needs_a_row("show"))
         raise typer.Exit(code=2)
+    try:
+        postings = expand(postings)
+    except BadRangeError as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
     from stage.cli.serialize import emit, posting_to_json, postings_to_json
     from stage.services.query import PostingDetail, get_posting
     from stage.storage import open_repository
@@ -317,7 +334,7 @@ def open_posting(
         typer.Argument(
             metavar="ROW...",
             click_type=WORD,
-            help="Row numbers from the last listing, or full posting IDs",
+            help="Row numbers or ranges like 1-5, or full posting IDs",
         ),
     ] = None,
     print_only: Annotated[
@@ -326,7 +343,7 @@ def open_posting(
     db: DatabaseOption = None,
 ) -> None:
     from stage.cli.render import plain, quoted, terminal
-    from stage.cli.selection import StaleSelectionError
+    from stage.cli.selection import BadRangeError, StaleSelectionError, expand
     from stage.domain import Job, web_url
     from stage.services.query import get_posting
     from stage.storage import open_repository
@@ -336,11 +353,23 @@ def open_posting(
     if not postings:
         console.print(_needs_a_row("open"))
         raise typer.Exit(code=2)
+    try:
+        postings = expand(postings)
+    except BadRangeError as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
 
     if not print_only and len(postings) > MAX_OPEN_AT_ONCE:
+        first = postings[0]
+        fewer = (
+            f"Try [bold]stage open {first}-{int(first) + MAX_OPEN_AT_ONCE - 1}[/bold]"
+            if first.isdecimal()
+            else f"Open {MAX_OPEN_AT_ONCE} or fewer"
+        )
         console.print(
-            f"[red]{len(postings)} is more than {MAX_OPEN_AT_ONCE} tabs.[/red] "
-            "Open fewer, or use --print to list the URLs."
+            f"[red]That would open {len(postings)} tabs; Stage opens at most "
+            f"{MAX_OPEN_AT_ONCE} at once.[/red] {fewer}, "
+            f"or add [bold]--print[/bold] to list all {len(postings)} links."
         )
         raise typer.Exit(code=2)
 
