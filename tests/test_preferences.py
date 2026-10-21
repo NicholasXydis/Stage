@@ -1135,9 +1135,9 @@ async def test_a_cancelled_refresh_hands_the_mine_notice_to_the_next_one(
         await asyncio.sleep(0)
         assert not screen._announce_mine
         pending.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await pending
+        await asyncio.wait([pending])
 
+        assert pending.cancelled()
         assert screen._announce_mine
 
 
