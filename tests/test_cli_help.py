@@ -14,6 +14,12 @@ COMMANDS = (
     "open",
     "export",
     "prefs",
+    "save",
+    "applied",
+    "hide",
+    "track",
+    "untrack",
+    "tracker",
     "coverage",
     "purge",
     "rescreen",
@@ -148,11 +154,23 @@ def test_commands_are_grouped_by_how_often_they_are_used() -> None:
     output = ANSI_ESCAPE.sub("", result.stdout)
     panels = [
         name
-        for name in ("Everyday", "Keeping current", "Registry and maintenance", "Health")
+        for name in (
+            "Everyday",
+            "Applications",
+            "Keeping current",
+            "Registry and maintenance",
+            "Health",
+        )
         if name in output
     ]
 
-    assert panels == ["Everyday", "Keeping current", "Registry and maintenance", "Health"]
+    assert panels == [
+        "Everyday",
+        "Applications",
+        "Keeping current",
+        "Registry and maintenance",
+        "Health",
+    ]
 
 
 def test_browsing_commands_sit_in_the_everyday_panel() -> None:
