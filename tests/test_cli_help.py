@@ -13,6 +13,7 @@ COMMANDS = (
     "show",
     "open",
     "export",
+    "prefs",
     "coverage",
     "purge",
     "rescreen",

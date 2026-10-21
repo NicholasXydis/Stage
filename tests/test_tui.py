@@ -117,6 +117,8 @@ async def test_the_results_table_takes_focus_so_shortcuts_work(tmp_path: Path) -
 
 
 async def test_the_filter_panel_applies_the_row_you_pick(tmp_path: Path) -> None:
+    from textual.widgets import OptionList
+
     from stage.tui.app import StageApp
     from stage.tui.screens.postings import PostingsScreen
 
@@ -130,6 +132,8 @@ async def test_the_filter_panel_applies_the_row_you_pick(tmp_path: Path) -> None
 
         await pilot.press("f")
         await pilot.pause()
+        panel = screen.query_one("#filters", OptionList)
+        panel.highlighted = [row[0] for row in screen._rows].index("role")
         await pilot.press("enter")
         await pilot.pause()
         await pilot.pause()
@@ -1551,6 +1555,18 @@ def test_the_filter_rows_cover_every_filter_the_keys_used_to_reach() -> None:
 
     assert {"role", "location", "language", "last_days", "only_new", "show_all"} <= names
     assert "company" in names
+
+
+def test_the_employer_row_says_it_is_a_shortcut_for_the_selected_posting() -> None:
+    from stage.tui.state import filter_rows
+
+    state = FilterState()
+    offered = [row for row in filter_rows(state, "Kinaxis") if row[0] == "company"]
+    state.choose("company", "Kinaxis")
+    chosen = [row for row in filter_rows(state, "Other") if row[0] == "company"]
+
+    assert offered == [("company", "Kinaxis", "Only this employer: Kinaxis", False)]
+    assert chosen == [("company", "Kinaxis", "Only this employer: Kinaxis", True)]
 
 
 def test_a_filter_row_is_marked_when_it_is_the_active_one() -> None:

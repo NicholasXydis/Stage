@@ -278,3 +278,37 @@ def test_a_capped_query_still_matches_what_the_user_typed(
 ) -> None:
     assert search_terms("QUANTITATIVE") == ("quantitative",)
     assert _ids(repository.search_jobs("quantitative", JobFilters())) == {"greenhouse:coveo:2"}
+
+
+def test_search_lists_matches_newest_first_however_often_the_word_appears(
+    db_path: Path,
+) -> None:
+    from dataclasses import replace
+    from datetime import timedelta
+
+    from typer.testing import CliRunner
+
+    from stage.cli.app import app
+
+    def aged(job: Job, days: int) -> Job:
+        moment = NOW - timedelta(days=days)
+        return replace(job, first_seen=moment, last_seen=moment)
+
+    repo = SqliteRepository.connect(db_path)
+    repo.apply_source_batch(
+        SourceBatch(
+            source="greenhouse",
+            run_started_at=NOW,
+            jobs=(
+                aged(_job("greenhouse:a:1", "Acme", "Software Intern, Software Tools"), 3),
+                aged(_job("greenhouse:b:1", "Beta", "Data Intern", description="software"), 0),
+                aged(_job("greenhouse:c:1", "Coda", "Software Developer Intern"), 1),
+            ),
+        )
+    )
+    found = repo.search_jobs("software", JobFilters(limit=None))
+    repo.close()
+
+    assert [job.id for job in found] == ["greenhouse:b:1", "greenhouse:c:1", "greenhouse:a:1"]
+    shown = CliRunner().invoke(app, ["search", "software", "--last", "0", "--db", str(db_path)])
+    assert "Matched software as prefixes, newest first." in shown.stdout

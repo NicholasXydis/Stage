@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from stage.domain import (
     DEFAULT_WINDOW_DAYS,
@@ -9,6 +9,9 @@ from stage.domain import (
     LocationBucket,
     RoleCategory,
 )
+
+if TYPE_CHECKING:
+    from stage.domain.preferences import Preferences
 
 DEBOUNCE_SECONDS = 0.18
 PAGE_SIZE = 200
@@ -31,9 +34,10 @@ _OPEN_FIELDS: tuple[tuple[str, str], ...] = (("company", "Company"),)
 
 
 def filter_rows(
-    state: "FilterState", employer: str | None = None
+    state: "FilterState", employer: str | None = None, *, saved: bool = False
 ) -> tuple[tuple[str, str, str, bool], ...]:
-    rows: list[tuple[str, str, str, bool]] = []
+    mine = "Only my preferences" if saved else "Only my preferences (none saved; run stage prefs)"
+    rows: list[tuple[str, str, str, bool]] = [("mine", "on", mine, state.mine)]
     for name, label, options in FILTER_FIELDS:
         for option in options:
             if option == "unknown":
@@ -47,9 +51,9 @@ def filter_rows(
     rows.append(("show_all", "on", "Show every match, not just a page", state.show_all))
     chosen = state.values.get("company")
     if chosen is not None:
-        rows.append(("company", chosen, f"Employer: {chosen}", True))
+        rows.append(("company", chosen, f"Only this employer: {chosen}", True))
     elif employer is not None:
-        rows.append(("company", employer, f"Employer: {employer}", False))
+        rows.append(("company", employer, f"Only this employer: {employer}", False))
     return tuple(rows)
 
 
@@ -61,6 +65,7 @@ class FilterState:
     last_days: int = DEFAULT_WINDOW_DAYS
     only_new: bool = False
     show_all: bool = False
+    mine: bool = False
 
     def toggle(self, name: str, value: str) -> None:
         if self.values.get(name) == value:
@@ -75,6 +80,7 @@ class FilterState:
         self.last_days = DEFAULT_WINDOW_DAYS
         self.only_new = False
         self.show_all = False
+        self.mine = False
 
     def widen(self) -> None:
         self.limit += PAGE_SIZE
@@ -92,6 +98,8 @@ class FilterState:
             self.only_new = not self.only_new
         elif name == "show_all":
             self.show_all = not self.show_all
+        elif name == "mine":
+            self.mine = not self.mine
         else:
             self.toggle(name, value)
         self.limit = PAGE_SIZE
@@ -106,7 +114,7 @@ class FilterState:
         ordered = (*named, *(name for name, _ in _OPEN_FIELDS))
         return tuple((name, self.values[name]) for name in ordered if name in self.values)
 
-    def as_filters(self) -> JobFilters:
+    def as_filters(self, preferences: "Preferences | None" = None) -> JobFilters:
         chosen: dict[str, Any] = {}
         for name, value in self.values.items():
             enum = _ENUMS.get(name)
@@ -118,7 +126,10 @@ class FilterState:
                 chosen[name] = enum(value)
             except ValueError:
                 continue
-        return JobFilters(limit=None if self.show_all else self.limit, **chosen)
+        filters = JobFilters(limit=None if self.show_all else self.limit, **chosen)
+        if self.mine and preferences is not None and preferences.narrows:
+            return preferences.apply(filters)
+        return filters
 
 
 def theme_path() -> Path:

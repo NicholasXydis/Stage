@@ -10,7 +10,7 @@ from textual.screen import Screen
 from textual.timer import Timer
 from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 
-from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat
+from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat, JobFilters
 from stage.domain.text import sanitize
 from stage.normalize.location import display_location
 from stage.tui.help import HelpOverlay
@@ -24,6 +24,7 @@ from stage.tui.state import (
 
 if TYPE_CHECKING:
     from stage.domain import Job
+    from stage.domain.preferences import Preferences
     from stage.storage import AsyncRepository
 
 COLUMNS = ("#", "Age", "Company", "Title", "Location")
@@ -57,6 +58,13 @@ HELP_TEXT = """[b]Find[/b]
 
 [dim]? closes this[/dim]"""
 NARROW = 80
+
+
+def _mine_notice(preferences: "Preferences", filters: JobFilters, left_out: int | None) -> str:
+    notice = preferences.describe(filters)
+    if left_out:
+        notice += f". {left_out:,} with no location given are left out; turn Mine off to see them."
+    return notice
 
 
 def age_label(first_seen: datetime, now: datetime) -> str:
@@ -97,6 +105,8 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self._marked: set[str] = set()
         self._arming_export = False
         self._rows: tuple[tuple[str, str, str, bool], ...] = ()
+        self._preferences: Preferences | None = None
+        self._announce_mine = False
 
     @property
     def repository(self) -> "AsyncRepository | None":
@@ -125,6 +135,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         table.add_column("Company", width=22)
         table.add_column("Title", width=self._title_width())
         table.add_column("Location", width=18)
+        self._load_preferences()
         self._render_filters()
         table.focus()
         self.refresh_results()
@@ -153,6 +164,8 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         if self.state.last_days != DEFAULT_WINDOW_DAYS:
             window = "any date" if self.state.last_days == 0 else f"{self.state.last_days}d"
             parts.append(f"[reverse] {window} [/reverse]")
+        if self.state.mine:
+            parts.append("[reverse] mine [/reverse]")
         shown = " ".join(parts) if parts else "[dim]all postings[/dim]"
         count = (
             f"[b]{len(self._jobs)}[/b] of [b]{self._total}[/b]"
@@ -168,13 +181,26 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self.query_one("#chips", Static).update(f"{shown}   {count}{marked}{clear}")
 
     def _is_narrowed(self) -> bool:
-        return self.state.only_new or self.state.last_days != DEFAULT_WINDOW_DAYS
+        return self.state.only_new or self.state.mine or self.state.last_days != DEFAULT_WINDOW_DAYS
+
+    def _load_preferences(self) -> None:
+        from stage.services.preferences import load_preferences
+
+        loaded = load_preferences()
+        self._preferences = loaded.preferences
+        for problem in loaded.problems:
+            told(self, problem, "warning")
+
+    def _has_preferences(self) -> bool:
+        return self._preferences is not None and self._preferences.narrows
 
     def _render_filters(self) -> None:
         panel = self.query_one("#filters", OptionList)
         highlighted = panel.highlighted
         job = self._selected()
-        self._rows = filter_rows(self.state, job.company if job else None)
+        self._rows = filter_rows(
+            self.state, job.company if job else None, saved=self._has_preferences()
+        )
         panel.clear_options()
         for _, _, label, chosen in self._rows:
             panel.add_option(cell(f"{'[x]' if chosen else '[ ]'} {label}"))
@@ -189,7 +215,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         if repo is None:
             return
         self._set_busy(True)
-        filters = self.state.as_filters()
+        filters = self.state.as_filters(self._preferences)
         if self.state.only_new:
             since = await repo.previous_sync_at()
             if since is not None:
@@ -204,6 +230,9 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self._total = listing.total_matching
         self._fill(listing.jobs)
         self._set_busy(False)
+        if self._announce_mine and self.state.mine and self._preferences is not None:
+            self._announce_mine = False
+            told(self, _mine_notice(self._preferences, filters, listing.no_location))
 
     def _fill(self, jobs: "tuple[Job, ...]") -> None:
         table = self.query_one("#results", DataTable)
@@ -340,7 +369,14 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         if index < 0 or index >= len(self._rows):
             return
         name, value, _, _ = self._rows[index]
+        if name == "mine" and not self.state.mine:
+            self._load_preferences()
+            if not self._has_preferences():
+                told(self, "No preferences saved yet. Run stage prefs in a terminal.", "warning")
+                self._render_filters()
+                return
         self.state.choose(name, value)
+        self._announce_mine = name == "mine" and self.state.mine
         self._render_filters()
         self._refresh_soon()
 
@@ -463,7 +499,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         try:
             result = await export_jobs(
                 repo,
-                self.state.as_filters(),
+                self.state.as_filters(self._preferences),
                 fmt=fmt,
                 destination=root / f"stage-{stamp}.{fmt.value}",
                 force=True,

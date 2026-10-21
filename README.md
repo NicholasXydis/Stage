@@ -20,7 +20,7 @@ Free and open source. No account, no server, no telemetry.
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=2%2C452&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=89%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=2%2C538&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=90%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -279,7 +279,7 @@ Stage/
 
 | Workflow | File | Purpose |
 | --- | --- | --- |
-| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, 2,420 tests, coverage floor, badge drift |
+| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, 2,538 tests, coverage floor, badge drift |
 | Supported Pythons | `.github/workflows/ci.yml` | The full suite again on 3.13 and 3.14 |
 | Wheel | `.github/workflows/ci.yml` | Builds and smoke-tests the wheel on Ubuntu, Windows and macOS |
 | CodeQL | `.github/workflows/codeql.yml` | Static analysis for Python and the workflows themselves |
