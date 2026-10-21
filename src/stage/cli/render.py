@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from stage.services.export import ExportResult
     from stage.services.health import DoctorReport, SourceHealth, StatsReport
     from stage.services.query import JobListing, PostingDetail
+    from stage.services.tracker import ChangeReport, RemoveReport, TrackerListing
 
 from stage.domain import (
     DEFAULT_WINDOW_DAYS,
@@ -62,6 +63,12 @@ from stage.domain.text import first_line as _first_line
 from stage.domain.text import sanitize as _sanitize
 from stage.domain.text import summary as _summary
 from stage.domain.text import truncate as _truncate
+from stage.domain.tracker import (
+    ApplicationStatus,
+    PostingState,
+    TrackedPosting,
+    TrackerStats,
+)
 
 
 def terminal() -> Console:
@@ -204,11 +211,13 @@ def render_jobs(
     now: datetime | None = None,
     numbered: int | None = None,
     hint: str = "",
+    marks: dict[str, str] | None = None,
 ) -> None:
     moment = now or datetime.now(UTC)
     if not jobs:
         console.print(_empty_state(window_days, last_sync_at, moment, hint))
         return
+    marked = marks or {}
     addressable = len(jobs) if numbered is None else numbered
 
     narrow = console.width < NARROW_COLUMNS
@@ -233,7 +242,8 @@ def render_jobs(
 
     for position, job in enumerate(jobs, start=1):
         style, label = _age_style(job.first_seen, moment)
-        title = clipped(job.title_raw, title_width, style=style)
+        mark = marked.get(job.id)
+        title = clipped(f"{mark} {job.title_raw}" if mark else job.title_raw, title_width, style)
         _link(title, job.apply_url_raw)
         number = str(position) if position <= addressable else ""
         cells = [Text(number, style="dim"), Text(label, style=style)]
@@ -273,6 +283,7 @@ def render_search(
     now: datetime | None = None,
     numbered: int | None = None,
     hint: str = "",
+    marks: dict[str, str] | None = None,
 ) -> None:
     if not listing.terms:
         console.print(
@@ -297,6 +308,7 @@ def render_search(
         now=now,
         numbered=numbered,
         hint=hint,
+        marks=marks,
     )
     console.print(f"[dim]Matched {' '.join(listing.terms)} as prefixes, newest first.[/dim]")
     dropped = _dropped_punctuation(listing.query)
@@ -311,7 +323,12 @@ def _field(label: str, value: str) -> Text:
     return Text.assemble((f"{label:<14}", "bold"), value)
 
 
-def render_posting(console: Console, detail: "PostingDetail", now: datetime | None = None) -> None:
+def render_posting(
+    console: Console,
+    detail: "PostingDetail",
+    now: datetime | None = None,
+    tracked: TrackedPosting | None = None,
+) -> None:
     job = detail.job
     moment = now or datetime.now(UTC)
     style, age = _age_style(job.first_seen, moment)
@@ -344,6 +361,8 @@ def render_posting(console: Console, detail: "PostingDetail", now: datetime | No
     if job.source_posted_at:
         console.print(_field("source date", f"{job.source_posted_at.astimezone():%Y-%m-%d}"))
     console.print(_field("source", f"{job.source} / {job.board_key}"))
+    if tracked is not None:
+        _tracked_fields(console, tracked)
     console.print()
     console.print(plain(_sanitize(job.apply_url_raw) or "—", style="blue"))
     console.print(plain(job.id, style="dim"))
@@ -369,6 +388,183 @@ def render_posting(console: Console, detail: "PostingDetail", now: datetime | No
             "[dim]No description stored. Feeds publish none, and some boards only carry "
             "one on the posting page.[/dim]"
         )
+
+
+def _tracked_fields(console: Console, entry: TrackedPosting) -> None:
+    console.print(_field("tracked", f"{entry.status.value} on {entry.on.isoformat()}"))
+    if entry.note:
+        console.print(_field("note", entry.note))
+    if len(entry.history) > 1:
+        steps = ", ".join(
+            f"{change.status.value} {change.on.isoformat()}" for change in entry.history
+        )
+        console.print(_field("history", steps))
+
+
+def render_snapshot(console: Console, entry: TrackedPosting) -> None:
+    snapshot = entry.snapshot
+    title = plain(snapshot.title, style="bold")
+    _link(title, snapshot.apply_url)
+    console.print(title)
+    console.print(plain(snapshot.company, style="cyan"))
+    console.print()
+    console.print(_field("location", _sanitize(place(snapshot.location)) or "-"))
+    if snapshot.term and snapshot.term != UNKNOWN_TERM:
+        console.print(_field("term", snapshot.term))
+    console.print(_field("source", snapshot.source))
+    _tracked_fields(console, entry)
+    console.print()
+    console.print(plain(_sanitize(snapshot.apply_url) or "-", style="blue"))
+    console.print(plain(entry.posting_id, style="dim"))
+    console.print()
+    console.print(
+        "[dim]Stage no longer stores this posting, so this is the copy kept when you "
+        "tracked it.[/dim]"
+    )
+
+
+def render_changes(console: Console, headline: str, report: "ChangeReport") -> None:
+    console.print(plain(headline))
+    for change in report.changed[:MAX_CHANGES_LISTED]:
+        entry = change.entry
+        was = f" (was {change.before.value})" if change.before not in (None, entry.status) else ""
+        console.print(plain(f"  {_posting_line(entry)}{was}"))
+    hidden = len(report.changed) - MAX_CHANGES_LISTED
+    if hidden > 0:
+        console.print(plain(f"  ...and {hidden} more", "dim"))
+    for entry in report.unchanged:
+        line = f"  Already marked {entry.status.value}: {_posting_line(entry, mark=False)}"
+        console.print(plain(line, "dim"))
+
+
+def render_removed(console: Console, report: "RemoveReport") -> None:
+    if report.removed:
+        count = len(report.removed)
+        console.print(plain(f"Stopped tracking {count} posting{'' if count == 1 else 's'}."))
+        for entry in report.removed[:MAX_CHANGES_LISTED]:
+            console.print(plain(f"  {_posting_line(entry, mark=False)} (was {entry.status.value})"))
+        extra = count - MAX_CHANGES_LISTED
+        if extra > 0:
+            console.print(plain(f"  ...and {extra} more", "dim"))
+    for reference in report.not_tracked:
+        console.print(plain(f"{reference} was not tracked.", "dim"))
+
+
+def _posting_line(entry: TrackedPosting, *, mark: bool = True) -> str:
+    snapshot = entry.snapshot
+    head = f"{entry.marker or entry.status.value} " if mark else ""
+    return f"{head}{_truncate(snapshot.title, 60)} - {_truncate(snapshot.company, 30)}"
+
+
+def render_tracker(
+    console: Console,
+    listing: "TrackerListing",
+    *,
+    status: ApplicationStatus | None,
+    numbered: int,
+) -> None:
+    if not listing.rows:
+        if status is not None:
+            console.print(plain(f"Nothing tracked as {status.value}."))
+        else:
+            console.print(
+                "Nothing tracked yet. Run [bold]stage list[/bold], then [bold]stage save 1[/bold] "
+                "or [bold]stage applied 1[/bold]."
+            )
+        _hidden_line(console, listing.hidden, status)
+        return
+    narrow = console.width < NARROW_COLUMNS
+    row_width = max(2, len(str(len(listing.rows))))
+    status_width = 12
+    on_width = 0 if narrow else 10
+    company_width = 14 if narrow else 18
+    state_width = 7
+    used = row_width + status_width + on_width + company_width + state_width
+    columns = 5 if narrow else 6
+    title_width = max(16, console.width - used - 2 * columns)
+
+    table = Table(box=None, pad_edge=False, header_style="bold")
+    table.add_column("#", width=row_width, justify="right", no_wrap=True)
+    table.add_column("Status", width=status_width, no_wrap=True)
+    if not narrow:
+        table.add_column("On", width=on_width, no_wrap=True)
+    table.add_column("Company", width=company_width, no_wrap=True, overflow="ellipsis")
+    table.add_column("Title", width=title_width, no_wrap=True, overflow="ellipsis")
+    table.add_column("Posting", width=state_width, no_wrap=True)
+
+    for position, row in enumerate(listing.rows, start=1):
+        entry = row.entry
+        title = clipped(entry.snapshot.title, title_width)
+        _link(title, entry.snapshot.apply_url)
+        cells = [
+            Text(str(position) if position <= numbered else "", style="dim"),
+            Text(entry.status.value, style=_STATUS_STYLES.get(entry.status, "")),
+        ]
+        if not narrow:
+            cells.append(Text(entry.on.isoformat()))
+        cells.append(clipped(entry.snapshot.company, company_width))
+        cells.append(title)
+        cells.append(Text(row.state.value, style="" if row.state is PostingState.OPEN else "dim"))
+        table.add_row(*cells)
+
+    console.print(table)
+    console.print(
+        f"\n[dim]{len(listing.rows)} tracked.  stage show 1 or "
+        "stage track 1 --status interviewing acts on numbered rows.[/dim]"
+    )
+    _hidden_line(console, listing.hidden, status)
+
+
+def _hidden_line(console: Console, hidden: int, status: ApplicationStatus | None) -> None:
+    if hidden and status is None:
+        console.print(plain(f"{hidden:,} hidden: stage tracker --status hidden", "dim"))
+
+
+def render_tracker_stats(console: Console, stats: TrackerStats) -> None:
+    counts = " | ".join(
+        f"{status.value} {count}"
+        for status, count in stats.by_status.items()
+        if count and status is not ApplicationStatus.HIDDEN
+    )
+    console.print(_field("Tracked", f"{stats.tracked:,}" + (f"  ({counts})" if counts else "")))
+    console.print(
+        _field(
+            "Applied",
+            f"{stats.applied_last_7} in the last 7 days, {stats.applied_last_30} in the last 30",
+        )
+    )
+    console.print(_field("Heard back", _heard_back(stats)))
+    hidden = stats.by_status.get(ApplicationStatus.HIDDEN, 0)
+    if hidden:
+        console.print(_field("Hidden", f"{hidden:,}"))
+
+
+def _heard_back(stats: TrackerStats) -> str:
+    noun = "application" if stats.applications == 1 else "applications"
+    line = f"{stats.heard_back} of {stats.applications} {noun}"
+    if stats.applications:
+        line += f" ({stats.heard_back * 100 // stats.applications}%)"
+    answers = [
+        f"{count} {_REPLY_WORDS[status][count != 1]}"
+        for status, count in stats.replies.items()
+        if count
+    ]
+    return f"{line}: {', '.join(answers)}" if answers else line
+
+
+_REPLY_WORDS = {
+    ApplicationStatus.INTERVIEWING: ("interview", "interviews"),
+    ApplicationStatus.OFFER: ("offer", "offers"),
+    ApplicationStatus.REJECTED: ("rejection", "rejections"),
+}
+_STATUS_STYLES = {
+    ApplicationStatus.OFFER: "bold green",
+    ApplicationStatus.INTERVIEWING: "green",
+    ApplicationStatus.APPLIED: "cyan",
+    ApplicationStatus.REJECTED: "dim",
+    ApplicationStatus.WITHDRAWN: "dim",
+}
+MAX_CHANGES_LISTED = 20
 
 
 def render_preferences(

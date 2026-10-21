@@ -233,6 +233,10 @@ NewOption = Annotated[
     bool,
     typer.Option("--new", help="Only postings that appeared since the sync before last"),
 ]
+UntrackedOption = Annotated[
+    bool,
+    typer.Option("--untracked", help="Only postings you have not saved, applied to or hidden"),
+]
 MineOption = Annotated[
     bool,
     typer.Option("--mine", help="Only postings that fit the preferences saved with stage prefs"),
@@ -567,6 +571,12 @@ _HELP_GUIDE = (
     "  stage list --mine                   Only postings that fit them\n"
     "\n"
     "  [--role --location --term --lang --source --company --mine --new --all --last]\n"
+    "\nYour applications:\n"
+    "  stage save 3                        Keep a posting to come back to\n"
+    "  stage applied 1-4                   Mark postings as applied today\n"
+    "  stage hide 7                        Never show a posting again\n"
+    "  stage tracker                       Everything you saved or applied to\n"
+    "  stage list --untracked              Only postings you have not acted on\n"
     "\nHealth and maintenance:\n"
     "  stage doctor                        Database and source health\n"
     "  stage stats                         Sync history and totals\n"

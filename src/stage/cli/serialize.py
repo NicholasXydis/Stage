@@ -44,20 +44,19 @@ def jobs_to_json(jobs: Sequence[Job]) -> str:
     return dump([asdict(job) for job in jobs])
 
 
-def _posting_payload(detail: "PostingDetail") -> dict[str, Any]:
+def _posting_payload(
+    detail: "PostingDetail", tracked: dict[str, Any] | None = None
+) -> dict[str, Any]:
     return {
         "job": asdict(detail.job),
         "canonical": asdict(detail.canonical) if detail.canonical else None,
         "duplicates": [asdict(job) for job in detail.duplicates],
+        "tracked": tracked,
     }
 
 
-def posting_to_json(detail: "PostingDetail") -> str:
-    return dump(_posting_payload(detail))
-
-
-def postings_to_json(details: Sequence["PostingDetail"]) -> str:
-    return dump([_posting_payload(detail) for detail in details])
+def tracked_only_payload(tracked: dict[str, Any]) -> dict[str, Any]:
+    return {"job": None, "canonical": None, "duplicates": [], "tracked": tracked}
 
 
 def quarantine_to_json(entries: Sequence[QuarantinedJob]) -> str:
