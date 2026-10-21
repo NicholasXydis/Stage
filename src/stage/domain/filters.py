@@ -25,3 +25,8 @@ class JobFilters:
     status: JobStatus | None = JobStatus.OPEN
     first_seen_after: datetime | None = None
     limit: int | None = DEFAULT_LIMIT
+    locations: frozenset[LocationBucket] = frozenset()
+    roles: frozenset[RoleCategory] = frozenset()
+    terms: frozenset[str] = frozenset()
+    avoid_companies: frozenset[str] = frozenset()
+    follow_companies: frozenset[str] = frozenset()

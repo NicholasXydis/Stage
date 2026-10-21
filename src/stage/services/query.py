@@ -1,7 +1,7 @@
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 
-from stage.domain import DEFAULT_WINDOW_DAYS, Job, JobFilters
+from stage.domain import DEFAULT_WINDOW_DAYS, Job, JobFilters, LocationBucket
 from stage.storage import AsyncRepository
 from stage.storage.search import search_terms
 
@@ -14,6 +14,7 @@ class JobListing:
     last_sync_at: datetime | None
     query: str = ""
     terms: tuple[str, ...] = ()
+    no_location: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +29,29 @@ def _windowed(filters: JobFilters, window_days: int | None, now: datetime | None
         return filters
     cutoff = (now or datetime.now(UTC)) - timedelta(days=window_days)
     return replace(filters, first_seen_after=cutoff)
+
+
+async def count_without_location(
+    repository: AsyncRepository,
+    filters: JobFilters,
+    *,
+    window_days: int | None = DEFAULT_WINDOW_DAYS,
+    now: datetime | None = None,
+) -> int | None:
+    return await _left_out(repository, _windowed(filters, window_days, now))
+
+
+async def _left_out(
+    repository: AsyncRepository, filters: JobFilters, query: str = ""
+) -> int | None:
+    if not filters.locations:
+        return None
+    unplaced = replace(
+        filters, locations=frozenset({LocationBucket.UNKNOWN}), follow_companies=frozenset()
+    )
+    if query:
+        return await repository.count_search(query, unplaced)
+    return await repository.count_jobs(unplaced)
 
 
 async def list_jobs(
@@ -46,6 +70,7 @@ async def list_jobs(
         total_matching=total,
         window_days=window_days,
         last_sync_at=last_sync,
+        no_location=await _left_out(repository, effective),
     )
 
 
@@ -68,6 +93,7 @@ async def search_jobs(
         last_sync_at=await repository.last_sync_at(),
         query=query,
         terms=terms,
+        no_location=await _left_out(repository, effective, query) if terms else None,
     )
 
 
@@ -83,4 +109,11 @@ async def get_posting(repository: AsyncRepository, job_id: str) -> PostingDetail
     )
 
 
-__all__ = ["JobListing", "PostingDetail", "get_posting", "list_jobs", "search_jobs"]
+__all__ = [
+    "JobListing",
+    "PostingDetail",
+    "count_without_location",
+    "get_posting",
+    "list_jobs",
+    "search_jobs",
+]

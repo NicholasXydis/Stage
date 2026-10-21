@@ -1,4 +1,4 @@
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol
@@ -135,6 +135,9 @@ class Repository(Protocol):
         pass
 
     def company_names(self) -> list[str]:
+        pass
+
+    def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
         pass
 
     def previous_sync_at(self) -> datetime | None:

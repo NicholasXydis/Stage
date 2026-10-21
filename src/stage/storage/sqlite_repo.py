@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -44,9 +44,8 @@ from stage.domain import (
 from stage.paths import restrict_permissions
 from stage.storage.migrations import migrate
 from stage.storage.repository import SourceBatch, SourceBatchResult
-from stage.storage.search import FTS_COLUMN_WEIGHTS, match_expression, search_terms
+from stage.storage.search import match_expression, search_terms
 
-_BM25_WEIGHTS = ", ".join(f"{weight:.1f}" for weight in FTS_COLUMN_WEIGHTS)
 _POSTED_ORDER = "CASE WHEN {0}source_posted_at <= {0}last_seen THEN {0}source_posted_at END DESC"
 
 _COMPOSITION_COLUMNS = frozenset(
@@ -1095,6 +1094,34 @@ class SqliteRepository:
         if filters.first_seen_after is not None:
             clauses.append("jobs.first_seen >= ?")
             params.append(_to_text(filters.first_seen_after))
+        if filters.locations:
+            stored = sorted(
+                {value for bucket in filters.locations for value in _stored_location_values(bucket)}
+            )
+            placed = f"jobs.location IN ({', '.join('?' * len(stored))})"
+            params.extend(stored)
+            if filters.follow_companies:
+                followed = sorted(filters.follow_companies)
+                unknown = _stored_location_values(LocationBucket.UNKNOWN)
+                placed = (
+                    f"({placed} OR (jobs.company_fold IN ({', '.join('?' * len(followed))}) "
+                    f"AND jobs.location NOT IN ({', '.join('?' * len(unknown))})))"
+                )
+                params.extend(followed)
+                params.extend(unknown)
+            clauses.append(placed)
+        if filters.roles:
+            roles = sorted(role.value for role in filters.roles)
+            clauses.append(f"jobs.role IN ({', '.join('?' * len(roles))})")
+            params.extend(roles)
+        if filters.terms:
+            terms = sorted(filters.terms)
+            clauses.append(f"jobs.term IN ({', '.join('?' * len(terms))})")
+            params.extend(terms)
+        if filters.avoid_companies:
+            avoided = sorted(filters.avoid_companies)
+            clauses.append(f"jobs.company_fold NOT IN ({', '.join('?' * len(avoided))})")
+            params.extend(avoided)
         return clauses, params
 
     def list_jobs(self, filters: JobFilters) -> list[Job]:
@@ -1119,6 +1146,18 @@ class SqliteRepository:
             "SELECT DISTINCT company FROM jobs ORDER BY company COLLATE NOCASE"
         ).fetchall()
         return [str(row["company"]) for row in rows]
+
+    def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
+        if not keys:
+            return {}
+        wanted = sorted(keys)
+        rows = self._conn.execute(
+            "SELECT company_fold, COUNT(*) AS total FROM jobs "
+            "WHERE duplicate_of IS NULL AND status = ? "
+            f"AND company_fold IN ({', '.join('?' * len(wanted))}) GROUP BY company_fold",
+            (JobStatus.OPEN.value, *wanted),
+        ).fetchall()
+        return {str(row["company_fold"]): int(row["total"]) for row in rows}
 
     def get_job(self, job_id: str) -> Job | None:
         row = self._conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
@@ -1147,7 +1186,7 @@ class SqliteRepository:
         limit, limit_params = _limit_clause(filters.limit)
         rows = self._conn.execute(
             f"SELECT jobs.* {source} "
-            f"ORDER BY bm25(jobs_fts, {_BM25_WEIGHTS}), jobs.first_seen DESC, "
+            "ORDER BY jobs.first_seen DESC, "
             f"{_POSTED_ORDER.format('jobs.')}, jobs.id ASC"
             f"{limit}",
             (expression, *params, *limit_params),
