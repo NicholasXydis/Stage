@@ -7,6 +7,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
+from textual.css.query import NoMatches
 from textual.screen import Screen
 from textual.timer import Timer
 from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
@@ -108,6 +109,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self._rows: tuple[tuple[str, str, str, bool], ...] = ()
         self._preferences: Preferences | None = None
         self._announce_mine = False
+        self._tracker_warned = False
 
     @property
     def repository(self) -> "AsyncRepository | None":
@@ -215,12 +217,16 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         repo = self.repository
         if repo is None:
             return
-        self._set_busy(True)
+        try:
+            self._set_busy(True)
+        except NoMatches:
+            return
         announce = self._announce_mine and self.state.mine
         self._announce_mine = False
         preferences = self._preferences
         filters = self.state.as_filters(preferences)
         try:
+            filters = await self._without_hidden(repo, filters)
             if self.state.only_new:
                 since = await repo.previous_sync_at()
                 if since is not None:
@@ -236,10 +242,22 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             raise
         self._jobs = listing.jobs
         self._total = listing.total_matching
-        self._fill(listing.jobs)
-        self._set_busy(False)
+        try:
+            self._fill(listing.jobs)
+            self._set_busy(False)
+        except NoMatches:
+            return
         if announce and preferences is not None:
             told(self, _mine_notice(preferences, filters, listing.no_location))
+
+    async def _without_hidden(self, repo: "AsyncRepository", filters: JobFilters) -> JobFilters:
+        from stage.services.tracker import tracker_view
+
+        view = await tracker_view(repo)
+        if view.problem and not self._tracker_warned:
+            self._tracker_warned = True
+            told(self, view.problem, "warning")
+        return replace(filters, excluded_ids=filters.excluded_ids | view.hidden)
 
     def _fill(self, jobs: "tuple[Job, ...]") -> None:
         table = self.query_one("#results", DataTable)
@@ -299,6 +317,10 @@ class PostingsScreen(HelpOverlay, Screen[None]):
 
     def on_data_table_row_highlighted(self) -> None:
         self._show_detail()
+
+    def on_unmount(self) -> None:
+        if self._pending is not None:
+            self._pending.stop()
 
     def _refresh_soon(self) -> None:
         timer = self._pending
@@ -504,9 +526,10 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         root = export_root()
         stamp = datetime.now(UTC).astimezone().strftime("%Y%m%d-%H%M%S")
         try:
+            filters = await self._without_hidden(repo, self.state.as_filters(self._preferences))
             result = await export_jobs(
                 repo,
-                self.state.as_filters(self._preferences),
+                filters,
                 fmt=fmt,
                 destination=root / f"stage-{stamp}.{fmt.value}",
                 force=True,
