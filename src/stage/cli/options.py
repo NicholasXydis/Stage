@@ -3,7 +3,7 @@ from collections.abc import Callable, Coroutine, Iterable
 from datetime import date
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, NoReturn
 
 import typer
 from typer._click.types import IntRange, StringParamType
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from rich.console import Console
 
     from stage.domain import DiscoveryEvent, JobFilters
+    from stage.domain.preferences import Preferences
 
     ProgressCallback = Callable[[DiscoveryEvent], None]
 
@@ -232,6 +233,10 @@ NewOption = Annotated[
     bool,
     typer.Option("--new", help="Only postings that appeared since the sync before last"),
 ]
+MineOption = Annotated[
+    bool,
+    typer.Option("--mine", help="Only postings that fit the preferences saved with stage prefs"),
+]
 LastDaysOption = Annotated[
     int | None,
     typer.Option(
@@ -325,6 +330,49 @@ def _filters(
         company=company,
         limit=limit,
     )
+
+
+def _mine(filters: "JobFilters", as_json: bool = False) -> "tuple[JobFilters, Preferences]":
+    from stage.services.preferences import load_preferences
+
+    loaded = load_preferences()
+    if loaded.damaged:
+        _refuse(
+            "[red]Your saved preferences could not be read.[/red] Run [bold]stage prefs[/bold] "
+            "to save them again, or [bold]stage prefs --clear[/bold]."
+        )
+    for problem in loaded.problems:
+        _print_warning(problem, as_json)
+    preferences = loaded.preferences
+    if preferences.is_empty:
+        _refuse(
+            "[red]No preferences saved yet.[/red] Run [bold]stage prefs[/bold] to choose "
+            "places, roles and terms."
+        )
+    if not preferences.narrows:
+        _refuse(
+            "[red]Your saved preferences only hold a note about you.[/red] Add places, roles "
+            "or terms with [bold]stage prefs[/bold]."
+        )
+    return preferences.apply(filters), preferences
+
+
+def _refuse(message: str) -> NoReturn:
+    from stage.cli.render import terminal
+
+    terminal().print(message)
+    raise typer.Exit(code=2)
+
+
+def _print_warning(message: str, as_json: bool) -> None:
+    if as_json:
+        from stage.cli.serialize import fail
+
+        fail(message)
+        return
+    from stage.cli.render import plain, terminal
+
+    terminal().print(plain(message, "yellow"))
 
 
 async def _resolve_posting(reference: str, repository: Any) -> str:
@@ -515,8 +563,10 @@ _HELP_GUIDE = (
     '  stage search "python" --lang en     Quote a phrase\n'
     "  stage export --format csv --all     Every match, no cap\n"
     "  stage list --last 1                 Only the last day\n"
+    "  stage prefs                         Save the places, roles, terms you want\n"
+    "  stage list --mine                   Only postings that fit them\n"
     "\n"
-    "  [--role --location --term --lang --source --company --new --all --last]\n"
+    "  [--role --location --term --lang --source --company --mine --new --all --last]\n"
     "\nHealth and maintenance:\n"
     "  stage doctor                        Database and source health\n"
     "  stage stats                         Sync history and totals\n"

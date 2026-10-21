@@ -1,5 +1,5 @@
 import json
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, TextIO
 
@@ -9,7 +9,10 @@ from rich.table import Table
 from rich.text import Text
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from stage.domain import WorkdayCrawl
+    from stage.domain.preferences import Preferences
     from stage.services.canary import CanaryReport
     from stage.services.coverage import CoverageReport
     from stage.services.export import ExportResult
@@ -297,7 +300,7 @@ def render_search(
         numbered=numbered,
         hint=hint,
     )
-    console.print(f"[dim]Matched {' '.join(listing.terms)} as prefixes, ranked by relevance.[/dim]")
+    console.print(f"[dim]Matched {' '.join(listing.terms)} as prefixes, newest first.[/dim]")
     dropped = _dropped_punctuation(listing.query)
     if dropped:
         console.print(
@@ -368,6 +371,53 @@ def render_posting(console: Console, detail: "PostingDetail", now: datetime | No
             "[dim]No description stored. Feeds publish none, and some boards only carry "
             "one on the posting page.[/dim]"
         )
+
+
+def render_preferences(
+    console: Console,
+    preferences: "Preferences",
+    *,
+    saved: bool,
+    path: "Path | None" = None,
+    counts: "Mapping[str, int] | None" = None,
+) -> None:
+    from stage.domain.preferences import EMPLOYER_SEPARATOR
+
+    def listed(values: Sequence[str], separator: str = ", ") -> str:
+        return separator.join(values) if values else "-"
+
+    def employer(name: str, key: str) -> str:
+        return name if counts is None else f"{name} ({counts.get(key, 0):,} open)"
+
+    console.print(plain("Saved your preferences." if saved else "Your preferences", "bold"))
+    console.print(_field("Locations", listed([v.value for v in preferences.locations])))
+    console.print(_field("Roles", listed([v.value for v in preferences.roles])))
+    console.print(_field("Terms", listed(list(preferences.terms))))
+    follow = [employer(e.name, e.key) for e in preferences.follow]
+    avoid = [employer(e.name, e.key) for e in preferences.avoid]
+    console.print(_field("Following", listed(follow, EMPLOYER_SEPARATOR)))
+    console.print(_field("Leaving out", listed(avoid, EMPLOYER_SEPARATOR)))
+    about = f"{len(preferences.about):,} characters" if preferences.about else "-"
+    console.print(_field("About you", about))
+    console.print()
+    if preferences.narrows:
+        console.print(
+            "[dim][bold]stage list --mine[/bold] shows postings that match, newest first.[/dim]"
+        )
+        console.print(
+            "[dim]Followed employers show from any place; postings with no location are left out."
+            "[/dim]"
+        )
+        console.print(
+            "[dim]Postings with no term given still count, since most boards publish none.[/dim]"
+        )
+    else:
+        console.print(
+            "[dim]Nothing chosen yet. Run [bold]stage prefs[/bold] in a terminal, or pass "
+            "--location, --role and --term.[/dim]"
+        )
+    if path is not None:
+        console.print(plain(f"Stored in {path}", "dim"))
 
 
 def render_export(console: Console, result: "ExportResult") -> None:

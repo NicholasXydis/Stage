@@ -13,6 +13,7 @@ from stage.cli.options import (
     LanguageOption,
     LastDaysOption,
     LocationOption,
+    MineOption,
     NewOption,
     RoleOption,
     SourceOption,
@@ -20,6 +21,7 @@ from stage.cli.options import (
     _count,
     _database,
     _filters,
+    _mine,
     _needs_a_row,
     _no_such_posting,
     _print_failure,
@@ -32,6 +34,11 @@ from stage.cli.options import (
 
 MAX_OPEN_AT_ONCE = 25
 FIRST_SYNC_NOTE = "Only one sync so far, so every posting is new; newest posted first."
+
+
+def _no_location_hint(count: int, command: str) -> str:
+    verb = "has" if count == 1 else "have"
+    return f"{count:,} more {verb} no location given: {command} --mine --location unknown"
 
 
 async def _closed_since_you_looked(repository: Any) -> str:
@@ -94,6 +101,7 @@ def list_postings(
     language: LanguageOption = None,
     source: SourceOption = None,
     company: CompanyOption = None,
+    mine: MineOption = False,
     show_all: AllOption = False,
     last: LastDaysOption = None,
     only_new: NewOption = False,
@@ -126,6 +134,9 @@ def list_postings(
             company=company,
             limit=None if show_all else limit,
         )
+        preferences = None
+        if mine:
+            filters, preferences = _mine(filters, as_json)
     except InvalidOptionError as exc:
         _print_failure(exc)
         raise typer.Exit(code=2) from exc
@@ -152,13 +163,15 @@ def list_postings(
         emit(jobs_to_json(listing.jobs))
         return
 
-    from stage.cli.render import render_jobs, terminal
+    from stage.cli.render import plain, render_jobs, terminal
 
     console = terminal()
     if closed:
         console.print(f"[dim]{closed}[/dim]")
     if note:
         console.print(f"[dim]{note}[/dim]")
+    if preferences is not None:
+        console.print(plain(preferences.describe(filters), "dim"))
     render_jobs(
         console,
         listing.jobs,
@@ -168,6 +181,10 @@ def list_postings(
         numbered=numbered,
         hint=hint,
     )
+    if listing.no_location:
+        again = "stage list" + (f" --last {last}" if last is not None else "")
+        again += " --new" if only_new else ""
+        console.print(plain(_no_location_hint(listing.no_location, again), "dim"))
 
 
 @app.command(help="Search titles, employers, and descriptions", rich_help_panel="Everyday")
@@ -186,6 +203,7 @@ def search(
     language: LanguageOption = None,
     source: SourceOption = None,
     company: CompanyOption = None,
+    mine: MineOption = False,
     show_all: AllOption = False,
     last: Annotated[
         int | None,
@@ -227,6 +245,9 @@ def search(
             company=company,
             limit=None if show_all else limit,
         )
+        preferences = None
+        if mine:
+            filters, preferences = _mine(filters, as_json)
     except InvalidOptionError as exc:
         _print_failure(exc)
         raise typer.Exit(code=2) from exc
@@ -252,12 +273,17 @@ def search(
         emit(jobs_to_json(listing.jobs))
         return
 
-    from stage.cli.render import render_search, terminal
+    from stage.cli.render import plain, render_search, terminal
 
     console = terminal()
     if note:
         console.print(f"[dim]{note}[/dim]")
+    if preferences is not None:
+        console.print(plain(preferences.describe(filters), "dim"))
     render_search(console, listing, numbered=numbered, hint=hint)
+    if listing.no_location:
+        again = f'stage search "{query}"' + (f" --last {last}" if last else "")
+        console.print(plain(_no_location_hint(listing.no_location, again), "dim"))
 
 
 @app.command(help="Show every stored detail for one posting", rich_help_panel="Everyday")
@@ -441,6 +467,7 @@ def export(
     language: LanguageOption = None,
     source: SourceOption = None,
     company: CompanyOption = None,
+    mine: MineOption = False,
     show_all: AllOption = False,
     last: LastDaysOption = None,
     limit: Annotated[
@@ -454,9 +481,10 @@ def export(
     ] = None,
     db: DatabaseOption = None,
 ) -> None:
-    from stage.cli.render import failure, render_export, terminal
+    from stage.cli.render import failure, plain, render_export, terminal
     from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat
     from stage.services.export import ExportError, ExportResult, export_jobs
+    from stage.services.query import count_without_location
     from stage.storage import open_repository
 
     console = terminal()
@@ -472,13 +500,16 @@ def export(
             company=company,
             limit=None if show_all else limit,
         )
+        preferences = None
+        if mine:
+            filters, preferences = _mine(filters)
     except InvalidOptionError as exc:
         _print_failure(exc)
         raise typer.Exit(code=2) from exc
 
-    async def run() -> ExportResult:
+    async def run() -> tuple[ExportResult, int | None]:
         async with open_repository(_database(db)) as repository:
-            return await export_jobs(
+            result = await export_jobs(
                 repository,
                 filters,
                 fmt=export_format,
@@ -486,9 +517,11 @@ def export(
                 window_days=_window(last),
                 force=force,
             )
+            left_out = await count_without_location(repository, filters, window_days=_window(last))
+            return result, left_out
 
     try:
-        result = run_async(run())
+        result, left_out = run_async(run())
     except ExportError as exc:
         console.print(failure(exc))
         raise typer.Exit(code=2) from exc
@@ -499,8 +532,16 @@ def export(
             if last and last < DEFAULT_WINDOW_DAYS
             else "Relax a filter."
         )
+        if preferences is not None:
+            console.print(plain(preferences.describe(filters), "dim"))
         console.print(
             f"[yellow]Nothing matched, so {result.path.name} holds headers only.[/yellow] {widen}"
         )
-        return
-    render_export(console, result)
+    else:
+        if preferences is not None:
+            console.print(plain(preferences.describe(filters), "dim"))
+        render_export(console, result)
+    if left_out:
+        again = f"stage export --format {export_format.value}"
+        again += f" --last {last}" if last is not None else ""
+        console.print(plain(_no_location_hint(left_out, again), "dim"))

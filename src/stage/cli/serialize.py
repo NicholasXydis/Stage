@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 if TYPE_CHECKING:
     from stage.cli.schedule import ScheduleStatus
+    from stage.domain.preferences import Preferences
     from stage.services.canary import CanaryReport
     from stage.services.coverage import CoverageReport
     from stage.services.health import DoctorReport, StatsReport
@@ -61,6 +62,21 @@ def postings_to_json(details: Sequence["PostingDetail"]) -> str:
 
 def quarantine_to_json(entries: Sequence[QuarantinedJob]) -> str:
     return dump([asdict(entry) for entry in entries])
+
+
+def preferences_to_json(preferences: "Preferences | None", *, cleared: bool = False) -> str:
+    if preferences is None:
+        return dump({"cleared": cleared})
+    return dump(
+        {
+            "locations": [location.value for location in preferences.locations],
+            "roles": [role.value for role in preferences.roles],
+            "terms": list(preferences.terms),
+            "follow": [employer.name for employer in preferences.follow],
+            "avoid": [employer.name for employer in preferences.avoid],
+            "about": preferences.about,
+        }
+    )
 
 
 def coverage_to_json(report: "CoverageReport") -> str:
