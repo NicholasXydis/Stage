@@ -14,6 +14,7 @@ from stage.domain import (
     IntegrityRepair,
     Job,
     JobFilters,
+    JobStatus,
     PurgeResult,
     QuarantinedJob,
     QuarantineFilters,
@@ -183,6 +184,12 @@ class AsyncRepository:
 
     async def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
         return await self._writer.run(lambda repository: repository.open_counts_by_company(keys))
+
+    async def canonical_ids(self, job_ids: Collection[str]) -> dict[str, str]:
+        return await self._writer.run(lambda repository: repository.canonical_ids(job_ids))
+
+    async def posting_states(self, job_ids: Collection[str]) -> dict[str, JobStatus]:
+        return await self._writer.run(lambda repository: repository.posting_states(job_ids))
 
     async def get_job(self, job_id: str) -> Job | None:
         return await self._writer.run(lambda repository: repository.get_job(job_id))

@@ -30,3 +30,4 @@ class JobFilters:
     terms: frozenset[str] = frozenset()
     avoid_companies: frozenset[str] = frozenset()
     follow_companies: frozenset[str] = frozenset()
+    excluded_ids: frozenset[str] = frozenset()

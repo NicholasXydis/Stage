@@ -64,8 +64,8 @@ class ExportResult:
     notes: tuple[str, ...] = ()
 
 
-def default_filename(fmt: ExportFormat, when: datetime) -> str:
-    return f"stage-export-{when.astimezone(UTC):%Y%m%d}.{fmt.value}"
+def default_filename(fmt: ExportFormat, when: datetime, stem: str = "stage-export") -> str:
+    return f"{stem}-{when.astimezone(UTC):%Y%m%d}.{fmt.value}"
 
 
 def export_root() -> Path:
@@ -76,11 +76,15 @@ def export_root() -> Path:
 
 
 def resolve_destination(
-    destination: Path | None, fmt: ExportFormat, when: datetime, force: bool
+    destination: Path | None,
+    fmt: ExportFormat,
+    when: datetime,
+    force: bool,
+    stem: str = "stage-export",
 ) -> Path:
-    target = (destination or export_root() / default_filename(fmt, when)).expanduser()
+    target = (destination or export_root() / default_filename(fmt, when, stem)).expanduser()
     if target.is_dir():
-        target = target / default_filename(fmt, when)
+        target = target / default_filename(fmt, when, stem)
     target = target.resolve()
     if not target.parent.is_dir():
         raise ExportError(f"{target.parent} does not exist — create it or pass another --out")

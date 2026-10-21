@@ -41,6 +41,27 @@ async def count_without_location(
     return await _left_out(repository, _windowed(filters, window_days, now))
 
 
+async def count_hidden(
+    repository: AsyncRepository,
+    filters: JobFilters,
+    hidden: frozenset[str],
+    *,
+    window_days: int | None = DEFAULT_WINDOW_DAYS,
+    now: datetime | None = None,
+    query: str = "",
+) -> int:
+    hidden = hidden & filters.excluded_ids
+    if not hidden or (query and not search_terms(query)):
+        return 0
+    effective = _windowed(filters, window_days, now)
+    widened = replace(effective, excluded_ids=effective.excluded_ids - hidden)
+    if query:
+        return await repository.count_search(query, widened) - await repository.count_search(
+            query, effective
+        )
+    return await repository.count_jobs(widened) - await repository.count_jobs(effective)
+
+
 async def _left_out(
     repository: AsyncRepository, filters: JobFilters, query: str = ""
 ) -> int | None:
@@ -112,6 +133,7 @@ async def get_posting(repository: AsyncRepository, job_id: str) -> PostingDetail
 __all__ = [
     "JobListing",
     "PostingDetail",
+    "count_hidden",
     "count_without_location",
     "get_posting",
     "list_jobs",

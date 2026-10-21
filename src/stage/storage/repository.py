@@ -12,6 +12,7 @@ from stage.domain import (
     IntegrityRepair,
     Job,
     JobFilters,
+    JobStatus,
     PurgeResult,
     QuarantinedJob,
     QuarantineFilters,
@@ -138,6 +139,12 @@ class Repository(Protocol):
         pass
 
     def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
+        pass
+
+    def canonical_ids(self, job_ids: Collection[str]) -> dict[str, str]:
+        pass
+
+    def posting_states(self, job_ids: Collection[str]) -> dict[str, JobStatus]:
         pass
 
     def previous_sync_at(self) -> datetime | None:

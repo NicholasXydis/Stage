@@ -1122,6 +1122,14 @@ class SqliteRepository:
             avoided = sorted(filters.avoid_companies)
             clauses.append(f"jobs.company_fold NOT IN ({', '.join('?' * len(avoided))})")
             params.extend(avoided)
+        if filters.excluded_ids:
+            excluded = sorted(filters.excluded_ids)
+            if len(excluded) <= _ID_CHUNK:
+                clauses.append(f"jobs.id NOT IN ({', '.join('?' * len(excluded))})")
+                params.extend(excluded)
+            else:
+                clauses.append("jobs.id NOT IN (SELECT value FROM json_each(?))")
+                params.append(json.dumps(excluded))
         return clauses, params
 
     def list_jobs(self, filters: JobFilters) -> list[Job]:
@@ -1146,6 +1154,31 @@ class SqliteRepository:
             "SELECT DISTINCT company FROM jobs ORDER BY company COLLATE NOCASE"
         ).fetchall()
         return [str(row["company"]) for row in rows]
+
+    def canonical_ids(self, job_ids: Collection[str]) -> dict[str, str]:
+        wanted = sorted(set(job_ids))
+        found: dict[str, str] = {}
+        for start in range(0, len(wanted), _ID_CHUNK):
+            chunk = wanted[start : start + _ID_CHUNK]
+            rows = self._conn.execute(
+                "SELECT id, duplicate_of FROM jobs WHERE duplicate_of IS NOT NULL "
+                f"AND id IN ({', '.join('?' * len(chunk))})",
+                chunk,
+            ).fetchall()
+            found.update({str(row["id"]): str(row["duplicate_of"]) for row in rows})
+        return found
+
+    def posting_states(self, job_ids: Collection[str]) -> dict[str, JobStatus]:
+        wanted = sorted(set(job_ids))
+        found: dict[str, JobStatus] = {}
+        for start in range(0, len(wanted), _ID_CHUNK):
+            chunk = wanted[start : start + _ID_CHUNK]
+            rows = self._conn.execute(
+                f"SELECT id, status FROM jobs WHERE id IN ({', '.join('?' * len(chunk))})",
+                chunk,
+            ).fetchall()
+            found.update({str(row["id"]): JobStatus(row["status"]) for row in rows})
+        return found
 
     def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
         if not keys:
