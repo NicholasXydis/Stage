@@ -78,6 +78,7 @@ def _job(
 
 def _store(path: Path, jobs: list[Job], *, legacy_remote: str = "") -> str:
     import sqlite3
+    from contextlib import closing
 
     from stage.storage.repository import SourceBatch
     from stage.storage.sqlite_repo import SqliteRepository
@@ -88,8 +89,9 @@ def _store(path: Path, jobs: list[Job], *, legacy_remote: str = "") -> str:
     )
     repository.close()
     if legacy_remote:
-        with sqlite3.connect(path) as conn:
+        with closing(sqlite3.connect(path)) as conn:
             conn.execute("UPDATE jobs SET location = 'remote' WHERE id = ?", (legacy_remote,))
+            conn.commit()
     return str(path)
 
 
