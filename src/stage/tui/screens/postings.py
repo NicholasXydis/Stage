@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -14,7 +15,9 @@ from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 
 from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat, JobFilters
 from stage.domain.text import sanitize
+from stage.domain.tracker import MARKERS, ApplicationStatus
 from stage.normalize.location import display_location
+from stage.services.tracker import Change, ChangeReport, TrackerView
 from stage.tui.help import HelpOverlay
 from stage.tui.safe import cell, quoted, told
 from stage.tui.state import (
@@ -44,22 +47,39 @@ HELP_TEXT = """[b]Find[/b]
   o        open marked rows, or this one
   e        export what you see
   g        change the export format
+  m M      show 200 more, or 200 fewer
 
-[b]How many rows[/b]
-  m        show 200 more
-  M        show 200 fewer
+[b]Track[/b]
+  s p h    save, mark applied, or hide
+  z        undo the last s, p or h
 
 [b]Other screens[/b]
-  y        sync
-  t        statistics
-  v        review
-  b        board health
+  l        your applications
+  y t v b  sync, stats, review, boards
   A        about
   ctrl+t   change the theme
   q        quit
 
 [dim]? closes this[/dim]"""
 NARROW = 80
+
+
+def _tracked_notice(status: ApplicationStatus, report: ChangeReport) -> str:
+    count = len(report.changed)
+    if not count:
+        kept = report.unchanged[0].status.value if report.unchanged else status.value
+        return f"Nothing to change; already marked {kept}. The tracker screen (l) can change it."
+    noun = "posting" if count == 1 else "postings"
+    if status is ApplicationStatus.SAVED:
+        line = f"Saved {count} {noun}."
+    elif status is ApplicationStatus.APPLIED:
+        line = f"Marked {count} {noun} applied."
+    else:
+        line = f"Hid {count} {noun}."
+    skipped = len(report.unchanged)
+    if skipped:
+        line += f" {skipped} already further along stayed as they were."
+    return f"{line} z undoes it."
 
 
 def _mine_notice(preferences: "Preferences", filters: JobFilters, left_out: int | None) -> str:
@@ -94,6 +114,11 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         Binding("b", "boards", "boards", show=False),
         Binding("y", "sync", "sync", show=False),
         Binding("A", "about", "about", show=False),
+        Binding("l", "applications", "applications"),
+        Binding("s", "save", "save", show=False),
+        Binding("p", "applied", "applied", show=False),
+        Binding("h", "hide", "hide", show=False),
+        Binding("z", "undo", "undo", show=False),
     ]
 
     def __init__(self) -> None:
@@ -110,6 +135,10 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self._preferences: Preferences | None = None
         self._announce_mine = False
         self._tracker_warned = False
+        self._statuses: Mapping[str, ApplicationStatus] = {}
+        self._hidden = 0
+        self._undo: tuple[Change, ...] = ()
+        self._keep: tuple[str, int] | None = None
 
     @property
     def repository(self) -> "AsyncRepository | None":
@@ -169,6 +198,8 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             parts.append(f"[reverse] {window} [/reverse]")
         if self.state.mine:
             parts.append("[reverse] mine [/reverse]")
+        if self.state.untracked:
+            parts.append("[reverse] not acted on [/reverse]")
         shown = " ".join(parts) if parts else "[dim]all postings[/dim]"
         count = (
             f"[b]{len(self._jobs)}[/b] of [b]{self._total}[/b]"
@@ -176,6 +207,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             else f"[b]{self._total}[/b] posting(s)"
         )
         marked = f"   [b]{len(self._marked)}[/b] marked" if self._marked else ""
+        marked += f"   [dim]{self._hidden:,} hidden[/dim]" if self._hidden else ""
         clear = (
             "   [dim]c to clear[/dim]"
             if self.state.active or self.state.query or self._is_narrowed()
@@ -184,7 +216,12 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self.query_one("#chips", Static).update(f"{shown}   {count}{marked}{clear}")
 
     def _is_narrowed(self) -> bool:
-        return self.state.only_new or self.state.mine or self.state.last_days != DEFAULT_WINDOW_DAYS
+        return (
+            self.state.only_new
+            or self.state.mine
+            or self.state.untracked
+            or self.state.last_days != DEFAULT_WINDOW_DAYS
+        )
 
     def _load_preferences(self) -> None:
         from stage.services.preferences import load_preferences
@@ -212,7 +249,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
 
     @work(exclusive=True)
     async def refresh_results(self) -> None:
-        from stage.services.query import list_jobs, search_jobs
+        from stage.services.query import count_hidden, list_jobs, search_jobs
 
         repo = self.repository
         if repo is None:
@@ -226,22 +263,32 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         preferences = self._preferences
         filters = self.state.as_filters(preferences)
         try:
-            filters = await self._without_hidden(repo, filters)
+            filters, view = await self._tracked_filters(repo, filters)
             if self.state.only_new:
                 since = await repo.previous_sync_at()
                 if since is not None:
                     filters = replace(filters, first_seen_after=since)
-            if self.state.query.strip():
+            query = self.state.query.strip()
+            if query:
                 listing = await search_jobs(
                     repo, self.state.query, filters, window_days=self.state.window_days
                 )
             else:
                 listing = await list_jobs(repo, filters, window_days=self.state.window_days)
+            hidden = await count_hidden(
+                repo,
+                filters,
+                view.hidden,
+                window_days=self.state.window_days,
+                query=self.state.query if query else "",
+            )
         except asyncio.CancelledError:
             self._announce_mine = self._announce_mine or announce
             raise
         self._jobs = listing.jobs
         self._total = listing.total_matching
+        self._statuses = view.statuses
+        self._hidden = hidden
         try:
             self._fill(listing.jobs)
             self._set_busy(False)
@@ -250,14 +297,17 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         if announce and preferences is not None:
             told(self, _mine_notice(preferences, filters, listing.no_location))
 
-    async def _without_hidden(self, repo: "AsyncRepository", filters: JobFilters) -> JobFilters:
+    async def _tracked_filters(
+        self, repo: "AsyncRepository", filters: JobFilters
+    ) -> tuple[JobFilters, TrackerView]:
         from stage.services.tracker import tracker_view
 
         view = await tracker_view(repo)
         if view.problem and not self._tracker_warned:
             self._tracker_warned = True
             told(self, view.problem, "warning")
-        return replace(filters, excluded_ids=filters.excluded_ids | view.hidden)
+        excluded = view.tracked if self.state.untracked else view.hidden
+        return replace(filters, excluded_ids=filters.excluded_ids | excluded), view
 
     def _fill(self, jobs: "tuple[Job, ...]") -> None:
         table = self.query_one("#results", DataTable)
@@ -266,13 +316,20 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         width = self._title_width()
         for position, job in enumerate(jobs, start=1):
             marker = "*" if job.id in self._marked else " "
+            status = self._statuses.get(job.id)
+            tag = MARKERS.get(status) if status is not None else None
             table.add_row(
                 cell(f"{marker}{position}"),
                 cell(age_label(job.first_seen, now)),
                 cell(job.company, 20),
-                cell(job.title_raw, width),
+                cell(f"{tag} {job.title_raw}" if tag else job.title_raw, width),
                 cell(display_location(job.location_raw) or "-", 18),
             )
+        if self._keep is not None and jobs:
+            kept, row = self._keep
+            same = next((index for index, job in enumerate(jobs) if job.id == kept), None)
+            table.move_cursor(row=same if same is not None else min(row, len(jobs) - 1))
+        self._keep = None
         self._render_chips()
         self._show_detail()
 
@@ -294,9 +351,11 @@ class PostingsScreen(HelpOverlay, Screen[None]):
                 "[b]f[/b] for filters, [b]?[/b] for help.[/dim]"
             )
             return
+        status = self._statuses.get(job.id)
         facts = "  [dim]|[/dim]  ".join(
             quoted(part)
             for part in (
+                status.value if status is not None else None,
                 display_location(job.location_raw) or None,
                 job.role.value if job.role.value != "unknown" else None,
                 job.term if job.term != "unknown" else None,
@@ -526,7 +585,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         root = export_root()
         stamp = datetime.now(UTC).astimezone().strftime("%Y%m%d-%H%M%S")
         try:
-            filters = await self._without_hidden(repo, self.state.as_filters(self._preferences))
+            filters, _ = await self._tracked_filters(repo, self.state.as_filters(self._preferences))
             result = await export_jobs(
                 repo,
                 filters,
@@ -560,6 +619,85 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         from stage.tui.screens.sync import SyncScreen
 
         self.app.push_screen(SyncScreen())
+
+    def action_applications(self) -> None:
+        from stage.tui.screens.applications import ApplicationsScreen
+
+        self.dismiss_overlays()
+        self.close_help()
+        self.app.push_screen(ApplicationsScreen(), self._after_applications)
+
+    def _after_applications(self, changed: bool | None) -> None:
+        if changed:
+            self._undo = ()
+            self.refresh_results()
+
+    def action_save(self) -> None:
+        self._track(ApplicationStatus.SAVED)
+
+    def action_applied(self) -> None:
+        self._track(ApplicationStatus.APPLIED)
+
+    def action_hide(self) -> None:
+        self._track(ApplicationStatus.HIDDEN)
+
+    def _track(self, status: ApplicationStatus) -> None:
+        targets = self._open_targets()
+        if not targets:
+            told(self, "Nothing selected.", "warning")
+            return
+        self._hold_cursor()
+        self._record(status, tuple(job.id for job in targets))
+
+    def _hold_cursor(self) -> None:
+        job = self._selected()
+        if job is not None:
+            self._keep = (job.id, self.query_one("#results", DataTable).cursor_row)
+
+    @work(group="tracker")
+    async def _record(self, status: ApplicationStatus, ids: tuple[str, ...]) -> None:
+        from stage.services.tracker import TrackerProblemError, record_status
+
+        repo = self.repository
+        if repo is None:
+            return
+        try:
+            report = await record_status(
+                repo, ids, status, forward_only=status is not ApplicationStatus.HIDDEN
+            )
+        except TrackerProblemError as exc:
+            told(self, str(exc), "error")
+            return
+        if report.missing:
+            told(self, "That posting is no longer stored; press r to reload.", "warning")
+            return
+        if report.changed:
+            self._undo = report.changed
+        self._marked.clear()
+        told(self, _tracked_notice(status, report))
+        self.refresh_results()
+
+    def action_undo(self) -> None:
+        if not self._undo:
+            told(self, "Nothing to undo.", "warning")
+            return
+        row = self.query_one("#results", DataTable).cursor_row
+        self._keep = (self._undo[0].entry.posting_id, max(row, 0))
+        self._revert(self._undo)
+
+    @work(group="tracker")
+    async def _revert(self, changes: tuple[Change, ...]) -> None:
+        from stage.services.tracker import TrackerProblemError, undo_changes
+
+        try:
+            undo_changes(changes)
+        except TrackerProblemError as exc:
+            told(self, str(exc), "error")
+            return
+        self._undo = ()
+        count = len(changes)
+        told(self, f"Undone: {count} posting{'' if count == 1 else 's'} back as before.")
+        self.refresh_results()
 
     def action_about(self) -> None:
         from stage.tui.screens.splash import SplashScreen

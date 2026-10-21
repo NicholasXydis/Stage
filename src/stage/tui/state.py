@@ -37,7 +37,10 @@ def filter_rows(
     state: "FilterState", employer: str | None = None, *, saved: bool = False
 ) -> tuple[tuple[str, str, str, bool], ...]:
     mine = "Only my preferences" if saved else "Only my preferences (none saved; run stage prefs)"
-    rows: list[tuple[str, str, str, bool]] = [("mine", "on", mine, state.mine)]
+    rows: list[tuple[str, str, str, bool]] = [
+        ("mine", "on", mine, state.mine),
+        ("untracked", "on", "Only postings I have not acted on", state.untracked),
+    ]
     for name, label, options in FILTER_FIELDS:
         for option in options:
             if option == "unknown":
@@ -66,6 +69,7 @@ class FilterState:
     only_new: bool = False
     show_all: bool = False
     mine: bool = False
+    untracked: bool = False
 
     def toggle(self, name: str, value: str) -> None:
         if self.values.get(name) == value:
@@ -81,6 +85,7 @@ class FilterState:
         self.only_new = False
         self.show_all = False
         self.mine = False
+        self.untracked = False
 
     def widen(self) -> None:
         self.limit += PAGE_SIZE
@@ -100,6 +105,8 @@ class FilterState:
             self.show_all = not self.show_all
         elif name == "mine":
             self.mine = not self.mine
+        elif name == "untracked":
+            self.untracked = not self.untracked
         else:
             self.toggle(name, value)
         self.limit = PAGE_SIZE
