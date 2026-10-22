@@ -211,6 +211,7 @@ def doctor(
     from stage.cli.render import (
         BOARD_PREVIEW,
         failure,
+        render_app_health,
         render_doctor,
         render_repairs,
         terminal,
@@ -218,6 +219,7 @@ def doctor(
     from stage.cli.serialize import emit, health_to_json
     from stage.companies import RegistryError, load_companies
     from stage.domain import IntegrityRepair
+    from stage.services.connect import app_health
     from stage.services.health import DoctorReport
     from stage.services.health import doctor as run_doctor
     from stage.services.maintenance import repair_integrity
@@ -242,8 +244,9 @@ def doctor(
             )
 
     report, repairs = run_async(run())
+    apps = app_health()
     if as_json:
-        emit(health_to_json(report))
+        emit(health_to_json(report, apps))
     else:
         render_repairs(console, repairs)
         render_doctor(
@@ -253,6 +256,7 @@ def doctor(
             limit=None if show_all else BOARD_PREVIEW,
             verbose=verbose,
         )
+        render_app_health(console, apps)
     if not report.is_healthy:
         raise typer.Exit(code=1)
 

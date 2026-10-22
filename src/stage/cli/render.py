@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from stage.domain import WorkdayCrawl
     from stage.domain.preferences import Preferences
     from stage.services.canary import CanaryReport
+    from stage.services.connect import AppHealth
     from stage.services.coverage import CoverageReport
     from stage.services.export import ExportResult
     from stage.services.health import DoctorReport, SourceHealth, StatsReport
@@ -1003,6 +1004,25 @@ def render_repairs(console: "Console", repairs: Sequence[IntegrityRepair]) -> No
     for entry in repairs:
         console.print(f"  {entry.repaired} × {sanitize(entry.check)} — {sanitize(entry.detail)}")
     console.print()
+
+
+def render_app_health(console: Console, apps: "Sequence[AppHealth]") -> None:
+    console.print()
+    if not apps:
+        console.print("[bold]AI apps[/bold] [dim]none connected; stage connect sets one up[/dim]")
+        return
+    console.print("[bold]AI apps[/bold]")
+    for app in apps:
+        state = app.status.value
+        line = Text.assemble("  ", _sanitize(app.label), "  ")
+        if state == "connected":
+            line.append("connected", style="green")
+        else:
+            line.append(state, style="yellow" if state == "outdated" else "red")
+            if app.detail:
+                line.append(f" {_sanitize(app.detail)}")
+            line.append(f" -- run stage connect {app.key}")
+        console.print(line)
 
 
 def render_doctor(

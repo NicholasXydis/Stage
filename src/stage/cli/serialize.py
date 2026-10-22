@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from stage.cli.schedule import ScheduleStatus
     from stage.domain.preferences import Preferences
     from stage.services.canary import CanaryReport
+    from stage.services.connect import AppHealth
     from stage.services.coverage import CoverageReport
     from stage.services.health import DoctorReport, StatsReport
     from stage.services.query import PostingDetail
@@ -91,7 +92,7 @@ def coverage_to_json(report: "CoverageReport") -> str:
     )
 
 
-def health_to_json(report: "DoctorReport") -> str:
+def health_to_json(report: "DoctorReport", apps: "Sequence[AppHealth]" = ()) -> str:
     return dump(
         {
             "schema_version": report.schema_version,
@@ -110,6 +111,15 @@ def health_to_json(report: "DoctorReport") -> str:
                     "success_rate": source.success_rate,
                 }
                 for source in report.sources
+            ],
+            "ai_apps": [
+                {
+                    "app": app.key,
+                    "name": app.label,
+                    "status": app.status.value,
+                    "detail": app.detail,
+                }
+                for app in apps
             ],
         }
     )
