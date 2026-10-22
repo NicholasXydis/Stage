@@ -83,12 +83,13 @@
   source_of_record: openjobs
   last_verified: *id001
 - name: Old Mission Capital
-  platform: greenhouse
-  slug: oldmissioncapital
+  platform: ashby
+  slug: old-mission-capital
   source_of_record: discover
-  last_verified: 2026-08-17
-  notes: '2026-08-17: greenhouse token read from the embed script on the employer''s
-    own careers page; the board names itself ''Old Mission'' and carried 35 jobs'
+  last_verified: 2026-10-22
+  notes: '2026-10-22: greenhouse/oldmissioncapital answers 404; oldmissioncapital.com/careers
+    now embeds jobs.ashbyhq.com/old-mission-capital, which lists 39 roles in Chicago,
+    New York and London.'
 - name: Olg
   platform: workday
   slug: olg

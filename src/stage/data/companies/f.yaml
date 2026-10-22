@@ -390,8 +390,11 @@
   slug: frima-studio
   source_of_record: discover
   last_verified: 2026-08-18
-  notes: 'The jobvite park was right about jobvite and wrong about the employer: frimastudio.com
-    is WordPress with a public career post type.'
+  recheck_after: 2027-01-20
+  enabled: false
+  notes: '2026-10-22: frimastudio.com answers 404 on every page, its error page included.
+    A Workable account named Frima lists no roles and the frimastudio BambooHR holds
+    only a Poste test 1, so nothing confirms a new board; parked until the site returns.'
   custom:
     url: https://frimastudio.com/wp-json/wp/v2/career?per_page=50
     fields:

@@ -15,6 +15,14 @@ from stage.sources.jobvite import JobviteAdapter, JobviteRow
 FIXTURES = Path(__file__).parent / "fixtures"
 PAGE = (FIXTURES / "jobvite_resolver.html").read_text(encoding="utf-8")
 ONCLICK_PAGE = (FIXTURES / "jobvite_agscareer.html").read_text(encoding="utf-8")
+NO_OPEN_JOBS = (FIXTURES / "jobvite_capcomusa_empty.html").read_text(encoding="utf-8")
+OUTAGE = (
+    "<html><body><h1>Jobvite Page Unavailable</h1><p>Job listings are currently unavailable "
+    "but they will return shortly</p></body></html>"
+)
+NOTICE_ELSEWHERE = "<html><body><div>There are currently no open jobs.</div></body></html>"
+PLAIN_NOTICE = "<html><body><p>There are currently no open jobs.</p></body></html>"
+OTHER_NOTICE = '<html><body><p class="jv-text-center">Search returned 4 jobs.</p></body></html>'
 SHOW_MORE = (
     '<html><body><table class="jv-job-list"><tbody>'
     '<tr><td class="jv-job-list-name"><a href="/acme/job/one">Software Intern</a></td>'
@@ -101,6 +109,32 @@ async def test_a_show_more_row_is_navigation_and_makes_the_listing_partial() -> 
 async def test_a_page_without_the_listing_table_fails_loudly() -> None:
     with pytest.raises(PayloadValidationError):
         await _fetch(GONE)
+
+
+@respx.mock
+async def test_a_board_saying_it_has_no_open_jobs_is_empty_not_broken() -> None:
+    result = await _fetch(NO_OPEN_JOBS)
+    assert result.jobs == ()
+    assert result.declared_empty
+    assert not result.authoritative
+    assert "no open jobs" in result.degraded
+
+
+@respx.mock
+@pytest.mark.parametrize("page", [OUTAGE, NOTICE_ELSEWHERE, PLAIN_NOTICE, OTHER_NOTICE])
+async def test_only_jobvites_own_empty_notice_counts_as_empty(page: str) -> None:
+    with pytest.raises(PayloadValidationError):
+        await _fetch(page)
+
+
+@respx.mock
+async def test_a_listing_wins_over_an_empty_notice_on_the_same_page() -> None:
+    page = PAGE.replace(
+        "<body>", '<body><p class="jv-text-center">There are currently no open jobs.</p>', 1
+    )
+    result = await _fetch(page)
+    assert len(result.jobs) == 12
+    assert not result.declared_empty
 
 
 def test_every_enabled_jobvite_row_uses_a_tenant_the_adapter_can_reach() -> None:

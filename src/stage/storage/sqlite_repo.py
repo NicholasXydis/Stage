@@ -465,6 +465,20 @@ class SqliteRepository:
                     )
         return found
 
+    def _expired_tombstones(self, job_ids: Sequence[str], cutoff: datetime) -> set[str]:
+        expired: set[str] = set()
+        for chunk in self._chunked(job_ids):
+            placeholders = ", ".join("?" * len(chunk))
+            rows = self._conn.execute(
+                f"SELECT t.id FROM tombstones t WHERE t.id IN ({placeholders}) "
+                "AND t.first_seen < ? "
+                "AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.id = t.id) "
+                "AND NOT EXISTS (SELECT 1 FROM quarantine q WHERE q.id = t.id)",
+                (*chunk, _to_text(cutoff)),
+            ).fetchall()
+            expired.update(str(row["id"]) for row in rows)
+        return expired
+
     def _duplicate_candidates(self, jobs: Sequence[Job]) -> list[Job]:
         companies = sorted({folded for job in jobs if (folded := fold_company(job.company))})
         urls = sorted({job.apply_url_canonical for job in jobs if job.apply_url_canonical})
@@ -667,10 +681,15 @@ class SqliteRepository:
         quarantined_ids = [entry.id for entry in batch.quarantined]
 
         with self._transaction() as conn:
-            known = self._preserved_first_seen([job.id for job in batch.jobs] + quarantined_ids)
+            expired = self._expired_tombstones(
+                [job.id for job in batch.jobs],
+                batch.run_started_at - timedelta(days=OPEN_RETENTION_DAYS),
+            )
+            arriving = [job for job in batch.jobs if job.id not in expired]
+            known = self._preserved_first_seen([job.id for job in arriving] + quarantined_ids)
             jobs = tuple(
                 replace(job, first_seen=known[job.id]) if job.id in known else job
-                for job in batch.jobs
+                for job in arriving
             )
             quarantined = tuple(
                 replace(entry, first_seen=known[entry.id]) if entry.id in known else entry
@@ -849,7 +868,7 @@ class SqliteRepository:
         ).fetchone()
         return SourceBatchResult(
             source=batch.source,
-            fetched=len(jobs) + len(batch.quarantined),
+            fetched=len(batch.jobs) + len(batch.quarantined),
             added=len(jobs) - updated,
             updated=updated,
             closed=closed,
@@ -998,7 +1017,7 @@ class SqliteRepository:
         limit, limit_params = _limit_clause(filters.limit)
         rows = self._conn.execute(
             f"SELECT * FROM quarantine{where} ORDER BY company COLLATE NOCASE, "
-            f"first_seen DESC, title_raw COLLATE NOCASE{limit}",
+            f"first_seen DESC, title_raw COLLATE NOCASE, id{limit}",
             (*params, *limit_params),
         ).fetchall()
         return [_row_to_quarantined(row) for row in rows]
@@ -1154,6 +1173,12 @@ class SqliteRepository:
             "SELECT DISTINCT company FROM jobs ORDER BY company COLLATE NOCASE"
         ).fetchall()
         return [str(row["company"]) for row in rows]
+
+    def ids_with_prefix(self, prefix: str) -> list[str]:
+        rows = self._conn.execute(
+            "SELECT id FROM jobs WHERE substr(id, 1, ?) = ? ORDER BY id", (len(prefix), prefix)
+        ).fetchall()
+        return [str(row["id"]) for row in rows]
 
     def canonical_ids(self, job_ids: Collection[str]) -> dict[str, str]:
         wanted = sorted(set(job_ids))

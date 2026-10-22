@@ -28,6 +28,8 @@ LISTING = "table.jv-job-list"
 ROW = "table.jv-job-list tbody tr"
 NAME_CELL = "td.jv-job-list-name"
 LOCATION_CELL = "td.jv-job-list-location"
+NOTICE = "p.jv-text-center"
+NO_OPEN_JOBS = re.compile(r"\bno open jobs\b", re.IGNORECASE)
 ONCLICK = re.compile(r"""location\.href\s*=\s*['"](?P<href>[^'"]{1,300})['"]""")
 
 
@@ -53,6 +55,12 @@ def _href(block: Tag) -> str:
         return str(link.get("href", ""))
     found = ONCLICK.search(str(block.get("onclick", "")))
     return found.group("href") if found is not None else ""
+
+
+def _declares_empty(text: str) -> bool:
+    return any(
+        NO_OPEN_JOBS.search(notice.get_text(" ", strip=True)) for notice in html_rows(text, NOTICE)
+    )
 
 
 def _row(block: Tag) -> dict[str, str]:
@@ -92,6 +100,12 @@ class JobviteAdapter(BoardAdapter):
 
     def result(self, company: Company, payload: Any, now: datetime) -> FetchResult:
         blocks = self._blocks(company, str(payload))
+        if blocks is None:
+            return FetchResult(
+                degraded=f"{company.slug} lists no open jobs right now; nothing closes",
+                authoritative=False,
+                declared_empty=True,
+            )
         listed = [block for block in blocks if block.select_one(NAME_CELL) is not None]
         rows, dropped = validate_rows(
             self.row_model, [_row(block) for block in listed], source=self.name, slug=company.slug
@@ -109,8 +123,10 @@ class JobviteAdapter(BoardAdapter):
             authoritative=not dropped and not truncated,
         )
 
-    def _blocks(self, company: Company, text: str) -> list[Tag]:
+    def _blocks(self, company: Company, text: str) -> list[Tag] | None:
         if not html_rows(text, LISTING):
+            if _declares_empty(text):
+                return None
             captured = capture_payload(self.name, company.slug, {"text": text})
             raise PayloadValidationError(
                 f"{self.name}/{company.slug}: the board page carries no {LISTING!r} listing, "

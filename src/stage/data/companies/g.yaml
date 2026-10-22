@@ -390,9 +390,11 @@
   workday_tenant: global
   workday_site: globalpartnerscareers
   workday_dc: wd1
-  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
-    verified by a scratch sync — the board answered with 1 posting(s), 1 kept after
-    the CS-internship screens'
+  recheck_after: 2027-01-20
+  enabled: false
+  notes: '2026-10-22: 1,845 roles and no internship facet, and all 1,839 postings Stage
+    has read were quarantined as not-an-internship; parked so syncs stop spending Workday
+    pages on a board that never yields one.'
 - name: GlobalFoundries
   platform: workday
   slug: globalfoundries

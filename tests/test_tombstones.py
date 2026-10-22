@@ -4,8 +4,10 @@ from pathlib import Path
 
 import pytest
 
+from stage.classify import to_quarantined
+from stage.classify.scope import Rejection
 from stage.dedup import SOURCE_PRIORITY, resolve_duplicates
-from stage.domain import Job, JobStatus, LocationBucket
+from stage.domain import Job, JobStatus, LocationBucket, QuarantineFilters, RejectionReason
 from stage.storage import SourceBatch, open_repository
 from stage.storage.sqlite_repo import SqliteRepository
 
@@ -62,10 +64,14 @@ async def test_an_expired_posting_leaves_a_tombstone(db_path: Path) -> None:
 
 
 async def test_a_purged_posting_does_not_resurrect_with_a_fresh_date(db_path: Path) -> None:
-    original = NOW - timedelta(days=20)
+    original = NOW - timedelta(days=5)
     async with open_repository(db_path) as repository:
         await repository.apply_source_batch(
-            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=(job("row", seen=original),))
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=NOW,
+                jobs=(job("row", seen=original, status=JobStatus.CLOSED),),
+            )
         )
         await repository.purge(NOW)
         assert await repository.get_job("row") is None
@@ -77,6 +83,94 @@ async def test_a_purged_posting_does_not_resurrect_with_a_fresh_date(db_path: Pa
         restored = await repository.get_job("row")
         assert restored is not None
         assert restored.first_seen == original, "purged posting resurfaced as new"
+
+
+async def test_a_posting_past_the_window_is_not_added_back(db_path: Path) -> None:
+    original = NOW - timedelta(days=20)
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=(job("row", seen=original),))
+        )
+        await repository.purge(NOW)
+
+        later = NOW + timedelta(days=1)
+        result = await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=later,
+                jobs=(job("row", seen=later), job("new", seen=later)),
+            )
+        )
+        assert await repository.get_job("row") is None
+        assert await repository.get_job("new") is not None
+        assert (result.fetched, result.added, result.updated, result.stored) == (2, 1, 0, 1)
+        assert await repository.tombstone_count() == 1
+        assert (await repository.purge(later)).purged == 0
+
+
+async def test_a_returning_posting_still_in_the_table_is_updated(db_path: Path) -> None:
+    original = NOW - timedelta(days=5)
+    later = NOW + timedelta(days=16)
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=NOW,
+                jobs=(job("row", seen=original, status=JobStatus.CLOSED),),
+            )
+        )
+        await repository.purge(NOW)
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=(job("row"),))
+        )
+        result = await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=later,
+                jobs=(job("row", seen=later, title="Data Engineer Intern"),),
+            )
+        )
+        stored = await repository.get_job("row")
+        assert stored is not None
+        assert stored.title_raw == "Data Engineer Intern"
+        assert stored.first_seen == original
+        assert result.updated == 1
+
+
+async def test_a_quarantined_posting_past_the_window_is_still_released(db_path: Path) -> None:
+    original = NOW - timedelta(days=20)
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=(job("row", seen=original),))
+        )
+        await repository.purge(NOW)
+        rejected = to_quarantined(
+            job("row", seen=NOW), Rejection(RejectionReason.NOT_AN_INTERNSHIP, "")
+        )
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, quarantined=(rejected,))
+        )
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=(job("row", seen=NOW),))
+        )
+        released = await repository.get_job("row")
+        assert released is not None
+        assert released.first_seen == original
+        assert await repository.count_quarantined(QuarantineFilters()) == 0
+
+
+async def test_many_returning_postings_past_the_window_are_all_skipped(db_path: Path) -> None:
+    original = NOW - timedelta(days=20)
+    rows = tuple(job(f"row-{n}", seen=original) for n in range(900))
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=rows)
+        )
+        assert (await repository.purge(NOW)).purged == 900
+        result = await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=rows)
+        )
+        assert (result.fetched, result.added, result.stored) == (900, 0, 0)
 
 
 async def test_closed_postings_purge_faster_than_open_ones(db_path: Path) -> None:
