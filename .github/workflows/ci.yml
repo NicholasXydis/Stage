@@ -256,3 +256,55 @@ jobs:
               --out "$RUNNER_TEMP/smoke.$format"
             test -s "$RUNNER_TEMP/smoke.$format"
           done
+      - name: Connecting AI apps must work from the installed wheel
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          cd "$RUNNER_TEMP"
+          cat > connect_smoke.py <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          home = Path(os.environ["RUNNER_TEMP"]) / "connect-home"
+          roaming = home / "AppData" / "Roaming"
+          for folder in (
+              home / ".cursor",
+              roaming / "Claude",
+              home / "Library" / "Application Support" / "Claude",
+              home / ".config" / "Claude",
+          ):
+              folder.mkdir(parents=True, exist_ok=True)
+          env = dict(
+              os.environ,
+              HOME=str(home),
+              USERPROFILE=str(home),
+              APPDATA=str(roaming),
+              LOCALAPPDATA=str(home / "AppData" / "Local"),
+              XDG_CONFIG_HOME=str(home / ".config"),
+              STAGE_DB=str(Path(os.environ["RUNNER_TEMP"]) / "smoke.db"),
+          )
+          stage = str(Path(sys.executable).with_name("stage.exe" if os.name == "nt" else "stage"))
+
+
+          def run(*arguments: str) -> str:
+              done = subprocess.run([stage, *arguments], env=env, capture_output=True, text=True)
+              print(done.stdout + done.stderr)
+              assert done.returncode == 0, f"stage {' '.join(arguments)} exited {done.returncode}"
+              return done.stdout
+
+
+          said = run("connect", "cursor", "claude-desktop")
+          assert "Self-test: Stage answered" in said, "the self-test did not pass"
+          stored = json.loads((home / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
+          entry = stored["mcpServers"]["stage"]
+          assert Path(entry["command"]).is_file(), entry["command"]
+          assert entry["env"]["STAGE_DB"] == env["STAGE_DB"], entry["env"]
+          assert run("connect", "--status").count("connected") >= 2
+          run("disconnect", "cursor", "claude-desktop")
+          stored = json.loads((home / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
+          assert "stage" not in stored["mcpServers"], stored
+          PY
+          "$SMOKE_BIN/python" connect_smoke.py

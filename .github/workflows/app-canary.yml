@@ -1,0 +1,78 @@
+name: App canary
+
+on:
+  schedule:
+    - cron: "0 15 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  connect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: |
+          python -m pip install uv==0.11.28
+          uv sync --frozen
+      - name: Connect Stage to the latest release of every command-line AI app
+        id: connect
+        continue-on-error: true
+        run: |
+          uv run python scripts/app_canary.py | tee "$RUNNER_TEMP/apps.txt"
+          exit "${PIPESTATUS[0]}"
+      - name: Write summary
+        if: always()
+        run: |
+          {
+            echo "## App canary"
+            echo ""
+            echo '```'
+            cat "$RUNNER_TEMP/apps.txt" 2>/dev/null || echo "the check produced no output"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Open an issue when an app stopped reading Stage's entry
+        if: steps.connect.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create app-canary --color d93f0b --description "An AI app changed how it stores MCP servers" --force
+          open=$(gh issue list --label app-canary --state open --json number --jq 'length')
+          if [ "$open" != "0" ]; then
+            echo "An app canary issue is already open; not filing a duplicate."
+            exit 0
+          fi
+          {
+            echo "The weekly check could not connect Stage to every AI app cleanly."
+            echo ""
+            echo '```'
+            cat "$RUNNER_TEMP/apps.txt" 2>/dev/null || echo "the check produced no output"
+            echo '```'
+            echo ""
+            echo "Run: $RUN_URL"
+            echo ""
+            echo "An app that installs but no longer lists Stage has moved or reshaped its"
+            echo "settings. Update its row in src/stage/services/ai_catalogue.py and the notes."
+          } > "$RUNNER_TEMP/issue.md"
+          gh issue create --label app-canary \
+            --title "App canary: an AI app no longer reads Stage's entry" \
+            --body-file "$RUNNER_TEMP/issue.md"
+      - name: Fail if an app did not connect
+        if: always()
+        run: |
+          if [ "${{ steps.connect.outcome }}" != "success" ]; then exit 1; fi
