@@ -57,6 +57,10 @@ def font_path() -> Path:
     return packaged
 
 
+def logo_dir() -> Path:
+    return Path(__file__).resolve().parent / "data" / "logo"
+
+
 def capture_dir() -> Path:
     override = os.environ.get("STAGE_CAPTURE_DIR")
     root = Path(override).expanduser() if override else data_dir() / "captured"

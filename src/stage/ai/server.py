@@ -1,9 +1,10 @@
+import base64
 from pathlib import Path
 from typing import Any, cast
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.tools import Tool
-from mcp.types import ToolAnnotations
+from mcp.types import Icon, ToolAnnotations
 from pydantic import BaseModel, ConfigDict
 
 from stage import __version__
@@ -138,6 +139,26 @@ def _strict(tool: Tool) -> Tool:
     return tool
 
 
+LOGOS = (
+    ("stage.svg", "image/svg+xml", "any"),
+    ("stage-128.png", "image/png", "128x128"),
+)
+
+
+def icons() -> list[Icon]:
+    from stage.paths import logo_dir
+
+    found: list[Icon] = []
+    for name, kind, size in LOGOS:
+        try:
+            data = (logo_dir() / name).read_bytes()
+        except OSError:
+            continue
+        encoded = base64.b64encode(data).decode("ascii")
+        found.append(Icon(src=f"data:{kind};base64,{encoded}", mime_type=kind, sizes=[size]))
+    return found
+
+
 def build_server(database: Path) -> MCPServer[Any]:
     tools = Tools(database)
     return MCPServer(
@@ -146,6 +167,7 @@ def build_server(database: Path) -> MCPServer[Any]:
         description="Computer science internship postings, a tracker and preferences",
         instructions=INSTRUCTIONS,
         website_url="https://github.com/NicholasXydis/Stage",
+        icons=icons(),
         version=__version__,
         tools=[
             _strict(
