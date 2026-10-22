@@ -86,6 +86,14 @@ def _lowered(value: object) -> object:
     return value.lower() if isinstance(value, str) else value
 
 
+def _default(fallback: object) -> BeforeValidator:
+    return BeforeValidator(lambda value: fallback if _blank(value) else value)
+
+
+def _blank(value: object) -> bool:
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
 PostingId = Annotated[str, Field(min_length=1, max_length=2_000)]
 Cursor = Annotated[
     str | None,
@@ -93,13 +101,17 @@ Cursor = Annotated[
         max_length=100,
         description="next_cursor from the previous page; send the same other arguments with it",
     ),
+    _default(None),
 ]
 Limit = Annotated[
-    int, Field(ge=1, le=MAX_PAGE, description=f"How many to return, {PAGE} by default")
+    int,
+    Field(ge=1, le=MAX_PAGE, description=f"How many to return, {PAGE} by default"),
+    _default(PAGE),
 ]
 Company = Annotated[
     str | None,
     Field(min_length=1, max_length=120, description="Exact employer name, such as Shopify"),
+    _default(None),
 ]
 
 
@@ -132,31 +144,40 @@ class Tools:
                     "the newest postings instead."
                 ),
             ),
+            _default(""),
         ] = "",
         location: Annotated[
             Place | None,
             Field(description="montreal, canada (the rest of Canada), usa, or unknown"),
+            _default(None),
         ] = None,
-        role: Annotated[Role | None, Field(description="The kind of work")] = None,
+        role: Annotated[Role | None, Field(description="The kind of work"), _default(None)] = None,
         term: Annotated[
             str | None,
             Field(pattern=TERM, description="A term such as summer-2027, or unknown"),
             BeforeValidator(_lowered),
+            _default(None),
         ] = None,
         language: Annotated[
-            Language | None, Field(description="The language the posting is written in")
+            Language | None,
+            Field(description="The language the posting is written in"),
+            _default(None),
         ] = None,
         company: Company = None,
         mine: Annotated[
             bool,
             Field(description="Apply the places, roles, terms and employers the user saved"),
+            _default(False),
         ] = False,
         untracked: Annotated[
             bool,
             Field(description="Leave out every posting the user saved, applied to or hid"),
+            _default(False),
         ] = False,
         new: Annotated[
-            bool, Field(description="Only postings that appeared since the sync before last")
+            bool,
+            Field(description="Only postings that appeared since the sync before last"),
+            _default(False),
         ] = False,
         days: Annotated[
             int | None,
@@ -168,6 +189,7 @@ class Tools:
                     f"words the default is {DEFAULT_WINDOW_DAYS}; with words it is any age."
                 ),
             ),
+            _default(None),
         ] = None,
         limit: Limit = PAGE,
         all_matches: Annotated[
@@ -178,6 +200,7 @@ class Tools:
                     "full ones; limit is ignored"
                 )
             ),
+            _default(False),
         ] = False,
         cursor: Cursor = None,
     ) -> CallToolResult:
@@ -381,7 +404,9 @@ class Tools:
 
     async def review_quarantine(
         self,
-        reason: Annotated[Reason | None, Field(description="Only this rejection reason")] = None,
+        reason: Annotated[
+            Reason | None, Field(description="Only this rejection reason"), _default(None)
+        ] = None,
         company: Company = None,
         limit: Limit = PAGE,
         cursor: Cursor = None,
@@ -423,6 +448,7 @@ class Tools:
         include_boards: Annotated[
             bool,
             Field(description=f"Also list failing and stale boards, up to {MAX_BOARDS}"),
+            _default(False),
         ] = False,
     ) -> CallToolResult:
         from stage.services.health import doctor
@@ -513,9 +539,12 @@ class Tools:
                 pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
                 description="The day it happened, like 2026-10-20; today by default",
             ),
+            _default(None),
         ] = None,
         override: Annotated[
-            bool, Field(description="Set the status exactly, even if that moves it back")
+            bool,
+            Field(description="Set the status exactly, even if that moves it back"),
+            _default(False),
         ] = False,
     ) -> CallToolResult:
         from stage.domain.tracker import ApplicationStatus, TrackerError, parse_day, parse_note
@@ -606,6 +635,7 @@ class Tools:
         status: Annotated[
             Status | None,
             Field(description="Only this status; hidden postings show only when asked for"),
+            _default(None),
         ] = None,
         limit: Limit = PAGE,
         cursor: Cursor = None,
@@ -689,7 +719,9 @@ class Tools:
             ),
         ] = None,
         clear: Annotated[
-            bool, Field(description="Delete every saved preference; send it alone")
+            bool,
+            Field(description="Delete every saved preference; send it alone"),
+            _default(False),
         ] = False,
     ) -> CallToolResult:
         from stage.domain.preferences import PreferenceError
