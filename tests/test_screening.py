@@ -320,8 +320,8 @@ async def test_cancelling_a_running_sync_closes_its_workers(
             await asyncio.sleep(0.01)
         assert multiprocessing.active_children()
         task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
+        (stopped,) = await asyncio.gather(task, return_exceptions=True)
+        assert isinstance(stopped, asyncio.CancelledError)
         assert len(closings) == 1
     assert await _settled()
 

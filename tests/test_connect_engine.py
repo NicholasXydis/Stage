@@ -167,6 +167,23 @@ def test_an_app_with_its_own_command_is_reached_through_it(tmp_path: Path) -> No
     assert target.program is not None and Path(target.program).stem == "demo"
 
 
+@pytest.mark.parametrize(
+    ("launcher", "reach"), [("demo.cmd", Reach.FILE), ("demo.exe", Reach.COMMAND)]
+)
+def test_windows_never_runs_a_batch_launcher(tmp_path: Path, launcher: str, reach: Reach) -> None:
+    found = _machine(tmp_path)
+    machine = Machine(System.WINDOWS, found.home, found.environ)
+    (machine.home / ".demo").mkdir()
+    shim = Path(machine.environ["PATH"]) / launcher
+    shim.write_text("@echo off\n", encoding="utf-8")
+    shim.chmod(0o755)
+    app = _app(command=OwnCommand(launcher, ("mcp", "add")))
+
+    (target,) = targets(machine, (app,), ())
+
+    assert target.reach is reach
+
+
 def test_apps_sharing_one_file_are_offered_once(tmp_path: Path) -> None:
     machine = _machine(tmp_path)
     (machine.home / ".demo").mkdir()

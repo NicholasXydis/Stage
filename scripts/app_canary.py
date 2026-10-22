@@ -8,6 +8,21 @@ from dataclasses import dataclass
 from pathlib import Path
 
 TIMEOUT = 300
+KEPT = (
+    "SYSTEMROOT",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "PROGRAMFILES",
+    "PROGRAMDATA",
+    "PROCESSOR_ARCHITECTURE",
+    "NUMBER_OF_PROCESSORS",
+    "PSMODULEPATH",
+)
+NATIVE_CLAUDE = ("powershell", "-NoProfile", "-Command", "irm https://claude.ai/install.ps1 | iex")
 NAMED = re.compile(r"(?<![\w/.\\-])[Ss]tage(?![\w/.\\-])")
 
 
@@ -17,10 +32,16 @@ class Canary:
     package: str
     listing: tuple[str, ...]
     installer: str = "npm"
+    windows: tuple[str, ...] = ()
 
 
 CANARIES = (
-    Canary("claude-code", "@anthropic-ai/claude-code", ("claude", "mcp", "list")),
+    Canary(
+        "claude-code",
+        "@anthropic-ai/claude-code",
+        ("claude", "mcp", "list"),
+        windows=NATIVE_CLAUDE,
+    ),
     Canary("codex", "@openai/codex", ("codex", "mcp", "list")),
     Canary("gemini", "@google/gemini-cli", ("gemini", "mcp", "list")),
     Canary("copilot", "@github/copilot", ("copilot", "mcp", "list")),
@@ -37,14 +58,16 @@ CANARIES = (
 
 
 def run(command: list[str], env: dict[str, str], cwd: Path) -> tuple[int, str]:
+    program = shutil.which(command[0], path=env["PATH"]) or command[0]
     try:
         done = subprocess.run(
-            command,
+            [program, *command[1:]],
             env=env,
             cwd=cwd,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             errors="replace",
             timeout=TIMEOUT,
             check=False,
@@ -57,7 +80,9 @@ def run(command: list[str], env: dict[str, str], cwd: Path) -> tuple[int, str]:
 
 
 def install(canary: Canary, env: dict[str, str], root: Path) -> tuple[bool, str]:
-    if canary.installer == "npm":
+    if os.name == "nt" and canary.windows:
+        command = list(canary.windows)
+    elif canary.installer == "npm":
         command = ["npm", "install", "-g", "--prefix", str(root / "npm"), canary.package]
     else:
         command = ["uv", "tool", "install", canary.package]
@@ -71,15 +96,30 @@ def main() -> int:
         print("stage is not on PATH; run this through uv run")
         return 2
     root = Path(tempfile.mkdtemp(prefix="app-canary-"))
+    try:
+        return check(Path(stage), root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def check(stage: Path, root: Path) -> int:
     home = root / "home"
     home.mkdir()
-    env = {
+    env = {name: os.environ[name] for name in KEPT if name in os.environ}
+    if os.name == "nt":
+        for name, folder in (("APPDATA", "Roaming"), ("LOCALAPPDATA", "Local")):
+            (home / "AppData" / folder).mkdir(parents=True)
+            env[name] = str(home / "AppData" / folder)
+        env["USERPROFILE"] = str(home)
+    env |= {
         "HOME": str(home),
         "PATH": os.pathsep.join(
             [
+                str(home / ".local" / "bin"),
+                str(root / "npm"),
                 str(root / "npm" / "bin"),
                 str(root / "bin"),
-                str(Path(stage).parent),
+                str(stage.parent),
                 os.environ["PATH"],
             ]
         ),
@@ -96,11 +136,11 @@ def main() -> int:
         installed, said = install(canary, env, root)
         connected = listed = removed = False
         if installed:
-            code, said = run([stage, "connect", canary.key], env, home)
+            code, said = run([str(stage), "connect", canary.key], env, home)
             connected = code == 0
             code, listing = run(list(canary.listing), env, home)
             listed = NAMED.search(listing) is not None
-            run([stage, "disconnect", canary.key], env, home)
+            run([str(stage), "disconnect", canary.key], env, home)
             code, after = run(list(canary.listing), env, home)
             removed = NAMED.search(after) is None
             said = listing

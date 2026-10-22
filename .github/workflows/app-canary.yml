@@ -4,19 +4,39 @@ on:
   schedule:
     - cron: "0 15 * * 2"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/app-canary.yml
+      - scripts/app_canary.py
+      - src/stage/domain/ai_apps.py
+      - src/stage/services/ai_catalogue.py
+      - src/stage/services/app_config.py
+      - src/stage/services/connect.py
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   connect:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2022]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONIOENCODING: utf-8
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -38,27 +58,28 @@ jobs:
         if: always()
         run: |
           {
-            echo "## App canary"
+            echo "## App canary on $RUNNER_OS"
             echo ""
             echo '```'
             cat "$RUNNER_TEMP/apps.txt" 2>/dev/null || echo "the check produced no output"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Open an issue when an app stopped reading Stage's entry
-        if: steps.connect.outcome != 'success'
+        if: steps.connect.outcome != 'success' && github.event_name != 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITLE: "App canary: an AI app no longer reads Stage's entry on ${{ runner.os }}"
         run: |
           gh label create app-canary --color d93f0b --description "An AI app changed how it stores MCP servers" --force
-          open=$(gh issue list --label app-canary --state open --json number --jq 'length')
+          open=$(gh issue list --label app-canary --state open --json title --jq '[.[] | select(.title == env.TITLE)] | length')
           if [ "$open" != "0" ]; then
-            echo "An app canary issue is already open; not filing a duplicate."
+            echo "An app canary issue for $RUNNER_OS is already open; not filing a duplicate."
             exit 0
           fi
           {
-            echo "The weekly check could not connect Stage to every AI app cleanly."
+            echo "The weekly check could not connect Stage to every AI app cleanly on $RUNNER_OS."
             echo ""
             echo '```'
             cat "$RUNNER_TEMP/apps.txt" 2>/dev/null || echo "the check produced no output"
@@ -69,9 +90,7 @@ jobs:
             echo "An app that installs but no longer lists Stage has moved or reshaped its"
             echo "settings. Update its row in src/stage/services/ai_catalogue.py and the notes."
           } > "$RUNNER_TEMP/issue.md"
-          gh issue create --label app-canary \
-            --title "App canary: an AI app no longer reads Stage's entry" \
-            --body-file "$RUNNER_TEMP/issue.md"
+          gh issue create --label app-canary --title "$TITLE" --body-file "$RUNNER_TEMP/issue.md"
       - name: Fail if an app did not connect
         if: always()
         run: |

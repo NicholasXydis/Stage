@@ -286,25 +286,43 @@ jobs:
               XDG_CONFIG_HOME=str(home / ".config"),
               STAGE_DB=str(Path(os.environ["RUNNER_TEMP"]) / "smoke.db"),
           )
-          stage = str(Path(sys.executable).with_name("stage.exe" if os.name == "nt" else "stage"))
+          stage = Path(sys.executable).with_name("stage.exe" if os.name == "nt" else "stage")
+          apps = {"cursor", "claude-desktop"}
 
 
-          def run(*arguments: str) -> str:
-              done = subprocess.run([stage, *arguments], env=env, capture_output=True, text=True)
-              print(done.stdout + done.stderr)
+          def run(*arguments: str, shown: bool = True) -> str:
+              done = subprocess.run(
+                  [str(stage), *arguments], env=env, capture_output=True, text=True, encoding="utf-8"
+              )
+              if shown or done.returncode:
+                  print(done.stdout + done.stderr)
               assert done.returncode == 0, f"stage {' '.join(arguments)} exited {done.returncode}"
               return done.stdout
 
 
+          def settings() -> list[dict[str, dict[str, object]]]:
+              files = [home / ".cursor" / "mcp.json", *home.rglob("claude_desktop_config.json")]
+              assert len(files) == 2, files
+              return [json.loads(path.read_text(encoding="utf-8"))["mcpServers"] for path in files]
+
+
+          def states() -> dict[str, str]:
+              report = json.loads(run("doctor", "--json", shown=False))
+              return {app["app"]: app["status"] for app in report["ai_apps"]}
+
+
           said = run("connect", "cursor", "claude-desktop")
           assert "Self-test: Stage answered" in said, "the self-test did not pass"
-          stored = json.loads((home / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
-          entry = stored["mcpServers"]["stage"]
-          assert Path(entry["command"]).is_file(), entry["command"]
-          assert entry["env"]["STAGE_DB"] == env["STAGE_DB"], entry["env"]
-          assert run("connect", "--status").count("connected") >= 2
+          for servers in settings():
+              entry = servers["Stage"]
+              assert Path(entry["command"]).samefile(stage), entry["command"]
+              assert entry["args"] == ["mcp"], entry["args"]
+              assert Path(entry["env"]["STAGE_DB"]).samefile(env["STAGE_DB"]), entry["env"]
+          assert states() == dict.fromkeys(apps, "connected"), states()
+          run("connect", "--status")
           run("disconnect", "cursor", "claude-desktop")
-          stored = json.loads((home / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
-          assert "stage" not in stored["mcpServers"], stored
+          for servers in settings():
+              assert not {"Stage", "stage"} & servers.keys(), servers
+          assert not apps & states().keys(), states()
           PY
           "$SMOKE_BIN/python" connect_smoke.py

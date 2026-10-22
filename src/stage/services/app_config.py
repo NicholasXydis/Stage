@@ -123,7 +123,7 @@ def with_entry(
             edited = _dump_json(expected, text)
         case ConfigFormat.TOML:
             edited = _toml_with(text, key, name, entry, original)
-        case ConfigFormat.YAML:
+        case _:
             edited = _yaml_with(text, key, name, entry)
     _verify(edited, kind, expected)
     return edited
@@ -141,7 +141,7 @@ def without_entry(text: str, kind: ConfigFormat, key: Sequence[str], name: str) 
             edited = _dump_json(expected, text)
         case ConfigFormat.TOML:
             edited = _toml_without(text, key, name)
-        case ConfigFormat.YAML:
+        case _:
             edited = _yaml_without(text, key, name)
     try:
         _verify(edited, kind, expected)

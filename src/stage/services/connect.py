@@ -548,7 +548,7 @@ def connect(
                 link=link,
                 instructions=instructions(target, entry),
             )
-        case Reach.SCREENS:
+        case _:
             if app.command is not None and target.program is None:
                 said = (
                     f"Stage could not find the {app.command.program} command, so run this "

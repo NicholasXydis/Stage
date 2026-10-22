@@ -59,7 +59,7 @@ class Where:
                 return self.macos
             case System.WINDOWS:
                 return self.windows
-            case System.LINUX:
+            case _:
                 return self.linux
 
     @classmethod
@@ -180,7 +180,7 @@ def shaped(
             return {**plain, "active": True}
         case Shape.FIVE:
             return {"name": name, **plain, "isActive": True}
-        case Shape.DIVE:
+        case _:
             return {"transport": "stdio", "enabled": True, **plain}
 
 
@@ -195,7 +195,7 @@ def install_link(
         case LinkStyle.DEEPCHAT:
             payload = _base64({"mcpServers": {name: inner}})
             return f"deepchat://mcp/install?{urlencode({'code': payload})}"
-        case LinkStyle.CHATBOX:
+        case _:
             payload = _base64({"name": name, **inner})
             return f"chatbox://mcp/install?server={quote(payload, safe='')}"
 

@@ -575,7 +575,7 @@ async def test_an_old_posting_keeps_its_posted_date_and_pay(catalogue: Path) -> 
 async def test_a_preferences_file_that_cannot_be_written_is_reported(
     catalogue: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import stage.services.preferences as stored
+    from stage.services import preferences as stored
 
     def locked(*_args: object, **_kwargs: object) -> None:
         raise PermissionError(13, "Permission denied")
@@ -858,7 +858,7 @@ async def test_a_cursor_from_before_a_preference_change_is_refused(catalogue: Pa
 async def test_paging_stops_cleanly_at_the_deepest_page(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import stage.ai.shape as shape
+    from stage.ai import shape
 
     monkeypatch.setattr(shape, "MAX_OFFSET", 2)
     rejected = tuple(replace(_rejected(), id=f"lever:far:{index}") for index in range(6))
@@ -1050,8 +1050,8 @@ def test_stage_mcp_writes_nothing_but_json_rpc_to_stdout(catalogue: Path, tmp_pa
 def test_stage_mcp_tells_a_person_at_a_terminal_what_it_is(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import stage.ai.server as server
-    import stage.cli.commands.ai as command
+    from stage.ai import server
+    from stage.cli.commands import ai as command
 
     served: list[Path] = []
 
@@ -1066,7 +1066,7 @@ def test_stage_mcp_tells_a_person_at_a_terminal_what_it_is(
 
 
 def test_stage_mcp_stops_quietly_on_ctrl_c(monkeypatch: pytest.MonkeyPatch) -> None:
-    import stage.ai.server as server
+    from stage.ai import server
 
     async def interrupted(database: Path) -> None:
         raise KeyboardInterrupt
