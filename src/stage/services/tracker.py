@@ -424,6 +424,18 @@ def tracked_payload(entry: TrackedPosting, state: PostingState | None = None) ->
     return payload
 
 
+def stats_payload(stats: TrackerStats) -> dict[str, object]:
+    return {
+        "tracked": stats.tracked,
+        "by_status": {status.value: count for status, count in stats.by_status.items()},
+        "applied_last_7_days": stats.applied_last_7,
+        "applied_last_30_days": stats.applied_last_30,
+        "applications": stats.applications,
+        "heard_back": stats.heard_back,
+        "replies": {status.value: count for status, count in stats.replies.items()},
+    }
+
+
 def _place(raw: str) -> str:
     from stage.normalize.location import display_location
 
@@ -514,6 +526,7 @@ __all__ = [
     "export_tracker",
     "record_status",
     "remove_tracked",
+    "stats_payload",
     "tracked_for",
     "tracked_payload",
     "tracker_csv",

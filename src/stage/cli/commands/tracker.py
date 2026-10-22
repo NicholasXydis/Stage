@@ -212,21 +212,9 @@ def _stats(listing: "TrackerListing", as_json: bool) -> None:
     if as_json:
         from stage.cli.serialize import emit
         from stage.domain import dump
+        from stage.services.tracker import stats_payload
 
-        stats = listing.stats
-        emit(
-            dump(
-                {
-                    "tracked": stats.tracked,
-                    "by_status": {status.value: count for status, count in stats.by_status.items()},
-                    "applied_last_7_days": stats.applied_last_7,
-                    "applied_last_30_days": stats.applied_last_30,
-                    "applications": stats.applications,
-                    "heard_back": stats.heard_back,
-                    "replies": {status.value: count for status, count in stats.replies.items()},
-                }
-            )
-        )
+        emit(dump(stats_payload(listing.stats)))
         return
     from stage.cli.render import render_tracker_stats, terminal
 

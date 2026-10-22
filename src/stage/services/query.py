@@ -118,6 +118,19 @@ async def search_jobs(
     )
 
 
+async def company_match(repository: AsyncRepository, company: str) -> tuple[bool, str | None]:
+    from difflib import get_close_matches
+
+    names = await repository.company_names()
+    if company in names:
+        return True, None
+    folded: dict[str, str] = {}
+    for name in names:
+        folded.setdefault(name.casefold(), name)
+    near = get_close_matches(company.casefold(), list(folded), n=1, cutoff=0.6)
+    return False, folded[near[0]] if near else None
+
+
 async def get_posting(repository: AsyncRepository, job_id: str) -> PostingDetail | None:
     job = await repository.get_job(job_id)
     if job is None:
@@ -133,6 +146,7 @@ async def get_posting(repository: AsyncRepository, job_id: str) -> PostingDetail
 __all__ = [
     "JobListing",
     "PostingDetail",
+    "company_match",
     "count_hidden",
     "count_without_location",
     "get_posting",

@@ -36,6 +36,7 @@ dependencies = [
     "beautifulsoup4>=4.15.0",
     "fpdf2>=2.8.4",
     "httpx>=0.28.1",
+    "mcp>=2.3,<3",
     "platformdirs>=4.3.6",
     "pydantic>=2.10.0",
     "pyyaml>=6.0.2",

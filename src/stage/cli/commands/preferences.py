@@ -139,26 +139,18 @@ def _updated(
     avoid: list[str] | None,
     about: str | None,
 ) -> "Preferences":
-    from stage.domain.preferences import (
-        Preferences,
-        check_overlap,
-        parse_about,
-        parse_companies,
-        parse_locations,
-        parse_roles,
-    )
-    from stage.lexicon import fold
+    from stage.services.preferences import revise_preferences
 
-    updated = Preferences(
-        locations=parse_locations(location) if location else current.locations,
-        roles=parse_roles(role) if role else current.roles,
-        terms=_terms(term) if term else current.terms,
-        follow=parse_companies(follow, fold, known) if follow else current.follow,
-        avoid=parse_companies(avoid, fold, known) if avoid else current.avoid,
-        about=parse_about(about) if about is not None else current.about,
+    return revise_preferences(
+        current,
+        known,
+        locations=location or None,
+        roles=role or None,
+        terms=_terms(term) if term else None,
+        follow=follow or None,
+        avoid=avoid or None,
+        about=about,
     )
-    check_overlap(updated.follow, updated.avoid)
-    return updated
 
 
 def _terms(values: Sequence[str]) -> tuple[str, ...]:
@@ -247,13 +239,13 @@ def _finish(
     preferences: "Preferences", known: "Mapping[str, str]", db: "Path | None", as_json: bool
 ) -> None:
     from stage.cli.serialize import emit, preferences_to_json
-    from stage.services.preferences import save_preferences
+    from stage.services.preferences import save_preferences, unseen_companies
 
     try:
         path = save_preferences(preferences)
     except OSError as exc:
         _could_not(exc, "save")
-    for warning in _unseen_companies(preferences, known):
+    for warning in unseen_companies(preferences, known):
         _print_warning(warning, as_json)
     if as_json:
         emit(preferences_to_json(preferences))
@@ -274,18 +266,18 @@ def _could_not(exc: OSError, verb: str) -> NoReturn:
 
 
 def _stored_companies(db: "Path | None") -> dict[str, str]:
-    from stage.lexicon import fold
+    from stage.services.preferences import stored_companies
     from stage.storage import open_repository
 
     database = _database(db)
     if not database.exists():
         return {}
 
-    async def names() -> list[str]:
+    async def names() -> dict[str, str]:
         async with open_repository(database) as repository:
-            return list(await repository.company_names())
+            return await stored_companies(repository)
 
-    return {fold(name): name for name in run_async(names())}
+    return run_async(names())
 
 
 def _open_counts(preferences: "Preferences", db: "Path | None") -> dict[str, int] | None:
@@ -301,21 +293,6 @@ def _open_counts(preferences: "Preferences", db: "Path | None") -> dict[str, int
             return await repository.open_counts_by_company(wanted)
 
     return run_async(counts())
-
-
-def _unseen_companies(preferences: "Preferences", known: "Mapping[str, str]") -> list[str]:
-    from difflib import get_close_matches
-
-    if not known:
-        return []
-    warnings: list[str] = []
-    for company in (*preferences.follow, *preferences.avoid):
-        if company.folded in known:
-            continue
-        near = get_close_matches(company.folded, list(known), n=1, cutoff=0.75)
-        hint = f" Did you mean {known[near[0]]!r}?" if near else ""
-        warnings.append(f"Saved {company.name!r}, but Stage has no postings from it yet.{hint}")
-    return warnings
 
 
 def _interactive() -> bool:

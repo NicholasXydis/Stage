@@ -111,6 +111,24 @@ def test_the_read_path_does_not_load_the_lexicon_or_yaml() -> None:
     )
 
 
+def test_only_stage_mcp_loads_the_mcp_sdk() -> None:
+    probe = (
+        "import sys\n"
+        "from stage.cli.app import app\n"
+        "for argv in (['list'], ['--help'], ['mcp', '--help'], ['prefs', '--show']):\n"
+        "    try:\n"
+        "        app(argv)\n"
+        "    except SystemExit:\n"
+        "        pass\n"
+        "loaded = [name for name in ('mcp', 'stage.ai') if name in sys.modules]\n"
+        "print('LOADED:' + ','.join(loaded), file=sys.stderr)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+    )
+    assert result.stderr.strip().splitlines()[-1] == "LOADED:"
+
+
 def test_lexicon_depends_on_nothing_in_the_chain() -> None:
     body = (SRC / "lexicon.py").read_text(encoding="utf-8")
     for line in body.splitlines():

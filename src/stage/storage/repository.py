@@ -138,6 +138,9 @@ class Repository(Protocol):
     def company_names(self) -> list[str]:
         pass
 
+    def ids_with_prefix(self, prefix: str) -> list[str]:
+        pass
+
     def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
         pass
 

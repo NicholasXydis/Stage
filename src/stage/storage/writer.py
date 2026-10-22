@@ -182,6 +182,9 @@ class AsyncRepository:
     async def company_names(self) -> list[str]:
         return await self._writer.run(lambda repository: repository.company_names())
 
+    async def ids_with_prefix(self, prefix: str) -> list[str]:
+        return await self._writer.run(lambda repository: repository.ids_with_prefix(prefix))
+
     async def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
         return await self._writer.run(lambda repository: repository.open_counts_by_company(keys))
 

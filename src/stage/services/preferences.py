@@ -1,7 +1,7 @@
 import json
 import os
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -11,12 +11,15 @@ from stage.domain.preferences import (
     ChosenCompany,
     PreferenceError,
     Preferences,
+    check_overlap,
     clean_text,
     parse_about,
+    parse_companies,
     parse_locations,
     parse_roles,
     parse_terms,
 )
+from stage.storage import AsyncRepository
 
 FILE_NAME = "preferences.json"
 FORMAT = 1
@@ -82,6 +85,52 @@ def clear_preferences(path: Path | None = None) -> bool:
     except FileNotFoundError:
         return False
     return True
+
+
+def revise_preferences(
+    current: Preferences,
+    known: Mapping[str, str],
+    *,
+    locations: Sequence[str] | None = None,
+    roles: Sequence[str] | None = None,
+    terms: Sequence[str] | None = None,
+    follow: Sequence[str] | None = None,
+    avoid: Sequence[str] | None = None,
+    about: str | None = None,
+) -> Preferences:
+    from stage.lexicon import fold
+
+    revised = Preferences(
+        locations=current.locations if locations is None else parse_locations(locations),
+        roles=current.roles if roles is None else parse_roles(roles),
+        terms=current.terms if terms is None else parse_terms(terms),
+        follow=current.follow if follow is None else parse_companies(follow, fold, known),
+        avoid=current.avoid if avoid is None else parse_companies(avoid, fold, known),
+        about=current.about if about is None else parse_about(about),
+    )
+    check_overlap(revised.follow, revised.avoid)
+    return revised
+
+
+async def stored_companies(repository: AsyncRepository) -> dict[str, str]:
+    from stage.lexicon import fold
+
+    return {fold(name): name for name in await repository.company_names()}
+
+
+def unseen_companies(preferences: Preferences, known: Mapping[str, str]) -> list[str]:
+    from difflib import get_close_matches
+
+    if not known:
+        return []
+    warnings: list[str] = []
+    for company in (*preferences.follow, *preferences.avoid):
+        if company.folded in known:
+            continue
+        near = get_close_matches(company.folded, list(known), n=1, cutoff=0.75)
+        hint = f" Did you mean {known[near[0]]!r}?" if near else ""
+        warnings.append(f"Saved {company.name!r}, but Stage has no postings from it yet.{hint}")
+    return warnings
 
 
 def _damaged() -> LoadedPreferences:
@@ -182,5 +231,8 @@ __all__ = [
     "clear_preferences",
     "load_preferences",
     "preferences_path",
+    "revise_preferences",
     "save_preferences",
+    "stored_companies",
+    "unseen_companies",
 ]

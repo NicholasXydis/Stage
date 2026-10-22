@@ -1,0 +1,672 @@
+[
+  {
+    "name": "search_postings",
+    "title": "Search postings",
+    "description": "Find open internship postings, newest first. Without words it lists postings first seen in the last 14 days; with words it searches titles, employers and descriptions across every stored posting. Filters combine. Postings the user hid are always left out. Returns 25 by default and up to 100; all_matches returns compact rows, 250 per page. Every answer has the total, a next_cursor when more remain, and when Stage last synced.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "words": {
+          "default": "",
+          "description": "Words to find in titles, employers and descriptions. Leave empty to list the newest postings instead.",
+          "maxLength": 200,
+          "title": "Words",
+          "type": "string"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "enum": [
+                "montreal",
+                "canada",
+                "usa",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "montreal, canada (the rest of Canada), usa, or unknown",
+          "title": "Location"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "swe",
+                "security",
+                "data",
+                "ml-ai",
+                "quant",
+                "infra",
+                "embedded",
+                "general-cs",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The kind of work",
+          "title": "Role"
+        },
+        "term": {
+          "anyOf": [
+            {
+              "pattern": "^((summer|fall|winter|spring)-[0-9]{4}|unknown)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A term such as summer-2027, or unknown",
+          "title": "Term"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "enum": [
+                "en",
+                "fr",
+                "bilingual",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The language the posting is written in",
+          "title": "Language"
+        },
+        "company": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact employer name, such as Shopify",
+          "title": "Company"
+        },
+        "mine": {
+          "default": false,
+          "description": "Apply the places, roles, terms and employers the user saved",
+          "title": "Mine",
+          "type": "boolean"
+        },
+        "untracked": {
+          "default": false,
+          "description": "Leave out every posting the user saved, applied to or hid",
+          "title": "Untracked",
+          "type": "boolean"
+        },
+        "new": {
+          "default": false,
+          "description": "Only postings that appeared since the sync before last",
+          "title": "New",
+          "type": "boolean"
+        },
+        "days": {
+          "anyOf": [
+            {
+              "maximum": 3650,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only postings first seen in the last N days; 0 means any age. Without words the default is 14; with words it is any age.",
+          "title": "Days"
+        },
+        "limit": {
+          "default": 25,
+          "description": "How many to return, 25 by default",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "all_matches": {
+          "default": false,
+          "description": "Return up to 250 matches per page as compact rows instead of full ones; limit is ignored",
+          "title": "All Matches",
+          "type": "boolean"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "next_cursor from the previous page; send the same other arguments with it",
+          "title": "Cursor"
+        }
+      },
+      "title": "search_postingsArguments"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_postings",
+    "title": "Get postings",
+    "description": "Read every stored detail of up to 10 postings by id: description, dates, apply link, other copies of the same posting, and the user's tracking status and note. A posting Stage no longer stores comes back from the copy saved when the user tracked it.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "description": "Up to 10 posting ids from search_postings or get_tracker",
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "title": "Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "title": "get_postingsArguments"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "database_status",
+    "title": "Database status",
+    "description": "How fresh and how big Stage's database is: when it last synced, open and recent posting counts, breakdowns by location, role, term, language and source, rejected postings by reason, and the last few syncs.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "title": "database_statusArguments"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "review_quarantine",
+    "title": "Review rejected postings",
+    "description": "List postings Stage rejected and why: outside Canada and the US, not an internship, graduate degrees only, not a computer science role, or a role Stage could not place. Use it when the user asks why a posting is missing.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "out-of-scope-location",
+                "not-an-internship",
+                "out-of-scope-degree",
+                "not-a-cs-role",
+                "unknown-cs-role"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only this rejection reason",
+          "title": "Reason"
+        },
+        "company": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact employer name, such as Shopify",
+          "title": "Company"
+        },
+        "limit": {
+          "default": 25,
+          "description": "How many to return, 25 by default",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "next_cursor from the previous page; send the same other arguments with it",
+          "title": "Cursor"
+        }
+      },
+      "title": "review_quarantineArguments"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "check_sources",
+    "title": "Check sources",
+    "description": "Health of the job boards and feeds Stage reads: stored postings, errors, volume drops, blocked hosts, and failing or stale boards. Read-only; it changes nothing.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "include_boards": {
+          "default": false,
+          "description": "Also list failing and stale boards, up to 100",
+          "title": "Include Boards",
+          "type": "boolean"
+        }
+      },
+      "title": "check_sourcesArguments"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "track_postings",
+    "title": "Track postings",
+    "description": "Set the status, date or note of postings in the user's tracker: saved, applied, interviewing, offer, rejected, withdrawn or hidden. Hidden postings stop appearing in searches. Earlier statuses stay in each posting's history. Use only when the user asks.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "description": "Posting ids to track",
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Ids",
+          "type": "array"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "saved",
+                "applied",
+                "interviewing",
+                "offer",
+                "rejected",
+                "withdrawn",
+                "hidden"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The new status. saved and applied never move a posting back, so an applied posting stays applied; set override to move it back on purpose.",
+          "title": "Status"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 1000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A short note; an empty string clears it",
+          "title": "Note"
+        },
+        "on": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The day it happened, like 2026-10-20; today by default",
+          "title": "On"
+        },
+        "override": {
+          "default": false,
+          "description": "Set the status exactly, even if that moves it back",
+          "title": "Override",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "title": "track_postingsArguments"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "untrack_postings",
+    "title": "Untrack postings",
+    "description": "Stop tracking postings. This deletes their status, note and history, and hidden postings show again. Use only when the user asks.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "description": "Posting ids to stop tracking; hidden ones show again",
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "title": "untrack_postingsArguments"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_tracker",
+    "title": "Get tracker",
+    "description": "The postings the user tracks, latest change first, with status, date, note and history, plus counts: applications sent, applied in the last 7 and 30 days, and how many heard back. Hidden postings are listed only when status is hidden.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "saved",
+                "applied",
+                "interviewing",
+                "offer",
+                "rejected",
+                "withdrawn",
+                "hidden"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only this status; hidden postings show only when asked for",
+          "title": "Status"
+        },
+        "limit": {
+          "default": 25,
+          "description": "How many to return, 25 by default",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "next_cursor from the previous page; send the same other arguments with it",
+          "title": "Cursor"
+        }
+      },
+      "title": "get_trackerArguments"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "get_preferences",
+    "title": "Get preferences",
+    "description": "The user's saved places, roles, terms, followed and avoided employers, and note about themselves, plus the values each field accepts.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "title": "get_preferencesArguments"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  },
+  {
+    "name": "set_preferences",
+    "title": "Set preferences",
+    "description": "Save the user's preferences, which mine uses to narrow searches. Each field sent replaces what was saved; fields left out stay as they are, and an empty list clears one. Use only when the user asks.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "locations": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "montreal",
+                  "canada",
+                  "usa"
+                ],
+                "type": "string"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Places to keep; canada includes montreal",
+          "title": "Locations"
+        },
+        "roles": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "swe",
+                  "security",
+                  "data",
+                  "ml-ai",
+                  "quant",
+                  "infra",
+                  "embedded",
+                  "general-cs"
+                ],
+                "type": "string"
+              },
+              "maxItems": 8,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Kinds of work to keep",
+          "title": "Roles"
+        },
+        "terms": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^(summer|fall|winter|spring)-[0-9]{4}$",
+                "type": "string"
+              },
+              "maxItems": 12,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Terms such as summer-2027",
+          "title": "Terms"
+        },
+        "follow": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 50,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Employers to include from any place",
+          "title": "Follow"
+        },
+        "avoid": {
+          "anyOf": [
+            {
+              "items": {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 50,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Employers to leave out",
+          "title": "Avoid"
+        },
+        "about": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A short note about the user, kept on this computer",
+          "title": "About"
+        },
+        "clear": {
+          "default": false,
+          "description": "Delete every saved preference; send it alone",
+          "title": "Clear",
+          "type": "boolean"
+        }
+      },
+      "title": "set_preferencesArguments"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    }
+  }
+]
