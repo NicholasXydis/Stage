@@ -20,7 +20,7 @@ Free and open source. No account, no server, no telemetry.
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=2%2C738&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=91%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=3%2C168&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=91%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
