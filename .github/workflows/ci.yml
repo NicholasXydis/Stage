@@ -194,6 +194,50 @@ jobs:
           assert len(rows) > 300, f"registry shipped with only {len(rows)} rows"
           print(f"registry {len(rows)} rows, font {font_path().stat().st_size} bytes")
           PY
+      - name: Large batches must screen in worker processes from the wheel
+        run: |
+          cd "$RUNNER_TEMP"
+          cat > screen_smoke.py <<'PY'
+          import asyncio
+          from datetime import UTC, datetime
+
+          from stage.domain import Job
+          from stage.services.screening import Screener, normalize_batch
+
+          TITLES = ("Software Engineering Intern", "Senior Staff Engineer", "Marketing Intern")
+
+
+          async def main() -> None:
+              now = datetime.now(UTC)
+              jobs = [
+                  Job(
+                      id=f"greenhouse:smoke:{n}",
+                      source="greenhouse",
+                      company="Smoke",
+                      title_raw=TITLES[n % 3],
+                      title_normalized=TITLES[n % 3].lower(),
+                      apply_url_raw=f"https://example.com/{n}",
+                      description="",
+                      location_raw="Montreal, QC",
+                      first_seen=now,
+                      last_seen=now,
+                  )
+                  for n in range(1500)
+              ]
+              screener = Screener()
+              try:
+                  screened = await screener(jobs)
+              finally:
+                  screener.close()
+              assert not screener.broken, "worker processes could not start"
+              assert screened == normalize_batch(jobs), "workers screened differently"
+              print(f"{len(screened[0])} kept, {len(screened[1])} rejected in workers")
+
+
+          if __name__ == "__main__":
+              asyncio.run(main())
+          PY
+          "$SMOKE_BIN/python" screen_smoke.py
       - name: Every read command must run from the installed wheel
         env:
           PYTHONIOENCODING: utf-8

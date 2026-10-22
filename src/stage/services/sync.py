@@ -5,15 +5,6 @@ from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 
-from stage.classify import (
-    classify_role,
-    resolve_eligibility,
-    screen_degree_scope,
-    screen_is_cs_role,
-    screen_is_internship,
-    screen_location,
-    to_quarantined,
-)
 from stage.dedup import resolve_duplicates
 from stage.domain import (
     BucketPlan,
@@ -28,7 +19,6 @@ from stage.domain import (
     HttpValidator,
     Job,
     PlannedRequest,
-    QuarantinedJob,
     RateState,
     RequestLogged,
     Rotation,
@@ -66,12 +56,7 @@ from stage.http import (
     ValidatorCache,
     resolve,
 )
-from stage.normalize import (
-    canonical_apply_url,
-    detect_language,
-    resolve_location,
-    resolve_term,
-)
+from stage.services.screening import Screener
 from stage.sources import (
     Adapter,
     FeedAdapter,
@@ -242,44 +227,6 @@ def _select(
             f"the registry has no enabled companies with a matching adapter{detail}"
         )
     return grouped, feeds, unroutable
-
-
-def normalize_batch(jobs: Sequence[Job]) -> tuple[tuple[Job, ...], tuple[QuarantinedJob, ...]]:
-    kept: list[Job] = []
-    rejected: list[QuarantinedJob] = []
-    for job in jobs:
-        location = resolve_location(job.location_raw)
-        term = resolve_term(
-            title=job.title_raw,
-            description=job.description,
-            structured_terms=job.signals.terms,
-            structured_season=job.signals.season,
-        )
-        role = classify_role(job.title_raw, job.description, job.signals.category)
-        language = detect_language(job.title_raw, job.description)
-        eligibility = resolve_eligibility(job)
-        normalized = replace(
-            job,
-            apply_url_canonical=canonical_apply_url(job.apply_url_raw),
-            location=location.bucket,
-            remote_scope=location.remote_scope,
-            term=term.term,
-            role=role.role,
-            language=language.language,
-            degree_requirement=eligibility.degree_requirement,
-            work_auth_flag=eligibility.work_auth_flag,
-        )
-        rejection = (
-            screen_is_internship(normalized)
-            or screen_location(normalized)
-            or screen_degree_scope(normalized)
-            or screen_is_cs_role(normalized)
-        )
-        if rejection is None:
-            kept.append(normalized)
-        else:
-            rejected.append(to_quarantined(normalized, rejection))
-    return tuple(kept), tuple(rejected)
 
 
 async def _fetch_company(
@@ -470,6 +417,7 @@ class RunLedger:
     blocked: list[str] = field(default_factory=list)
     deferred: list[str] = field(default_factory=list)
     plan_bounds: list[tuple[str, str, int, int]] = field(default_factory=list)
+    screener: Screener = field(default_factory=Screener)
 
 
 async def _merge(
@@ -613,11 +561,12 @@ def _drop_resting(
 
 async def _persist_source_batch(
     repository: AsyncRepository,
+    screener: Screener,
     template: SourceBatch,
     collected: Sequence[Job],
 ) -> tuple[SourceBatchResult, float, float]:
     normalize_clock = time.perf_counter()
-    kept, rejected = await asyncio.to_thread(normalize_batch, list(collected))
+    kept, rejected = await screener(collected)
     normalize_ms = (time.perf_counter() - normalize_clock) * 1000
     write_clock = time.perf_counter()
     counts = await repository.apply_source_batch(replace(template, jobs=kept, quarantined=rejected))
@@ -853,6 +802,7 @@ async def _run_company_source(
     fetch_ms = (time.perf_counter() - fetch_clock) * 1000
     counts, normalize_ms, write_ms = await _persist_source_batch(
         repository,
+        ledger.screener,
         SourceBatch(
             source=source_name,
             run_started_at=run_started_at,
@@ -1017,6 +967,7 @@ async def _run_feed_source(
     fetch_ms = (time.perf_counter() - fetch_clock) * 1000
     counts, normalize_ms, write_ms = await _persist_source_batch(
         repository,
+        ledger.screener,
         SourceBatch(
             source=source_name,
             run_started_at=run_started_at,
@@ -1199,8 +1150,11 @@ async def sync(
         for name in sorted(feeds)
     )
 
-    async for event in _merge(streams, ledger):
-        yield event
+    try:
+        async for event in _merge(streams, ledger):
+            yield event
+    finally:
+        ledger.screener.close()
 
     if dry_run:
         for event in _bucket_plans(ledger.plan_bounds, postures):

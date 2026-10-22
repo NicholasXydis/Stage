@@ -8,7 +8,7 @@ import yaml
 from stage.companies import RegistryError, load_companies
 from stage.domain import Job, LocationBucket, web_url
 from stage.normalize.urls import canonical_apply_url, is_tracker_url
-from stage.services.sync import normalize_batch
+from stage.services.screening import normalize_batch
 from stage.sources import get_feeds, load_builtins
 from stage.sources.base import convert_rows
 from stage.sources.platforms import identify_url

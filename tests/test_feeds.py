@@ -10,7 +10,7 @@ import respx
 from stage.domain import Job, JobStatus
 from stage.http import HttpClient, profile
 from stage.normalize import canonical_apply_url, is_tracker_url
-from stage.services.sync import normalize_batch
+from stage.services.screening import normalize_batch
 from stage.sources import get_feeds, upcoming_season_year
 from stage.sources.simplify import SimplifyFeed
 

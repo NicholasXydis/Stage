@@ -136,7 +136,7 @@ async def test_rescreen_is_idempotent(db_path: Path) -> None:
 
 
 def test_a_remote_cs_internship_is_kept() -> None:
-    from stage.services.sync import normalize_batch
+    from stage.services.screening import normalize_batch
 
     remote = _job(
         "greenhouse:acme:1",

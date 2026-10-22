@@ -12,7 +12,7 @@ from stage.domain import (
     QuarantineFilters,
     RejectionReason,
 )
-from stage.services.sync import normalize_batch
+from stage.services.screening import normalize_batch
 from stage.storage import SourceBatch, open_repository
 
 NOW = datetime(2026, 8, 4, 12, 0, tzinfo=UTC)

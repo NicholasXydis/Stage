@@ -14,7 +14,7 @@ from stage.domain import (
     location_agrees,
     term_agrees,
 )
-from stage.services.sync import normalize_batch
+from stage.services.screening import normalize_batch
 from stage.storage import SourceBatch, open_repository
 
 FULL_TIME = "Senior Software Engineer"

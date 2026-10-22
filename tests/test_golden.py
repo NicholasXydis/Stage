@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 from stage.domain import Job, SourceSignals
-from stage.services.sync import normalize_batch
+from stage.services.screening import normalize_batch
 
 GOLDEN = Path(__file__).parent / "golden" / "classification.json"
 WHEN = datetime(2026, 8, 3, tzinfo=UTC)

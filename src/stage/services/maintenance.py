@@ -173,7 +173,7 @@ async def _release_reclassified_quarantine(
 ) -> tuple[int, int]:
     from stage.domain import QuarantineFilters, RejectionReason
     from stage.lexicon import fold
-    from stage.services.sync import normalize_batch
+    from stage.services.screening import normalize_batch
 
     remaining = RESCREEN_LIMIT
     entries: list[QuarantinedJob] = []

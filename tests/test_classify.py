@@ -395,7 +395,7 @@ def _screened(title: str, employment_type: str) -> bool:
     from datetime import UTC, datetime
 
     from stage.domain import Job, SourceSignals
-    from stage.services.sync import normalize_batch
+    from stage.services.screening import normalize_batch
 
     when = datetime(2026, 8, 8, tzinfo=UTC)
     job = Job(
