@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from stage.domain import JobFilters
     from stage.services.tracker import TrackerView
 
-MAX_OPEN_AT_ONCE = 25
 FIRST_SYNC_NOTE = "Only one sync so far, so every posting is new; newest posted first."
 
 
@@ -78,19 +77,16 @@ async def _closed_since_you_looked(repository: Any) -> str:
 async def _company_hint(company: str | None, repository: Any) -> str:
     if not company:
         return ""
-    from difflib import get_close_matches
-
     from stage.domain.text import escape_markup
+    from stage.services.query import company_match
 
-    names = await repository.company_names()
-    if company in names:
+    stored, near = await company_match(repository, company)
+    if stored:
         return ""
     asked = f"'{escape_markup(company)[:60]}'"
-    near = get_close_matches(company.casefold(), [n.casefold() for n in names], n=1, cutoff=0.6)
-    if not near:
+    if near is None:
         return f"No employer named {asked} is stored. Try [bold]stage list --all[/bold]."
-    match = next(n for n in names if n.casefold() == near[0])
-    suggestion = f"'{escape_markup(match)[:60]}'"
+    suggestion = f"'{escape_markup(near)[:60]}'"
     return f"No employer named {asked} is stored. Did you mean {suggestion}?"
 
 
@@ -432,7 +428,7 @@ def open_posting(
 ) -> None:
     from stage.cli.render import plain, quoted, terminal
     from stage.cli.selection import BadRangeError, StaleSelectionError, expand
-    from stage.domain import web_url
+    from stage.domain import MAX_OPEN_AT_ONCE, web_url
     from stage.services.query import get_posting
     from stage.services.tracker import tracked_for
     from stage.storage import open_repository
@@ -506,14 +502,18 @@ def open_posting(
             continue
 
         if print_only:
-            console.print(plain(url))
+            console.print(plain(url), soft_wrap=True)
             continue
 
         if not webbrowser.open(url):
-            console.print(plain(f"No browser available. The apply URL is {url}"), style="yellow")
+            console.print(
+                plain(f"No browser available. The apply URL is {url}"),
+                style="yellow",
+                soft_wrap=True,
+            )
             raise typer.Exit(code=1)
         source = " from your tracker" if kept else ""
-        console.print(plain(f"Opened {company}{source} — {url}"))
+        console.print(plain(f"Opened {company}{source} — {url}"), soft_wrap=True)
 
     if refused:
         raise typer.Exit(code=2)

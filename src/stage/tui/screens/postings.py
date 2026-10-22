@@ -13,7 +13,7 @@ from textual.screen import Screen
 from textual.timer import Timer
 from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 
-from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat, JobFilters
+from stage.domain import DEFAULT_WINDOW_DAYS, MAX_OPEN_AT_ONCE, ExportFormat, JobFilters
 from stage.domain.text import sanitize
 from stage.domain.tracker import MARKERS, ApplicationStatus
 from stage.normalize.location import display_location
@@ -522,6 +522,14 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         targets = self._open_targets()
         if not targets:
             told(self, "Nothing selected.", "warning")
+            return
+        if len(targets) > MAX_OPEN_AT_ONCE:
+            told(
+                self,
+                f"{len(targets)} rows are marked; Stage opens at most {MAX_OPEN_AT_ONCE} "
+                "tabs at once. Press space on a marked row to unmark it.",
+                "warning",
+            )
             return
         opened = 0
         refused = 0

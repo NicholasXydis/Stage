@@ -364,8 +364,8 @@ def render_posting(
     if tracked is not None:
         _tracked_fields(console, tracked)
     console.print()
-    console.print(plain(_sanitize(job.apply_url_raw) or "—", style="blue"))
-    console.print(plain(job.id, style="dim"))
+    console.print(plain(_sanitize(job.apply_url_raw) or "—", style="blue"), soft_wrap=True)
+    console.print(plain(job.id, style="dim"), soft_wrap=True)
 
     if detail.canonical is not None:
         console.print()
@@ -414,8 +414,8 @@ def render_snapshot(console: Console, entry: TrackedPosting) -> None:
     console.print(_field("source", snapshot.source))
     _tracked_fields(console, entry)
     console.print()
-    console.print(plain(_sanitize(snapshot.apply_url) or "-", style="blue"))
-    console.print(plain(entry.posting_id, style="dim"))
+    console.print(plain(_sanitize(snapshot.apply_url) or "-", style="blue"), soft_wrap=True)
+    console.print(plain(entry.posting_id, style="dim"), soft_wrap=True)
     console.print()
     console.print(
         "[dim]Stage no longer stores this posting, so this is the copy kept when you "

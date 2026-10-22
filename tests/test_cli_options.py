@@ -15,7 +15,15 @@ from stage.cli.options import run_async
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
-def _seeded(path: Path, *, count: int, aged: int = 0, runs: int = 1, fresh: int = 0) -> str:
+def _seeded(
+    path: Path,
+    *,
+    count: int,
+    aged: int = 0,
+    runs: int = 1,
+    fresh: int = 0,
+    link: str = "https://example.com/",
+) -> str:
     import asyncio
     from datetime import UTC, datetime, timedelta
 
@@ -48,7 +56,7 @@ def _seeded(path: Path, *, count: int, aged: int = 0, runs: int = 1, fresh: int 
                         company="Acme",
                         title_raw=f"Software Engineering Intern {index}",
                         title_normalized=f"software engineering intern {index}",
-                        apply_url_raw=f"https://example.com/{index}",
+                        apply_url_raw=f"{link}{index}",
                         description="",
                         first_seen=seen,
                         last_seen=now,
@@ -759,7 +767,7 @@ def test_export_writes_every_match_by_default() -> None:
 
 
 def test_open_refuses_more_tabs_than_it_should(tmp_path: Path) -> None:
-    from stage.cli.commands.postings import MAX_OPEN_AT_ONCE
+    from stage.domain import MAX_OPEN_AT_ONCE
 
     rows = [str(index) for index in range(1, MAX_OPEN_AT_ONCE + 2)]
     result = CliRunner().invoke(app, ["open", *rows, "--db", str(tmp_path / "o.db")])
@@ -829,15 +837,15 @@ def test_a_row_number_too_long_to_convert_is_refused_not_crashed() -> None:
 
 
 def test_open_counts_the_rows_a_range_expands_to(tmp_path: Path) -> None:
-    from stage.cli.commands.postings import MAX_OPEN_AT_ONCE
+    from stage.domain import MAX_OPEN_AT_ONCE
 
     db = str(tmp_path / "o.db")
     wide = CliRunner().invoke(app, ["open", f"1-{MAX_OPEN_AT_ONCE + 1}", "--db", db])
     backwards = CliRunner().invoke(app, ["open", "9-3", "--db", db])
 
-    assert MAX_OPEN_AT_ONCE == 25
-    later = CliRunner().invoke(app, ["open", "30-60", "--db", db])
-    assert "stage open 30-54" in " ".join(ANSI_ESCAPE.sub("", later.stdout).split())
+    assert MAX_OPEN_AT_ONCE == 50
+    later = CliRunner().invoke(app, ["open", "50-100", "--db", db])
+    assert "stage open 50-99" in " ".join(ANSI_ESCAPE.sub("", later.stdout).split())
     assert wide.exit_code == 2
     said = " ".join(ANSI_ESCAPE.sub("", wide.stdout).split())
     assert f"open {MAX_OPEN_AT_ONCE + 1} tabs" in said
@@ -1249,12 +1257,12 @@ def test_new_after_a_single_sync_says_everything_is_new(tmp_path: Path) -> None:
 
 
 def test_open_allows_exactly_the_cap_and_print_skips_it(tmp_path: Path) -> None:
-    from stage.cli.commands.postings import MAX_OPEN_AT_ONCE
+    from stage.domain import MAX_OPEN_AT_ONCE
 
     db = str(tmp_path / "o.db")
     runner = CliRunner()
     at_cap = runner.invoke(app, ["open", f"1-{MAX_OPEN_AT_ONCE}", "--db", db])
-    printed = runner.invoke(app, ["open", "1-30", "--print", "--db", db])
+    printed = runner.invoke(app, ["open", "1-60", "--print", "--db", db])
 
     for result in (at_cap, printed):
         said = " ".join(ANSI_ESCAPE.sub("", result.stdout + result.stderr).split())
@@ -1282,6 +1290,47 @@ def test_ranges_resolve_against_a_real_listing_in_order(tmp_path: Path) -> None:
     assert past.exit_code == 2
     assert "out of range" in ANSI_ESCAPE.sub("", past.stdout + past.stderr)
     assert not [line for line in past.stdout.split() if line.startswith("https://")]
+
+
+def test_open_launches_a_whole_page_of_a_long_listing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import webbrowser
+
+    opened: list[str] = []
+
+    def record(url: str, new: int = 0, autoraise: bool = True) -> bool:
+        opened.append(url)
+        return True
+
+    monkeypatch.setattr(webbrowser, "open", record)
+    db = _seeded(tmp_path / "w.db", count=100)
+    runner = CliRunner()
+    runner.invoke(app, ["list", "--limit", "100", "--db", db])
+
+    first = runner.invoke(app, ["open", "1-50", "--db", db])
+    first_tabs = list(opened)
+    second = runner.invoke(app, ["open", "51-100", "--db", db])
+    too_many = runner.invoke(app, ["open", "50-100", "--db", db])
+
+    assert first.exit_code == second.exit_code == 0
+    assert len(first_tabs) == 50
+    assert len(opened) == len(set(opened)) == 100
+    assert too_many.exit_code == 2
+    assert "stage open 50-99" in " ".join(ANSI_ESCAPE.sub("", too_many.stdout).split())
+
+
+def test_a_long_link_stays_on_one_line_to_copy_or_pipe(tmp_path: Path) -> None:
+    link = "https://example.com/" + "Software-Engineering-Intern-" * 6
+    db = _seeded(tmp_path / "l.db", count=2, link=link)
+    runner = CliRunner()
+    runner.invoke(app, ["list", "--db", db])
+
+    printed = runner.invoke(app, ["open", "1-2", "--print", "--db", db]).stdout
+    shown = runner.invoke(app, ["show", "1", "--db", db]).stdout
+
+    assert sorted(printed.split("\n")[:2]) == [f"{link}0", f"{link}1"]
+    assert {f"{link}0", f"{link}1"} & set(ANSI_ESCAPE.sub("", shown).split("\n"))
 
 
 def test_a_superscript_digit_is_a_missing_id_not_a_crash(tmp_path: Path) -> None:

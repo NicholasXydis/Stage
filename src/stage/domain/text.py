@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 _UNSAFE_IN_URL = re.compile(r"[\x00-\x20\x7f-\x9f]")
 WEB_SCHEMES = ("http", "https")
+MAX_OPEN_AT_ONCE = 50
 
 
 def sanitize(value: str) -> str:

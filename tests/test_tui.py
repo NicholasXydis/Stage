@@ -748,6 +748,51 @@ async def test_a_non_web_apply_url_is_never_handed_to_the_browser(tmp_path: Path
         assert "http" in warned[0]
 
 
+async def test_opening_marked_rows_stops_at_the_same_cap_as_the_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import webbrowser
+    from dataclasses import replace
+
+    from stage.domain import MAX_OPEN_AT_ONCE
+    from stage.tui.app import StageApp
+    from stage.tui.screens.postings import PostingsScreen
+
+    opened: list[str] = []
+
+    def _fake_open(url: str, *_: object, **__: object) -> bool:
+        opened.append(url)
+        return True
+
+    monkeypatch.setattr(webbrowser, "open", _fake_open)
+    app = StageApp(tmp_path / "cap.db", "")
+    async with app.run_test(size=(110, 30)) as pilot:
+        await pilot.pause()
+        screen = PostingsScreen()
+        app.push_screen(screen)
+        await pilot.pause()
+
+        job = _hostile_job("Intern")
+        screen._jobs = tuple(
+            replace(job, id=f"greenhouse:acme:{n}", apply_url_raw=f"https://example.com/{n}")
+            for n in range(MAX_OPEN_AT_ONCE + 1)
+        )
+        screen._fill(screen._jobs)
+        await pilot.pause()
+        warned: list[str] = []
+        screen.notify = lambda message, **_: warned.append(str(message))  # type: ignore[method-assign]
+
+        screen._marked = {job.id for job in screen._jobs}
+        screen.action_open()
+        refused = list(opened)
+        screen._marked = {job.id for job in screen._jobs[:MAX_OPEN_AT_ONCE]}
+        screen.action_open()
+
+    assert refused == []
+    assert f"at most {MAX_OPEN_AT_ONCE}" in warned[0]
+    assert len(opened) == len(set(opened)) == MAX_OPEN_AT_ONCE
+
+
 async def test_disabling_without_a_selection_warns(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

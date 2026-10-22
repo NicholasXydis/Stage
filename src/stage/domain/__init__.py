@@ -105,6 +105,7 @@ from stage.domain.rotation import Rotation, RotationMember, rotate
 from stage.domain.signals import SourceSignals
 from stage.domain.sync_run import SourceRunStats, SyncRun
 from stage.domain.text import (
+    MAX_OPEN_AT_ONCE,
     dump,
     first_line,
     graphemes,
@@ -135,6 +136,7 @@ __all__ = [
     "DEFAULT_LIMIT",
     "DEFAULT_QUARANTINE_LIMIT",
     "DEFAULT_WINDOW_DAYS",
+    "MAX_OPEN_AT_ONCE",
     "UNKNOWN_TERM",
     "CandidateSkipped",
     "Company",
