@@ -111,6 +111,8 @@ def check(stage: Path, root: Path) -> int:
             (home / "AppData" / folder).mkdir(parents=True)
             env[name] = str(home / "AppData" / folder)
         env["USERPROFILE"] = str(home)
+        (home / ".codex").mkdir()
+        env["CODEX_HOME"] = str(home / ".codex")
     env |= {
         "HOME": str(home),
         "PATH": os.pathsep.join(
@@ -129,6 +131,8 @@ def check(stage: Path, root: Path) -> int:
         "TERM": "dumb",
         "LANG": "C.UTF-8",
         "COPILOT_OFFLINE": "true",
+        "NPM_CONFIG_UPDATE_NOTIFIER": "false",
+        "NPM_CONFIG_FUND": "false",
     }
     failed: list[str] = []
     print(f"{'app':12} {'installed':10} {'connected':10} {'listed':7} {'removed':8}")
@@ -136,18 +140,22 @@ def check(stage: Path, root: Path) -> int:
         installed, said = install(canary, env, root)
         connected = listed = removed = False
         if installed:
-            code, said = run([str(stage), "connect", canary.key], env, home)
+            code, joined = run([str(stage), "connect", canary.key], env, home)
             connected = code == 0
             code, listing = run(list(canary.listing), env, home)
             listed = NAMED.search(listing) is not None
             run([str(stage), "disconnect", canary.key], env, home)
             code, after = run(list(canary.listing), env, home)
             removed = NAMED.search(after) is None
-            said = listing
+            said = f"stage connect: {joined[:400]} | {canary.listing[0]}: {listing[-400:]}"
         print(f"{canary.key:12} {installed!s:10} {connected!s:10} {listed!s:7} {removed!s:8}")
         if not (installed and connected and listed and removed):
             failed.append(canary.key)
-            print("  " + " ".join(said.split())[-600:])
+            detail = " ".join(said.split())[-800:]
+            print(f"  {detail}")
+            if os.environ.get("GITHUB_ACTIONS") == "true":
+                state = f"installed {installed}, connected {connected}, listed {listed}"
+                print(f"::error title={canary.key}::{state}. {detail.replace('%', '%25')}")
     if failed:
         print(f"\nStage no longer connects cleanly to: {', '.join(failed)}")
         return 1
