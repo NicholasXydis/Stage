@@ -430,12 +430,13 @@ async def test_start_sync_takes_no_arguments(stored: Path) -> None:
 
 
 async def test_database_status_shows_a_background_sync(stored: Path) -> None:
+    moment = datetime.now(UTC)
     progress_path(stored).write_text(
         json.dumps(
             {
                 "phase": "syncing",
-                "started_at": NOW.isoformat(),
-                "updated_at": NOW.isoformat(),
+                "started_at": moment.isoformat(),
+                "updated_at": moment.isoformat(),
                 "progress": {"total": 900, "complete": 120, "warnings": 2},
             }
         ),

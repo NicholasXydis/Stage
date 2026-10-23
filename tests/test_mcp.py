@@ -335,11 +335,14 @@ async def test_search_lists_the_newest_open_postings_from_the_last_14_days(
     catalogue: Path, mode: str
 ) -> None:
     async with _connected(catalogue, mode) as client:
+        before = datetime.now(UTC)
         found = await _ok(client, "search_postings")
+        after = datetime.now(UTC)
     assert found["total"] == 9 and found["window_days"] == 14
     assert _ids(found)[:3] == [_id("a"), _id("b"), _id("c")]
     assert _id("old") not in _ids(found) and _id("copy") not in _ids(found)
-    assert found["caution"] == CAUTION and found["last_sync"] == "just now"
+    assert found["caution"] == CAUTION and found["last_sync_at"] == NOW.isoformat()
+    assert found["last_sync"] in {ago(NOW, before), ago(NOW, after)}
 
 
 async def test_every_answer_agrees_with_the_cli(catalogue: Path) -> None:

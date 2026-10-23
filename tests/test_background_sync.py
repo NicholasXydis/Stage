@@ -120,7 +120,9 @@ def _quick(database: Path) -> background.SyncStart:
 def test_a_started_sync_is_reported_as_running(
     database: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    calls = _fake_launch(monkeypatch, _Child(), phase="syncing", updated_at=NOW.isoformat())
+    calls = _fake_launch(
+        monkeypatch, _Child(), phase="syncing", updated_at=datetime.now(UTC).isoformat()
+    )
     launched = _quick(database)
     assert calls == [database] and launched.started and launched.detail == "The sync started."
 
@@ -178,7 +180,9 @@ def test_a_stopped_sync_does_not_block_a_new_one(
     database: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _write(database, phase="syncing", updated_at=(NOW - timedelta(hours=2)).isoformat())
-    calls = _fake_launch(monkeypatch, _Child(), phase="syncing", updated_at=NOW.isoformat())
+    calls = _fake_launch(
+        monkeypatch, _Child(), phase="syncing", updated_at=datetime.now(UTC).isoformat()
+    )
     assert _quick(database).started and calls == [database]
 
 
