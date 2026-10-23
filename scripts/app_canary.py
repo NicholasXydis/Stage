@@ -1,15 +1,20 @@
+import contextlib
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 
 TIMEOUT = 300
 RETRY_PAUSE = 90
+WORKERS = 4
 KEPT = (
     "SYSTEMROOT",
     "WINDIR",
@@ -37,6 +42,14 @@ class Canary:
     windows: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class Result:
+    canary: Canary
+    passed: bool
+    shown: str
+    report: str
+
+
 CANARIES = (
     Canary(
         "claude-code",
@@ -62,43 +75,97 @@ CANARIES = (
 def run(command: list[str], env: dict[str, str], cwd: Path) -> tuple[int, str]:
     program = shutil.which(command[0], path=env["PATH"]) or command[0]
     try:
-        done = subprocess.run(
+        process = subprocess.Popen(
             [program, *command[1:]],
             env=env,
             cwd=cwd,
             stdin=subprocess.DEVNULL,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=TIMEOUT,
-            check=False,
+            start_new_session=os.name != "nt",
         )
-    except subprocess.TimeoutExpired:
-        return 124, "timed out"
     except OSError as exc:
         return 127, str(exc)
-    return done.returncode, done.stdout + done.stderr
+    with process:
+        try:
+            out, err = process.communicate(timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            stop(process)
+            return 124, f"{' '.join(command[:2])} timed out after {TIMEOUT}s"
+    return process.returncode, out + err
 
 
-def install(canary: Canary, env: dict[str, str], root: Path, again: bool) -> tuple[bool, str]:
+def stop(process: subprocess.Popen[str]) -> None:
+    if os.name == "nt":
+        tree = ["taskkill", "/F", "/T", "/PID", str(process.pid)]
+        subprocess.run(tree, capture_output=True, check=False)
+    else:
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+    process.kill()
+    with contextlib.suppress(subprocess.TimeoutExpired):
+        process.communicate(timeout=10)
+
+
+def sandbox(canary: Canary, stage: Path, root: Path) -> dict[str, str]:
+    base = root / canary.key
+    home = base / "home"
+    home.mkdir(parents=True, exist_ok=True)
+    env = {name: os.environ[name] for name in KEPT if name in os.environ}
+    if os.name == "nt":
+        for name, folder in (("APPDATA", "Roaming"), ("LOCALAPPDATA", "Local")):
+            (home / "AppData" / folder).mkdir(parents=True, exist_ok=True)
+            env[name] = str(home / "AppData" / folder)
+        env["USERPROFILE"] = str(home)
+        (home / ".codex").mkdir(exist_ok=True)
+        env["CODEX_HOME"] = str(home / ".codex")
+    return env | {
+        "HOME": str(home),
+        "PATH": os.pathsep.join(
+            [
+                str(home / ".local" / "bin"),
+                str(base / "npm"),
+                str(base / "npm" / "bin"),
+                str(base / "bin"),
+                str(stage.parent),
+                os.environ["PATH"],
+            ]
+        ),
+        "UV_TOOL_DIR": str(base / "uv-tools"),
+        "UV_TOOL_BIN_DIR": str(base / "bin"),
+        "STAGE_DB": str(base / "stage.db"),
+        "NO_COLOR": "1",
+        "TERM": "dumb",
+        "LANG": "C.UTF-8",
+        "COPILOT_OFFLINE": "true",
+        "NPM_CONFIG_UPDATE_NOTIFIER": "false",
+        "NPM_CONFIG_FUND": "false",
+        "NPM_CONFIG_AUDIT": "false",
+    }
+
+
+def install(canary: Canary, env: dict[str, str], base: Path, again: bool) -> tuple[bool, str]:
     if os.name == "nt" and canary.windows:
         command = list(canary.windows)
     elif canary.installer == "npm":
-        command = ["npm", "install", "-g", "--prefix", str(root / "npm"), canary.package]
+        command = ["npm", "install", "-g", "--prefix", str(base / "npm"), canary.package]
         command += ["--force"] if again else []
     else:
         command = ["uv", "tool", "install", canary.package]
         command += ["--reinstall"] if again else []
-    code, said = run(command, env, root)
+    code, said = run(command, env, base)
     return code == 0, said[-400:]
 
 
-def attempt(
-    canary: Canary, stage: Path, env: dict[str, str], root: Path, again: bool
-) -> tuple[bool, str]:
-    home = root / "home"
-    installed, said = install(canary, env, root, again)
+def attempt(canary: Canary, stage: Path, root: Path, again: bool) -> Result:
+    started = time.monotonic()
+    env = sandbox(canary, stage, root)
+    base = root / canary.key
+    home = base / "home"
+    installed, said = install(canary, env, base, again)
     connected = listed = removed = False
     if installed:
         code, joined = run([str(stage), "connect", canary.key], env, home)
@@ -109,12 +176,30 @@ def attempt(
         code, after = run(list(canary.listing), env, home)
         removed = NAMED.search(after) is None
         said = f"stage connect: {joined[:400]} | {canary.listing[0]}: {listing[-400:]}"
-    print(f"{canary.key:12} {installed!s:10} {connected!s:10} {listed!s:7} {removed!s:8}")
+    states = f"{installed!s:10} {connected!s:10} {listed!s:7} {removed!s:8}"
+    row = f"{canary.key:12} {states} {round(time.monotonic() - started):>7}"
     if installed and connected and listed and removed:
-        return True, ""
+        return Result(canary, True, row, "")
     detail = " ".join(said.split())[-800:]
-    print(f"  {detail}")
-    return False, f"installed {installed}, connected {connected}, listed {listed}. {detail}"
+    report = f"installed {installed}, connected {connected}, listed {listed}. {detail}"
+    return Result(canary, False, f"{row}\n  {detail}", report)
+
+
+def sweep(canaries: Sequence[Canary], stage: Path, root: Path, again: bool) -> list[Result]:
+    results: list[Result] = []
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        pending = [pool.submit(attempt, canary, stage, root, again) for canary in canaries]
+        for future in as_completed(pending):
+            results.append(future.result())
+            print(results[-1].shown, flush=True)
+    return sorted(results, key=lambda result: CANARIES.index(result.canary))
+
+
+def annotate(level: str, results: list[Result]) -> None:
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return
+    for result in results:
+        print(f"::{level} title={result.canary.key}::{result.report.replace('%', '%25')}")
 
 
 def main() -> int:
@@ -122,7 +207,7 @@ def main() -> int:
     if stage is None:
         print("stage is not on PATH; run this through uv run")
         return 2
-    root = Path(tempfile.mkdtemp(prefix="app-canary-"))
+    root = Path(tempfile.mkdtemp(prefix="app-canary-", dir=os.environ.get("RUNNER_TEMP")))
     try:
         return check(Path(stage), root)
     finally:
@@ -130,55 +215,25 @@ def main() -> int:
 
 
 def check(stage: Path, root: Path) -> int:
-    home = root / "home"
-    home.mkdir()
-    env = {name: os.environ[name] for name in KEPT if name in os.environ}
-    if os.name == "nt":
-        for name, folder in (("APPDATA", "Roaming"), ("LOCALAPPDATA", "Local")):
-            (home / "AppData" / folder).mkdir(parents=True)
-            env[name] = str(home / "AppData" / folder)
-        env["USERPROFILE"] = str(home)
-        (home / ".codex").mkdir()
-        env["CODEX_HOME"] = str(home / ".codex")
-    env |= {
-        "HOME": str(home),
-        "PATH": os.pathsep.join(
-            [
-                str(home / ".local" / "bin"),
-                str(root / "npm"),
-                str(root / "npm" / "bin"),
-                str(root / "bin"),
-                str(stage.parent),
-                os.environ["PATH"],
-            ]
-        ),
-        "UV_TOOL_DIR": str(root / "uv-tools"),
-        "UV_TOOL_BIN_DIR": str(root / "bin"),
-        "NO_COLOR": "1",
-        "TERM": "dumb",
-        "LANG": "C.UTF-8",
-        "COPILOT_OFFLINE": "true",
-        "NPM_CONFIG_UPDATE_NOTIFIER": "false",
-        "NPM_CONFIG_FUND": "false",
-    }
-    print(f"{'app':12} {'installed':10} {'connected':10} {'listed':7} {'removed':8}")
-    missed = [c for c in CANARIES if not attempt(c, stage, env, root, again=False)[0]]
+    started = time.monotonic()
+    columns = f"{'installed':10} {'connected':10} {'listed':7} {'removed':8}"
+    print(f"{'app':12} {columns} seconds", flush=True)
+    missed = [result for result in sweep(CANARIES, stage, root, again=False) if not result.passed]
+    failed: list[Result] = []
     if missed:
-        names = ", ".join(canary.key for canary in missed)
-        print(f"\nTrying {names} once more, in case a release was still publishing.")
+        annotate("warning", missed)
+        names = ", ".join(result.canary.key for result in missed)
+        print(f"\nTrying {names} once more, in case a release was still publishing.", flush=True)
         time.sleep(RETRY_PAUSE)
-        failed: list[str] = []
-        for canary in missed:
-            passed, report = attempt(canary, stage, env, root, again=True)
-            if passed:
-                continue
-            failed.append(canary.key)
-            if os.environ.get("GITHUB_ACTIONS") == "true":
-                print(f"::error title={canary.key}::{report.replace('%', '%25')}")
-        if failed:
-            print(f"\nStage no longer connects cleanly to: {', '.join(failed)}")
-            return 1
-    print("\nEvery app read Stage's entry and let it go again.")
+        again = sweep([result.canary for result in missed], stage, root, again=True)
+        failed = [result for result in again if not result.passed]
+    took = f"{time.monotonic() - started:.0f}s"
+    if failed:
+        annotate("error", failed)
+        keys = ", ".join(result.canary.key for result in failed)
+        print(f"\nStage no longer connects cleanly to: {keys} ({took})")
+        return 1
+    print(f"\nEvery app read Stage's entry and let it go again ({took}).")
     return 0
 
 
