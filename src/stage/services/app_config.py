@@ -118,13 +118,12 @@ def with_entry(
     node = _walk(expected, key, create=True)
     assert node is not None
     node[name] = copy.deepcopy(dict(entry))
-    match kind:
-        case ConfigFormat.JSON:
-            edited = _dump_json(expected, text)
-        case ConfigFormat.TOML:
-            edited = _toml_with(text, key, name, entry, original)
-        case _:
-            edited = _yaml_with(text, key, name, entry)
+    if kind is ConfigFormat.JSON:
+        edited = _dump_json(expected, text)
+    elif kind is ConfigFormat.TOML:
+        edited = _toml_with(text, key, name, entry, original)
+    else:
+        edited = _yaml_with(text, key, name, entry)
     _verify(edited, kind, expected)
     return edited
 
@@ -136,13 +135,12 @@ def without_entry(text: str, kind: ConfigFormat, key: Sequence[str], name: str) 
     if node is None or name not in node:
         return text
     del node[name]
-    match kind:
-        case ConfigFormat.JSON:
-            edited = _dump_json(expected, text)
-        case ConfigFormat.TOML:
-            edited = _toml_without(text, key, name)
-        case _:
-            edited = _yaml_without(text, key, name)
+    if kind is ConfigFormat.JSON:
+        edited = _dump_json(expected, text)
+    elif kind is ConfigFormat.TOML:
+        edited = _toml_without(text, key, name)
+    else:
+        edited = _yaml_without(text, key, name)
     try:
         _verify(edited, kind, expected)
     except UnwritableError:

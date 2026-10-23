@@ -59,8 +59,7 @@ class Where:
                 return self.macos
             case System.WINDOWS:
                 return self.windows
-            case _:
-                return self.linux
+        return self.linux
 
     @classmethod
     def everywhere(cls, template: str) -> "Where":
@@ -180,8 +179,7 @@ def shaped(
             return {**plain, "active": True}
         case Shape.FIVE:
             return {"name": name, **plain, "isActive": True}
-        case _:
-            return {"transport": "stdio", "enabled": True, **plain}
+    return {"transport": "stdio", "enabled": True, **plain}
 
 
 def install_link(
@@ -195,9 +193,8 @@ def install_link(
         case LinkStyle.DEEPCHAT:
             payload = _base64({"mcpServers": {name: inner}})
             return f"deepchat://mcp/install?{urlencode({'code': payload})}"
-        case _:
-            payload = _base64({"name": name, **inner})
-            return f"chatbox://mcp/install?server={quote(payload, safe='')}"
+    payload = _base64({"name": name, **inner})
+    return f"chatbox://mcp/install?server={quote(payload, safe='')}"
 
 
 def _base64(value: Mapping[str, Any]) -> str:

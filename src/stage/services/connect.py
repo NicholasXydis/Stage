@@ -548,19 +548,16 @@ def connect(
                 link=link,
                 instructions=instructions(target, entry),
             )
-        case _:
-            if app.command is not None and target.program is None:
-                said = (
-                    f"Stage could not find the {app.command.program} command, so run this "
-                    "yourself where it works."
-                )
-            elif app.file is None and app.screens.startswith(("Add", "Or add")):
-                said = f"Stage cannot add itself to {app.name}, so here is what to add."
-            else:
-                said = f"{app.name} keeps its servers in its own settings screens."
-            return Outcome(
-                target, Status.UNKNOWN, False, said, instructions=instructions(target, entry)
-            )
+    if app.command is not None and target.program is None:
+        said = (
+            f"Stage could not find the {app.command.program} command, so run this "
+            "yourself where it works."
+        )
+    elif app.file is None and app.screens.startswith(("Add", "Or add")):
+        said = f"Stage cannot add itself to {app.name}, so here is what to add."
+    else:
+        said = f"{app.name} keeps its servers in its own settings screens."
+    return Outcome(target, Status.UNKNOWN, False, said, instructions=instructions(target, entry))
 
 
 def _connect_by_file(target: Target, entry: ServerEntry, dry_run: bool) -> Outcome:
