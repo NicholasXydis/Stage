@@ -56,6 +56,10 @@ def sync(
         Path | None,
         typer.Option("--scheduled-progress", hidden=True),
     ] = None,
+    progress_file: Annotated[
+        Path | None,
+        typer.Option("--progress-file", hidden=True),
+    ] = None,
     registry: RegistryOption = None,
     db: DatabaseOption = None,
 ) -> None:
@@ -78,15 +82,26 @@ def sync(
         else None
     )
     progress = scheduled_state.sync_event if scheduled_state is not None else None
+    tracked = (
+        ScheduleStateWriter.start("sync", Path(), destination=progress_file)
+        if progress_file is not None and scheduled_state is None and not dry_run
+        else None
+    )
+    if tracked is not None:
+        progress = tracked.sync_event
 
     if source and exclude:
         console.print("[red]Pass either --source or --exclude, not both.[/red]")
+        if tracked is not None:
+            tracked.failed("Pass either --source or --exclude, not both.")
         raise typer.Exit(code=2)
 
     try:
         companies = load_companies(registry)
     except RegistryError as exc:
         console.print(failure(exc))
+        if tracked is not None:
+            tracked.failed(str(exc))
         raise typer.Exit(code=2) from exc
 
     async def run() -> SyncOutcome:
@@ -115,17 +130,30 @@ def sync(
             outcome = run_async(run())
         else:
             with single_run("sync", _lock_path(db)):
+                if tracked is not None:
+                    tracked.started("syncing")
                 outcome = run_async(run())
     except AnotherRunInProgressError as exc:
         if scheduled_state is not None:
             scheduled_state.blocked(str(exc))
+        if tracked is not None:
+            tracked.blocked(str(exc))
         console.print(failure(exc))
         raise typer.Exit(code=2) from exc
     except (RegistryError, NoSourcesSelectedError) as exc:
+        if tracked is not None:
+            tracked.failed(str(exc))
         console.print(failure(exc))
         raise typer.Exit(code=2) from exc
+    except Exception as exc:
+        if tracked is not None:
+            tracked.failed(f"{type(exc).__name__}: {exc}")
+        raise
 
-    raise typer.Exit(code=0 if outcome is SyncOutcome.SUCCESS else 1)
+    code = 0 if outcome is SyncOutcome.SUCCESS else 1
+    if tracked is not None:
+        tracked.complete(sync_exit_code=code, doctor_exit_code=None, exit_code=code)
+    raise typer.Exit(code=code)
 
 
 async def _announce_new_postings(repository: Any, console: Any) -> None:

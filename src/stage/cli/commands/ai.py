@@ -35,18 +35,32 @@ EveryOption = Annotated[
 DryRunOption = Annotated[
     bool, typer.Option("--dry-run", help="Show what would change without changing anything")
 ]
+ACTIONS_ON = (
+    "Actions are on: {apps} can open postings in your browser, export them and start a sync. "
+    "The app asks you before each one."
+)
+ACTIONS_OFF = "Actions are off: {apps} can search and keep your tracker, and nothing more."
 
 
 @app.command(
     help="Let AI apps search postings and keep your tracker over MCP", rich_help_panel=PANEL
 )
-def mcp(db: DatabaseOption = None) -> None:
+def mcp(
+    db: DatabaseOption = None,
+    actions: Annotated[
+        bool,
+        typer.Option(
+            "--allow-actions",
+            help="Also let the app open postings, export them and start a sync",
+        ),
+    ] = False,
+) -> None:
     from stage.ai.server import serve
 
     if sys.stdin.isatty():
         typer.echo(STARTED_BY_HAND, err=True)
     try:
-        run_async(serve(_database(db)))
+        run_async(serve(_database(db), actions=actions))
     except KeyboardInterrupt:
         raise typer.Exit(code=130) from None
 
@@ -61,16 +75,34 @@ def connect(
     known: Annotated[
         bool, typer.Option("--every", help="With --status, list every app Stage knows")
     ] = False,
+    actions: Annotated[
+        bool | None,
+        typer.Option(
+            "--allow-actions/--no-actions",
+            help=(
+                "Let the apps also open postings, export them and start a sync, asking you "
+                "each time; --no-actions turns that off. Left out, each app keeps its setting"
+            ),
+            show_default=False,
+        ),
+    ] = None,
     dry_run: DryRunOption = False,
     db: DatabaseOption = None,
 ) -> None:
     from stage.cli.render import plain, terminal
-    from stage.services.connect import Machine, server_entry, targets
+    from stage.services.connect import Machine, entry_for, server_entry, targets, with_actions
 
     console = terminal()
     if known and not status:
         console.print(
             plain("--every lists apps with --status; it does not connect anything.", "red")
+        )
+        raise typer.Exit(code=2)
+    if status and actions is not None:
+        console.print(
+            plain(
+                "--status changes nothing, so it takes no --allow-actions or --no-actions.", "red"
+            )
         )
         raise typer.Exit(code=2)
     entry = server_entry(database=db)
@@ -80,10 +112,19 @@ def connect(
         _show_status(console, found, entry)
         return
     chosen = _choose(console, found, apps, every, entry, verb="connect")
-    outcomes = [_connect_one(target, entry, dry_run) for target in chosen]
+    outcomes = [
+        _connect_one(target, entry_for(target, entry, actions), dry_run) for target in chosen
+    ]
     _report(console, outcomes)
+    if actions is not None and not dry_run:
+        reached = [
+            outcome.target.label for outcome in outcomes if outcome.status.value != "unreadable"
+        ]
+        if reached:
+            told = ACTIONS_ON if actions else ACTIONS_OFF
+            console.print(plain(told.format(apps=", ".join(reached)), "dim"))
     if not dry_run and any(outcome.changed for outcome in outcomes):
-        _self_test(console, entry)
+        _self_test(console, with_actions(entry, bool(actions)))
     if any(outcome.status.value == "unreadable" for outcome in outcomes):
         raise typer.Exit(code=1)
 
@@ -213,7 +254,7 @@ def _show_status(console: "Console", found: "tuple[Target, ...]", entry: "Server
     from rich.table import Table
 
     from stage.cli.render import clipped, plain
-    from stage.services.connect import read_status
+    from stage.services.connect import ACTIONS_FLAG, entry_for, read_status
 
     if not found:
         console.print(plain(NOTHING_FOUND, "yellow"))
@@ -224,11 +265,15 @@ def _show_status(console: "Console", found: "tuple[Target, ...]", entry: "Server
     table.add_column("Stage", no_wrap=True)
     table.add_column("How", overflow="fold")
     for number, target in enumerate(found, start=1):
-        reading = read_status(target, entry)
+        own = entry_for(target, entry)
+        reading = read_status(target, own)
+        state = _state(reading.status.value)
+        if reading.status.value == "connected" and ACTIONS_FLAG in own.args:
+            state += ", actions on"
         table.add_row(
             str(number),
             clipped(target.label, 40),
-            plain(_state(reading.status.value), _colour(reading.status.value)),
+            plain(state, _colour(reading.status.value)),
             plain(_how(target)),
         )
     console.print(table)

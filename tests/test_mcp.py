@@ -1053,22 +1053,22 @@ def test_stage_mcp_tells_a_person_at_a_terminal_what_it_is(
     from stage.ai import server
     from stage.cli.commands import ai as command
 
-    served: list[Path] = []
+    served: list[tuple[Path, bool]] = []
 
-    async def serve(database: Path) -> None:
-        served.append(database)
+    async def serve(database: Path, *, actions: bool = False) -> None:
+        served.append((database, actions))
 
     monkeypatch.setattr(server, "serve", serve)
     monkeypatch.setattr(command, "sys", SimpleNamespace(stdin=SimpleNamespace(isatty=lambda: True)))
     result = CliRunner().invoke(app, ["mcp", "--db", "elsewhere.db"])
-    assert result.exit_code == 0 and served == [Path("elsewhere.db")]
+    assert result.exit_code == 0 and served == [(Path("elsewhere.db"), False)]
     assert "started by an AI app" in result.stderr and result.stdout == ""
 
 
 def test_stage_mcp_stops_quietly_on_ctrl_c(monkeypatch: pytest.MonkeyPatch) -> None:
     from stage.ai import server
 
-    async def interrupted(database: Path) -> None:
+    async def interrupted(database: Path, *, actions: bool = False) -> None:
         raise KeyboardInterrupt
 
     monkeypatch.setattr(server, "serve", interrupted)

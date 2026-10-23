@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "Stage": {
+      "command": "stage",
+      "args": ["mcp"]
+    }
+  }
+}

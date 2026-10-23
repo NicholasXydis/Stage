@@ -1,0 +1,16 @@
+{
+  "name": "stage",
+  "owner": {
+    "name": "NicholasXydis"
+  },
+  "description": "Stage: computer science internship postings in Canada and the US, kept on your computer",
+  "plugins": [
+    {
+      "name": "stage",
+      "source": "./plugins/stage",
+      "description": "Search internship postings, keep an application tracker and prepare applications with Stage",
+      "category": "productivity",
+      "homepage": "https://github.com/NicholasXydis/Stage"
+    }
+  ]
+}

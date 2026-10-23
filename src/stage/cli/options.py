@@ -580,6 +580,7 @@ _HELP_GUIDE = (
     "\nAI apps:\n"
     "  stage connect                       Let Claude, Cursor and others use Stage\n"
     "  stage connect --status              See which apps are connected\n"
+    "  stage connect --allow-actions       Let them also open, export and sync\n"
     "  stage disconnect cursor             Take Stage out of one app\n"
     "\nHealth and maintenance:\n"
     "  stage doctor                        Database and source health\n"

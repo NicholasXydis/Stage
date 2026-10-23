@@ -82,9 +82,11 @@ packages = ["src/stage"]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
+    ".claude-plugin",
     ".github",
     "CLAUDE.md",
     "packaging",
+    "plugins",
     "scripts",
 ]
 
@@ -123,6 +125,7 @@ ignore = ["S101", "S311"]
 "src/stage/cli/notify.py" = ["S310"]
 "src/stage/cli/schedule.py" = ["S603"]
 "src/stage/services/connect.py" = ["S603"]
+"src/stage/services/background.py" = ["S603"]
 "scripts/app_canary.py" = ["S603", "S607"]
 "src/stage/paths.py" = ["S603"]
 "src/stage/storage/sqlite_repo.py" = ["S608"]

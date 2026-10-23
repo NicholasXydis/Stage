@@ -31,7 +31,7 @@ from stage.ai.shape import (
     text,
     tracker_row,
 )
-from stage.domain import DEFAULT_WINDOW_DAYS, JobFilters
+from stage.domain import DEFAULT_WINDOW_DAYS, MAX_OPEN_AT_ONCE, JobFilters
 from stage.domain.preferences import Preferences
 from stage.storage import AsyncRepository, open_repository
 
@@ -80,6 +80,18 @@ QUARANTINE_NOTE = (
     "These postings were rejected by Stage's screens and never appear in search_postings. "
     "A rejection that looks wrong is worth telling the user about."
 )
+NO_BROWSER = (
+    "No web browser could be opened on this computer, so the links in not_opened were not "
+    "opened. Give them to the user."
+)
+REFUSED_LINKS = (
+    "Postings in refused have no plain http or https apply link, so Stage did not open them."
+)
+SYNC_NOTE = (
+    "A sync takes several minutes and runs on its own. database_status shows its progress; "
+    "search again once it has finished."
+)
+ExportType = Literal["csv", "md", "json", "pdf"]
 
 
 def _lowered(value: object) -> object:
@@ -113,6 +125,56 @@ Company = Annotated[
     Field(min_length=1, max_length=120, description="Exact employer name, such as Shopify"),
     _default(None),
 ]
+Words = Annotated[
+    str,
+    Field(
+        max_length=200,
+        description=(
+            "Words to find in titles, employers and descriptions. Leave empty to list "
+            "the newest postings instead."
+        ),
+    ),
+    _default(""),
+]
+PlaceFilter = Annotated[
+    Place | None,
+    Field(description="montreal, canada (the rest of Canada), usa, or unknown"),
+    _default(None),
+]
+RoleFilter = Annotated[Role | None, Field(description="The kind of work"), _default(None)]
+TermFilter = Annotated[
+    str | None,
+    Field(pattern=TERM, description="A term such as summer-2027, or unknown"),
+    BeforeValidator(_lowered),
+    _default(None),
+]
+LanguageFilter = Annotated[
+    Language | None,
+    Field(description="The language the posting is written in"),
+    _default(None),
+]
+Mine = Annotated[
+    bool,
+    Field(description="Apply the places, roles, terms and employers the user saved"),
+    _default(False),
+]
+Untracked = Annotated[
+    bool,
+    Field(description="Leave out every posting the user saved, applied to or hid"),
+    _default(False),
+]
+Days = Annotated[
+    int | None,
+    Field(
+        ge=0,
+        le=3650,
+        description=(
+            "Only postings first seen in the last N days; 0 means any age. Without "
+            f"words the default is {DEFAULT_WINDOW_DAYS}; with words it is any age."
+        ),
+    ),
+    _default(None),
+]
 
 
 class Tools:
@@ -135,62 +197,20 @@ class Tools:
 
     async def search_postings(
         self,
-        words: Annotated[
-            str,
-            Field(
-                max_length=200,
-                description=(
-                    "Words to find in titles, employers and descriptions. Leave empty to list "
-                    "the newest postings instead."
-                ),
-            ),
-            _default(""),
-        ] = "",
-        location: Annotated[
-            Place | None,
-            Field(description="montreal, canada (the rest of Canada), usa, or unknown"),
-            _default(None),
-        ] = None,
-        role: Annotated[Role | None, Field(description="The kind of work"), _default(None)] = None,
-        term: Annotated[
-            str | None,
-            Field(pattern=TERM, description="A term such as summer-2027, or unknown"),
-            BeforeValidator(_lowered),
-            _default(None),
-        ] = None,
-        language: Annotated[
-            Language | None,
-            Field(description="The language the posting is written in"),
-            _default(None),
-        ] = None,
+        words: Words = "",
+        location: PlaceFilter = None,
+        role: RoleFilter = None,
+        term: TermFilter = None,
+        language: LanguageFilter = None,
         company: Company = None,
-        mine: Annotated[
-            bool,
-            Field(description="Apply the places, roles, terms and employers the user saved"),
-            _default(False),
-        ] = False,
-        untracked: Annotated[
-            bool,
-            Field(description="Leave out every posting the user saved, applied to or hid"),
-            _default(False),
-        ] = False,
+        mine: Mine = False,
+        untracked: Untracked = False,
         new: Annotated[
             bool,
             Field(description="Only postings that appeared since the sync before last"),
             _default(False),
         ] = False,
-        days: Annotated[
-            int | None,
-            Field(
-                ge=0,
-                le=3650,
-                description=(
-                    "Only postings first seen in the last N days; 0 means any age. Without "
-                    f"words the default is {DEFAULT_WINDOW_DAYS}; with words it is any age."
-                ),
-            ),
-            _default(None),
-        ] = None,
+        days: Days = None,
         limit: Limit = PAGE,
         all_matches: Annotated[
             bool,
@@ -355,6 +375,7 @@ class Tools:
         return answer({**payload, **freshness(last_sync, now)})
 
     async def database_status(self) -> CallToolResult:
+        from stage.services.background import sync_progress
         from stage.services.health import statistics
         from stage.services.preferences import load_preferences
 
@@ -394,6 +415,7 @@ class Tools:
                 "quarantined_by_reason": report.quarantined,
                 "stored_by": report.composition,
                 "recent_syncs": syncs,
+                "background_sync": _background(sync_progress(self.database)),
                 "preferences_saved": not load_preferences().preferences.is_empty,
                 "notes": [
                     "stored_by counts every stored posting, open or closed, without duplicates."
@@ -781,6 +803,186 @@ class Tools:
             }
         )
 
+    async def open_postings(
+        self,
+        ids: Annotated[
+            list[PostingId],
+            Field(
+                min_length=1,
+                max_length=MAX_OPEN_AT_ONCE,
+                description=f"Up to {MAX_OPEN_AT_ONCE} posting ids whose apply pages to open",
+            ),
+        ],
+    ) -> CallToolResult:
+        import anyio
+
+        from stage.domain import web_url
+        from stage.services.query import get_posting
+        from stage.services.tracker import tracked_for
+
+        now = datetime.now(UTC)
+        async with self._repository() as repository:
+            wanted = await _resolved(repository, ids)
+            details = [await get_posting(repository, ident) for ident in wanted]
+            tracked, _ = await tracked_for(repository, wanted)
+            last_sync = await repository.last_sync_at()
+        links: list[tuple[dict[str, object], str]] = []
+        refused: list[dict[str, object]] = []
+        missing: list[str] = []
+        for ident, detail in zip(wanted, details, strict=True):
+            entry = tracked.get(ident)
+            if detail is not None:
+                company, title, raw = (
+                    detail.job.company,
+                    detail.job.title_raw,
+                    detail.job.apply_url_raw,
+                )
+            elif entry is not None:
+                snapshot = entry.snapshot
+                company, title, raw = snapshot.company, snapshot.title, snapshot.apply_url
+            else:
+                missing.append(short(ident))
+                continue
+            row: dict[str, object] = {
+                "id": short(ident),
+                "company": text(company, 120),
+                "title": text(title, 200),
+            }
+            url = web_url(raw)
+            if url is None:
+                refused.append(row)
+            else:
+                links.append((row, url))
+        launched = await anyio.to_thread.run_sync(_launch_all, [url for _, url in links])
+        results = list(zip(links, launched, strict=True))
+        opened = [{**row, "url": url} for (row, url), done in results if done]
+        stranded = [{**row, "url": url} for (row, url), done in results if not done]
+        notes: list[str] = []
+        if missing:
+            notes.append(NO_IDS)
+        if refused:
+            notes.append(REFUSED_LINKS)
+        if stranded:
+            notes.append(NO_BROWSER)
+        return answer(
+            {
+                "opened": opened,
+                "not_opened": stranded,
+                "refused": refused,
+                "not_found": missing,
+                "notes": notes,
+                "caution": CAUTION,
+                **freshness(last_sync, now),
+            }
+        )
+
+    async def export_postings(
+        self,
+        file_type: Annotated[
+            ExportType,
+            Field(
+                description="csv for spreadsheets, md for notes, json for programs, pdf to print"
+            ),
+            _default("csv"),
+        ] = "csv",
+        words: Words = "",
+        location: PlaceFilter = None,
+        role: RoleFilter = None,
+        term: TermFilter = None,
+        language: LanguageFilter = None,
+        company: Company = None,
+        mine: Mine = False,
+        untracked: Untracked = False,
+        days: Days = None,
+    ) -> CallToolResult:
+        from stage.domain import ExportFormat, LocationBucket, RoleCategory
+        from stage.domain import Language as Written
+        from stage.services.export import (
+            ExportError,
+            downloads_root,
+            export_jobs,
+            free_destination,
+        )
+        from stage.services.tracker import tracker_view
+
+        fmt = ExportFormat(file_type)
+        root = downloads_root()
+        if not root.is_dir():
+            raise ToolError(
+                f"Stage saves exports in {root}, which does not exist. The user can create it "
+                "or set STAGE_EXPORT_DIR to another folder. Nothing was exported."
+            )
+        filters = JobFilters(
+            location=LocationBucket(location) if location else None,
+            term=term,
+            role=RoleCategory(role) if role else None,
+            language=Written(language) if language else None,
+            company=company,
+            limit=None,
+        )
+        notes: list[str] = []
+        described = ""
+        if mine:
+            filters, preferences, problems = _mine(filters)
+            described = preferences.describe(filters)
+            notes.extend(problems)
+        query = words if words.strip() else ""
+        window = _window(query, days)
+        now = datetime.now(UTC)
+        async with self._repository() as repository:
+            view = await tracker_view(repository)
+            scoped = replace(
+                filters, excluded_ids=view.tracked if untracked else view.hidden, limit=None
+            )
+            try:
+                result = await export_jobs(
+                    repository,
+                    scoped,
+                    fmt=fmt,
+                    destination=free_destination(root, fmt, now),
+                    window_days=window,
+                    now=now,
+                    query=query,
+                )
+            except ExportError as exc:
+                raise ToolError(f"Stage could not export: {exc}. Nothing was exported.") from exc
+            last_sync = await repository.last_sync_at()
+        if not result.count:
+            notes.append("Nothing matched, so the file holds column headers only.")
+        notes.extend(text(note, 200) for note in result.notes)
+        payload: dict[str, object] = {
+            "path": str(result.path),
+            "file_type": fmt.value,
+            "count": result.count,
+            "total": result.total_matching,
+            "window_days": window,
+        }
+        if described:
+            payload["preferences"] = described
+        if view.problem:
+            payload["warning"] = view.problem
+        payload["notes"] = notes
+        return answer({**payload, **freshness(last_sync, now)})
+
+    async def start_sync(self) -> CallToolResult:
+        import anyio
+
+        from stage.services.background import RUNNING, start_sync
+
+        launched = await anyio.to_thread.run_sync(start_sync, self.database)
+        progress = _background(dict(launched.progress)) if launched.progress else None
+        state = progress["state"] if progress is not None else None
+        if not launched.started and state not in (*RUNNING, "blocked"):
+            raise ToolError(f"{text(launched.detail, 400)} No sync is running.")
+        return answer(
+            {
+                "started": launched.started,
+                "detail": text(launched.detail, 400),
+                "background_sync": progress,
+                "notes": [SYNC_NOTE] if launched.started else [],
+            }
+        )
+
     async def _counts(self, preferences: Preferences) -> tuple[dict[str, int], dict[str, object]]:
         wanted = {company.folded for company in (*preferences.follow, *preferences.avoid)}
         try:
@@ -857,6 +1059,31 @@ def _preferences(preferences: Preferences, counts: dict[str, int]) -> dict[str, 
     }
 
 
+def _window(query: str, days: int | None) -> int | None:
+    if query:
+        return days or None
+    return DEFAULT_WINDOW_DAYS if days is None else days or None
+
+
+def _launch_all(urls: list[str]) -> list[bool]:
+    import webbrowser
+
+    launched: list[bool] = []
+    for url in urls:
+        if launched and not launched[-1]:
+            launched.append(False)
+            continue
+        launched.append(bool(webbrowser.open(url)))
+    return launched
+
+
+def _background(found: dict[str, object] | None) -> dict[str, object] | None:
+    if found is None:
+        return None
+    error = found.get("error")
+    return {**found, "error": text(error, 300) if isinstance(error, str) else None}
+
+
 def _unreadable(database: Path, exc: sqlite3.Error) -> str:
     reason = str(exc) or type(exc).__name__
     if "locked" in reason or "busy" in reason:
@@ -904,4 +1131,4 @@ def _command(arguments: dict[str, object]) -> str:
     return " ".join(parts)
 
 
-__all__ = ["CHOSEN_TERM", "SEASONS", "TERM", "Tools"]
+__all__ = ["CHOSEN_TERM", "SEASONS", "TERM", "ChosenPlace", "ChosenRole", "Tools"]

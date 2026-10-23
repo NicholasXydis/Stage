@@ -1017,6 +1017,8 @@ def render_app_health(console: Console, apps: "Sequence[AppHealth]") -> None:
         line = Text.assemble("  ", _sanitize(app.label), "  ")
         if state == "connected":
             line.append("connected", style="green")
+            if app.actions:
+                line.append(", actions on")
         else:
             line.append(state, style="yellow" if state == "outdated" else "red")
             if app.detail:

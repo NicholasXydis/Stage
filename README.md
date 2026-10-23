@@ -20,7 +20,7 @@ Free and open source. No account, no server, no telemetry.
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=3%2C170&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=91%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=3%2C289&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=91%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -176,6 +176,22 @@ Same database as the CLI. The panel covers role, location, language, the date
 window and new-since-last-sync; `--term` and `--source` stay CLI-only. Row
 numbers are a CLI idea — in the TUI you move a cursor instead.
 
+## Your preferences and applications
+
+```bash
+stage prefs                   # save the places, roles and terms you want
+stage list --mine             # only postings that fit them
+stage save 3                  # keep a posting to come back to
+stage applied 1-4             # mark rows as applied today
+stage hide 7                  # never show a posting again
+stage tracker                 # everything you saved or applied to
+```
+
+`--mine` works on `list`, `search` and `export`, and every list says which
+preferences it used. In the TUI, `s`, `p` and `h` save, mark applied and hide,
+`z` undoes, and `l` opens your applications. Tracked postings live in their own
+file, so they stay after a board takes them down.
+
 ## Keeping it fresh
 
 ```bash
@@ -217,6 +233,41 @@ Yours stays free for browsing.
 
 </details>
 
+## Use Stage from your AI apps
+
+```bash
+stage connect                                # pick the AI apps to connect
+stage connect --status                       # see which ones are connected
+stage connect claude-code --allow-actions    # also let it open, export and sync
+```
+
+Claude Code, Cursor, VS Code, Claude Desktop and about 60 other apps can then
+search your postings and keep your tracker, all on your computer. Actions stay
+off until you allow them, and Claude Code asks before each one.
+
+<details>
+<summary><b>The Claude Code plugin, or one click</b></summary>
+
+<br>
+
+In Claude Code, the plugin adds Stage and a skill that teaches Claude to use it:
+
+```text
+/plugin install stage --marketplace NicholasXydis/Stage
+```
+
+Use the plugin or `stage connect claude-code`, not both.
+
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=Stage&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJzdGFnZS1jbGkiLCJzdGFnZSIsIm1jcCJdfQ%3D%3D)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Stage-0098FF?style=flat-square)](https://vscode.dev/redirect/mcp/install?name=Stage&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22stage-cli%22%2C%22stage%22%2C%22mcp%22%5D%7D)
+[![Add to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-dark.svg)](https://lmstudio.ai/install-mcp?name=stage&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJzdGFnZS1jbGkiLCJzdGFnZSIsIm1jcCJdfQ%3D%3D)
+[![Install in Goose](https://block.github.io/goose/img/extension-install-dark.svg)](https://goose-docs.ai/extension/?cmd=uvx&arg=--from&arg=stage-cli&arg=stage&arg=mcp&id=stage&name=Stage&description=Internship%20postings%20and%20your%20tracker%2C%20from%20Stage)
+
+The buttons run Stage through `uvx`, so uv has to be where the app can find it.
+`stage connect` is more dependable and takes over an entry a button made.
+
+</details>
+
 ## Architecture
 
 ```text
@@ -224,16 +275,17 @@ Stage/
 ├─ src/stage/
 │  ├─ cli/                  Typer commands, Rich rendering, scheduling, notify
 │  ├─ tui/                  Textual screens over the same services; safe.py escapes output
+│  ├─ ai/                   stage mcp: tools, prompts and answers for AI apps
 │  ├─ domain/               the types every layer speaks: jobs, filters, enums, events
 │  ├─ sources/              13 ATS adapters + 11 curated feeds
-│  ├─ services/             sync, discover, query, export, quarantine, health
+│  ├─ services/             sync, discover, query, export, preferences, tracker, connect, health
 │  ├─ classify/             role, internship scope, degree eligibility, location
 │  ├─ normalize/            location, term, language, apply-url canonicalisation
 │  ├─ dedup/                cross-source duplicate resolution
 │  ├─ http/                 rate posture, circuit breaker, validator cache
 │  ├─ storage/              SQLite repository, migrations, FTS
 │  └─ data/                 packaged registry (a directory) and lexicons
-├─ tests/                   2,420 tests, 89% branch coverage
+├─ tests/                   every layer, counted in the badges above
 └─ .github/workflows/       CI, CodeQL, scheduled canary, release
 ```
 
@@ -279,7 +331,7 @@ Stage/
 
 | Workflow | File | Purpose |
 | --- | --- | --- |
-| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, 2,644 tests, coverage floor, badge drift |
+| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, every test, coverage floor, badge drift |
 | Supported Pythons | `.github/workflows/ci.yml` | The full suite again on 3.13 and 3.14 |
 | Wheel | `.github/workflows/ci.yml` | Builds and smoke-tests the wheel on Ubuntu, Windows and macOS |
 | CodeQL | `.github/workflows/codeql.yml` | Static analysis for Python and the workflows themselves |
@@ -303,8 +355,10 @@ it. What ships is what gets tested.
 
 - Everything sits in one SQLite file you own. Open it with any SQLite client,
   back it up, or delete it.
-- The only network traffic is Stage reading public job boards. No account, no
-  telemetry.
+- The only network traffic is Stage reading public job boards, plus the Discord
+  webhook if you set one. No account, no telemetry.
+- Posting text reaches AI apps marked as data, with an instruction never to
+  follow anything written inside it.
 - Requests are rate limited per host, cached, and retried with backoff, so it
   does not hammer anyone's site.
 - Four in five postings arrive with no description at all. Stage marks those
@@ -326,7 +380,7 @@ without warning and I cannot watch all of them myself. I read everything.
 ## Security
 
 Stage reads public job boards and writes to a local file. It never asks for
-credentials. Found a security issue? Open a
+credentials. AI apps reach it only through `stage mcp`, on your own computer. Found a security issue? Open a
 [security advisory](https://github.com/NicholasXydis/Stage/security/advisories/new)
 instead of a public issue.
 

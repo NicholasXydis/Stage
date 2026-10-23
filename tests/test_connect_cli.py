@@ -286,3 +286,201 @@ def test_commands_and_snippets_keep_full_paths_for_copying(home: Path) -> None:
 
     assert f"Add this to {broken}:" in said
     assert '"command": "~' not in said and "Add this to ~" not in said
+
+
+def _args(home: Path) -> list[str]:
+    found: list[str] = json.loads((home / ".alpha" / "mcp.json").read_text(encoding="utf-8"))[
+        "mcpServers"
+    ]["Stage"]["args"]
+    return found
+
+
+def test_allow_actions_adds_the_flag_and_status_says_so(home: Path) -> None:
+    code, said = _run("connect", "alpha", "--allow-actions")
+
+    assert code == 0 and "Actions are on: Alpha can open postings" in said
+    assert _args(home)[-1] == "--allow-actions" and _args(home).count("--allow-actions") == 1
+    assert "Alpha connected, actions on" in _run("connect", "--status")[1]
+
+
+def test_connecting_again_without_a_flag_keeps_what_the_app_has(home: Path) -> None:
+    _run("connect", "alpha", "--allow-actions")
+    code, said = _run("connect", "alpha")
+
+    assert code == 0 and "already connected" in said and "Actions are" not in said
+    assert "--allow-actions" in _args(home)
+    _run("connect", "alpha", "--allow-actions")
+    assert _args(home).count("--allow-actions") == 1
+
+
+def test_no_actions_turns_them_off_again(home: Path) -> None:
+    _run("connect", "alpha", "--allow-actions")
+    code, said = _run("connect", "alpha", "--no-actions")
+
+    assert code == 0 and "Actions are off: Alpha can search and keep your tracker" in said
+    assert "--allow-actions" not in _args(home)
+    status = _run("connect", "--status")[1]
+    assert "Alpha connected" in status and "actions on" not in status
+
+
+def test_actions_reach_a_toml_app_and_a_pasted_snippet(home: Path) -> None:
+    code, said = _run("connect", "beta-app", "gamma", "--allow-actions")
+    written = tomllib.loads((home / ".beta" / "config.toml").read_text(encoding="utf-8"))
+
+    assert code == 0 and written["mcp_servers"]["Stage"]["args"][-1] == "--allow-actions"
+    assert '"--allow-actions"' in said and "Actions are on: Beta App, Gamma" in said
+
+
+def test_status_takes_no_action_flag(home: Path) -> None:
+    for flag in ("--allow-actions", "--no-actions"):
+        code, said = _run("connect", "--status", flag)
+        assert code == 2 and "--status changes nothing" in said
+
+
+def test_a_dry_run_with_actions_changes_nothing_and_claims_nothing(home: Path) -> None:
+    code, said = _run("connect", "alpha", "--allow-actions", "--dry-run")
+
+    assert code == 0 and "Actions are" not in said
+    assert not (home / ".alpha" / "mcp.json").exists()
+
+
+def test_disconnect_removes_an_entry_with_actions(home: Path) -> None:
+    _run("connect", "alpha", "--allow-actions")
+    code, _ = _run("disconnect", "alpha")
+
+    servers = json.loads((home / ".alpha" / "mcp.json").read_text(encoding="utf-8"))["mcpServers"]
+    assert code == 0 and "Stage" not in servers
+
+
+def test_the_self_test_starts_stage_with_actions_when_they_were_turned_on(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services.connect import ServerEntry
+
+    entries: list[ServerEntry] = []
+
+    async def seen(entry: ServerEntry, **__: object) -> SelfTest:
+        entries.append(entry)
+        return SelfTest(True, "fine", 13)
+
+    monkeypatch.setattr("stage.services.connect.self_test", seen)
+    _run("connect", "alpha", "--allow-actions")
+    _run("connect", "alpha", "--no-actions")
+
+    assert entries[0].args[-1] == "--allow-actions" and "--allow-actions" not in entries[1].args
+
+
+def test_doctor_reports_which_apps_have_actions(home: Path, tmp_path: Path) -> None:
+    _run("connect", "alpha", "--allow-actions")
+    _run("connect", "beta-app")
+
+    said = _run("doctor", "--db", str(tmp_path / "d.db"))[1]
+    payload = json.loads(
+        CliRunner().invoke(app, ["doctor", "--json", "--db", str(tmp_path / "d.db")]).stdout
+    )
+
+    assert "Alpha connected, actions on" in said and "Beta App connected" in said
+    assert [(entry["status"], entry["actions"]) for entry in payload["ai_apps"]] == [
+        ("connected", True),
+        ("connected", False),
+    ]
+
+
+def test_an_entry_from_a_readme_button_is_named_as_uvx(home: Path, tmp_path: Path) -> None:
+    uvx = tmp_path / "uvx"
+    uvx.write_text("", encoding="utf-8")
+    button = {"command": str(uvx), "args": ["--from", "stage-cli", "stage", "mcp"]}
+    (home / ".alpha" / "mcp.json").write_text(
+        json.dumps({"mcpServers": {"Stage": button}}), encoding="utf-8"
+    )
+    payload = json.loads(
+        CliRunner().invoke(app, ["doctor", "--json", "--db", str(tmp_path / "d.db")]).stdout
+    )
+
+    assert payload["ai_apps"][0]["status"] == "outdated"
+    assert payload["ai_apps"][0]["detail"] == "it runs Stage through uvx instead of this install"
+    code, said = _run("connect", "alpha")
+    assert code == 0 and _args(home) != button["args"]
+
+
+def _old_editor(home: Path, monkeypatch: pytest.MonkeyPatch, version: str) -> Path:
+    from stage.domain.ai_apps import OwnCommand
+    from stage.services import ai_catalogue
+
+    folder = home / ".editor"
+    folder.mkdir(exist_ok=True)
+    (folder / "package.json").write_text(json.dumps({"version": version}), encoding="utf-8")
+    editor = AiApp(
+        "editor",
+        "Editor",
+        file=SettingsFile(
+            (Where.everywhere("~/.editor/mcp.json"),), ConfigFormat.JSON, ("servers",), Shape.STDIO
+        ),
+        command=OwnCommand("editor", ("--add-mcp", "{json}")),
+        programs=("editor",),
+        markers=(Where.everywhere("~/.editor"),),
+        version_files=(Where.everywhere("~/.editor/package.json"),),
+        since="0",
+        before="1.140",
+    )
+    monkeypatch.setattr(ai_catalogue, "APPS", (ALPHA, editor))
+    return folder / "mcp.json"
+
+
+def test_a_newer_editor_without_stage_in_its_old_file_is_not_listed(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _old_editor(home, monkeypatch, "1.143.0")
+
+    assert "Editor" not in _run("connect", "--status")[1]
+
+
+def test_stage_left_in_a_file_its_app_still_reads_is_shown_updated_and_removed(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services.connect import Machine, targets
+
+    uvx = home / "uvx"
+    uvx.write_text("", encoding="utf-8")
+    settings = _old_editor(home, monkeypatch, "1.143.0")
+    button = {"type": "stdio", "command": str(uvx), "args": ["--from", "stage-cli", "stage", "mcp"]}
+    settings.write_text(
+        json.dumps({"servers": {"Other": {"command": "x"}, "Stage": button}}), encoding="utf-8"
+    )
+
+    (found,) = [target for target in targets(Machine.here()) if target.app.key == "editor"]
+    assert found.program is None and found.reach.value == "file"
+    assert "Editor outdated" in _run("connect", "--status")[1]
+
+    code, said = _run("connect", "editor")
+    servers = json.loads(settings.read_text(encoding="utf-8"))["servers"]
+    assert code == 0 and servers["Stage"]["command"] != str(uvx) and servers["Other"]
+    assert (
+        servers["Stage"]["args"][-1] == "mcp"
+        and "Editor connected" in _run("connect", "--status")[1]
+    )
+
+    code, _ = _run("disconnect", "editor")
+    servers = json.loads(settings.read_text(encoding="utf-8"))["servers"]
+    assert code == 0 and "Stage" not in servers and servers["Other"]
+    assert "Editor" not in _run("connect", "--status")[1]
+
+
+def test_an_unreadable_old_file_does_not_bring_its_app_back(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _old_editor(home, monkeypatch, "1.143.0")
+    settings.write_text('{ "servers": { "Stage": ', encoding="utf-8")
+
+    assert "Editor" not in _run("connect", "--status")[1]
+
+
+def test_an_older_editor_is_still_connected_through_its_own_command(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services.connect import Machine, targets
+
+    _old_editor(home, monkeypatch, "1.139.0")
+    (found,) = [target for target in targets(Machine.here()) if target.app.key == "editor"]
+
+    assert found.settings is not None and "Editor" in _run("connect", "--status")[1]

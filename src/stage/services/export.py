@@ -75,6 +75,28 @@ def export_root() -> Path:
     return Path(override).expanduser() if override else Path.cwd()
 
 
+def downloads_root() -> Path:
+    import os
+
+    override = os.environ.get("STAGE_EXPORT_DIR", "").strip()
+    if override:
+        return Path(override).expanduser()
+    downloads = Path.home() / "Downloads"
+    return downloads if downloads.is_dir() else Path.home()
+
+
+def free_destination(
+    root: Path, fmt: ExportFormat, when: datetime, stem: str = "stage-export"
+) -> Path:
+    first = root / default_filename(fmt, when, stem)
+    candidate = first
+    number = 2
+    while candidate.exists():
+        candidate = first.with_name(f"{first.stem}-{number}{first.suffix}")
+        number += 1
+    return candidate
+
+
 def resolve_destination(
     destination: Path | None,
     fmt: ExportFormat,
@@ -269,7 +291,9 @@ __all__ = [
     "ExportError",
     "ExportResult",
     "default_filename",
+    "downloads_root",
     "export_jobs",
+    "free_destination",
     "render_csv",
     "render_json",
     "render_markdown",

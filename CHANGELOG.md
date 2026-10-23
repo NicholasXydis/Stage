@@ -4,6 +4,66 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `stage prefs` saves the places, roles and terms you want, the employers to
+  follow or avoid, and a short note about you. `--mine` keeps only the postings
+  that fit, on `list`, `search` and `export` and through a Mine switch in the
+  TUI. Every list names the preferences it used, and postings with no location
+  are counted rather than dropped without a word.
+- An application tracker, kept in its own file. `stage save`, `applied`, `hide`
+  and `track` set a status, a date and a note, `stage tracker` lists them with
+  `--stats` and `--export`, and `--untracked` leaves out what you already acted
+  on. A tracked posting keeps a copy of itself after its board takes it down,
+  and `purge` never touches the tracker.
+- The TUI saves, marks applied and hides with `s`, `p` and `h`, undoes with `z`,
+  and opens a screen of your applications with `l`.
+- `stage show`, `stage open` and the tracker commands take ranges such as `1-5`.
+- `stage mcp` lets AI apps search and read postings and keep your tracker and
+  preferences. Apps that show prompts get five ready-made ones, and their
+  arguments autocomplete from your own data.
+- `stage connect` sets Stage up in about 60 AI apps, through the app's own command
+  where it has one and by editing its settings, with a backup, where it does not.
+  `stage connect --status` and `stage doctor` show which apps are connected, and
+  `stage disconnect` takes Stage out again.
+- Actions, off until you allow them for an app with `stage connect
+  --allow-actions`. The app can then open postings in your browser, export them
+  to your Downloads folder and start a sync. Claude Code asks before each one.
+- A Claude Code plugin with a skill, and one-click install buttons for Cursor,
+  VS Code, LM Studio and Goose.
+
+### Changed
+
+- `stage open` and the TUI open up to 50 tabs at once, up from 25.
+
+### Fixed
+
+- Syncs failed across many boards at once, and `doctor` called it a network
+  drop. Screening one large batch, such as the 31,000 rows from the custom job
+  boards, held every connection for about 90 seconds, so they timed out together
+  and tripped the shared Workday breaker. Large batches are screened in two
+  worker processes now, and connections keep flowing meanwhile.
+- A posting that `purge` had removed after its 14 days came back as new on the
+  next sync whenever its board still listed it. Stage remembers when it first saw
+  a purged posting and leaves it out once that is past the window.
+- Postings found in the same sync were listed in id order, which after a first
+  sync meant the whole list. They are listed by the date the board posted them
+  now, newest first, and a posting date in the future cannot move one up.
+  `stage list --new` after a single sync says that every posting is new.
+- Job Bank student postings past the first two pages of a search were missed.
+  Stage follows Job Bank's own job-type filters now, and a search that Job Bank
+  counts as holding no student jobs is recorded as empty.
+- An empty Jobvite board, one that says it has no open jobs, counted as a
+  failure. It reads as empty now and closes nothing, while Jobvite's outage page
+  still counts as a failure.
+- Long apply links and posting ids wrapped across lines, so copying one broke it.
+  They print on one line now.
+- Old Mission Capital moved from Greenhouse to Ashby, where it lists 39 roles.
+  Frima's site answers 404 on every page and Global Partners lists 1,845 roles
+  without one internship, so both are parked until 2027-01-20.
+
 ## [1.1.3] - 2026-09-09
 
 ### Fixed
@@ -121,6 +181,7 @@ them in a SQLite database on your own machine.
 
 Python 3.12, 3.13 or 3.14 on macOS, Linux or Windows.
 
+[Unreleased]: https://github.com/NicholasXydis/Stage/compare/v1.1.3...HEAD
 [1.1.3]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.3
 [1.1.2]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.2
 [1.1.1]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.1

@@ -788,3 +788,16 @@ def test_disconnecting_removes_the_old_name_and_the_new(tmp_path: Path) -> None:
     assert json.loads(target.settings.read_text(encoding="utf-8")) == {
         "mcpServers": {"other": {"command": "x"}}
     }
+
+
+def test_the_actions_flag_is_added_once_and_removed_cleanly() -> None:
+    from stage.services.connect import ACTIONS_FLAG, ServerEntry, with_actions
+
+    script = ServerEntry("/x/stage", ("mcp",), {"STAGE_DB": "/x/s.db"})
+    python = ServerEntry("/x/python", ("-m", "stage", "mcp"))
+    on = with_actions(script, True)
+
+    assert on.args == ("mcp", ACTIONS_FLAG) and on.env == script.env
+    assert with_actions(on, True) == on and with_actions(on, False) == script
+    assert with_actions(script, False) == script
+    assert with_actions(python, True).args == ("-m", "stage", "mcp", ACTIONS_FLAG)

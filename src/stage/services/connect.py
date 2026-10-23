@@ -52,6 +52,7 @@ COMMAND_SECONDS = 60.0
 LOCK_STALE_SECONDS = 10.0
 LOCK_WAIT_SECONDS = 5.0
 EXPECTED_TOOL = "search_postings"
+ACTIONS_FLAG = "--allow-actions"
 POSIX_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
 WINDOWS_KEPT = ("SYSTEMROOT", "WINDIR", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP")
 ERROR_TAIL = 600
@@ -167,6 +168,24 @@ def server_entry(
     return ServerEntry(str(python), ("-m", "stage", "mcp"), env)
 
 
+def with_actions(entry: ServerEntry, allowed: bool) -> ServerEntry:
+    kept = tuple(arg for arg in entry.args if arg != ACTIONS_FLAG)
+    return replace(entry, args=(*kept, ACTIONS_FLAG) if allowed else kept)
+
+
+def allows_actions(target: Target) -> bool:
+    if target.app.file is None or target.settings is None:
+        return False
+    holder = _holder(target)
+    if holder is None or holder[2] is None:
+        return False
+    return ACTIONS_FLAG in _parts(holder[2])[1]
+
+
+def entry_for(target: Target, entry: ServerEntry, actions: bool | None = None) -> ServerEntry:
+    return with_actions(entry, allows_actions(target) if actions is None else actions)
+
+
 def expand(template: str, machine: Machine, user: str | None = None) -> str:
     def environment(match: re.Match[str]) -> str:
         value = machine.environ.get(match.group(1), "").strip()
@@ -242,12 +261,21 @@ def targets(
         version = _app_version(app, machine)
         if not every and not _installed(app, machine):
             continue
-        if not every and not in_range(version, app.since, app.before):
-            continue
         settings, alternates = _places(app, machine)
+        if not every and not in_range(version, app.since, app.before):
+            left = Target(app, app.name, settings, None, version, alternates=alternates)
+            if settings is None or app.file is None or not _holds_stage(left):
+                continue
+            found.append(left)
+            continue
         program = _program(app, machine, editors)
         found.append(Target(app, app.name, settings, program, version, alternates=alternates))
     return _merged(found)
+
+
+def _holds_stage(target: Target) -> bool:
+    holder = _holder(target)
+    return holder is not None and holder[2] is not None
 
 
 def _merged(found: Sequence[Target]) -> tuple[Target, ...]:
@@ -429,6 +457,8 @@ def read_status(target: Target, entry: ServerEntry) -> Reading:
         return Reading(Status.OUTDATED, f"it is listed under the old name {name}")
     if (command, args, env) == (entry.command, list(entry.args), dict(entry.env)):
         return Reading(Status.CONNECTED)
+    if Path(command).name.lower() in ("uvx", "uvx.exe"):
+        return Reading(Status.OUTDATED, "it runs Stage through uvx instead of this install")
     return Reading(Status.OUTDATED, "it runs Stage with older settings")
 
 
@@ -475,6 +505,7 @@ class AppHealth:
     label: str
     status: Status
     detail: str = ""
+    actions: bool = False
 
 
 def app_health(
@@ -484,7 +515,8 @@ def app_health(
     chosen = entry or server_entry()
     found: list[AppHealth] = []
     for target in targets(machine or Machine.here()):
-        reading = read_status(target, chosen)
+        own = entry_for(target, chosen)
+        reading = read_status(target, own)
         if reading.status in shown:
             found.append(
                 AppHealth(
@@ -492,6 +524,7 @@ def app_health(
                     target.label,
                     reading.status,
                     reading.detail,
+                    ACTIONS_FLAG in own.args,
                 )
             )
     return tuple(found)

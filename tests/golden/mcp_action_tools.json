@@ -1,0 +1,216 @@
+[
+  {
+    "name": "open_postings",
+    "title": "Open postings",
+    "description": "Open the apply pages of up to 50 postings in the user's web browser, one tab each. Only plain http and https links open. Use only when the user asks to open them.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "description": "Up to 50 posting ids whose apply pages to open",
+          "items": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "title": "open_postingsArguments"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "_meta": {
+      "anthropic/requiresUserInteraction": true
+    }
+  },
+  {
+    "name": "export_postings",
+    "title": "Export postings",
+    "description": "Save the postings that match the same filters as search_postings to a new csv, md, json or pdf file in the user's Downloads folder, and return its path. It never replaces a file. Use only when the user asks for a file.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file_type": {
+          "default": "csv",
+          "description": "csv for spreadsheets, md for notes, json for programs, pdf to print",
+          "enum": [
+            "csv",
+            "md",
+            "json",
+            "pdf"
+          ],
+          "title": "File Type",
+          "type": "string"
+        },
+        "words": {
+          "default": "",
+          "description": "Words to find in titles, employers and descriptions. Leave empty to list the newest postings instead.",
+          "maxLength": 200,
+          "title": "Words",
+          "type": "string"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "enum": [
+                "montreal",
+                "canada",
+                "usa",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "montreal, canada (the rest of Canada), usa, or unknown",
+          "title": "Location"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "swe",
+                "security",
+                "data",
+                "ml-ai",
+                "quant",
+                "infra",
+                "embedded",
+                "general-cs",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The kind of work",
+          "title": "Role"
+        },
+        "term": {
+          "anyOf": [
+            {
+              "pattern": "^((summer|fall|winter|spring)-[0-9]{4}|unknown)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A term such as summer-2027, or unknown",
+          "title": "Term"
+        },
+        "language": {
+          "anyOf": [
+            {
+              "enum": [
+                "en",
+                "fr",
+                "bilingual",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The language the posting is written in",
+          "title": "Language"
+        },
+        "company": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact employer name, such as Shopify",
+          "title": "Company"
+        },
+        "mine": {
+          "default": false,
+          "description": "Apply the places, roles, terms and employers the user saved",
+          "title": "Mine",
+          "type": "boolean"
+        },
+        "untracked": {
+          "default": false,
+          "description": "Leave out every posting the user saved, applied to or hid",
+          "title": "Untracked",
+          "type": "boolean"
+        },
+        "days": {
+          "anyOf": [
+            {
+              "maximum": 3650,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only postings first seen in the last N days; 0 means any age. Without words the default is 14; with words it is any age.",
+          "title": "Days"
+        }
+      },
+      "title": "export_postingsArguments"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "_meta": {
+      "anthropic/requiresUserInteraction": true
+    }
+  },
+  {
+    "name": "start_sync",
+    "title": "Start a sync",
+    "description": "Start collecting new postings from the job boards in the background, like stage sync in a terminal. It takes several minutes and only one runs at a time; database_status shows its progress. Use only when the user asks for a sync.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "title": "start_syncArguments"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true
+    },
+    "_meta": {
+      "anthropic/requiresUserInteraction": true
+    }
+  }
+]

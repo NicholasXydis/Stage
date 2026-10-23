@@ -118,6 +118,7 @@ def health_to_json(report: "DoctorReport", apps: "Sequence[AppHealth]" = ()) -> 
                     "name": app.label,
                     "status": app.status.value,
                     "detail": app.detail,
+                    "actions": app.actions,
                 }
                 for app in apps
             ],
