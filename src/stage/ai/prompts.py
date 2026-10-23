@@ -94,8 +94,10 @@ def _words(name: str, value: str | None, limit: int) -> str:
 def whats_new() -> str:
     return " ".join(
         [
-            "Using Stage, show me the internship postings that are new for me. Call "
-            "search_postings with new=true, mine=true and untracked=true.",
+            (
+                "Using Stage, show me the internship postings that are new for me. Call "
+                "search_postings with new=true, mine=true and untracked=true."
+            ),
             NO_PREFERENCES,
             LISTING,
             "If nothing is new, say so in one line.",
@@ -107,13 +109,17 @@ def weekly_digest() -> str:
     return " ".join(
         [
             "Give me my weekly internship digest from Stage.",
-            "1. Call search_postings with days=7 and mine=true; if I saved no preferences, "
-            "search without mine and say so.",
+            (
+                "1. Call search_postings with days=7 and mine=true; if I saved no preferences, "
+                "search without mine and say so."
+            ),
             "2. Call get_tracker to see what I applied to and what heard back.",
             "3. Call database_status to see how fresh Stage is.",
-            "Then write a short digest: the ten strongest new postings with their links, my "
-            "applications from the last seven days, anything still waiting on a reply, and one "
-            "or two next steps.",
+            (
+                "Then write a short digest: the ten strongest new postings with their links, my "
+                "applications from the last seven days, anything still waiting on a reply, and one "
+                "or two next steps."
+            ),
             DATA,
         ]
     )
@@ -174,11 +180,15 @@ def prepare_application(
             find,
             "2. Read it in full with get_postings.",
             "3. Read what I saved about myself with get_preferences.",
-            "Then give me: what the role asks for, where my background fits and where it falls "
-            "short, three resume bullet ideas aimed at this posting, two questions to ask the "
-            "employer, and a short cover note.",
-            "Do not mark the posting as applied unless I tell you I applied; offer to save it "
-            "instead.",
+            (
+                "Then give me: what the role asks for, where my background fits and where it falls "
+                "short, three resume bullet ideas aimed at this posting, two questions to ask the "
+                "employer, and a short cover note."
+            ),
+            (
+                "Do not mark the posting as applied unless I tell you I applied; offer to save it "
+                "instead."
+            ),
             DATA,
         ]
     )
@@ -188,11 +198,15 @@ def health_check() -> str:
     return " ".join(
         [
             "Check that Stage is healthy. Call database_status and check_sources.",
-            "Tell me in plain words when Stage last synced and whether that is recent, how many "
-            "postings are open, and whether any job boards are failing or blocked and what that "
-            "means.",
-            "End with the one terminal command that would help most, such as stage sync or "
-            "stage doctor. Do not suggest disabling boards.",
+            (
+                "Tell me in plain words when Stage last synced and whether that is recent, how "
+                "many postings are open, and whether any job boards are failing or blocked and "
+                "what that means."
+            ),
+            (
+                "End with the one terminal command that would help most, such as stage sync or "
+                "stage doctor. Do not suggest disabling boards."
+            ),
         ]
     )
 
