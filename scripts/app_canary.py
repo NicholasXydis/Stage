@@ -4,10 +4,12 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 TIMEOUT = 300
+RETRY_PAUSE = 90
 KEPT = (
     "SYSTEMROOT",
     "WINDIR",
@@ -79,15 +81,40 @@ def run(command: list[str], env: dict[str, str], cwd: Path) -> tuple[int, str]:
     return done.returncode, done.stdout + done.stderr
 
 
-def install(canary: Canary, env: dict[str, str], root: Path) -> tuple[bool, str]:
+def install(canary: Canary, env: dict[str, str], root: Path, again: bool) -> tuple[bool, str]:
     if os.name == "nt" and canary.windows:
         command = list(canary.windows)
     elif canary.installer == "npm":
         command = ["npm", "install", "-g", "--prefix", str(root / "npm"), canary.package]
+        command += ["--force"] if again else []
     else:
         command = ["uv", "tool", "install", canary.package]
+        command += ["--reinstall"] if again else []
     code, said = run(command, env, root)
     return code == 0, said[-400:]
+
+
+def attempt(
+    canary: Canary, stage: Path, env: dict[str, str], root: Path, again: bool
+) -> tuple[bool, str]:
+    home = root / "home"
+    installed, said = install(canary, env, root, again)
+    connected = listed = removed = False
+    if installed:
+        code, joined = run([str(stage), "connect", canary.key], env, home)
+        connected = code == 0
+        code, listing = run(list(canary.listing), env, home)
+        listed = NAMED.search(listing) is not None
+        run([str(stage), "disconnect", canary.key], env, home)
+        code, after = run(list(canary.listing), env, home)
+        removed = NAMED.search(after) is None
+        said = f"stage connect: {joined[:400]} | {canary.listing[0]}: {listing[-400:]}"
+    print(f"{canary.key:12} {installed!s:10} {connected!s:10} {listed!s:7} {removed!s:8}")
+    if installed and connected and listed and removed:
+        return True, ""
+    detail = " ".join(said.split())[-800:]
+    print(f"  {detail}")
+    return False, f"installed {installed}, connected {connected}, listed {listed}. {detail}"
 
 
 def main() -> int:
@@ -134,31 +161,23 @@ def check(stage: Path, root: Path) -> int:
         "NPM_CONFIG_UPDATE_NOTIFIER": "false",
         "NPM_CONFIG_FUND": "false",
     }
-    failed: list[str] = []
     print(f"{'app':12} {'installed':10} {'connected':10} {'listed':7} {'removed':8}")
-    for canary in CANARIES:
-        installed, said = install(canary, env, root)
-        connected = listed = removed = False
-        if installed:
-            code, joined = run([str(stage), "connect", canary.key], env, home)
-            connected = code == 0
-            code, listing = run(list(canary.listing), env, home)
-            listed = NAMED.search(listing) is not None
-            run([str(stage), "disconnect", canary.key], env, home)
-            code, after = run(list(canary.listing), env, home)
-            removed = NAMED.search(after) is None
-            said = f"stage connect: {joined[:400]} | {canary.listing[0]}: {listing[-400:]}"
-        print(f"{canary.key:12} {installed!s:10} {connected!s:10} {listed!s:7} {removed!s:8}")
-        if not (installed and connected and listed and removed):
+    missed = [c for c in CANARIES if not attempt(c, stage, env, root, again=False)[0]]
+    if missed:
+        names = ", ".join(canary.key for canary in missed)
+        print(f"\nTrying {names} once more, in case a release was still publishing.")
+        time.sleep(RETRY_PAUSE)
+        failed: list[str] = []
+        for canary in missed:
+            passed, report = attempt(canary, stage, env, root, again=True)
+            if passed:
+                continue
             failed.append(canary.key)
-            detail = " ".join(said.split())[-800:]
-            print(f"  {detail}")
             if os.environ.get("GITHUB_ACTIONS") == "true":
-                state = f"installed {installed}, connected {connected}, listed {listed}"
-                print(f"::error title={canary.key}::{state}. {detail.replace('%', '%25')}")
-    if failed:
-        print(f"\nStage no longer connects cleanly to: {', '.join(failed)}")
-        return 1
+                print(f"::error title={canary.key}::{report.replace('%', '%25')}")
+        if failed:
+            print(f"\nStage no longer connects cleanly to: {', '.join(failed)}")
+            return 1
     print("\nEvery app read Stage's entry and let it go again.")
     return 0
 
