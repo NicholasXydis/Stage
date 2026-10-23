@@ -641,12 +641,14 @@
   platform: custom_json
   slug: miro
   source_of_record: discover
-  last_verified: 2026-08-17
-  notes: Browser-discovered endpoint with no url field or template, so postings would
-    carry the listing API as their apply link.
+  last_verified: 2026-10-23
+  notes: '2026-10-23: the _next/data URL carried a Next.js build id that changes on
+    every deploy, and it answered 404 after one. The open-positions page embeds the
+    same jobs in __NEXT_DATA__, read through extract.'
   custom:
-    url: https://miro.com/careers/_next/data/sfeejaVaUTHQbAWYZcG8m/en/open-positions.json
-    jobs_path: pageProps.jobs
+    url: https://miro.com/careers/open-positions/
+    extract: __NEXT_DATA__
+    jobs_path: props.pageProps.jobs
     fields:
       title: title
       id: id

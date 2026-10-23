@@ -414,3 +414,21 @@ def test_a_state_code_disambiguates_a_city_two_countries_share(
 )
 def test_a_list_of_cities_keeps_the_domestic_one(raw: str, bucket: LocationBucket) -> None:
     assert resolve_location(raw).bucket is bucket
+
+
+@pytest.mark.parametrize(
+    ("raw", "shown"),
+    [
+        ("Remote (United States | Canada)", "Remote (United States | Canada)"),
+        ("New York (In-Office / Hybrid)", "New York (In-Office / Hybrid)"),
+        ("IN-Indianapolis;6910 Network Place (Tribune-WXIN/WTTV)", "IN-Indianapolis +1"),
+        ("Toronto (Hybrid; Remote) | New York, NY", "Toronto (Hybrid; Remote) +1"),
+        ("Montreal, QC | Toronto, ON | Vancouver, BC", "Montreal, QC +2"),
+        ("(an unclosed bracket | Boston", "(an unclosed bracket | Boston"),
+        ("Austin ) | Boston", "Austin +1"),
+    ],
+)
+def test_a_list_inside_brackets_stays_one_place(raw: str, shown: str) -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location(raw) == shown

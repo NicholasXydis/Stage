@@ -43,7 +43,8 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Syncs failed across many boards at once, and `doctor` called it a network
   drop. Screening one large batch, such as the 31,000 rows from the custom job
   boards, held every connection for about 90 seconds, so they timed out together
-  and tripped the shared Workday breaker. Large batches are screened in two
+  and tripped the shared Workday breaker; 7 of the last 22 scheduled syncs lost
+  between 93 and 255 Workday boards that way. Large batches are screened in two
   worker processes now, and connections keep flowing meanwhile.
 - A posting that `purge` had removed after its 14 days came back as new on the
   next sync whenever its board still listed it. Stage remembers when it first saw
@@ -60,6 +61,14 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   still counts as a failure.
 - Long apply links and posting ids wrapped across lines, so copying one broke it.
   They print on one line now.
+- A list of places inside brackets was cut in half on screen. "Remote (United
+  States | Canada)" showed as "Remote (United States +1", hiding Canada and
+  leaving the bracket open, and a slash inside brackets counted as another place.
+  Lists split only outside brackets now: 8 of 31,468 stored locations read
+  differently, every one of them corrected.
+- Miro's board answered 404 whenever Miro redeployed its site, because the
+  address Stage read carried a build id that changes on every deploy. Stage reads
+  the open-positions page itself now, which keeps the same address.
 - Old Mission Capital moved from Greenhouse to Ashby, where it lists 39 roles.
   Frima's site answers 404 on every page and Global Partners lists 1,845 roles
   without one internship, so both are parked until 2027-01-20.

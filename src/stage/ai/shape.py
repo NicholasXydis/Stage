@@ -20,6 +20,7 @@ CAUTION = (
 )
 COMPACT_COLUMNS = ("id", "company", "title", "location", "first_seen", "tracked")
 DESCRIPTION_LIMIT = 4_000
+PLACE_LIMIT = 200
 MAX_OFFSET = 100_000
 UNKNOWN_CURSOR = (
     "That cursor is not one Stage gave out. Leave cursor out to start from the first page."
@@ -84,12 +85,17 @@ def place(raw: str, fallback: str) -> str:
     return text(display_location(raw)) or fallback
 
 
+def full_place(raw: str, fallback: str) -> str:
+    whole = " ".join(text(raw).split())
+    return whole if whole and len(whole) <= PLACE_LIMIT else place(raw, fallback)
+
+
 def posting_row(job: Job, status: ApplicationStatus | None) -> dict[str, object]:
     row: dict[str, object] = {
         "id": short(job.id),
         "company": text(job.company),
         "title": text(job.title_raw),
-        "location": place(job.location_raw, job.location.value),
+        "location": full_place(job.location_raw, job.location.value),
         "region": job.location.value,
         "role": job.role.value,
         "term": job.term,
@@ -157,7 +163,7 @@ def kept_copy(entry: TrackedPosting) -> dict[str, object]:
         "id": short(entry.posting_id),
         "company": text(snapshot.company),
         "title": text(snapshot.title),
-        "location": place(snapshot.location, "unknown"),
+        "location": full_place(snapshot.location, "unknown"),
         "term": snapshot.term,
         "url": web_url(snapshot.apply_url),
         "posting": "gone",
@@ -171,7 +177,7 @@ def tracker_row(row: TrackerRow) -> dict[str, object]:
         "id": short(row.entry.posting_id),
         "company": text(snapshot.company),
         "title": text(snapshot.title),
-        "location": place(snapshot.location, "unknown"),
+        "location": full_place(snapshot.location, "unknown"),
         "term": snapshot.term,
         "url": web_url(snapshot.apply_url),
         "posting": row.state.value,
@@ -194,7 +200,7 @@ def rejected_row(entry: QuarantinedJob) -> dict[str, object]:
         "id": short(entry.id),
         "company": text(entry.company),
         "title": text(entry.title_raw),
-        "location": place(entry.location_raw, entry.location.value),
+        "location": full_place(entry.location_raw, entry.location.value),
         "reason": entry.reason.value,
         "matched": text(entry.matched_phrase),
         "first_seen": day(entry.first_seen),

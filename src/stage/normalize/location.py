@@ -228,11 +228,12 @@ def display_location(raw: str) -> str:
         return ""
 
     aliases = location_lexicon().city_aliases
-    first = _MULTI_SITE_SUFFIX.sub("", _SEGMENT_SPLIT.split(raw)[0].strip())
+    segments = _top_level_segments(raw)
+    first = _MULTI_SITE_SUFFIX.sub("", segments[0].strip())
     if not first:
         return raw.strip()
 
-    others = len([part for part in _SEGMENT_SPLIT.split(raw)[1:] if part.strip()])
+    others = len([part for part in segments[1:] if part.strip()])
     more = f" +{others}" if others else ""
 
     fields = [field.strip() for field in first.split(",") if field.strip()]
@@ -243,6 +244,21 @@ def display_location(raw: str) -> str:
     if canonical is None:
         return f"{first}{more}"
     return ", ".join([canonical, *fields[1:]]) + more
+
+
+def _top_level_segments(raw: str) -> list[str]:
+    segments = [""]
+    depth = 0
+    for char in raw:
+        if char in "([":
+            depth += 1
+        elif char in ")]":
+            depth = max(0, depth - 1)
+        if depth == 0 and _SEGMENT_SPLIT.fullmatch(char):
+            segments.append("")
+        else:
+            segments[-1] += char
+    return segments
 
 
 @lru_cache(maxsize=1)

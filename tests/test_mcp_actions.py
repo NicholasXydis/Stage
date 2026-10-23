@@ -587,3 +587,27 @@ async def test_a_pdf_export_keeps_the_app_log_quiet(
         with caplog.at_level(logging.WARNING):
             await _ok(client, "export_postings", {"file_type": "pdf"})
     assert not [record for record in caplog.records if record.name.startswith("fontTools")]
+
+
+async def test_answers_carry_the_whole_location_and_compact_rows_stay_short(
+    tmp_path: Path,
+) -> None:
+    from dataclasses import replace
+
+    both = "Remote in USA / Remote in Canada"
+    sprawling = " | ".join(f"City {number}, ON" for number in range(40))
+    path = _seed(
+        tmp_path / "places.db",
+        [
+            replace(_job("both", location=LocationBucket.CANADA), location_raw=both),
+            replace(_job("many", hours=2, location=LocationBucket.CANADA), location_raw=sprawling),
+        ],
+    )
+    async with _connected(path, actions=False) as client:
+        rows = (await _ok(client, "search_postings"))["postings"]
+        detail = (await _ok(client, "get_postings", {"ids": [_id("both")]}))["postings"][0]
+        compact = (await _ok(client, "search_postings", {"all_matches": True}))["rows"]
+    places = {row["id"]: row["location"] for row in rows}
+    assert places[_id("both")] == both and detail["location"] == both
+    assert places[_id("many")] == "City 0, ON +39"
+    assert {row[3] for row in compact} == {"Remote in USA +1", "City 0, ON +39"}
