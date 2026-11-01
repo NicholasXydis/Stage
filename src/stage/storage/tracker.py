@@ -90,10 +90,17 @@ class TrackerStore:
                     self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         except sqlite3.Error as exc:
             raise TrackerUnreadableError(str(exc)) from exc
-        if created:
-            from stage.paths import restrict_permissions
+        from stage.paths import discard_new, restrict_permissions, tighten_permissions
 
+        if not created:
+            tighten_permissions(path)
+            return
+        try:
             restrict_permissions(path)
+        except OSError:
+            self._conn.close()
+            discard_new(path)
+            raise
 
     def close(self) -> None:
         self._conn.close()

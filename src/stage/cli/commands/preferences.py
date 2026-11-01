@@ -46,7 +46,10 @@ def prefs(
         typer.Option(
             "--role",
             metavar="ROLE",
-            help="swe, security, data, ml-ai, quant, infra, embedded, general-cs",
+            help=(
+                "swe, security, data, ml-ai, quant, infra, embedded, general-cs; repeat the "
+                "flag or separate with commas"
+            ),
         ),
     ] = None,
     term: Annotated[
@@ -82,7 +85,11 @@ def prefs(
 ) -> None:
     from stage.cli.serialize import emit, preferences_to_json
     from stage.domain.preferences import PreferenceError
-    from stage.services.preferences import clear_preferences, load_preferences
+    from stage.services.preferences import (
+        clear_preferences,
+        load_preferences,
+        preferences_lock,
+    )
 
     changing = bool(location or role or term or follow or avoid) or about is not None
     if clear and (changing or show):
@@ -108,11 +115,15 @@ def prefs(
     if changing:
         known = _stored_companies(db) if follow or avoid else {}
         try:
-            updated = _updated(current, known, location, role, term, follow, avoid, about)
+            with preferences_lock():
+                current = load_preferences().preferences
+                updated = _updated(current, known, location, role, term, follow, avoid, about)
+                _finish(updated, known, db, as_json)
         except (PreferenceError, InvalidOptionError) as exc:
             _print_failure(exc)
             raise typer.Exit(code=2) from exc
-        _finish(updated, known, db, as_json)
+        except OSError as exc:
+            _could_not(exc, "save")
         return
 
     if not (show or as_json) and _interactive():
@@ -158,7 +169,7 @@ def _terms(values: Sequence[str]) -> tuple[str, ...]:
 
     chosen = split_values(values)
     for value in chosen:
-        _validated_term(value)
+        _validated_term(value, offer_unknown=False)
     return parse_terms(chosen)
 
 
@@ -254,13 +265,13 @@ def _finish(
 
     console = terminal()
     render_preferences(console, preferences, saved=True, counts=_open_counts(preferences, db))
-    console.print(plain(f"Stored in {path}", "dim"))
+    console.print(plain(f"Stored in {path}", "dim"), soft_wrap=True)
 
 
 def _could_not(exc: OSError, verb: str) -> NoReturn:
     from stage.services.preferences import preferences_path
 
-    reason = exc.strerror or type(exc).__name__
+    reason = exc.strerror or str(exc) or type(exc).__name__
     _print_failure(OSError(f"Could not {verb} {preferences_path()}: {reason}"))
     raise typer.Exit(code=1) from exc
 

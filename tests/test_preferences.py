@@ -247,6 +247,8 @@ def test_roles_and_locations_ignore_case() -> None:
 
 def test_terms_are_lowercased_unknown_is_implied_and_garbage_is_refused() -> None:
     assert parse_terms(["Summer-2027", "unknown"]) == ("summer-2027",)
+    with pytest.raises(PreferenceError, match="already count under --mine"):
+        parse_terms(["unknown"])
     with pytest.raises(PreferenceError, match="Terms look like summer-2027"):
         parse_terms(["summer"])
     with pytest.raises(PreferenceError, match="At most 12 terms"):
@@ -542,8 +544,16 @@ def test_bad_input_is_explained_and_nothing_is_saved(flag: str, value: str, said
     result = CliRunner().invoke(app, ["prefs", flag, value])
 
     assert result.exit_code == 2
-    assert said in _plain(result.stdout)
+    assert said in _plain(result.stderr)
     assert not preferences_path().exists()
+
+
+def test_a_bad_term_is_never_answered_with_unknown() -> None:
+    result = CliRunner().invoke(app, ["prefs", "--term", "summer"])
+
+    assert result.exit_code == 2
+    assert "spring-2027" in _plain(result.stderr)
+    assert "unknown" not in _plain(result.stderr)
 
 
 def test_prefs_without_a_terminal_shows_rather_than_waits() -> None:
@@ -585,7 +595,7 @@ def test_conflicting_options_are_refused_like_elsewhere(args: list[str], said: s
     result = CliRunner().invoke(app, ["prefs", *args])
 
     assert result.exit_code == 2
-    assert said in _plain(result.stdout)
+    assert said in _plain(result.stderr)
     assert not preferences_path().exists()
 
 
@@ -744,7 +754,7 @@ def test_an_employer_cannot_be_followed_and_avoided_from_the_command_line() -> N
 
     assert both.exit_code == 2
     assert later.exit_code == 2
-    assert "Shopify cannot be both followed and avoided." in _plain(later.stdout)
+    assert "Shopify cannot be both followed and avoided." in _plain(later.stderr)
     assert load_preferences().preferences.avoid == ()
 
 
@@ -755,10 +765,11 @@ def test_a_save_that_cannot_happen_is_explained_not_raised() -> None:
     cleared = CliRunner().invoke(app, ["prefs", "--clear"])
 
     assert saved.exit_code == 1
-    assert "Could not save" in _plain(saved.stdout)
+    assert "Could not save" in _plain(saved.stderr)
     assert cleared.exit_code == 1
-    assert "Could not delete" in _plain(cleared.stdout)
-    assert not [e for e in preferences_path().parent.iterdir() if e.name.startswith(".pref")]
+    assert "Could not delete" in _plain(cleared.stderr)
+    left = [e.name for e in preferences_path().parent.iterdir() if e.name.startswith(".pref")]
+    assert left in ([], [".preferences.json.lock"]), left
 
 
 def test_prefs_never_creates_a_database(tmp_path: Path) -> None:
@@ -815,7 +826,7 @@ def test_list_mine_needs_saved_preferences(db_path: Path) -> None:
     result = CliRunner().invoke(app, ["list", "--mine", "--db", db])
 
     assert result.exit_code == 2
-    assert _plain(result.stdout) == (
+    assert _plain(result.stderr) == (
         "No preferences saved yet. Run stage prefs to choose places, roles and terms."
     )
 
@@ -827,7 +838,7 @@ def test_a_note_alone_gives_mine_nothing_to_apply(db_path: Path) -> None:
     result = CliRunner().invoke(app, ["list", "--mine", "--db", db])
 
     assert result.exit_code == 2
-    assert "only hold a note about you" in _plain(result.stdout)
+    assert "only hold a note about you" in _plain(result.stderr)
 
 
 def test_a_damaged_preferences_file_gives_one_clear_message(db_path: Path) -> None:
@@ -838,7 +849,7 @@ def test_a_damaged_preferences_file_gives_one_clear_message(db_path: Path) -> No
     result = CliRunner().invoke(app, ["list", "--mine", "--db", db])
 
     assert result.exit_code == 2
-    assert _plain(result.stdout) == (
+    assert _plain(result.stderr) == (
         "Your saved preferences could not be read. Run stage prefs to save them again, "
         "or stage prefs --clear."
     )
@@ -1022,7 +1033,8 @@ async def test_the_tui_mine_row_filters_and_explains(db_path: Path) -> None:
         assert "mine" in str(screen.query_one("#chips").render())
         assert _names(screen._jobs) == EXPECTED
         assert messages == [
-            f"{HEADER}. 2 with no location given are left out; turn Mine off to see them."
+            f"{HEADER}. 2 with no location given are left out; "
+            "turn off Only my preferences (f) to see them."
         ]
 
 
@@ -1101,7 +1113,8 @@ async def test_a_refresh_started_before_mine_never_speaks_for_it(
         messages = [str(note.message) for note in app_under_test._notifications]
 
     assert messages == [
-        f"{HEADER}. 2 with no location given are left out; turn Mine off to see them."
+        f"{HEADER}. 2 with no location given are left out; "
+        "turn off Only my preferences (f) to see them."
     ]
 
 
@@ -1151,3 +1164,24 @@ def test_a_file_saved_in_the_first_format_still_loads(tmp_path: Path) -> None:
     assert [company.folded for company in loaded.preferences.follow] == ["societe generale"]
     assert loaded.preferences.locations == (LocationBucket.CANADA,)
     assert loaded.problems == ()
+
+
+def test_the_left_out_hint_keeps_every_filter_that_was_typed(db_path: Path) -> None:
+    db = _seeded(db_path)
+    runner = CliRunner()
+
+    shown = _plain(runner.invoke(app, ["list", "--mine", "--role", "swe", "--db", db]).stdout)
+    hinted = runner.invoke(
+        app, ["list", "--mine", "--role", "swe", "--location", "unknown", "--json", "--db", db]
+    )
+
+    assert "stage list --mine --role swe --location unknown" in shown
+    assert f"{len(json.loads(hinted.stdout))} more have no location given" in shown
+
+
+def test_a_followed_employer_named_with_company_keeps_the_follow_rule(db_path: Path) -> None:
+    db = _seeded(db_path)
+
+    data = CliRunner().invoke(app, ["list", "--mine", "--company", "cisco", "--json", "--db", db])
+
+    assert {row["id"].split(":")[-1] for row in json.loads(data.stdout)} == {"followed-usa"}

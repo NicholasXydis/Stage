@@ -1,7 +1,8 @@
 import json
 import os
 import tempfile
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -37,9 +38,9 @@ class LoadedPreferences:
 
 
 def preferences_path() -> Path:
-    from stage.paths import data_dir
+    from stage.paths import data_root
 
-    return data_dir() / FILE_NAME
+    return data_root() / FILE_NAME
 
 
 def load_preferences(path: Path | None = None) -> LoadedPreferences:
@@ -57,6 +58,16 @@ def load_preferences(path: Path | None = None) -> LoadedPreferences:
     if not isinstance(payload, dict):
         return _damaged()
     return _from_payload(payload, target.name)
+
+
+@contextmanager
+def preferences_lock(path: Path | None = None) -> Iterator[None]:
+    from stage.paths import exclusive
+
+    target = path or preferences_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with exclusive(target.with_name(f".{target.name}.lock")):
+        yield
 
 
 def save_preferences(preferences: Preferences, path: Path | None = None) -> Path:
@@ -230,6 +241,7 @@ __all__ = [
     "LoadedPreferences",
     "clear_preferences",
     "load_preferences",
+    "preferences_lock",
     "preferences_path",
     "revise_preferences",
     "save_preferences",

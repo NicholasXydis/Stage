@@ -22,7 +22,7 @@ COMPANY_SEPARATOR = "; "
 
 _TERM = re.compile(r"^[a-z]+-\d{4}$")
 _SEPARATOR = re.compile(r"[,;]")
-_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]")
+_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]")
 
 
 class PreferenceError(ValueError):
@@ -46,11 +46,11 @@ class Preferences:
 
     @property
     def is_empty(self) -> bool:
-        return not (self.narrows or self.about)
+        return not (self.narrows or self.follow or self.about)
 
     @property
     def narrows(self) -> bool:
-        return bool(self.locations or self.roles or self.terms or self.follow or self.avoid)
+        return bool(self.locations or self.roles or self.terms or self.avoid)
 
     def apply(self, filters: JobFilters) -> JobFilters:
         named = filters.company is None
@@ -62,7 +62,7 @@ class Preferences:
             terms=self._terms() if filters.term is None else frozenset(),
             avoid_companies=frozenset(e.folded for e in self.avoid) if named else frozenset(),
             follow_companies=frozenset(e.folded for e in self.follow)
-            if named and placed
+            if (named or self._follows(filters)) and placed
             else frozenset(),
         )
 
@@ -75,14 +75,17 @@ class Preferences:
             parts.append(", ".join(role.value for role in self.roles))
         if self.terms and filters.term is None:
             parts.append(", ".join(self.terms))
-        if filters.company is None:
-            if self.follow and placed:
-                parts.append("following " + COMPANY_SEPARATOR.join(e.name for e in self.follow))
-            if self.avoid:
-                parts.append("leaving out " + COMPANY_SEPARATOR.join(e.name for e in self.avoid))
+        if self.follow and placed and (filters.company is None or self._follows(filters)):
+            parts.append("following " + COMPANY_SEPARATOR.join(e.name for e in self.follow))
+        if self.avoid and filters.company is None:
+            parts.append("leaving out " + COMPANY_SEPARATOR.join(e.name for e in self.avoid))
         if not parts:
             return "Mine: the filters you typed replace your saved preferences"
         return "Mine: " + " | ".join(parts)
+
+    def _follows(self, filters: JobFilters) -> bool:
+        named = (filters.company or "").strip().casefold()
+        return bool(named) and any(e.name.casefold() == named for e in self.follow)
 
     def _locations(self) -> frozenset[LocationBucket]:
         covered = {extra for chosen in self.locations for extra in COVERED_BY.get(chosen, ())}
@@ -139,13 +142,19 @@ def parse_roles(values: Iterable[str]) -> tuple[RoleCategory, ...]:
 
 def parse_terms(values: Iterable[str]) -> tuple[str, ...]:
     chosen: list[str] = []
+    implied = False
     for value in split_values(values):
         term = value.lower()
         if term == UNKNOWN_TERM:
+            implied = True
             continue
         if not _TERM.match(term):
             raise PreferenceError(f"Unknown term {value!r}. Terms look like summer-2027.")
         chosen.append(term)
+    if implied and not chosen:
+        raise PreferenceError(
+            "Postings with no term already count under --mine; save a term such as summer-2027."
+        )
     unique = tuple(dict.fromkeys(chosen))
     if len(unique) > MAX_TERMS:
         raise PreferenceError(f"At most {MAX_TERMS} terms can be saved.")

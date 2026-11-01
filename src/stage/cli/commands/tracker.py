@@ -11,10 +11,12 @@ from stage.cli.options import (
     _database,
     _needs_a_row,
     _no_such_posting,
+    _print_error,
     _print_failure,
     _refuse,
     _resolve_posting,
     app,
+    output_path,
     run_async,
 )
 
@@ -66,7 +68,7 @@ def applied(
 
 
 @app.command(
-    help="Never show postings again; stage untrack brings them back", rich_help_panel=PANEL
+    help="Hide postings from every list; stage untrack shows them again", rich_help_panel=PANEL
 )
 def hide(postings: RowsArgument = None, db: DatabaseOption = None) -> None:
     from stage.domain.tracker import ApplicationStatus
@@ -74,7 +76,7 @@ def hide(postings: RowsArgument = None, db: DatabaseOption = None) -> None:
     _change("hide", postings, ApplicationStatus.HIDDEN, None, None, db)
 
 
-@app.command(help="Set the status, date or note of tracked postings", rich_help_panel=PANEL)
+@app.command(help="Set the status, date or note of postings", rich_help_panel=PANEL)
 def track(
     postings: RowsArgument = None,
     status: Annotated[
@@ -147,7 +149,8 @@ def tracker(
         typer.Option("--export", metavar="FORMAT", help="Write the list to a file: csv, json, md"),
     ] = None,
     out: Annotated[
-        Path | None, typer.Option("--out", metavar="FILE", help="Where --export writes")
+        Path | None,
+        typer.Option("--out", metavar="FILE", parser=output_path, help="Where --export writes"),
     ] = None,
     force: Annotated[bool, typer.Option("--force", help="Replace an existing --out file")] = False,
     as_json: JsonOption = False,
@@ -168,6 +171,9 @@ def tracker(
         _refuse("[red]--export writes a file, so use it without --json.[/red]")
     if (out or force) and not export:
         _refuse("[red]--out and --force only apply with --export.[/red]")
+    export = export.strip().lower() if export else export
+    if export and export not in {item.value for item in FORMATS}:
+        _refuse("[red]The tracker exports as csv, json or md.[/red]")
     try:
         chosen = parse_status(status) if status is not None else None
         fmt = _require_enum(export, ExportFormat, "--export") if export else None
@@ -196,13 +202,13 @@ def tracker(
 
     from stage.cli.selection import remember
 
-    numbered = remember(tuple(row.entry.posting_id for row in listing.rows), listing.last_sync_at)
     if as_json:
         from stage.cli.serialize import emit
         from stage.services.tracker import tracker_json
 
         emit(tracker_json(listing.rows))
         return
+    numbered = remember(tuple(row.entry.posting_id for row in listing.rows), listing.last_sync_at)
     from stage.cli.render import render_tracker, terminal
 
     render_tracker(terminal(), listing, status=chosen, numbered=numbered)
@@ -233,17 +239,16 @@ def _export(listing: "TrackerListing", fmt: "ExportFormat", out: Path | None, fo
         raise typer.Exit(code=2) from exc
     count = len(listing.rows)
     terminal().print(
-        plain(f"Wrote {count} tracked posting{'' if count == 1 else 's'} to {written}")
+        plain(f"Wrote {count:,} tracked posting{'' if count == 1 else 's'} to {written}"),
+        soft_wrap=True,
     )
 
 
 def _references(command: str, postings: list[str] | None) -> list[str]:
-    from stage.cli.render import terminal
     from stage.cli.selection import BadRangeError, expand
 
     if not postings:
-        terminal().print(_needs_a_row(command))
-        raise typer.Exit(code=2)
+        _refuse(_needs_a_row(command))
     try:
         return expand(postings)
     except BadRangeError as exc:
@@ -252,12 +257,10 @@ def _references(command: str, postings: list[str] | None) -> list[str]:
 
 
 def _refuse_missing(missing: tuple[str, ...]) -> NoReturn:
-    from stage.cli.render import terminal
 
-    console = terminal()
     for reference in missing:
-        console.print(_no_such_posting(reference))
-    console.print("[red]Nothing was changed.[/red]")
+        _print_error(_no_such_posting(reference))
+    _print_error("[red]Nothing was changed.[/red]")
     raise typer.Exit(code=1)
 
 
@@ -326,11 +329,11 @@ def _labels(references: list[str], ids: list[str]) -> dict[str, str]:
 
 
 def _refuse_untracked(labels: list[str]) -> NoReturn:
-    from stage.cli.render import terminal, truncate
+    from stage.cli.render import truncate
 
     listed = truncate(", ".join(labels), 80)
     verb = "is" if len(labels) == 1 else "are"
-    terminal().print(
+    _print_error(
         f"[red]{listed} {verb} not tracked yet, so there is no status to keep.[/red] "
         "Add [bold]--status saved[/bold], or use [bold]stage save[/bold]. Nothing was changed."
     )
@@ -342,6 +345,13 @@ def _headline(command: str, report: "ChangeReport", typed: list[str]) -> str:
     noun = "posting" if count == 1 else "postings"
     if not count:
         return "Nothing to change."
+    if all(
+        change.previous is not None
+        and change.before is change.entry.status
+        and change.previous.on == change.entry.on
+        for change in report.changed
+    ):
+        return f"Updated the note on {count} {noun}."
     if command == "save":
         return f"Saved {count} {noun}."
     if command == "applied":
@@ -349,5 +359,10 @@ def _headline(command: str, report: "ChangeReport", typed: list[str]) -> str:
         return f"Marked {count} {noun} applied on {', '.join(days)}."
     if command == "hide":
         pronoun = "it" if count == 1 else "them"
+        if any(reference.replace("-", "").isdigit() for reference in typed):
+            return (
+                f"Hid {count} {noun}. To bring {pronoun} back, run stage tracker --status "
+                "hidden, then stage untrack with that list's rows."
+            )
         return f"Hid {count} {noun}. stage untrack {' '.join(typed)} brings {pronoun} back."
     return f"Updated {count} {noun}."

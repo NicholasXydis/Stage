@@ -134,9 +134,15 @@ def _catalogue() -> list[Job]:
     return [_job(name, hours=hours) for hours, name in enumerate("abcde", start=1)]
 
 
+def _tracker_file() -> Path:
+    path = tracker_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 def _run(*args: str) -> tuple[int, str, str]:
     result = CliRunner().invoke(app, list(args))
-    return result.exit_code, _plain(result.stdout), result.stderr
+    return result.exit_code, _plain(result.stdout), _plain(result.stderr)
 
 
 def _listed(db: str, *extra: str) -> str:
@@ -327,7 +333,7 @@ def test_a_tracker_stage_cannot_trust_is_refused(damage: str, said: str) -> None
 
 
 def test_a_file_that_is_not_a_database_is_refused() -> None:
-    tracker_path().write_bytes(b"not a database at all" * 100)
+    _tracker_file().write_bytes(b"not a database at all" * 100)
 
     with pytest.raises(TrackerUnreadableError):
         _entries()
@@ -542,7 +548,7 @@ async def test_a_damaged_tracker_gives_the_view_a_problem(db_path: Path) -> None
     from stage.storage import open_repository
 
     _store(db_path, [_job("a")])
-    tracker_path().write_bytes(b"garbage" * 200)
+    _tracker_file().write_bytes(b"garbage" * 200)
 
     async with open_repository(db_path) as repository:
         view = await tracker_view(repository)
@@ -616,7 +622,10 @@ def test_save_applied_and_hide_from_a_listing(db_path: Path) -> None:
 
     assert saved[:2] == (0, "Saved 1 posting. [S] Intern a - Acme")
     assert applied[1] == f"Marked 1 posting applied on {TODAY}. [A] Intern b - Acme"
-    assert hidden[1] == "Hid 1 posting. stage untrack 3 brings it back. hidden Intern c - Acme"
+    assert hidden[1] == (
+        "Hid 1 posting. To bring it back, run stage tracker --status hidden, then stage "
+        "untrack with that list's rows. hidden Intern c - Acme"
+    ), "a row number goes stale once another list runs, so the hint never repeats it"
     assert "[S] Intern a" in after and "[A] Intern b" in after
     assert "Intern c" not in after
     assert after.endswith("1 hidden: stage tracker --status hidden")
@@ -678,10 +687,10 @@ def test_a_sync_after_the_listing_refuses_row_numbers(db_path: Path) -> None:
     _listed(db)
     _synced(db)
 
-    code, out, _ = _run("save", "1", "--db", db)
+    code, _, err = _run("save", "1", "--db", db)
 
     assert code == 2
-    assert "database has changed since that listing" in out
+    assert "database has changed since that listing" in err
     assert not tracker_path().exists()
 
 
@@ -709,7 +718,7 @@ def test_bad_input_is_explained_and_nothing_is_saved(
     result = _run(*args, "--db", db)
 
     assert result[0] == code
-    assert said in result[1]
+    assert said in result[2]
     assert not tracker_path().exists() or _entries() == []
 
 
@@ -791,16 +800,19 @@ def test_the_tracker_exports_and_refuses_conflicting_options(db_path: Path, tmp_
 
     assert written[1].startswith("Wrote 1 tracked posting to")
     assert "| saved |" in target.read_text(encoding="utf-8")
+    shouted = _run("tracker", "--export", "CSV", "--out", str(tmp_path / "t.csv"), "--db", db)
+    assert shouted[1].startswith("Wrote 1 tracked posting to"), "the format ignores case"
     for args, said in [
         (["--export", "pdf"], "The tracker exports as csv, json or md."),
-        (["--export", "xls"], "--export must be one of"),
+        (["--export", "xls"], "The tracker exports as csv, json or md."),
+        (["--export", "PDF"], "The tracker exports as csv, json or md."),
         (["--stats", "--status", "saved"], "--stats counts every tracked posting"),
         (["--export", "csv", "--json"], "--export writes a file"),
         (["--out", "x.csv"], "--out and --force only apply with --export."),
         (["--status", "nope"], "Unknown status 'nope'"),
     ]:
-        code, out, _ = _run("tracker", *args, "--db", db)
-        assert code == 2 and said in out
+        code, _, err = _run("tracker", *args, "--db", db)
+        assert code == 2 and said in err
 
 
 def test_an_empty_tracker_says_what_to_do(db_path: Path) -> None:
@@ -861,7 +873,7 @@ def test_open_refuses_an_unsafe_saved_link(db_path: Path) -> None:
 
 def test_a_damaged_tracker_never_breaks_a_listing(db_path: Path) -> None:
     db = _store(db_path, _catalogue())
-    tracker_path().write_bytes(b"garbage" * 200)
+    _tracker_file().write_bytes(b"garbage" * 200)
     before = tracker_path().read_bytes()
 
     listed = _run("list", "--db", db)
@@ -871,8 +883,8 @@ def test_a_damaged_tracker_never_breaks_a_listing(db_path: Path) -> None:
 
     assert listed[0] == 0 and listed[1].startswith(LIST_PROBLEM)
     assert len(json.loads(as_json.stdout)) == 5 and LIST_PROBLEM in as_json.stderr
-    assert saved[0] == 1 and "could not use your tracker" in saved[1]
-    assert "It was left as it was." in saved[1]
+    assert saved[0] == 1 and "could not use your tracker" in saved[2]
+    assert "It was left as it was." in saved[2]
     assert shown[0] == 1
     assert tracker_path().read_bytes() == before
 
@@ -947,7 +959,7 @@ async def test_the_tui_warns_once_about_a_damaged_tracker(db_path: Path) -> None
     from stage.tui.screens.postings import PostingsScreen
 
     db = _store(db_path, _catalogue())
-    tracker_path().write_bytes(b"garbage" * 200)
+    _tracker_file().write_bytes(b"garbage" * 200)
     app_under_test = StageApp(Path(db), "")
 
     async with app_under_test.run_test(size=(110, 32)) as pilot:
@@ -984,13 +996,13 @@ def test_untrack_explains_every_way_it_can_fail(db_path: Path) -> None:
     _run("save", "1", "--db", db)
     _synced(db)
     stale = _run("untrack", "1", "--db", db)
-    tracker_path().write_bytes(b"garbage" * 200)
+    _tracker_file().write_bytes(b"garbage" * 200)
     damaged = _run("untrack", _id("a"), "--db", db)
 
-    assert unknown[0] == 1 and unknown[1].endswith("Nothing was changed.")
+    assert unknown[0] == 1 and unknown[2].endswith("Nothing was changed.")
     assert never == (0, "Row 2 was not tracked.", "")
-    assert stale[0] == 2 and "database has changed" in stale[1]
-    assert damaged[0] == 1 and "could not use your tracker" in damaged[1]
+    assert stale[0] == 2 and "database has changed" in stale[2]
+    assert damaged[0] == 1 and "could not use your tracker" in damaged[2]
 
 
 def test_a_tracker_export_that_would_overwrite_is_refused(db_path: Path, tmp_path: Path) -> None:
@@ -1000,9 +1012,9 @@ def test_a_tracker_export_that_would_overwrite_is_refused(db_path: Path, tmp_pat
     target = tmp_path / "t.csv"
     target.write_text("keep", encoding="utf-8")
 
-    code, out, _ = _run("tracker", "--export", "csv", "--out", str(target), "--db", db)
+    code, _, err = _run("tracker", "--export", "csv", "--out", str(target), "--db", db)
 
-    assert code == 2 and "pass --force to overwrite it" in out
+    assert code == 2 and "pass --force to overwrite it" in err
     assert target.read_text(encoding="utf-8") == "keep"
 
 
@@ -1026,12 +1038,12 @@ def test_a_tracker_stage_cannot_write_is_explained(db_path: Path) -> None:
     _run("save", "1", "--db", db)
     tracker_path().chmod(0o400)
     try:
-        code, out, _ = _run("applied", "1", "--db", db)
+        code, _, err = _run("applied", "1", "--db", db)
     finally:
         tracker_path().chmod(0o600)
 
     assert code == 1
-    assert "could not use your tracker" in out and "readonly" in out
+    assert "could not use your tracker" in err and "readonly" in err
     assert _status_of(_id("a")) is SAVED
 
 
@@ -1042,17 +1054,17 @@ def test_a_folder_stage_cannot_write_is_explained(db_path: Path) -> None:
     folder = tracker_path().parent
     folder.chmod(0o500)
     try:
-        code, out, _ = _run("save", "1", "--db", db)
+        code, _, err = _run("save", "1", "--db", db)
     finally:
         folder.chmod(0o700)
 
     assert code == 1
-    assert "could not use your tracker" in out and "Permission denied" in out
+    assert "could not use your tracker" in err and "Permission denied" in err
     assert not tracker_path().exists()
 
 
 def test_a_tracker_path_that_is_a_folder_is_refused() -> None:
-    tracker_path().mkdir()
+    tracker_path().mkdir(parents=True)
 
     with pytest.raises(TrackerUnreadableError):
         _entries()
@@ -1117,3 +1129,107 @@ def test_the_walkthrough_stats_add_up(db_path: Path) -> None:
         "Tracked 2 (interviewing 1 | rejected 1) Applied 2 in the last 7 days, 2 in the last 30 "
         "Heard back 2 of 2 applications (100%): 1 interview, 1 rejection"
     )
+
+
+def test_purging_a_tracked_main_copy_moves_its_tracking_to_the_copy_that_stays(
+    db_path: Path,
+) -> None:
+    main = "greenhouse:acme:main"
+    copy = "lever:acme:copy"
+    db = _store(db_path, [_job("main"), _job("copy", source="lever", duplicate_of=main)])
+    _run("hide", main, "--db", db)
+    _sql(db, "UPDATE jobs SET first_seen = '2026-01-01T00:00:00+00:00' WHERE id = ?", main)
+
+    code, purged, _ = _run("purge", "--db", db)
+
+    assert code == 0 and "1 duplicate promoted" in purged
+    assert [entry.posting_id for entry in _entries()] == [copy]
+    assert _status_of(copy) is ApplicationStatus.HIDDEN
+    assert "Intern copy" not in _listed(db, "--all"), "a hidden posting must stay hidden"
+
+
+def test_hiding_by_id_offers_the_id_back(db_path: Path) -> None:
+    db = _store(db_path, _catalogue())
+
+    hidden = _run("hide", _id("c"), "--db", db)
+
+    assert hidden[1].startswith(f"Hid 1 posting. stage untrack {_id('c')} brings it back.")
+
+
+def test_purging_an_older_tracked_copy_hands_its_tracking_to_the_main(db_path: Path) -> None:
+    copy = "lever:acme:copy"
+    main = "greenhouse:acme:main"
+    db = _store(db_path, [_job("main"), _job("copy", source="lever")])
+    _run("hide", copy, "--db", db)
+    _sql(db, "UPDATE jobs SET duplicate_of = ? WHERE id = ?", main, copy)
+    _sql(db, "UPDATE jobs SET first_seen = '2026-01-01T00:00:00+00:00' WHERE id = ?", copy)
+
+    code, _, _ = _run("purge", "--db", db)
+
+    assert code == 0 and [entry.posting_id for entry in _entries()] == [main]
+    assert _status_of(main) is ApplicationStatus.HIDDEN
+    assert "Intern main" not in _listed(db, "--all"), "a hidden posting must stay hidden"
+
+
+def test_when_both_copies_are_tracked_the_newer_record_survives_a_purge(db_path: Path) -> None:
+    main = "greenhouse:acme:main"
+    copy = "lever:acme:copy"
+    db = _store(db_path, [_job("main"), _job("copy", source="lever", duplicate_of=main)])
+    _sql(db, "UPDATE jobs SET duplicate_of = NULL WHERE id = ?", copy)
+    _run("save", copy, "--db", db)
+    _run("track", main, "--status", "interviewing", "--db", db)
+    _sql(db, "UPDATE jobs SET duplicate_of = ? WHERE id = ?", main, copy)
+    _sql(db, "UPDATE jobs SET first_seen = '2026-01-01T00:00:00+00:00' WHERE id = ?", main)
+
+    _run("purge", "--db", db)
+
+    assert [entry.posting_id for entry in _entries()] == [copy]
+    assert _status_of(copy) is ApplicationStatus.INTERVIEWING
+
+
+def test_quarantining_a_tracked_main_hands_its_tracking_to_the_copy(db_path: Path) -> None:
+    main = "greenhouse:acme:main"
+    copy = "lever:acme:copy"
+    db = _store(db_path, [_job("main"), _job("copy", source="lever", duplicate_of=main)])
+    _run("applied", main, "--db", db)
+    _sql(db, "UPDATE jobs SET location_raw = 'Berlin, Germany' WHERE id = ?", main)
+
+    code, _, _ = _run("rescreen", "--db", db)
+
+    assert code == 0 and [entry.posting_id for entry in _entries()] == [copy]
+    assert _status_of(copy) is ApplicationStatus.APPLIED
+
+
+def test_a_note_is_kept_when_save_cannot_move_an_applied_posting_back(db_path: Path) -> None:
+    db = _store(db_path, [_job("main")])
+    _run("applied", "greenhouse:acme:main", "--db", db)
+
+    code, out, _ = _run("save", "greenhouse:acme:main", "--note", "ask about visas", "--db", db)
+
+    assert code == 0 and "Updated the note on 1 posting." in out
+    assert [(e.status, e.note) for e in _entries()] == [
+        (ApplicationStatus.APPLIED, "ask about visas")
+    ]
+
+
+def test_sending_the_same_date_again_changes_nothing(db_path: Path) -> None:
+    db = _store(db_path, [_job("main")])
+    on = ("greenhouse:acme:main", "--on", "2026-10-20", "--db", db)
+    _run("track", *on[:1], "--status", "saved", *on[1:])
+
+    code, out, _ = _run("track", *on)
+
+    assert code == 0 and "Nothing to change." in out
+    assert len(_entries()[0].history) == 1
+
+
+def test_a_json_listing_leaves_the_numbered_rows_alone(db_path: Path) -> None:
+    db = _store(db_path, _catalogue())
+    shown = _listed(db, "--limit", "2")
+    other = CliRunner().invoke(app, ["search", "c", "--json", "--db", db])
+    assert [job["id"] for job in json.loads(other.stdout)] == [_id("c")]
+
+    code, _, _ = _run("save", "1", "--db", db)
+
+    assert code == 0 and "Intern a" in shown
+    assert [entry.posting_id for entry in _entries()] == [_id("a")]

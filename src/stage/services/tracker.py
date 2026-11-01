@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from stage.domain import ExportFormat, Job, JobStatus, dump
+from stage.domain.text import counted
 from stage.domain.tracker import (
     MARKERS,
     ApplicationStatus,
@@ -99,9 +100,9 @@ class _Target:
 
 
 def tracker_path() -> Path:
-    from stage.paths import data_dir
+    from stage.paths import data_root
 
-    return data_dir() / FILE_NAME
+    return data_root() / FILE_NAME
 
 
 def _problem(exc: TrackerUnreadableError) -> TrackerProblemError:
@@ -202,15 +203,16 @@ def _plan(
     for target in _distinct(targets):
         record = target.record
         wanted = status or (record.status if record else ApplicationStatus.SAVED)
-        if forward_only and record is not None and moves_back(record.status, wanted):
-            unchanged.append(record)
-            continue
-        moved = record is None or wanted is not record.status
         noted = note is not None and (record is None or note != record.note)
-        if record is not None and not moved and on is None and not noted:
+        held = forward_only and record is not None and moves_back(record.status, wanted)
+        if record is not None and held:
+            wanted = record.status
+        moved = record is None or wanted is not record.status
+        redated = not held and on is not None and (record is None or on != record.on)
+        if record is not None and not moved and not redated and not noted:
             unchanged.append(record)
             continue
-        dated = moved or on is not None
+        dated = moved or redated
         change = StatusChange(wanted, on or today, moment) if dated else None
         entry = TrackedPosting(
             posting_id=target.posting_id,
@@ -235,18 +237,67 @@ def _plan(
     )
 
 
-def undo_changes(changes: Sequence[Change]) -> None:
-    if not changes:
-        return
+def restore_unless_changed(
+    changes: Sequence[Change],
+) -> tuple[tuple[Change, ...], tuple[tuple[Change, TrackedPosting | None], ...]]:
     path = tracker_path()
     try:
         with TrackerStore.connect(path) as store:
-            store.restore(
-                [change.entry.posting_id for change in changes],
-                [change.previous for change in changes if change.previous is not None],
+            current = {entry.posting_id: entry for entry in store.entries()}
+            fresh = tuple(
+                change
+                for change in changes
+                if _unchanged_since(current.get(change.entry.posting_id), change.entry)
             )
+            if fresh:
+                store.restore(
+                    [change.entry.posting_id for change in fresh],
+                    [change.previous for change in fresh if change.previous is not None],
+                )
     except TrackerUnreadableError as exc:
         raise _problem(exc) from exc
+    return fresh, tuple(
+        (change, current.get(change.entry.posting_id)) for change in changes if change not in fresh
+    )
+
+
+def follow_successors(successors: Sequence[tuple[str, str]]) -> int | None:
+    path = tracker_path()
+    if not successors or not path.exists():
+        return 0
+    try:
+        with TrackerStore.connect(path) as store:
+            tracked = {entry.posting_id: entry for entry in store.entries()}
+            renamed: dict[str, str] = {}
+            stale: list[str] = []
+            for former, heir in successors:
+                record = tracked.get(former)
+                if record is None or heir in renamed.values():
+                    continue
+                kept = tracked.get(heir)
+                if kept is not None and kept.changed_at >= record.changed_at:
+                    stale.append(former)
+                    continue
+                if kept is not None:
+                    stale.append(heir)
+                renamed[former] = heir
+            if stale:
+                store.remove(stale)
+            if renamed:
+                store.write((), (), renamed)
+    except TrackerUnreadableError:
+        return None
+    return len(renamed)
+
+
+def _unchanged_since(current: TrackedPosting | None, written: TrackedPosting) -> bool:
+    return (
+        current is not None
+        and current.status is written.status
+        and current.on == written.on
+        and current.note == written.note
+        and current.changed_at == written.changed_at
+    )
 
 
 async def remove_tracked(repository: AsyncRepository, references: Sequence[str]) -> RemoveReport:
@@ -387,7 +438,7 @@ def tracker_markdown(rows: Sequence[TrackerRow], *, generated_at: datetime) -> s
     lines = [
         f"# Stage tracker, {generated_at.astimezone(UTC):%Y-%m-%d %H:%M UTC}",
         "",
-        f"{len(rows)} tracked posting(s).",
+        f"{counted(len(rows), 'tracked posting')}.",
         "",
         "| " + " | ".join(COLUMNS) + " |",
         "| " + " | ".join("---" for _ in COLUMNS) + " |",
@@ -526,6 +577,8 @@ __all__ = [
     "export_tracker",
     "record_status",
     "remove_tracked",
+    "follow_successors",
+    "restore_unless_changed",
     "stats_payload",
     "tracked_for",
     "tracked_payload",
@@ -535,5 +588,4 @@ __all__ = [
     "tracker_markdown",
     "tracker_path",
     "tracker_view",
-    "undo_changes",
 ]
