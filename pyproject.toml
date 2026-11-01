@@ -85,7 +85,6 @@ exclude = [
     ".claude-plugin",
     ".github",
     "CLAUDE.md",
-    "packaging",
     "plugins",
     "scripts",
 ]

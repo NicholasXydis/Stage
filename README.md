@@ -14,13 +14,13 @@
 
 **Every CS internship you can actually apply to, in one place.**
 
-Free and open source. No account, no server, no telemetry.
+Free and open source. No account, no hosted service, no telemetry.
 
 <br>
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=3%2C297&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=91%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=3%2C570&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=92%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -51,20 +51,20 @@ Internships disappear fast. By the time you find the right posting, hundreds of 
 
 Stage scans 1,450+ employer career boards and finds internships CS undergrads in Canada and the U.S. can actually apply to. Every rejected posting is logged with the exact reason it was filtered out.
 
-It has kept **4,024** postings out of **188,284** screened so far.
+It has kept **3,693** postings out of **337,765** screened so far.
 
 ## A look at it
 
 <div align="center">
   <img src="assets/tui.png" alt="The Stage TUI listing internship postings, with columns for age, company, title and location, a search bar, and the full description of the highlighted posting below" width="100%">
-  <br><sub><b>stage tui</b> — browse everything, filter with <b>f</b>, open with <b>o</b></sub>
+  <br><sub><b>stage tui</b>: browse everything, filter with <b>f</b>, open with <b>o</b></sub>
 </div>
 
 <br>
 
 <div align="center">
-  <img src="assets/cli.png" alt="The stage command line help, showing commands grouped into Everyday, Keeping current, Registry and maintenance, and Health" width="100%">
-  <br><sub><b>stage --help</b> — commands grouped by what you are doing</sub>
+  <img src="assets/cli.png" alt="The stage command line help, showing commands grouped into Everyday, Applications, Keeping current, Registry and maintenance, Health, and AI apps" width="100%">
+  <br><sub><b>stage --help</b>: commands grouped by what you are doing</sub>
 </div>
 
 ## Install
@@ -84,7 +84,7 @@ If you already have Python, this works everywhere:
 pip install uv
 ```
 
-Or use your usual package manager — `brew install uv` on macOS, `winget install
+Or use your usual package manager: `brew install uv` on macOS, `winget install
 astral-sh.uv` on Windows. More options at
 [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/).
 
@@ -105,7 +105,7 @@ is what you want for a command line tool.
 
 </details>
 
-Needs Python 3.12, 3.13, or 3.14. Nothing else to set up — no database to
+Needs Python 3.12, 3.13, or 3.14. Nothing else to set up: no database to
 configure, no API key, no config file.
 
 ### First run
@@ -148,11 +148,11 @@ Filters work the same on `list`, `search`, and `export`:
 | Filter | What it takes |
 | --- | --- |
 | `--role` | swe, security, data, ml-ai, quant, infra, embedded, general-cs |
-| `--location` | montreal, canada, usa, unknown |
+| `--location` | montreal, canada (the rest of Canada), usa, unknown |
 | `--term` | summer-2027, fall-2026, winter-2027, and so on |
 | `--lang` | en, fr, bilingual |
-| `--source` | greenhouse, lever, ashby, workday, and more |
-| `--company` | one exact employer |
+| `--source` | greenhouse, lever, workday, simplify, speedyapply, and more |
+| `--company` | one employer, in any case |
 | `--all` | every match, not just the first page |
 | `--last N` | only postings first seen in the last N days. Stage keeps postings for 14 days, so this narrows the list and cannot reach further back |
 
@@ -165,16 +165,16 @@ empty list.
 stage tui
 ```
 
-Press `/` to search and `f` for filters — arrows move, enter picks, escape
-closes. Role, location, language, how far back to look, new-since-last-sync and
-the employer you are sitting on all live in that one panel.
+Press `/` to search and `f` for filters. Arrows move, enter picks, escape
+closes. Your preferences, untracked only, role, location, language, how far back
+to look, new-since-last-sync and the employer you are sitting on all live in that
+one panel.
 `space` marks rows and `o` opens every one you marked. `w` expands the full
 description, `e` exports what you are looking at, and `ctrl+t` changes the theme.
 Press `?` for the full key list.
 
-Same database as the CLI. The panel covers role, location, language, the date
-window and new-since-last-sync; `--term` and `--source` stay CLI-only. Row
-numbers are a CLI idea — in the TUI you move a cursor instead.
+Same database as the CLI. `--term` and `--source` stay CLI-only. Row
+numbers are a CLI idea; in the TUI you move a cursor instead.
 
 ## Your preferences and applications
 
@@ -183,7 +183,7 @@ stage prefs                   # save the places, roles and terms you want
 stage list --mine             # only postings that fit them
 stage save 3                  # keep a posting to come back to
 stage applied 1-4             # mark rows as applied today
-stage hide 7                  # never show a posting again
+stage hide 7                  # hide a posting from every list
 stage tracker                 # everything you saved or applied to
 ```
 
@@ -195,7 +195,7 @@ file, so they stay after a board takes them down.
 ## Keeping it fresh
 
 ```bash
-stage schedule enable     # sync quietly in the background
+stage schedule enable     # sync every 6 hours, look for new boards weekly
 stage schedule status     # check on it
 ```
 
@@ -219,7 +219,7 @@ Notifications only follow scheduled syncs, not stage sync. Your machine also nee
 
 <br>
 
-Put Stage on something that stays on — a VPS, a Raspberry Pi, an old laptop:
+Put Stage on something that stays on, such as a VPS, a Raspberry Pi or an old laptop:
 
 ```bash
 uv tool install stage-cli
@@ -241,16 +241,19 @@ stage connect --status                       # see which ones are connected
 stage connect claude-code --allow-actions    # also let it open, export and sync
 ```
 
-Claude Code, Cursor, VS Code, Claude Desktop and about 60 other apps can then
+Claude Code, Cursor, VS Code, Claude Desktop and about 50 other apps can then
 search your postings and keep your tracker, all on your computer. Actions stay
-off until you allow them, and Claude Code asks before each one.
+off until you allow them, and Claude Code asks before each one. Claude Desktop,
+VS Code and Goose show a search as a card, where Show all opens a table to save
+or hide postings.
 
 <details>
 <summary><b>The Claude Code plugin, or one click</b></summary>
 
 <br>
 
-In Claude Code, the plugin adds Stage and a skill that teaches Claude to use it:
+With Stage installed, the Claude Code plugin adds its tools and a skill that
+teaches Claude to use them:
 
 ```text
 /plugin install stage --marketplace NicholasXydis/Stage
@@ -284,9 +287,9 @@ Stage/
 │  ├─ dedup/                cross-source duplicate resolution
 │  ├─ http/                 rate posture, circuit breaker, validator cache
 │  ├─ storage/              SQLite repository, migrations, FTS
-│  └─ data/                 packaged registry (a directory) and lexicons
+│  └─ data/                 packaged registry, lexicons, font, logo, posting card
 ├─ tests/                   every layer, counted in the badges above
-└─ .github/workflows/       CI, CodeQL, scheduled canary, release
+└─ .github/workflows/       CI, CodeQL, board and app canaries, release
 ```
 
 <div align="center">
@@ -312,7 +315,7 @@ Stage/
                ▼                               ▼
         ┌─────────────┐                 ┌─────────────┐
         │    jobs     │                 │ quarantine  │
-        │    6,219    │                 │   182,065   │
+        │    5,475    │                 │   332,290   │
         └──────┬──────┘                 └─────────────┘
                │  dedup collapses the same posting across sources
                ▼
@@ -331,15 +334,17 @@ Stage/
 
 | Workflow | File | Purpose |
 | --- | --- | --- |
-| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, every test, coverage floor, badge drift |
+| CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, every test, coverage floor, pip-audit, actionlint, badge drift |
 | Supported Pythons | `.github/workflows/ci.yml` | The full suite again on 3.13 and 3.14 |
 | Wheel | `.github/workflows/ci.yml` | Builds and smoke-tests the wheel on Ubuntu, Windows and macOS |
+| Card | `.github/workflows/ci.yml` | Renders the AI apps' posting card in Chromium against a real `stage mcp` |
 | CodeQL | `.github/workflows/codeql.yml` | Static analysis for Python and the workflows themselves |
 | Canary | `.github/workflows/canary.yml` | Probes one live board per platform and opens an issue on drift |
-| Release | `.github/workflows/release.yml` | Re-runs every gate plus pip-audit, then publishes from a `v*` tag |
+| App canary | `.github/workflows/app-canary.yml` | Connects Stage to 13 AI apps at their latest releases on all three systems |
+| Release | `.github/workflows/release.yml` | Re-runs lint, types, tests, coverage and pip-audit, checks the sdist installs, then publishes from a `v*` tag |
 
 <div align="center">
-  <img src="assets/ci-flow.svg" alt="Quality checks on Python 3.12, then the full suite on 3.13 and 3.14, a wheel smoke test on three operating systems, and CodeQL. All gates must pass for CI to pass" width="100%">
+  <img src="assets/ci-flow.svg" alt="Quality checks on Python 3.12, the full suite on 3.13 and 3.14, the posting card in a browser, a wheel smoke test on three operating systems, and CodeQL. Any failing check fails the run" width="100%">
 </div>
 
 Any failing gate blocks the merge. The canary runs weekly and opens an issue
@@ -349,19 +354,20 @@ Every run also builds the wheel and installs it into a clean environment outside
 the checkout on Ubuntu, Windows and macOS, checks the registry, lexicons and font
 resolve from inside the installed package, then runs `help`, `list`, `search`,
 `doctor`, `coverage`, `stats`, a dry-run sync and all four export formats against
-it. What ships is what gets tested.
+it, checks that `stage mcp` writes nothing but JSON-RPC and serves the posting card,
+and connects two AI apps in a sandbox. What ships is what gets tested.
 
 ## Good to know
 
-- Everything sits in one SQLite file you own. Open it with any SQLite client,
-  back it up, or delete it.
+- Your postings sit in one SQLite file, with your tracker and preferences beside
+  it. All of it is yours to open with any SQLite client, back up, or delete.
 - The only network traffic is Stage reading public job boards, plus the Discord
   webhook if you set one. No account, no telemetry.
 - Posting text reaches AI apps marked as data, with an instruction never to
   follow anything written inside it.
 - Requests are rate limited per host, cached, and retried with backoff, so it
   does not hammer anyone's site.
-- Four in five postings arrive with no description at all. Stage marks those
+- Nearly nine in ten postings arrive with no description at all. Stage marks those
   fields `unknown` instead of guessing.
 - Missing something you expected? `stage quarantine` shows which rule caught it.
 
@@ -379,8 +385,10 @@ without warning and I cannot watch all of them myself. I read everything.
 
 ## Security
 
-Stage reads public job boards and writes to a local file. It never asks for
-credentials. AI apps reach it only through `stage mcp`, on your own computer. Found a security issue? Open a
+Stage reads public job boards and writes only on your computer: its own files, the
+exports you ask for, and the app settings and schedules you ask it to change. It
+never asks for credentials. AI apps reach it through `stage mcp`, or by running
+`stage` where they can run commands. Found a security issue? Open a
 [security advisory](https://github.com/NicholasXydis/Stage/security/advisories/new)
 instead of a public issue.
 

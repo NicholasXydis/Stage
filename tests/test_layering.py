@@ -243,10 +243,10 @@ def test_every_wall_clock_upper_bound_is_marked_serial() -> None:
 
 def test_packaged_data_resolves_inside_the_package_not_the_repo() -> None:
     import stage
-    from stage.paths import lexicon_dir, registry_path
+    from stage.paths import card_path, lexicon_dir, registry_path
 
     package = Path(stage.__file__).resolve().parent
-    for path in (registry_path(), lexicon_dir()):
+    for path in (registry_path(), lexicon_dir(), card_path()):
         assert path.exists(), f"{path} is missing"
         assert package in path.parents or path.parent == package, (
             f"{path} resolves outside {package}; the wheel ships only src/stage"
