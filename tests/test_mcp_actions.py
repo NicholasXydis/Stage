@@ -172,7 +172,9 @@ async def test_the_action_tools_match_their_snapshot(stored: Path) -> None:
 async def test_only_action_tools_make_claude_code_ask_every_time(stored: Path) -> None:
     async with _connected(stored) as client:
         listed = {tool.name: tool for tool in (await client.list_tools()).tools}
-    asking = {name for name, tool in listed.items() if tool.meta == ASK_EVERY_TIME}
+    asking = {
+        name for name, tool in listed.items() if ASK_EVERY_TIME.items() <= (tool.meta or {}).items()
+    }
     assert asking == set(ACTION_NAMES)
     assert ASK_EVERY_TIME == {"anthropic/requiresUserInteraction": True}
     reaching: set[str] = set()
@@ -287,6 +289,54 @@ async def test_export_postings_writes_a_new_file_and_never_replaces_one(
     assert first["count"] == 7 and first["window_days"] == 14 and first["file_type"] == "csv"
     rows = Path(first["path"]).read_text(encoding="utf-8-sig").splitlines()
     assert rows[0].startswith("company,title") and len(rows) == 8
+
+
+async def test_exports_asked_for_at_once_each_get_their_own_file(
+    stored: Path, exports: Path
+) -> None:
+    import asyncio
+
+    async with _connected(stored) as client:
+        found = await asyncio.gather(
+            *(_ok(client, "export_postings", {"file_type": "json"}) for _ in range(4))
+        )
+    paths = sorted(Path(item["path"]) for item in found)
+    assert len(set(paths)) == 4 and sorted(exports.iterdir()) == paths
+    assert all(len(json.loads(path.read_text(encoding="utf-8"))) == 7 for path in paths)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlinks need privileges on Windows")
+async def test_an_export_never_writes_through_a_planted_link(
+    stored: Path, exports: Path, tmp_path: Path
+) -> None:
+    from stage.domain import ExportFormat
+    from stage.services.export import default_filename
+
+    outside = tmp_path / "outside.txt"
+    outside.write_text("keep", encoding="utf-8")
+    name = default_filename(ExportFormat.CSV, datetime.now(UTC))
+    (exports / f"{name}.partial").symlink_to(outside)
+    (exports / name).symlink_to(tmp_path / "dangling.csv")
+    async with _connected(stored) as client:
+        found = await _ok(client, "export_postings", {"file_type": "csv"})
+    assert outside.read_text(encoding="utf-8") == "keep"
+    assert not (tmp_path / "dangling.csv").exists()
+    written = Path(found["path"])
+    assert written.parent == exports and not written.is_symlink() and written.name != name
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlinks need privileges on Windows")
+async def test_an_export_folder_given_as_a_link_keeps_the_file_inside_it(
+    stored: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = tmp_path / "real"
+    real.mkdir()
+    (tmp_path / "link").symlink_to(real, target_is_directory=True)
+    monkeypatch.setenv("STAGE_EXPORT_DIR", str(tmp_path / "link"))
+    async with _connected(stored) as client:
+        found = await _ok(client, "export_postings", {"file_type": "md"})
+    assert list(real.iterdir()) == [Path(found["path"])]
+    assert Path(found["path"]).parent == real.resolve()
 
 
 @pytest.mark.parametrize("kind", ["csv", "md", "json", "pdf"])
@@ -426,7 +476,7 @@ async def test_start_sync_reports_what_happened(
 async def test_start_sync_takes_no_arguments(stored: Path) -> None:
     async with _connected(stored) as client:
         refused = await _refused(client, "start_sync", {"source": "lever"})
-    assert "Extra inputs are not permitted" in refused
+    assert 'There is no argument "source"; this tool takes none.' in refused
 
 
 async def test_database_status_shows_a_background_sync(stored: Path) -> None:

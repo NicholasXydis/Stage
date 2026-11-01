@@ -16,7 +16,7 @@ from typing import Any, get_args
 
 import pytest
 from mcp import Client
-from mcp.types import CallToolResult, TextContent
+from mcp.types import CallToolResult, PromptReference, TextContent
 from typer.testing import CliRunner
 
 from stage.ai import tools as toolbox
@@ -213,8 +213,9 @@ EVERY_CALL: tuple[tuple[str, dict[str, Any]], ...] = (
     ("untrack_postings", {"ids": [_id("b")]}),
     ("set_preferences", {"locations": ["canada"]}),
 )
-WRITES = ("track_postings", "untrack_postings", "set_preferences")
+WRITES = ("track_postings", "untrack_postings", "undo_tracking", "set_preferences")
 READS = tuple(call for call in EVERY_CALL if call[0] not in WRITES)
+NEEDS = {**dict(EVERY_CALL), "undo_tracking": {"undo": "unknown"}}
 
 
 @pytest.fixture(params=["legacy", "auto"])
@@ -241,12 +242,12 @@ async def test_the_server_names_itself_and_carries_its_instructions(tmp_path: Pa
     assert "location canada means Canada outside Montreal" in INSTRUCTIONS
 
 
-def test_find_tools_read_and_only_untrack_and_set_preferences_erase() -> None:
+def test_find_tools_read_and_only_untrack_undo_and_set_preferences_erase() -> None:
     hints = {name: annotations for name, _, annotations, _ in CATALOGUE}
     reading = {name for name, found in hints.items() if found.read_only_hint}
     erasing = {name for name, found in hints.items() if found.destructive_hint}
     assert reading == set(NAMES) - set(WRITES)
-    assert erasing == {"untrack_postings", "set_preferences"}
+    assert erasing == {"untrack_postings", "undo_tracking", "set_preferences"}
     assert not any(found.open_world_hint for found in hints.values())
 
 
@@ -282,16 +283,20 @@ def test_the_choices_offered_are_the_ones_stage_accepts() -> None:
     assert toolbox.SEASONS == SEASONS
 
 
+TECHNICAL = ("pydantic", "validation error", "Arguments", "type=", "input_value", "^(")
+
+
 async def test_every_tool_refuses_an_argument_it_does_not_know(catalogue: Path) -> None:
-    needs = dict(EVERY_CALL)
+    needs = NEEDS
     async with _connected(catalogue) as client:
         for name in NAMES:
             refused = await _refused(client, name, {**needs[name], "locaton": "canada"})
-            assert "Extra inputs are not permitted" in refused
+            assert 'There is no argument "locaton"' in refused, name
+            assert not any(word in refused for word in TECHNICAL), refused
 
 
 async def test_every_tool_takes_null_for_an_optional_field(catalogue: Path) -> None:
-    needs = dict(EVERY_CALL)
+    needs = NEEDS
     async with _connected(catalogue) as client:
         listed = {tool.name: tool for tool in (await client.list_tools()).tools}
         for name in NAMES:
@@ -473,12 +478,15 @@ async def test_hidden_postings_are_left_out_and_counted(catalogue: Path) -> None
 
 async def test_an_unknown_employer_gets_the_stored_spelling(catalogue: Path) -> None:
     async with _connected(catalogue) as client:
-        found = await _ok(client, "search_postings", {"company": "jane street"})
+        found = await _ok(client, "search_postings", {"company": " jane street "})
+        near = await _ok(client, "search_postings", {"company": "Jane Streat"})
         nothing = await _ok(client, "search_postings", {"company": "Nobody At All"})
-    assert found["notes"] == [
-        "No employer named 'jane street' is stored. Did you mean 'Jane Street'?"
+    assert "notes" not in found or not found["notes"]
+    assert {row["company"] for row in found["postings"]} == {"Jane Street"}
+    assert near["notes"] == [
+        "Stage stores no posting from an employer named 'Jane Streat'. Did you mean 'Jane Street'?"
     ]
-    assert nothing["notes"] == ["No employer named 'Nobody At All' is stored."]
+    assert nothing["notes"] == ["Stage stores no posting from an employer named 'Nobody At All'."]
 
 
 def test_the_cli_names_the_same_stored_employer(catalogue: Path) -> None:
@@ -486,10 +494,11 @@ def test_the_cli_names_the_same_stored_employer(catalogue: Path) -> None:
         result = CliRunner().invoke(app, ["list", "--company", company, "--db", str(catalogue)])
         return " ".join(result.stdout.split())
 
-    assert "No employer named 'jane street' is stored. Did you mean 'Jane Street'?" in told(
-        "jane street"
-    )
-    assert "No employer named 'Nobody At All' is stored. Try stage list --all." in told(
+    assert "Stage stores no posting" not in told("jane street")
+    assert (
+        "Stage stores no posting from an employer named 'Jane Streat'. Did you mean 'Jane Street'?"
+    ) in told("Jane Streat")
+    assert "Stage stores no posting from an employer named 'Nobody At All'." in told(
         "Nobody At All"
     )
 
@@ -528,6 +537,188 @@ async def test_posting_text_reaches_the_ai_cleaned_and_labelled(catalogue: Path)
     assert posting["company"] == "Evil Corp" and posting["url"] is None
     assert len(posting["description"]) == DESCRIPTION_LIMIT and posting["description_truncated"]
     assert json.loads(body)["caution"] == CAUTION
+
+
+HOSTILE_LINKS = (
+    "javascript:alert(1)",
+    "JaVaScRiPt:alert(1)",
+    " javascript:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "vbscript:msgbox(1)",
+    "file:///etc/passwd",
+    "ftp://example.com/x",
+    "https://exa mple.com/x",
+    "https://example.com/\x00x",
+    "//example.com/x",
+    "https:example.com",
+)
+INVISIBLE = (
+    "\u061c\u200b\u200e\u200f\u2028\u2029\u202a\u202b\u202c\u202d\u202e"
+    "\u2060\u2061\u2062\u2063\u2064\u2066\u2067\u2068\u2069\ufeff\x00\x1b\x07\x7f\x85"
+)
+
+
+@pytest.mark.parametrize("link", HOSTILE_LINKS)
+async def test_only_plain_web_links_leave_stage(link: str, tmp_path: Path) -> None:
+    database = _seed(tmp_path / "stage.db", [_job("x", url=link)])
+    async with _connected(database) as client:
+        found = await _ok(client, "search_postings", {})
+        detail = await _ok(client, "get_postings", {"ids": [_id("x")]})
+    assert found["postings"][0]["url"] is None and detail["postings"][0]["url"] is None
+
+
+async def test_invisible_and_control_characters_never_reach_the_ai(tmp_path: Path) -> None:
+    posting = _job(
+        "x",
+        title=f"Intern{INVISIBLE}ship",
+        company=f"Ac{INVISIBLE}me",
+        raw=f"Mon{INVISIBLE}treal, QC",
+        description=f"Real{INVISIBLE} text " * 4_000,
+    )
+    async with _connected(_seed(tmp_path / "stage.db", [posting])) as client:
+        found = await _ok(client, "search_postings", {"words": "intern"})
+        detail = await _ok(client, "get_postings", {"ids": [_id("x")]})
+    body = json.dumps([found, detail], ensure_ascii=False)
+    assert not [char for char in INVISIBLE if char in body]
+    shown = detail["postings"][0]
+    assert shown["title"] == "Intern ship" and shown["company"] == "Ac me"
+    assert len(shown["description"]) == DESCRIPTION_LIMIT and shown["description_truncated"]
+
+
+def _kept(found: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in found.items() if key not in ("last_sync", "last_sync_at")}
+
+
+async def test_undo_puts_a_tracked_posting_back_exactly(catalogue: Path) -> None:
+    async with _connected(catalogue) as client:
+        await _ok(
+            client,
+            "track_postings",
+            {"ids": [_id("a")], "status": "applied", "on": "2026-09-01", "note": "x"},
+        )
+        before = await _ok(client, "get_tracker")
+        hidden = await _ok(client, "track_postings", {"ids": [_id("a")], "status": "hidden"})
+        undone = await _ok(client, "undo_tracking", {"undo": hidden["undo"]})
+        after = await _ok(client, "get_tracker")
+        again = await _refused(client, "undo_tracking", {"undo": hidden["undo"]})
+    assert _kept(after) == _kept(before) and after["postings"][0]["on"] == "2026-09-01"
+    assert [row["status"] for row in undone["restored"]] == ["applied"]
+    assert undone["left_alone"] == [] and "works once" in again
+
+
+async def test_two_changes_at_once_to_one_posting_run_one_after_the_other(
+    catalogue: Path,
+) -> None:
+    import asyncio
+
+    async with _connected(catalogue) as client:
+        first, second = await asyncio.gather(
+            _ok(client, "track_postings", {"ids": [_id("b")], "status": "interviewing"}),
+            _ok(client, "track_postings", {"ids": [_id("b")], "status": "saved"}),
+        )
+        tracker = await _ok(client, "get_tracker")
+    befores = [row["before"] for answer in (first, second) for row in answer["changed"]]
+    assert befores == [None]
+    assert [row["status"] for row in tracker["postings"]] == ["interviewing"]
+
+
+async def test_undoing_a_first_change_stops_tracking_again(catalogue: Path) -> None:
+    async with _connected(catalogue) as client:
+        hidden = await _ok(client, "track_postings", {"ids": [_id("b")], "status": "hidden"})
+        undone = await _ok(client, "undo_tracking", {"undo": hidden["undo"]})
+        tracker = await _ok(client, "get_tracker", {"status": "hidden"})
+        found = await _ok(client, "search_postings")
+    assert undone["restored"] == [{**undone["restored"][0], "status": None}]
+    assert tracker["postings"] == [] and _id("b") in _ids(found)
+
+
+async def test_undo_leaves_alone_a_posting_that_changed_again(catalogue: Path) -> None:
+    async with _connected(catalogue) as client:
+        hidden = await _ok(client, "track_postings", {"ids": [_id("c")], "status": "hidden"})
+        await _ok(
+            client, "track_postings", {"ids": [_id("c")], "status": "saved", "override": True}
+        )
+        undone = await _ok(client, "undo_tracking", {"undo": hidden["undo"]})
+        tracker = await _ok(client, "get_tracker")
+    assert undone["restored"] == [] and [row["id"] for row in undone["left_alone"]] == [_id("c")]
+    assert undone["left_alone"][0]["status"] == "saved", "left_alone shows the posting as it is now"
+    assert "changed again" in undone["notes"][0]
+    assert [row["status"] for row in tracker["postings"]] == ["saved"]
+
+
+async def test_undo_after_untracking_reports_the_posting_as_untracked(catalogue: Path) -> None:
+    async with _connected(catalogue) as client:
+        hidden = await _ok(client, "track_postings", {"ids": [_id("c")], "status": "hidden"})
+        await _ok(client, "untrack_postings", {"ids": [_id("c")]})
+        undone = await _ok(client, "undo_tracking", {"undo": hidden["undo"]})
+        tracker = await _ok(client, "get_tracker")
+    assert undone["restored"] == [] and undone["left_alone"][0]["status"] is None
+    assert tracker["postings"] == []
+
+
+async def test_an_undo_that_cannot_answer_changes_nothing_and_keeps_its_token(
+    catalogue: Path,
+) -> None:
+    moved = catalogue.with_name("moved.db")
+    async with _connected(catalogue) as client:
+        hidden = await _ok(client, "track_postings", {"ids": [_id("e")], "status": "hidden"})
+        catalogue.rename(moved)
+        refused = await _refused(client, "undo_tracking", {"undo": hidden["undo"]})
+        moved.rename(catalogue)
+        tracker = await _ok(client, "get_tracker", {"status": "hidden"})
+        undone = await _ok(client, "undo_tracking", {"undo": hidden["undo"]})
+    assert "no postings" in refused
+    assert [row["id"] for row in tracker["postings"]] == [_id("e")]
+    assert [row["id"] for row in undone["restored"]] == [_id("e")]
+
+
+@pytest.mark.parametrize(
+    ("name", "arguments", "plain"),
+    [
+        ("search_postings", {"locaton": "montreal"}, 'Did you mean "location"?'),
+        ("search_postings", {"limit": 500}, "limit should be at most 100, not 500."),
+        ("search_postings", {"limit": "lots"}, "limit should be a whole number, not 'lots'."),
+        ("search_postings", {"mine": "maybe"}, "mine should be true or false, not 'maybe'."),
+        ("search_postings", {"term": "summer"}, "term should look like summer-2027 or unknown"),
+        ("get_postings", {}, "ids is required."),
+        ("get_postings", {"ids": [1]}, "ids[0] should be text, not 1."),
+        ("track_postings", {"ids": [], "status": "saved"}, "ids should have at least 1 item."),
+        ("track_postings", {"ids": ["a"], "status": "saved", "on": "x"}, "like 2026-10-20"),
+        ("undo_tracking", {"undo": ""}, "undo should not be empty."),
+        ("database_status", {"verbose": True}, "this tool takes none."),
+    ],
+)
+async def test_a_bad_argument_is_explained_in_one_plain_sentence(
+    catalogue: Path, name: str, arguments: dict[str, Any], plain: str
+) -> None:
+    async with _connected(catalogue) as client:
+        text = await _refused(client, name, arguments)
+    assert plain in text and not any(word in text for word in TECHNICAL), text
+
+
+def test_a_long_value_is_not_echoed_back() -> None:
+    from pydantic import BaseModel, ConfigDict, ValidationError
+
+    from stage.ai.server import plainly
+
+    class Words(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        limit: int
+
+    try:
+        Words.model_validate({"limit": "x" * 60})
+    except ValidationError as exc:
+        said = plainly(exc, ["limit"])
+    assert said == "limit should be a whole number.", said
+
+
+async def test_a_change_that_changes_nothing_offers_no_undo(catalogue: Path) -> None:
+    async with _connected(catalogue) as client:
+        await _ok(client, "track_postings", {"ids": [_id("d")], "status": "hidden"})
+        again = await _ok(client, "track_postings", {"ids": [_id("d")], "status": "hidden"})
+        unknown = await _refused(client, "undo_tracking", {"undo": "nope"})
+    assert again["changed"] == [] and "undo" not in again
+    assert "no change with that undo token" in unknown and "Nothing was changed" in unknown
 
 
 async def test_get_postings_returns_details_copies_and_tracking(catalogue: Path) -> None:
@@ -689,7 +880,7 @@ async def test_review_quarantine_lists_rejections_with_their_reason(catalogue: P
         "first_seen": found["postings"][0]["first_seen"],
         "url": None,
     }
-    assert none["total"] == 0 and none["by_reason"] == {"out-of-scope-location": 1}
+    assert none["total"] == 0 and none["quarantined_by_reason"] == {"out-of-scope-location": 1}
 
 
 async def test_rejections_page_in_a_stable_order_even_when_they_tie(tmp_path: Path) -> None:
@@ -749,7 +940,7 @@ async def test_tracking_refuses_what_it_cannot_do_and_changes_nothing(catalogue:
     assert "No posting with id nope. Nothing was changed." in missing
     assert "Send a status, a note or a date" in nothing
     assert "not tracked yet" in untracked and "is in the future" in future
-    assert "pattern" in shape and "No posting with id nope" in gone
+    assert "like 2026-10-20" in shape and "No posting with id nope" in gone
     assert not tracker_path().exists()
 
 
@@ -798,11 +989,22 @@ async def test_a_damaged_tracker_is_reported_and_left_as_it_was(catalogue: Path)
     assert path.read_bytes() == before
 
 
+async def test_a_blank_id_and_a_non_latin_search_are_explained(catalogue: Path) -> None:
+    async with _connected(catalogue) as client:
+        blank = await _refused(client, "get_postings", {"ids": ["   "]})
+        foreign = await _ok(client, "search_postings", {"words": "日本語"})
+    assert blank.endswith("ids[0] should not be empty.")
+    assert foreign["notes"] == [
+        "Stage searches Latin letters and digits, so those words cannot be searched."
+    ]
+
+
 async def test_reading_never_creates_the_tracker_or_preferences(catalogue: Path) -> None:
     async with _connected(catalogue) as client:
         for name, arguments in READS:
             await _ok(client, name, arguments)
     assert not tracker_path().exists() and not preferences_path().exists()
+    assert not tracker_path().parent.exists(), "a read must not create the data folder"
 
 
 async def test_an_unreadable_database_is_explained_and_preferences_still_work(
@@ -829,7 +1031,7 @@ async def test_an_unreadable_database_is_explained_and_preferences_still_work(
     assert "could not read its database" in unreadable and "(file is not a database)" in unreadable
     assert "could not read its database" in tracked
     assert "last_sync" not in read and saved["follow"][0]["name"] == "Acme"
-    assert "Stage could not open its database: database at" in upgrade
+    assert "Stage could not open its database. The database at" in upgrade
     assert "upgrade stage-cli" in upgrade
 
 
@@ -903,11 +1105,11 @@ async def test_preferences_change_only_the_fields_sent(catalogue: Path, mode: st
         read = await _ok(client, "get_preferences")
     assert first["follow"] == [{"name": "Jane Street", "open_postings": 1}]
     assert second["locations"] == ["canada"] and second["terms"] == ["summer-2027"]
-    assert second["warnings"] == ["Saved 'Nobody Inc', but Stage has no postings from it yet."]
+    assert second["notes"] == ["Saved 'Nobody Inc', but Stage has no postings from it yet."]
     assert cleared["roles"] == [] and cleared["about"] == "Likes C"
     assert read["locations"] == ["canada"] and read["terms"] == ["summer-2027"]
     assert read["follow"] == first["follow"] and read["avoid"] == second["avoid"]
-    assert read["roles"] == [] and read["about"] == "Likes C" and read["problems"] == []
+    assert read["roles"] == [] and read["about"] == "Likes C" and read["notes"] == []
     assert read["choices"]["locations"] == ["montreal", "canada", "usa"]
 
 
@@ -920,7 +1122,7 @@ async def test_preferences_refuse_what_cli_refuses(catalogue: Path) -> None:
         place = await _refused(client, "set_preferences", {"locations": ["unknown"]})
     assert "cannot be both followed and avoided. Nothing was saved." in both
     assert "Send at least one field" in empty and "send it alone" in mixed
-    assert "pattern" in term and "Input should be" in place
+    assert "like summer-2027" in term and "should be 'montreal', 'canada' or 'usa'" in place
     assert not preferences_path().exists()
 
 
@@ -940,8 +1142,8 @@ async def test_damaged_preferences_are_reported_then_replaced(catalogue: Path) -
     async with _connected(catalogue) as client:
         read = await _ok(client, "get_preferences")
         saved = await _ok(client, "set_preferences", {"locations": ["usa"]})
-    assert read["saved"] is False and "could not be read" in read["problems"][0]
-    assert saved["locations"] == ["usa"] and "could not be read" in saved["warnings"][0]
+    assert read["saved"] is False and "could not be read" in read["notes"][0]
+    assert saved["locations"] == ["usa"] and "could not be read" in saved["notes"][0]
     assert json.loads(path.read_text(encoding="utf-8"))["locations"] == ["usa"]
 
 
@@ -970,6 +1172,30 @@ async def test_no_tool_opens_a_network_connection(
     async with _connected(catalogue) as client:
         for name, arguments in EVERY_CALL:
             await _ok(client, name, arguments)
+
+
+async def test_no_tool_can_write_the_database(
+    catalogue: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    opened: list[int] = []
+    connect = SqliteRepository.connect
+
+    def spy(db_path: Path, *, read_only: bool = False) -> SqliteRepository:
+        repository = connect(db_path, read_only=read_only)
+        opened.append(repository._conn.execute("PRAGMA query_only").fetchone()[0])
+        return repository
+
+    monkeypatch.setattr(SqliteRepository, "connect", spy)
+    async with _connected(catalogue) as client:
+        for name, arguments in EVERY_CALL:
+            await _ok(client, name, arguments)
+        hidden = await _ok(client, "track_postings", {"ids": [_id("c")], "status": "hidden"})
+        await _ok(client, "undo_tracking", {"undo": hidden["undo"]})
+        await client.complete(
+            PromptReference(name="find_matches"),
+            {"name": "company", "value": "a"},
+        )
+    assert len(opened) > len(EVERY_CALL) and set(opened) == {1}
 
 
 def test_the_age_of_a_sync_reads_naturally() -> None:

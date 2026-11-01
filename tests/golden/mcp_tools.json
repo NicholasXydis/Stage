@@ -102,7 +102,7 @@
             }
           ],
           "default": null,
-          "description": "Exact employer name, such as Shopify",
+          "description": "Employer name in any case, such as Shopify",
           "title": "Company"
         },
         "mine": {
@@ -119,7 +119,7 @@
         },
         "new": {
           "default": false,
-          "description": "Only postings that appeared since the sync before last",
+          "description": "Only postings the last sync brought in",
           "title": "New",
           "type": "boolean"
         },
@@ -174,6 +174,12 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "resourceUri": "ui://stage/postings.html"
+      },
+      "ui/resourceUri": "ui://stage/postings.html"
     }
   },
   {
@@ -207,6 +213,13 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   },
   {
@@ -224,6 +237,13 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   },
   {
@@ -266,7 +286,7 @@
             }
           ],
           "default": null,
-          "description": "Exact employer name, such as Shopify",
+          "description": "Employer name in any case, such as Shopify",
           "title": "Company"
         },
         "limit": {
@@ -299,12 +319,19 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   },
   {
     "name": "check_sources",
     "title": "Check sources",
-    "description": "Health of the job boards and feeds Stage reads: stored postings, errors, volume drops, blocked hosts, and failing or stale boards. Read-only; it changes nothing.",
+    "description": "Health of the job boards and feeds Stage reads: open rows per source (a posting two sources list counts in both), errors, volume drops, blocked hosts, and failing or stale boards. Read-only; it changes nothing.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,
@@ -323,6 +350,13 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   },
   {
@@ -445,6 +479,41 @@
       "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
+    }
+  },
+  {
+    "name": "undo_tracking",
+    "title": "Undo a tracking change",
+    "description": "Put postings back exactly as they were before a track_postings call, with the undo token that call returned: status, date, note and history, or not tracked at all. A token works once, and only until Stage restarts. A posting that changed again since is left alone. Use only when the user asks.",
+    "inputSchema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "undo": {
+          "description": "The undo token from a track_postings answer",
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Undo",
+          "type": "string"
+        }
+      },
+      "required": [
+        "undo"
+      ],
+      "title": "undo_trackingArguments"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
     }
   },
   {
@@ -507,6 +576,13 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   },
   {
@@ -524,6 +600,13 @@
       "destructiveHint": false,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   },
   {
@@ -667,6 +750,13 @@
       "destructiveHint": true,
       "idempotentHint": true,
       "openWorldHint": false
+    },
+    "_meta": {
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   }
 ]

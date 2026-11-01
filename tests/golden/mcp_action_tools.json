@@ -32,7 +32,12 @@
       "openWorldHint": true
     },
     "_meta": {
-      "anthropic/requiresUserInteraction": true
+      "anthropic/requiresUserInteraction": true,
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   },
   {
@@ -150,7 +155,7 @@
             }
           ],
           "default": null,
-          "description": "Exact employer name, such as Shopify",
+          "description": "Employer name in any case, such as Shopify",
           "title": "Company"
         },
         "mine": {
@@ -190,7 +195,12 @@
       "openWorldHint": false
     },
     "_meta": {
-      "anthropic/requiresUserInteraction": true
+      "anthropic/requiresUserInteraction": true,
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   },
   {
@@ -210,7 +220,12 @@
       "openWorldHint": true
     },
     "_meta": {
-      "anthropic/requiresUserInteraction": true
+      "anthropic/requiresUserInteraction": true,
+      "ui": {
+        "visibility": [
+          "model"
+        ]
+      }
     }
   }
 ]

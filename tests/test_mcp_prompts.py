@@ -314,3 +314,35 @@ async def test_only_prompt_arguments_are_completed(stored: Path) -> None:
 def test_prompts_and_their_titles_are_plain_ascii() -> None:
     for function, title, description in CATALOGUE:
         assert function.__name__.isascii() and title.isascii() and description.isascii()
+
+
+@pytest.mark.parametrize(
+    ("name", "arguments", "said"),
+    [
+        ("whats_neww", {}, "Stage has no prompt named 'whats_neww'. Did you mean whats_new?"),
+        ("nope", {}, "Stage has no prompt named 'nope'. Stage has: find_matches,"),
+        ("whats_new", {"x": "1"}, "whats_new takes no arguments; 'x' is not one of them."),
+        ("find_matches", {"place": "usa"}, "find_matches takes company, location, role, term;"),
+    ],
+)
+async def test_an_unknown_prompt_or_argument_is_refused_plainly(
+    stored: Path, name: str, arguments: dict[str, str], said: str
+) -> None:
+    async with _connected(stored) as client:
+        with pytest.raises(MCPError) as refused:
+            await client.get_prompt(name, arguments)
+    assert refused.value.error.code == -32602 and said in refused.value.error.message
+
+
+def test_a_term_typed_with_a_space_is_read_as_the_term() -> None:
+    from stage.ai.prompts import find_matches
+
+    assert "term=summer-2027." in find_matches(term="summer 2027")
+    split = find_matches(role="summer", location="2027", company="Shopify")
+    assert "term=summer-2027" in split and 'company="Shopify"' in split
+
+
+def test_a_title_alone_is_searched_rather_than_dropped() -> None:
+    from stage.ai.prompts import prepare_application
+
+    assert 'words="Software Intern"' in prepare_application(title="Software Intern")

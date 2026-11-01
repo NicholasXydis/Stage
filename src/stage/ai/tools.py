@@ -1,10 +1,11 @@
+import asyncio
 import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
@@ -33,7 +34,12 @@ from stage.ai.shape import (
 )
 from stage.domain import DEFAULT_WINDOW_DAYS, MAX_OPEN_AT_ONCE, JobFilters
 from stage.domain.preferences import Preferences
+from stage.domain.text import dropped_punctuation
 from stage.storage import AsyncRepository, open_repository
+
+if TYPE_CHECKING:
+    from stage.domain.tracker import TrackedPosting
+    from stage.services.tracker import Change
 
 Place = Literal["montreal", "canada", "usa", "unknown"]
 Role = Literal[
@@ -61,6 +67,8 @@ MAX_LOOKUP = 10
 MAX_CHANGE = 50
 MAX_BOARDS = 100
 SYNC_HISTORY = 5
+MAX_UNDO = 200
+SEARCHED = "stage/search"
 
 NO_DATABASE = (
     "Stage has no postings on this computer yet. The user can run stage sync in a terminal "
@@ -87,6 +95,13 @@ NO_BROWSER = (
 REFUSED_LINKS = (
     "Postings in refused have no plain http or https apply link, so Stage did not open them."
 )
+NO_UNDO = (
+    "Stage has no change with that undo token. A token works once, and only until Stage "
+    "restarts. Nothing was changed."
+)
+CHANGED_AGAIN = (
+    "Postings in left_alone changed again after that change, so Stage left them as they are."
+)
 SYNC_NOTE = (
     "A sync takes several minutes and runs on its own. database_status shows its progress; "
     "search again once it has finished."
@@ -98,6 +113,10 @@ def _lowered(value: object) -> object:
     return value.lower() if isinstance(value, str) else value
 
 
+def _stripped(value: object) -> object:
+    return value.strip() if isinstance(value, str) else value
+
+
 def _default(fallback: object) -> BeforeValidator:
     return BeforeValidator(lambda value: fallback if _blank(value) else value)
 
@@ -106,7 +125,7 @@ def _blank(value: object) -> bool:
     return value is None or (isinstance(value, str) and not value.strip())
 
 
-PostingId = Annotated[str, Field(min_length=1, max_length=2_000)]
+PostingId = Annotated[str, Field(min_length=1, max_length=2_000), BeforeValidator(_stripped)]
 Cursor = Annotated[
     str | None,
     Field(
@@ -122,7 +141,7 @@ Limit = Annotated[
 ]
 Company = Annotated[
     str | None,
-    Field(min_length=1, max_length=120, description="Exact employer name, such as Shopify"),
+    Field(min_length=1, max_length=120, description="Employer name in any case, such as Shopify"),
     _default(None),
 ]
 Words = Annotated[
@@ -180,6 +199,8 @@ Days = Annotated[
 class Tools:
     def __init__(self, database: Path) -> None:
         self.database = database
+        self._undo: dict[str, tuple[Change, ...]] = {}
+        self._tracking = asyncio.Lock()
 
     @asynccontextmanager
     async def _repository(self) -> AsyncIterator[AsyncRepository]:
@@ -188,10 +209,10 @@ class Tools:
         if not self.database.exists():
             raise ToolError(NO_DATABASE)
         try:
-            async with open_repository(self.database) as repository:
+            async with open_repository(self.database, read_only=True) as repository:
                 yield repository
         except SchemaVersionError as exc:
-            raise ToolError(f"Stage could not open its database: {exc}.") from exc
+            raise ToolError(f"Stage could not open its database. {exc}.") from exc
         except sqlite3.Error as exc:
             raise ToolError(_unreadable(self.database, exc)) from exc
 
@@ -207,7 +228,7 @@ class Tools:
         untracked: Untracked = False,
         new: Annotated[
             bool,
-            Field(description="Only postings that appeared since the sync before last"),
+            Field(description="Only postings the last sync brought in"),
             _default(False),
         ] = False,
         days: Days = None,
@@ -305,11 +326,20 @@ class Tools:
         else:
             payload["postings"] = [posting_row(job, statuses.get(job.id)) for job in shown]
         if query and not listing.terms:
-            notes.append("Nothing in those words can be searched; punctuation is dropped.")
+            notes.append(
+                "Stage searches Latin letters and digits, so those words cannot be searched."
+                if any(character.isalpha() for character in query)
+                else "Nothing in those words can be searched; punctuation is dropped."
+            )
+        elif dropped_punctuation(query):
+            notes.append(
+                f"Punctuation is dropped, so {text(query, 60)!r} was searched as "
+                f"{' '.join(listing.terms)!r}."
+            )
         if not known:
             asked = text(company or "", 60)
             notes.append(
-                f"No employer named {asked!r} is stored."
+                f"Stage stores no posting from an employer named {asked!r}."
                 + (f" Did you mean {text(near, 60)!r}?" if near else "")
             )
         if listing.no_location:
@@ -323,12 +353,12 @@ class Tools:
                 "status='hidden' shows hidden postings."
             )
         if all_matches and more:
-            notes.append(f"The user can see every match with: {_command(arguments)}")
+            notes.append(f"The user can get every match with: {_command(arguments)}")
         if view.problem:
             payload["warning"] = view.problem
         payload["notes"] = notes
         payload["caution"] = CAUTION
-        return answer({**payload, **freshness(last_sync, now)})
+        return answer({**payload, **freshness(last_sync, now)}, {SEARCHED: arguments})
 
     async def get_postings(
         self,
@@ -407,7 +437,7 @@ class Tools:
             {
                 "open_postings": open_now,
                 "recent_postings": recent,
-                "recent_days": DEFAULT_WINDOW_DAYS,
+                "window_days": DEFAULT_WINDOW_DAYS,
                 "new_since_previous_sync": fresh,
                 "stored_postings": report.total_jobs,
                 "duplicates_linked": report.duplicates,
@@ -446,10 +476,11 @@ class Tools:
                 QuarantineFilters(
                     reason=RejectionReason(reason) if reason else None,
                     company=company,
-                    limit=offset + limit,
+                    limit=limit,
+                    offset=offset,
                 ),
             )
-        shown = listing.entries[offset : offset + limit]
+        shown = listing.entries
         following = offset + len(shown)
         return answer(
             {
@@ -457,7 +488,7 @@ class Tools:
                 "offset": offset,
                 "count": len(shown),
                 "next_cursor": next_cursor(following, listing.total_matching, arguments, last_sync),
-                "by_reason": listing.reason_counts,
+                "quarantined_by_reason": listing.reason_counts,
                 "postings": [rejected_row(entry) for entry in shown],
                 "notes": [QUARANTINE_NOTE, *past_the_last_page(following, listing.total_matching)],
                 "caution": CAUTION,
@@ -481,7 +512,7 @@ class Tools:
         sources = [
             {
                 "source": source.source,
-                "stored": source.stored,
+                "open_rows": source.stored,
                 "volume": source.volume.verdict.value,
                 "errors": source.errors,
                 "deferred": source.deferred,
@@ -584,7 +615,7 @@ class Tools:
             chosen in (ApplicationStatus.SAVED, ApplicationStatus.APPLIED) and not override
         )
         now = datetime.now(UTC)
-        async with self._repository() as repository:
+        async with self._tracking, self._repository() as repository:
             wanted = await _resolved(repository, ids)
             try:
                 report = await record_status(
@@ -606,17 +637,64 @@ class Tools:
                 "saved and applied never move a posting back. Send override=true to set the "
                 "status exactly."
             )
+        payload: dict[str, object] = {
+            "changed": [
+                {
+                    **change_row(change.entry),
+                    "before": change.before.value if change.before else None,
+                }
+                for change in report.changed
+            ],
+            "unchanged": [change_row(entry) for entry in report.unchanged],
+        }
+        if report.changed:
+            payload["undo"] = self._remember(report.changed)
+        payload["notes"] = notes
+        return answer({**payload, **freshness(last_sync, now)})
+
+    def _remember(self, changes: "tuple[Change, ...]") -> str:
+        import secrets
+
+        token = secrets.token_urlsafe(9)
+        self._undo[token] = changes
+        while len(self._undo) > MAX_UNDO:
+            self._undo.pop(next(iter(self._undo)))
+        return token
+
+    async def undo_tracking(
+        self,
+        undo: Annotated[
+            str,
+            Field(
+                min_length=1,
+                max_length=40,
+                description="The undo token from a track_postings answer",
+            ),
+        ],
+    ) -> CallToolResult:
+        from stage.services.tracker import TrackerProblemError, restore_unless_changed
+
+        token = undo.strip()
+        changes = self._undo.pop(token, None)
+        if changes is None:
+            raise ToolError(NO_UNDO)
+        try:
+            async with self._tracking:
+                async with self._repository() as repository:
+                    last_sync = await repository.last_sync_at()
+                restored, kept = restore_unless_changed(changes)
+        except TrackerProblemError as exc:
+            self._undo[token] = changes
+            raise ToolError(str(exc)) from exc
+        except ToolError:
+            self._undo[token] = changes
+            raise
+        now = datetime.now(UTC)
         return answer(
             {
-                "changed": [
-                    {
-                        **change_row(change.entry),
-                        "before": change.before.value if change.before else None,
-                    }
-                    for change in report.changed
-                ],
-                "unchanged": [change_row(entry) for entry in report.unchanged],
-                "notes": notes,
+                "restored": [_restored(change) for change in restored],
+                "left_alone": [_left_alone(change, now) for change, now in kept],
+                "notes": [CHANGED_AGAIN] if kept else [],
                 **freshness(last_sync, now),
             }
         )
@@ -635,7 +713,7 @@ class Tools:
         from stage.services.tracker import TrackerProblemError, remove_tracked
 
         now = datetime.now(UTC)
-        async with self._repository() as repository:
+        async with self._tracking, self._repository() as repository:
             wanted = await _resolved(repository, ids)
             try:
                 report = await remove_tracked(repository, wanted)
@@ -707,7 +785,7 @@ class Tools:
         return answer(
             {
                 **_preferences(loaded.preferences, counts),
-                "problems": list(loaded.problems),
+                "notes": list(loaded.problems),
                 **synced,
             }
         )
@@ -750,6 +828,7 @@ class Tools:
         from stage.services.preferences import (
             clear_preferences,
             load_preferences,
+            preferences_lock,
             preferences_path,
             revise_preferences,
             save_preferences,
@@ -766,10 +845,10 @@ class Tools:
                 removed = clear_preferences()
             except OSError as exc:
                 raise ToolError(_could_not("delete", preferences_path(), exc)) from exc
-            return answer({**_preferences(Preferences(), {}), "cleared": removed})
+            _, synced = await self._counts(Preferences())
+            return answer({**_preferences(Preferences(), {}), "cleared": removed, **synced})
         if not changing:
             raise ToolError("Send at least one field to change; get_preferences shows them.")
-        loaded = load_preferences()
         known: dict[str, str] = {}
         if follow is not None or avoid is not None:
             try:
@@ -778,27 +857,33 @@ class Tools:
             except ToolError:
                 known = {}
         try:
-            revised = revise_preferences(
-                loaded.preferences,
-                known,
-                locations=locations,
-                roles=roles,
-                terms=terms,
-                follow=follow,
-                avoid=avoid,
-                about=about,
-            )
+            with preferences_lock():
+                loaded = load_preferences()
+                revised = revise_preferences(
+                    loaded.preferences,
+                    known,
+                    locations=locations,
+                    roles=roles,
+                    terms=terms,
+                    follow=follow,
+                    avoid=avoid,
+                    about=about,
+                )
+                save_preferences(revised)
         except PreferenceError as exc:
             raise ToolError(f"{exc} Nothing was saved.") from exc
-        try:
-            save_preferences(revised)
         except OSError as exc:
             raise ToolError(_could_not("save", preferences_path(), exc)) from exc
         counts, synced = await self._counts(revised)
+        replaced = (
+            ["The old preferences file could not be read, so these choices replaced it."]
+            if loaded.damaged
+            else list(loaded.problems)
+        )
         return answer(
             {
                 **_preferences(revised, counts),
-                "warnings": [*loaded.problems, *unseen_companies(revised, known)],
+                "notes": [*replaced, *unseen_companies(revised, known)],
                 **synced,
             }
         )
@@ -940,15 +1025,24 @@ class Tools:
                     scoped,
                     fmt=fmt,
                     destination=free_destination(root, fmt, now),
+                    claimed=True,
                     window_days=window,
                     now=now,
                     query=query,
                 )
             except ExportError as exc:
                 raise ToolError(f"Stage could not export: {exc}. Nothing was exported.") from exc
-            last_sync = await repository.last_sync_at()
+            try:
+                last_sync = await repository.last_sync_at()
+            except BaseException:
+                result.path.unlink(missing_ok=True)
+                raise
         if not result.count:
-            notes.append("Nothing matched, so the file holds column headers only.")
+            notes.append(
+                "Nothing matched, so the file holds an empty list."
+                if fmt is ExportFormat.JSON
+                else "Nothing matched, so the file holds column headers only."
+            )
         notes.extend(text(note, 200) for note in result.notes)
         payload: dict[str, object] = {
             "path": str(result.path),
@@ -974,12 +1068,14 @@ class Tools:
         state = progress["state"] if progress is not None else None
         if not launched.started and state not in (*RUNNING, "blocked"):
             raise ToolError(f"{text(launched.detail, 400)} No sync is running.")
+        _, synced = await self._counts(Preferences())
         return answer(
             {
                 "started": launched.started,
                 "detail": text(launched.detail, 400),
                 "background_sync": progress,
                 "notes": [SYNC_NOTE] if launched.started else [],
+                **synced,
             }
         )
 
@@ -1020,11 +1116,24 @@ def _mine(filters: JobFilters) -> tuple[JobFilters, Preferences, list[str]]:
             "want, save them with set_preferences, then search again."
         )
     if not preferences.narrows:
+        held = "followed employers" if preferences.follow else "a note about the user"
         raise ToolError(
-            "The saved preferences only hold a note about the user. Ask which places, roles "
-            "or terms they want and save them with set_preferences."
+            f"The saved preferences only hold {held}, so mine would match everything. Ask "
+            "which places, roles or terms they want and save them with set_preferences."
         )
     return preferences.apply(filters), preferences, list(loaded.problems)
+
+
+def _left_alone(change: "Change", now: "TrackedPosting | None") -> dict[str, object]:
+    if now is not None:
+        return change_row(now)
+    return {**change_row(change.entry), "status": None, "on": None}
+
+
+def _restored(change: "Change") -> dict[str, object]:
+    if change.previous is not None:
+        return change_row(change.previous)
+    return {**change_row(change.entry), "status": None, "on": None}
 
 
 def _offset(cursor: str | None, arguments: dict[str, object], version: object) -> int:

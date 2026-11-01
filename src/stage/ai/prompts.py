@@ -37,14 +37,14 @@ DATA = (
 
 KINDS = ("role", "location", "term")
 CLOSEST = (
-    "If Stage has no employer by that exact name, use the closest name it suggests, and "
+    "If Stage has no employer by that name, use the closest name it suggests, and "
     "treat any words left over as words from the title."
 )
 
 Role = Annotated[
     str | None, Field(description=f"The kind of work: {', '.join(get_args(ChosenRole))}")
 ]
-Place = Annotated[str | None, Field(description="montreal, canada or usa")]
+Place = Annotated[str | None, Field(description="montreal, canada (the rest of Canada) or usa")]
 Term = Annotated[str | None, Field(description="A term such as summer-2027")]
 Employer = Annotated[str | None, Field(description="An employer, such as Shopify")]
 
@@ -67,7 +67,9 @@ def _sorted(slots: Iterable[str | None], employer: str | None) -> tuple[dict[str
         word = (value or "").strip()
         if not word:
             continue
-        kind = _kind(word)
+        kind = _kind(word) or _kind(re.sub(r"\s+", "-", word))
+        if kind == "term":
+            word = re.sub(r"\s+", "-", word)
         if kind is None:
             rest.append(word)
             continue
@@ -80,7 +82,12 @@ def _sorted(slots: Iterable[str | None], employer: str | None) -> tuple[dict[str
             )
     if employer and employer.strip():
         rest.append(employer.strip())
-    return chosen, " ".join(rest)
+    joined = " ".join(rest)
+    found = re.search(r"\b([a-z]+)\s+(\d{4})\b", joined.lower())
+    if "term" not in chosen and found and _kind(f"{found[1]}-{found[2]}") == "term":
+        chosen["term"] = f"{found[1]}-{found[2]}"
+        joined = " ".join((joined[: found.start()] + joined[found.end() :]).split())
+    return chosen, joined
 
 
 def _words(name: str, value: str | None, limit: int) -> str:
@@ -113,7 +120,7 @@ def weekly_digest() -> str:
                 "1. Call search_postings with days=7 and mine=true; if I saved no preferences, "
                 "search without mine and say so."
             ),
-            "2. Call get_tracker to see what I applied to and what heard back.",
+            "2. Call get_tracker to see what I applied to and which ones heard back.",
             "3. Call database_status to see how fresh Stage is.",
             (
                 "Then write a short digest: the ten strongest new postings with their links, my "
@@ -153,13 +160,19 @@ def find_matches(
 
 def prepare_application(
     company: Annotated[
-        str | None, Field(description="The employer, such as Shopify; Stage asks if left out")
+        str | None, Field(description="The employer, such as Shopify; leave it out to be asked")
     ] = None,
     title: Annotated[str | None, Field(description="Words from the posting's title")] = None,
 ) -> str:
     employer = _words("employer", company, COMPANY_LIMIT)
     words = _words("title", title, TITLE_LIMIT)
-    if not employer:
+    if not employer and words:
+        find = (
+            f"1. Find the posting with search_postings using words={words}. If several "
+            "postings match, list them and ask me which one."
+        )
+        heading = f"Help me prepare an application for the posting titled like {words}."
+    elif not employer:
         find = (
             "1. Ask me which employer and posting I want to prepare for, then find it with "
             "search_postings."
@@ -215,7 +228,7 @@ CATALOGUE: tuple[tuple[Callable[..., str], str, str], ...] = (
     (
         whats_new,
         "What's new for me",
-        "Postings that appeared since the sync before last and match the saved preferences",
+        "Postings the last sync brought in that match the saved preferences",
     ),
     (
         weekly_digest,
@@ -282,7 +295,7 @@ class Suggestions:
         if not self.database.exists():
             return []
         try:
-            async with open_repository(self.database) as repository:
+            async with open_repository(self.database, read_only=True) as repository:
                 found: list[str] = await reader(repository, *extra)
         except (sqlite3.Error, SchemaVersionError):
             return []

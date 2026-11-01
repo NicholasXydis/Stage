@@ -39,12 +39,15 @@ class CursorError(ValueError):
     pass
 
 
-def answer(payload: Mapping[str, object]) -> CallToolResult:
+def answer(
+    payload: Mapping[str, object], meta: Mapping[str, object] | None = None
+) -> CallToolResult:
     safe = cast(dict[str, Any], json_safe(dict(payload)))
     body = json.dumps(safe, ensure_ascii=False, separators=(",", ":"), default=json_default)
     structured = cast(dict[str, Any], json.loads(body))
+    extra = cast(dict[str, Any], json_safe(dict(meta))) if meta else None
     return CallToolResult(
-        content=[TextContent(type="text", text=body)], structured_content=structured
+        content=[TextContent(type="text", text=body)], structured_content=structured, _meta=extra
     )
 
 
