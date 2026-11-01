@@ -40,7 +40,7 @@ def feminine_suffixes() -> frozenset[str]:
             raise LexiconError(f"{source}: {entry!r} normalizes to nothing")
         if bare == "s":
             raise LexiconError(
-                f"{source}: 's' cannot be a feminine suffix — it would strip the plural "
+                f"{source}: 's' cannot be a feminine suffix, because it would strip the plural "
                 "from 'Engineer(s)'"
             )
         suffixes.add(bare)
@@ -75,6 +75,12 @@ def fold(raw: str) -> str:
     return " ".join(re.sub(r"[^0-9a-z]+", " ", collapsed).split())
 
 
+def parse_yaml(text: str) -> Any:
+    if hasattr(yaml, "CSafeLoader"):
+        return yaml.load(text, Loader=yaml.CSafeLoader)
+    return yaml.safe_load(text)
+
+
 class LexiconError(Exception):
     pass
 
@@ -84,7 +90,7 @@ def _not_a_string(source: str, key: str, entry: object) -> str:
         word = "on/off" if entry else "no/off"
         return (
             f"{source}: {key!r} contains the boolean {entry!r}, which is YAML 1.1 reading a "
-            f"bareword like {word} as a truth value — quote it in the YAML"
+            f"bareword like {word} as a truth value; quote it in the YAML"
         )
     return f"{source}: every {key!r} entry must be a string, found {entry!r}"
 
@@ -156,6 +162,7 @@ class LocationLexicon:
     usa_country: frozenset[str]
     international: frozenset[str]
     international_cities: frozenset[str]
+    country_codes: frozenset[str]
     city_aliases: dict[str, str]
     remote: frozenset[str]
     hybrid: frozenset[str]
@@ -165,7 +172,10 @@ def _load(filename: str) -> tuple[dict[str, Any], str]:
     path = lexicon_dir() / filename
     if not path.exists():
         raise LexiconError(f"lexicon not found at {path}")
-    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    try:
+        payload = parse_yaml(path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, UnicodeDecodeError) as exc:
+        raise LexiconError(f"{path} is not valid UTF-8 YAML: {exc}") from exc
     if not isinstance(payload, dict):
         raise LexiconError(f"{path}: expected a mapping")
     return payload, str(path)
@@ -201,7 +211,7 @@ def language_lexicon() -> LanguageLexicon:
     if overlap:
         raise LexiconError(
             f"{source}: {sorted(overlap)} are listed as loanwords and also as language "
-            "evidence — a loanword counts for neither side"
+            "evidence; a loanword counts for neither side"
         )
     return LanguageLexicon(french=french, english=english, loanwords=loanwords)
 
@@ -316,6 +326,19 @@ def term_lexicon() -> TermLexicon:
 
 
 @lru_cache(maxsize=1)
+def accent_dropped_words() -> dict[str, str]:
+    payload, _ = _load(LOCATIONS_FILE)
+    found: dict[str, str] = {}
+    for key in ("montreal", "canada_cities", "canada_regions", "usa_cities", "usa_regions"):
+        for name in payload.get(key) or ():
+            for word in str(name).replace("-", " ").split():
+                stripped = word.encode("ascii", "ignore").decode().lower()
+                if not word.isascii() and len(stripped) >= 4:
+                    found[stripped] = word
+    return found
+
+
+@lru_cache(maxsize=1)
 def location_lexicon() -> LocationLexicon:
     payload, source = _load(LOCATIONS_FILE)
     return LocationLexicon(
@@ -334,6 +357,7 @@ def location_lexicon() -> LocationLexicon:
         usa_country=_folded_phrases(payload, "usa_country", source),
         international=_folded_phrases(payload, "international", source),
         international_cities=_folded_phrases(payload, "international_cities", source),
+        country_codes=_folded_phrases(payload, "country_codes", source),
         city_aliases=_folded_aliases(payload, "city_aliases", source),
         remote=_folded_phrases(payload, "remote", source),
         hybrid=_folded_phrases(payload, "hybrid", source),

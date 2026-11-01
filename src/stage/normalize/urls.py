@@ -67,6 +67,8 @@ IDENTITY_PARAMS: frozenset[str] = frozenset(
     }
 )
 
+CASELESS_PATH_DOMAINS: frozenset[str] = frozenset({"myworkdayjobs.com", "myworkdaysite.com"})
+
 _LOCALE_REGION = re.compile(r"^[a-z]{2}[-_][a-zA-Z]{2}$")
 _IDENTITY_VALUE = re.compile(r"^[A-Za-z0-9._~-]{1,128}$")
 _IDENTITY_KEYS: frozenset[str] = frozenset(name.replace("_", "") for name in IDENTITY_PARAMS)
@@ -116,7 +118,11 @@ def canonical_apply_url(raw: str) -> str:
     host = (parts.hostname or "").lower()
     if not host or is_tracker_url(raw):
         return ""
-    segments = [segment for segment in parts.path.split("/") if segment]
+    caseless = any(
+        host == domain or host.endswith(f".{domain}") for domain in CASELESS_PATH_DOMAINS
+    )
+    path = parts.path.lower() if caseless else parts.path
+    segments = [segment for segment in path.split("/") if segment]
     kept = [segment for segment in segments if not _is_locale_segment(segment)]
     path = "/" + "/".join(kept)
     return urlunsplit(("https", host, path.rstrip("/") or "/", _identity_query(parts.query), ""))

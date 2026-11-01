@@ -278,6 +278,49 @@ def test_a_foreign_subdivision_makes_the_next_code_a_country(raw: str, why: str)
 
 
 @pytest.mark.parametrize(
+    ("raw", "expected", "why"),
+    [
+        (
+            "GB-NU-CRAMLINGTON-ATLEY WAY NORTH NELSON INDUSTRIAL ESTATE",
+            LocationBucket.INTERNATIONAL,
+            "England, not Nunavut",
+        ),
+        ("HU-PE-FOT-EAST GATE BUSINESS PARK", LocationBucket.INTERNATIONAL, "not PEI"),
+        ("ESP - MD - LAS ROZAS", LocationBucket.INTERNATIONAL, "Madrid, not Maryland"),
+        ("SWE - AB - SOLNA", LocationBucket.INTERNATIONAL, "Stockholm, not Alberta"),
+        ("BR-RJ-MACAE-ESTRADA DE FAZENDA 200", LocationBucket.INTERNATIONAL, "DE is a word"),
+        ("CRI - SJ - SAN JOSE", LocationBucket.INTERNATIONAL, "San Jose, Costa Rica"),
+        ("MEX - BCN - TIJUANA", LocationBucket.INTERNATIONAL, "Baja California"),
+        ("GBR-London-5 Canada Square", LocationBucket.INTERNATIONAL, "a street in London"),
+        ("CHN - DALIAN", LocationBucket.INTERNATIONAL, "a country code, then a city"),
+        ("IND-BLR-Divyasree Technopolis", LocationBucket.INTERNATIONAL, "Bangalore"),
+        ("DE-BY-NORDLINGEN-010 ~ BLDG 10", LocationBucket.UNKNOWN, "Germany or Delaware"),
+        ("US-IA-CEDAR RAPIDS-124 ~ 400 Collins Rd NE", LocationBucket.USA, "the US prefix"),
+        ("USA - AZ - Goodyear - PHX1", LocationBucket.USA, "the USA prefix"),
+        ("CA-QC-LONGUEUIL-J01 ~ 1000 Blvd Marie-Victorin", LocationBucket.MONTREAL, "Quebec"),
+        ("CAN - ON - TORONTO", LocationBucket.CANADA, "the CAN prefix"),
+        ("CO - DEN - Denver", LocationBucket.USA, "Colorado when the city is American"),
+        ("AND - Jacksonville, FL", LocationBucket.USA, "a word, not Andorra"),
+        ("AUS-TX-Austin", LocationBucket.USA, "an airport code before a state"),
+        ("MD - DC - VA", LocationBucket.USA, "a list of states"),
+        ("PA - PHL - Remote", LocationBucket.USA, "a state, then an airport code"),
+        ("DEU - Berlin, Montreal, QC", LocationBucket.MONTREAL, "a second place"),
+        ("IRL - Dublin or Toronto, ON", LocationBucket.CANADA, "a second place"),
+        ("GBR - London, USA - New York", LocationBucket.USA, "a second place"),
+        (
+            "MX-BCN-MEXICALI-238 ~ BLDG 238, Desarrollo Industrial Colorado",
+            LocationBucket.INTERNATIONAL,
+            "an address, not the state",
+        ),
+    ],
+)
+def test_a_workday_country_prefix_decides_the_country(
+    raw: str, expected: LocationBucket, why: str
+) -> None:
+    assert resolve_location(raw).bucket is expected, why
+
+
+@pytest.mark.parametrize(
     ("raw", "expected"),
     [
         ("Wilmington, DE", LocationBucket.USA),
@@ -432,3 +475,81 @@ def test_a_list_inside_brackets_stays_one_place(raw: str, shown: str) -> None:
     from stage.normalize.location import display_location
 
     assert display_location(raw) == shown
+
+
+WORKDAY = "https://acme.wd5.myworkdayjobs.com/en-US/External/job/{}/Software-Intern_R1"
+
+
+@pytest.mark.parametrize(
+    ("raw", "place", "stored", "bucket"),
+    [
+        ("2 Locations", "Montral", "Montréal / 1 more", LocationBucket.MONTREAL),
+        ("3 Locations", "Toronto-Ontario", "Toronto Ontario / 2 more", LocationBucket.CANADA),
+        ("2 Locations", "Lvis", "Lévis / 1 more", LocationBucket.CANADA),
+        (
+            "2 Locations",
+            "Irving-Texas---United-States-of-America",
+            "Irving Texas - United States of America / 1 more",
+            LocationBucket.USA,
+        ),
+        ("2 Locations", "Grand-Rapids", "Grand Rapids / 1 more", LocationBucket.USA),
+        ("2 Locations", "Ratingen-Germany", "2 Locations", LocationBucket.UNKNOWN),
+        ("2 Locations", "OCONUS-Diego-Garcia", "2 Locations", LocationBucket.UNKNOWN),
+        ("Toronto, ON", "Montral", "Toronto, ON", LocationBucket.CANADA),
+        ("2 Locations", "DE-Berlin", "2 Locations", LocationBucket.UNKNOWN),
+        ("2 Locations", "Montr%E9al", "2 Locations", LocationBucket.UNKNOWN),
+        ("2 Locations", "%E2%80%AEAustin-TX", "Austin TX / 1 more", LocationBucket.USA),
+        ("1000 Locations", "Austin-TX", "1000 Locations", LocationBucket.UNKNOWN),
+    ],
+)
+def test_a_multi_site_workday_posting_takes_its_first_place_only_at_home(
+    raw: str, place: str, stored: str, bucket: LocationBucket
+) -> None:
+    from stage.normalize import listed_place
+
+    found = listed_place(raw, WORKDAY.format(place))
+
+    assert found == stored, "a first place abroad stays unknown: the second may be in Canada"
+    assert resolve_location(found).bucket is bucket
+    assert listed_place(found, WORKDAY.format(place)) == found
+
+
+def test_a_multi_site_place_needs_a_workday_link_with_a_place() -> None:
+    from stage.normalize import listed_place
+
+    assert listed_place("2 Locations", "https://boards.greenhouse.io/acme/jobs/1") == "2 Locations"
+    bare = "https://acme.wd5.myworkdayjobs.com/External/job/Software-Intern_R1"
+    assert listed_place("2 Locations", bare) == "2 Locations"
+
+
+def test_the_extra_places_count_toward_the_plus() -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location("Montréal / 2 more") == "Montreal +2"
+    assert display_location("Montreal, QC / Toronto, ON") == "Montreal, QC +1"
+
+
+def test_a_dropped_accent_never_maps_a_short_word() -> None:
+    from stage.lexicon import accent_dropped_words
+
+    words = accent_dropped_words()
+
+    assert words["montral"] == "Montréal" and words["qubec"] == "Québec"
+    assert all(len(key) >= 4 for key in words), "Le-Creusot must not become Île-Creusot"
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Burlington, VT", LocationBucket.USA),
+        ("Ottawa, IL, United States", LocationBucket.USA),
+        ("Burlington MA", LocationBucket.USA),
+        ("Burlington, ON", LocationBucket.CANADA),
+        ("Toronto, CA", LocationBucket.CANADA),
+        ("410 GEORGIA ST W, FLOOR 3:VANCOUVER", LocationBucket.CANADA),
+    ],
+)
+def test_a_us_state_code_names_the_us_town_with_a_canadian_name(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket

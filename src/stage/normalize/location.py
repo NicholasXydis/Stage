@@ -1,9 +1,11 @@
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from urllib.parse import unquote
 
 from stage.domain import LocationBucket, RemoteScope
-from stage.lexicon import LocationLexicon, fold, location_lexicon
+from stage.domain.text import sanitize
+from stage.lexicon import LocationLexicon, accent_dropped_words, fold, location_lexicon
 
 _SEGMENT_SPLIT = re.compile(r"[;/•|\n]+")
 _FIELD_SPLIT = re.compile(r"[,\-]+")
@@ -97,8 +99,9 @@ def _reads_as_country(fields: list[str], index: int, token: str, known: frozense
     return _foreign_subdivision_before(fields, index, known)
 
 
-def _code_hits(segment: str, lexicon: LocationLexicon) -> tuple[bool, bool]:
-    canada = usa = False
+def _code_hits(segment: str, lexicon: LocationLexicon) -> tuple[set[str], set[str]]:
+    canada: set[str] = set()
+    usa: set[str] = set()
     fields = _FIELD_SPLIT.split(segment)
     known = lexicon.canada_codes | lexicon.usa_codes
     for index, field in enumerate(fields):
@@ -110,9 +113,9 @@ def _code_hits(segment: str, lexicon: LocationLexicon) -> tuple[bool, bool]:
             if _reads_as_country(fields, index, token, known):
                 continue
             if token in lexicon.canada_codes:
-                canada = True
+                canada.add(token)
             else:
-                usa = True
+                usa.add(token)
     return canada, usa
 
 
@@ -134,10 +137,58 @@ def _trails_a_foreign_code(segment: str) -> bool:
     return False
 
 
+_REGION_PREFIX = re.compile(
+    r"\s*(?P<country>[A-Z]{2,3})\s*-\s*(?P<region>[A-Z]{1,3})\s*-(?P<rest>.*)", re.S
+)
+_COUNTRY_PREFIX = re.compile(r"\s*(?P<country>[A-Z]{3})\s*-(?P<rest>.*)", re.S)
+_DOMESTIC = frozenset(
+    {
+        "montreal",
+        "canada_cities",
+        "canada_regions",
+        "canada_country",
+        "usa_cities",
+        "usa_regions",
+        "usa_country",
+    }
+)
+_FOREIGN = frozenset({"international", "international_cities"})
+
+
+def _foreign_prefix(segment: str, lexicon: LocationLexicon) -> _Segment | None:
+    match = _REGION_PREFIX.match(segment) or _COUNTRY_PREFIX.match(segment)
+    if match is None or fold(match["country"]) not in lexicon.country_codes:
+        return None
+    place, *others = _LIST_SPLIT.split(match["rest"], maxsplit=1)
+    if others:
+        later = _resolve_segment(others[0], lexicon)
+        if later.montreal or later.canada or later.usa:
+            return None
+    return _country_verdict(match, place, lexicon)
+
+
+def _country_verdict(match: re.Match[str], place: str, lexicon: LocationLexicon) -> _Segment | None:
+    found = {category for category, _ in _index().hits(fold(place))}
+    domestic, foreign = found & _DOMESTIC, found & _FOREIGN
+    codes = lexicon.canada_codes | lexicon.usa_codes
+    region = fold(match.groupdict().get("region") or "")
+    remote = "remote" in found
+    if fold(match["country"]) in codes:
+        if domestic or region in codes or len(region) > 2:
+            return None
+        return _Segment(False, False, False, bool(foreign), remote)
+    if domestic and (region in codes if region else not foreign):
+        return None
+    return _Segment(False, False, False, True, remote)
+
+
 def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
     folded = fold(segment)
     if not folded:
         return _Segment(False, False, False, False, False)
+    foreign = _foreign_prefix(segment, lexicon)
+    if foreign is not None:
+        return foreign
     hits = _index().hits(folded)
     found = {category for category, _ in hits}
     international_phrases = {
@@ -155,7 +206,8 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
         )
         for phrase in international_phrases
     )
-    code_canada, code_usa = _code_hits(segment, lexicon)
+    canada_codes, usa_codes = _code_hits(segment, lexicon)
+    code_canada, code_usa = bool(canada_codes), bool(usa_codes)
 
     override_phrases = {phrase for category, phrase in hits if category == "canada_overrides"}
     named_canada = {
@@ -183,10 +235,11 @@ def _resolve_segment(segment: str, lexicon: LocationLexicon) -> _Segment:
     montreal = ("montreal" in found and not overridden) or (
         "montreal_ambiguous" in found and canada_context
     )
+    us_state = bool(usa_codes - {"ca"})
     canada = (
         montreal
         or canada_context
-        or ("canada_cities" in found and not overridden and not international)
+        or ("canada_cities" in found and not overridden and not international and not us_state)
         or ("canada_ambiguous" in found and canada_context)
     )
     usa = "usa_country" in found or (
@@ -221,6 +274,7 @@ def _scope(segments: list[_Segment]) -> RemoteScope | None:
 
 
 _MULTI_SITE_SUFFIX = re.compile(r"\s*\+\s*\d+\s*$")
+_MORE = re.compile(r"(?P<count>\d+) more")
 
 
 def display_location(raw: str) -> str:
@@ -233,7 +287,11 @@ def display_location(raw: str) -> str:
     if not first:
         return raw.strip()
 
-    others = len([part for part in segments[1:] if part.strip()])
+    others = sum(
+        int(counted["count"]) if (counted := _MORE.fullmatch(part.strip())) else 1
+        for part in segments[1:]
+        if part.strip()
+    )
     more = f" +{others}" if others else ""
 
     fields = [field.strip() for field in first.split(",") if field.strip()]
@@ -304,3 +362,35 @@ def resolve_location(raw: str) -> ResolvedLocation:
         bucket = LocationBucket.UNKNOWN
 
     return ResolvedLocation(bucket=bucket, remote_scope=scope)
+
+
+_MANY_PLACES = re.compile(r"\s*(?P<count>[0-9]{1,3})\s+Locations\s*", re.IGNORECASE)
+_WORKDAY_PLACE = re.compile(
+    r"https?://[^/]+\.myworkday(?:jobs|site)\.com/(?:[^/?#]+/)*?job/(?P<place>[^/?#]+)/[^/?#]+",
+    re.IGNORECASE,
+)
+_PREFERRED = frozenset({LocationBucket.MONTREAL, LocationBucket.CANADA, LocationBucket.USA})
+
+
+def listed_place(location_raw: str, apply_url: str) -> str:
+    many = _MANY_PLACES.fullmatch(location_raw or "")
+    link = _WORKDAY_PLACE.match(apply_url or "")
+    if many is None or link is None or int(many["count"]) < 2:
+        return location_raw
+    known = accent_dropped_words()
+    place = "-".join(
+        known.get(word.lower(), word)
+        for word in " ".join(sanitize(unquote(link["place"])).split()).split("-")
+    )
+    bucket = resolve_location(place).bucket
+    if bucket not in _PREFERRED or chr(0xFFFD) in place:
+        return location_raw
+    head, _, rest = place.partition("-")
+    if (
+        fold(head) in location_lexicon().country_codes
+        and resolve_location(rest).bucket is not bucket
+    ):
+        return location_raw
+    tidy = " - ".join(" ".join(part.replace("-", " ").split()) for part in place.split("---"))
+    shown = tidy if resolve_location(tidy).bucket is bucket else place
+    return f"{shown} / {int(many['count']) - 1} more"
