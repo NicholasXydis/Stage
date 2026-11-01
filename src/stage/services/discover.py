@@ -21,6 +21,7 @@ from stage.domain import (
     UrlUnrecognized,
     first_line,
 )
+from stage.domain.text import counted
 from stage.http import (
     HostBudgetExceededError,
     HttpClient,
@@ -91,7 +92,7 @@ def slug_candidates(name: str) -> SlugPlan:
         offer("-".join(tokens))
         head = tokens[0]
         if head in GENERIC_TOKENS:
-            offer(head, f"{head!r} is a generic first token — the confirmed false-positive shape")
+            offer(head, f"{head!r} is a generic first token, the confirmed false-positive shape")
         elif len(head) < MIN_DISTINCTIVE_TOKEN:
             offer(head, f"{head!r} is too short to be distinctive on its own")
         else:
@@ -132,9 +133,13 @@ def _count_verdict(count: int | None, size: EmployerSize | None) -> str:
         return ""
     low, high = SIZE_BANDS[size]
     if count < low:
-        return f"{count} posting(s) is below the plausible floor for a {size.value} employer"
+        return (
+            f"{counted(count, 'posting')} is below the plausible floor for a {size.value} employer"
+        )
     if count > high:
-        return f"{count} posting(s) exceeds the plausible ceiling for a {size.value} employer"
+        return (
+            f"{counted(count, 'posting')} exceeds the plausible ceiling for a {size.value} employer"
+        )
     return ""
 
 
@@ -164,7 +169,9 @@ def classify(
     if count is None:
         return result(ProbeVerdict.MISS, "no job collection in the response")
     if count == 0:
-        return result(ProbeVerdict.EMPTY, "board exists but is empty — nothing to verify against")
+        return result(
+            ProbeVerdict.EMPTY, "board exists but is empty, so there is nothing to verify against"
+        )
 
     implausible = _count_verdict(count, size)
     if implausible:
@@ -173,7 +180,7 @@ def classify(
     if not board_name:
         return result(
             ProbeVerdict.UNVERIFIED,
-            f"{probe.platform.value} exposes no board name — confirm by hand before adding",
+            f"{probe.platform.value} exposes no board name; confirm by hand before adding",
         )
     if not name_matches(company, board_name):
         return result(
@@ -207,7 +214,10 @@ def resolve_careers_url(url: str) -> DiscoveryEvent:
         else:
             detail = "workday_facet resolves on first contact, which lands in build step 6"
     elif candidate.platform in URL_ONLY_PLATFORMS:
-        detail = f"{candidate.platform.value} has no probeable board endpoint — accepted on shape"
+        detail = (
+            f"{candidate.platform.value} has no probeable board endpoint, "
+            "so it was accepted on shape"
+        )
     return UrlResolved(url=url, candidate=candidate, detail=detail)
 
 
@@ -666,8 +676,9 @@ def needs_review(result: ProbeResult) -> bool:
 def _adopted_note(today: date, result: ProbeResult) -> str:
     return (
         f"{today}: seen in feed postings but absent from the registry; discover matched "
-        f"{result.candidate.platform.value}/{result.candidate.slug} with {result.job_count} "
-        "job(s) and the board named itself, so it is polled directly instead of secondhand"
+        f"{result.candidate.platform.value}/{result.candidate.slug} with "
+        f"{counted(result.job_count or 0, 'job')} and the board named itself, so it is polled "
+        "directly instead of secondhand"
     )
 
 
@@ -675,7 +686,8 @@ def _unnamed_note(today: date, result: ProbeResult) -> str:
     platform = result.candidate.platform.value
     return (
         f"{today}: token from this employer's own apply URL, not slug guessing; {platform} "
-        f"publishes no board name, so provenance is the evidence ({result.job_count} job(s))"
+        f"publishes no board name, so provenance is the evidence "
+        f"({counted(result.job_count or 0, 'job')})"
     )
 
 

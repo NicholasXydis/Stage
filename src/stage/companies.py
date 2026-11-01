@@ -1,13 +1,13 @@
-import importlib
 import os
 import re
+import stat
 import tempfile
 from collections.abc import Callable, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, override
 
 import yaml
 
@@ -20,8 +20,8 @@ from stage.domain import (
     SourceOfRecord,
     public_https_url,
 )
-from stage.lexicon import fold
-from stage.paths import registry_path
+from stage.lexicon import fold, parse_yaml
+from stage.paths import exclusive, registry_path
 from stage.sources.platforms import SlugRejectedError, oracle_target
 
 
@@ -140,8 +140,9 @@ def _custom_board(row: dict[str, Any], index: int, platform: Platform) -> Custom
     unknown = sorted(set(mapping) - set(KNOWN_FIELDS))
     if unknown:
         raise RegistryError(
-            f"registry entry {index}: custom.fields has unknown key(s) "
-            f"{', '.join(unknown)}; known: {', '.join(KNOWN_FIELDS)}"
+            f"registry entry {index}: custom.fields has unknown "
+            f"{'key' if len(unknown) == 1 else 'keys'} {', '.join(unknown)}; "
+            f"known: {', '.join(KNOWN_FIELDS)}"
         )
     missing = [name for name in REQUIRED_FIELDS if not str(mapping.get(name, "")).strip()]
     if missing:
@@ -397,14 +398,27 @@ def registry_entry_yaml(company: Company) -> str:
     return dumped.rstrip("\n")
 
 
-def _registry_payload(companies: Sequence[Company]) -> str:
+def _registry_payload(companies: Sequence[Company], *, quick: bool = False) -> str:
     ordered = sorted(companies, key=lambda item: item.name.lower())
-    return yaml.safe_dump(
+    return yaml.dump(
         [_registry_row(item) for item in ordered],
+        Dumper=_QuickNoAnchors if quick else _NoAnchors,
         sort_keys=False,
         allow_unicode=True,
         default_flow_style=False,
     )
+
+
+class _NoAnchors(yaml.SafeDumper):
+    @override
+    def ignore_aliases(self, data: Any) -> bool:
+        return True
+
+
+class _QuickNoAnchors(getattr(yaml, "CSafeDumper", yaml.SafeDumper)):  # type: ignore[misc]
+    @override
+    def ignore_aliases(self, data: Any) -> bool:
+        return True
 
 
 def _is_shard_dir(target: Path) -> bool:
@@ -424,7 +438,9 @@ def _registry_files(source: Path) -> list[Path]:
 
 def _rows_in(source: Path) -> list[Any]:
     try:
-        raw = yaml.safe_load(source.read_text(encoding="utf-8"))
+        raw = parse_yaml(source.read_text(encoding="utf-8"))
+    except UnicodeDecodeError as exc:
+        raise RegistryError(f"{source} is not UTF-8 text; save it as UTF-8") from exc
     except yaml.YAMLError as exc:
         raise RegistryError(f"{source} is not valid YAML: {exc}") from exc
     except OSError as exc:
@@ -443,24 +459,9 @@ def _registry_lock(target: Path) -> Iterator[None]:
         lock_path = target / ".registry.lock"
     else:
         lock_path = target.with_name(f".{target.name}.lock")
-    try:
-        lock = lock_path.open("a+b")
-    except OSError as exc:
-        raise RegistryError(f"{target} could not be locked: {exc.strerror or exc}") from exc
-    with lock:
+    with ExitStack() as stack:
         try:
-            if os.name == "nt":
-                msvcrt = cast(Any, importlib.import_module("msvcrt"))
-
-                lock.seek(0, os.SEEK_END)
-                if lock.tell() == 0:
-                    lock.write(b"0")
-                    lock.flush()
-                lock.seek(0)
-                msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
-            else:
-                fcntl = cast(Any, importlib.import_module("fcntl"))
-                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            stack.enter_context(exclusive(lock_path))
         except OSError as exc:
             raise RegistryError(f"{target} could not be locked: {exc.strerror or exc}") from exc
         yield
@@ -474,11 +475,25 @@ def _write_registry(companies: Sequence[Company], target: Path) -> Path:
     for company in companies:
         grouped.setdefault(_shard_name(company.name), []).append(company)
     for shard, rows in sorted(grouped.items()):
-        _write_file(_registry_payload(rows), target / f"{shard}.yaml")
+        destination = target / f"{shard}.yaml"
+        if not _unchanged(destination, rows):
+            _write_file(_registry_payload(rows), destination)
     for stale in target.glob("*.yaml"):
         if stale.stem not in grouped:
             stale.unlink()
     return target
+
+
+def _unchanged(destination: Path, companies: Sequence[Company]) -> bool:
+    if not destination.exists():
+        return False
+    try:
+        stored = _rows_in(destination)
+    except RegistryError:
+        return False
+    ordered = sorted(stored, key=lambda row: str(row.get("name", "")).lower())
+    quick = _registry_payload(companies, quick=True)
+    return bool(ordered == parse_yaml(quick))
 
 
 def _write_file(payload: str, target: Path) -> Path:
@@ -496,6 +511,7 @@ def _write_file(payload: str, target: Path) -> Path:
             stream.flush()
             os.fsync(stream.fileno())
             staged = Path(stream.name)
+        staged.chmod(stat.S_IMODE(target.stat().st_mode) if target.exists() else 0o644)
         staged.replace(target)
     except OSError as exc:
         if staged is not None:

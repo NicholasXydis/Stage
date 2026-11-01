@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from stage.bootstrap.openjobs import (
     SEED_PATH,
     DatasetEntry,
@@ -10,6 +12,7 @@ from stage.bootstrap.openjobs import (
     is_division_of,
     load_dataset,
     load_seeds,
+    main,
     match_key,
     mine_country,
     to_registry_rows,
@@ -215,3 +218,22 @@ def test_country_mining_finds_companies_the_seed_list_never_named() -> None:
     )
     found = mine_country(entries, "Canada", frozenset({"ashby/coveo"}))
     assert [entry.name for entry, _ in found] == ["Unlisted Montreal Studio"]
+
+
+def test_country_mining_reports_its_count(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    seeds = tmp_path / "seeds.yaml"
+    seeds.write_text("- name: Nobody\n", encoding="utf-8")
+    dataset = tmp_path / "companies_v2.json"
+    row = {
+        "name": "Unlisted Montreal Studio",
+        "ats_links": ["https://boards.greenhouse.io/unlistedmtlstudio"],
+        "countries": ["Canada"],
+    }
+    dataset.write_text(json.dumps([row]), encoding="utf-8")
+
+    code = main(["--dataset", str(dataset), "--seeds", str(seeds), "--mine-country", "Canada"])
+
+    assert code == 0
+    assert "mined 1 new Canada board not already known" in capsys.readouterr().out

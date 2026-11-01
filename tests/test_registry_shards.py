@@ -75,3 +75,17 @@ def test_a_broken_shard_names_the_file_that_broke(tmp_path: Path) -> None:
     )
     with pytest.raises(RegistryError, match="q.yaml"):
         load_companies(tmp_path)
+
+
+def test_a_change_to_one_row_leaves_every_other_shard_untouched(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    write_registry(ROWS, tmp_path)
+    other = tmp_path / "b.yaml"
+    other.write_text(other.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    before = other.read_bytes()
+
+    write_registry((replace(ROWS[0], enabled=False), *ROWS[1:]), tmp_path)
+
+    assert other.read_bytes() == before
+    assert "enabled: false" in (tmp_path / "a.yaml").read_text(encoding="utf-8")

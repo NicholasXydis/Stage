@@ -280,7 +280,7 @@ def test_coverage_is_reachable_from_the_command_line(seeded: Path, tmp_path: Pat
     )
     assert rendered.exit_code == 0, rendered.stdout
     assert "Tesla" in rendered.stdout
-    assert "5 enabled row(s)" in rendered.stdout
+    assert "5 enabled rows" in rendered.stdout
 
 
 def test_classify_records_and_clears_a_feed_company(seeded: Path, tmp_path: Path) -> None:
@@ -359,7 +359,7 @@ def test_classify_requires_status_and_evidence_except_when_clearing(seeded: Path
 
     assert missing_note.exit_code == 2
     assert missing_status.exit_code == 2
-    assert "Pass both --status and --note" in missing_note.stdout
+    assert "Pass both --status and --note" in missing_note.stderr
 
 
 @respx.mock

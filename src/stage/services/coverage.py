@@ -50,6 +50,10 @@ def _board_key(company: Company) -> str | None:
         return None
 
 
+def board_of(company: Company) -> str:
+    return _board_key(company) or board_label(company)
+
+
 def _registry_rows(
     companies: Sequence[Company],
     postings: dict[str, int],
@@ -228,4 +232,4 @@ async def coverage(
     )
 
 
-__all__ = ["CoverageReport", "contradicted_reviews", "coverage"]
+__all__ = ["CoverageReport", "board_of", "contradicted_reviews", "coverage"]

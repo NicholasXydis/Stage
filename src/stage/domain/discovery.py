@@ -18,7 +18,7 @@ class PlatformCandidate:
     @property
     def label(self) -> str:
         if not self.resolves_board:
-            return f"{self.platform.value}/{self.slug} (front end only — board unresolved)"
+            return f"{self.platform.value}/{self.slug} (front end only, board unresolved)"
         if self.workday_tenant is not None:
             site = self.workday_site or "?"
             return f"{self.platform.value}/{self.workday_tenant}/{site}@{self.workday_dc or '?'}"

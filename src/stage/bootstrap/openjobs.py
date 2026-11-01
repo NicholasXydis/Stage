@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 from stage.domain import Platform, PlatformCandidate
+from stage.domain.text import counted
 from stage.lexicon import division_qualifiers, fold, name_root_tokens
 from stage.sources.platforms import identify_url
 
@@ -50,8 +51,8 @@ class CrossReference:
     name_collisions: list[tuple[Seed, str]] = field(default_factory=list)
 
     def platform_histogram(self) -> list[tuple[Platform, int]]:
-        counted = Counter(item.candidate.platform for item in self.resolved)
-        return sorted(counted.items(), key=lambda pair: (-pair[1], pair[0].value))
+        platforms = Counter(item.candidate.platform for item in self.resolved)
+        return sorted(platforms.items(), key=lambda pair: (-pair[1], pair[0].value))
 
 
 def match_key(name: str) -> str:
@@ -309,7 +310,7 @@ def format_report(report: CrossReference, total_seeds: int) -> str:
     divisions = [item for item in report.resolved if item.related]
     lines = [
         f"seeds: {total_seeds}",
-        f"resolved to a platform: {len(report.resolved)} board(s)",
+        f"resolved to a platform: {counted(len(report.resolved), 'board')}",
         f"  of which division boards: {len(divisions)}",
         f"matched but no ats_links: {len(report.no_ats_link)}  -> stage discover",
         f"ats_links present but unrecognized: {len(report.unrecognized)}  -> custom_json / feeds",
@@ -320,7 +321,7 @@ def format_report(report: CrossReference, total_seeds: int) -> str:
     lines.extend(f"{platform.value:<17} {count}" for platform, count in report.platform_histogram())
     if report.collisions:
         lines.append("")
-        lines.append("collisions (one board claimed by several seeds — excluded, review by hand):")
+        lines.append("collisions (one board claimed by several seeds, excluded, review by hand):")
         lines.extend(
             f"  {label}: {', '.join(names)}" for label, names in sorted(report.collisions.items())
         )
@@ -373,7 +374,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stdout.write(f"\nregistry unreadable, mining without it: {exc}\n")
         mined = mine_country(entries, args.mine_country, frozenset(known))
         sys.stdout.write(
-            f"\nmined {len(mined)} new {args.mine_country} board(s) not already known\n"
+            f"\nmined {counted(len(mined), f'new {args.mine_country} board')} not already known\n"
         )
 
     sys.stdout.write(format_report(report, len(seeds)) + "\n")
@@ -382,8 +383,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             to_registry_rows(report) + mined_registry_rows(mined), encoding="utf-8"
         )
         sys.stdout.write(
-            f"\nwrote {len(report.resolved) + len(mined)} candidate row(s) to {args.emit_yaml}\n"
-            "Review before merging into src/stage/data/companies/ — ats_links go stale.\n"
+            f"\nwrote {counted(len(report.resolved) + len(mined), 'candidate row')} "
+            f"to {args.emit_yaml}\n"
+            "Review before merging into src/stage/data/companies/; ats_links go stale.\n"
         )
     return 0
 

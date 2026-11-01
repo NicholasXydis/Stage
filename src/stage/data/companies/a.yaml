@@ -863,7 +863,7 @@
   slug: apptronik
   source_of_record: discover
   last_verified: *id008
-- name: Aptive
+- name: Aptiv
   platform: workday
   slug: aptiv
   source_of_record: openjobs

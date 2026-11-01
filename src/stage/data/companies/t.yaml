@@ -474,9 +474,9 @@
   source_of_record: discover
   last_verified: *id002
   name_gate_exempt: true
-  notes: '2026-08-14: board token taken from this employer''s own application URL
-    in a feed posting, not from slug guessing; ashby publishes no board name, so the
-    name gate cannot confirm it and provenance is the evidence (3 job(s))'
+  enabled: false
+  notes: '2026-10-31: api.ashbyhq.com answers 404 for this token on every sync since
+    October, and stage discover found the employer on no other platform.'
 - name: TMEIC Corporation Americas
   platform: workable
   slug: tmeic-corporation-americas

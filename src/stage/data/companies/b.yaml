@@ -203,8 +203,9 @@
   slug: beaconsoftware
   source_of_record: manual
   last_verified: 2026-08-13
-  notes: '2026-08-13: official active software-engineering internship application
-    verifies the public Ashby board.'
+  enabled: false
+  notes: '2026-10-31: api.ashbyhq.com answers 404 for this token on every sync since
+    October, and stage discover found the employer on no other platform.'
 - name: Beamdog
   platform: bamboohr
   slug: beamdog

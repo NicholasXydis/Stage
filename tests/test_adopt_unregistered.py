@@ -94,7 +94,7 @@ def test_an_adopted_row_is_enabled_verified_and_carries_its_provenance() -> None
     row = adopt_unregistered([], results, today=TODAY).adopted[0].company
     assert row.enabled and row.last_verified == TODAY
     assert row.source_of_record.value == "discover"
-    assert "164 job(s)" in (row.notes or ""), "the evidence must survive into the registry"
+    assert "164 jobs" in (row.notes or ""), "the evidence must survive into the registry"
 
 
 def test_two_captions_for_one_board_adopt_once() -> None:
