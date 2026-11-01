@@ -346,6 +346,7 @@ async def test_sync_lines_carry_a_running_count() -> None:
     from stage.cli.render import render_sync
     from stage.domain import (
         CompanyFinished,
+        SourceStarted,
         SyncEvent,
         SyncFinished,
         SyncOutcome,
@@ -355,10 +356,17 @@ async def test_sync_lines_carry_a_running_count() -> None:
     now = datetime.now(UTC)
 
     async def events() -> "AsyncIterator[SyncEvent]":
-        yield SyncStarted(sources=("greenhouse",), companies=3, started_at=now)
-        for name in ("Acme", "Globex", "Initech"):
+        yield SyncStarted(sources=("greenhouse", "simplify"), companies=3, started_at=now)
+        yield SourceStarted(source="greenhouse", companies=3)
+        yield SourceStarted(source="simplify", companies=0)
+        for source, name in (
+            ("greenhouse", "Acme"),
+            ("greenhouse", "Globex"),
+            ("simplify", "SimplifyJobs"),
+            ("greenhouse", "Initech"),
+        ):
             yield CompanyFinished(
-                source="greenhouse", company=name, fetched=1, elapsed_ms=10.0, degraded=""
+                source=source, company=name, fetched=1, elapsed_ms=10.0, degraded=""
             )
         yield SyncFinished(
             outcome=SyncOutcome.SUCCESS,
@@ -374,8 +382,8 @@ async def test_sync_lines_carry_a_running_count() -> None:
     await render_sync(Console(file=buffer, width=200, emoji=False), events())
     rendered = buffer.getvalue()
 
-    assert "1/3" in rendered
-    assert "3/3" in rendered
+    assert "1/4" in rendered
+    assert "4/4" in rendered and "5/4" not in rendered
 
 
 def test_the_banner_follows_the_terminal_foreground() -> None:

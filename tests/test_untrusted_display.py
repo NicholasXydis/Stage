@@ -231,7 +231,7 @@ def test_a_query_that_folds_to_a_word_still_searches(hostile_db: Path) -> None:
 def test_a_hostile_posting_id_is_echoed_literally(hostile_db: Path) -> None:
     result = CliRunner().invoke(app, ["show", "[/bold]nope", "--db", str(hostile_db)])
     assert result.exit_code == 1
-    assert "[/bold]nope" in result.stdout
+    assert "[/bold]nope" in result.stderr
 
 
 async def test_a_hostile_employer_name_survives_being_filtered_on(

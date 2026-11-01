@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, TextIO
 
 from rich.console import Console
 from rich.markup import escape
+from rich.padding import Padding
 from rich.table import Table
 from rich.text import Text
 
@@ -60,6 +61,7 @@ from stage.domain import (
     VolumeVerdict,
     web_url,
 )
+from stage.domain.text import counted, dropped_punctuation
 from stage.domain.text import first_line as _first_line
 from stage.domain.text import sanitize as _sanitize
 from stage.domain.text import summary as _summary
@@ -72,8 +74,8 @@ from stage.domain.tracker import (
 )
 
 
-def terminal() -> Console:
-    return Console(emoji=False)
+def terminal(*, stderr: bool = False) -> Console:
+    return Console(emoji=False, stderr=stderr)
 
 
 def splash(console: Console) -> None:
@@ -150,12 +152,12 @@ def render_rate_state(
         return
 
     table = Table(box=None, pad_edge=False, header_style="bold")
-    table.add_column("bucket")
-    table.add_column("status")
-    table.add_column("interval", justify="right")
-    table.add_column("fails", justify="right")
-    table.add_column("rotation")
-    table.add_column("reason")
+    table.add_column("bucket", overflow="fold")
+    table.add_column("status", overflow="fold")
+    table.add_column("interval", justify="right", overflow="fold")
+    table.add_column("fails", justify="right", overflow="fold")
+    table.add_column("rotation", overflow="fold")
+    table.add_column("reason", overflow="fold")
 
     for state in sorted(states, key=lambda item: item.bucket):
         if state.is_blocked(now):
@@ -176,8 +178,8 @@ def render_rate_state(
             status,
             override,
             str(state.consecutive_failures),
-            truncate(state.rotation_cursor, 24) or "[dim]—[/dim]",
-            summary(state.reason, 4000 if verbose else 40) or "[dim]—[/dim]",
+            truncate(state.rotation_cursor, 24) or "[dim]-[/dim]",
+            summary(state.reason, 4000 if verbose else 40) or "[dim]-[/dim]",
         )
 
     console.print(table)
@@ -188,6 +190,7 @@ def render_rate_state(
 
 
 NARROW_COLUMNS = 70
+WIDE_HEALTH = 90
 CACHE_RATIO_MINIMUM = 20
 
 
@@ -232,14 +235,14 @@ def render_jobs(
     title_width = max(16, console.width - used - 2 * columns)
 
     table = Table(box=None, pad_edge=False, header_style="bold")
-    table.add_column("#", width=row_width, justify="right", no_wrap=True)
-    table.add_column("Age", width=age_width, no_wrap=True)
+    table.add_column("#", width=row_width, justify="right", no_wrap=True, overflow="fold")
+    table.add_column("Age", width=age_width, no_wrap=True, overflow="fold")
     if not narrow:
-        table.add_column("Seen", width=seen_width, no_wrap=True)
-    table.add_column("Company", width=company_width, no_wrap=True, overflow="ellipsis")
-    table.add_column("Title", width=title_width, no_wrap=True, overflow="ellipsis")
+        table.add_column("Seen", width=seen_width, no_wrap=True, overflow="fold")
+    table.add_column("Company", width=company_width, no_wrap=True, overflow="crop")
+    table.add_column("Title", width=title_width, no_wrap=True, overflow="crop")
     if not narrow:
-        table.add_column("Location", width=location_width, no_wrap=True, overflow="ellipsis")
+        table.add_column("Location", width=location_width, no_wrap=True, overflow="crop")
 
     for position, job in enumerate(jobs, start=1):
         style, label = _age_style(job.first_seen, moment)
@@ -250,31 +253,20 @@ def render_jobs(
         cells = [Text(number, style="dim"), Text(label, style=style)]
         if not narrow:
             cells.append(Text(job.first_seen.astimezone().strftime("%Y-%m-%d")))
-        cells.append(Text(truncate(job.company, 22)))
+        cells.append(Text(_truncate(job.company, company_width)))
         cells.append(title)
         if not narrow:
-            cells.append(Text(truncate(place(job.location_raw) or "—", 22)))
+            cells.append(Text(_truncate(place(job.location_raw) or "-", location_width)))
         table.add_row(*cells)
 
     console.print(table)
     shown = len(jobs)
-    suffix = f" of {total_matching}" if total_matching > shown else ""
-    capped = f"  Only the first {addressable} are numbered." if addressable < shown else ""
+    suffix = f" of {total_matching:,}" if total_matching > shown else ""
+    capped = f"  Only the first {addressable:,} are numbered." if addressable < shown else ""
     console.print(
-        f"\n[dim]{shown} posting(s){suffix}.  "
+        f"\n[dim]{counted(shown, 'posting')}{suffix}.  "
         f"stage show 1 or stage open 1-5 acts on numbered rows.{capped}[/dim]"
     )
-
-
-def _dropped_punctuation(query: str) -> str:
-    import unicodedata
-
-    def carries_punctuation(word: str) -> bool:
-        return any(
-            unicodedata.category(character)[0] in "PS" and character != "_" for character in word
-        )
-
-    return ", ".join(word for word in query.split() if carries_punctuation(word))
 
 
 def render_search(
@@ -289,7 +281,7 @@ def render_search(
     if not listing.terms:
         console.print(
             f"[yellow]Nothing searchable in {quoted(listing.query, 40)}.[/yellow] "
-            "Search matches whole words. Letters and digits, accents optional."
+            "Search matches the start of words. Letters and digits, accents optional."
         )
         return
     if not listing.jobs:
@@ -312,7 +304,7 @@ def render_search(
         marks=marks,
     )
     console.print(f"[dim]Matched {' '.join(listing.terms)} as prefixes, newest first.[/dim]")
-    dropped = _dropped_punctuation(listing.query)
+    dropped = dropped_punctuation(listing.query)
     if dropped:
         console.print(
             f"[yellow]Punctuation is ignored, so {sanitize(dropped)} was searched as "
@@ -341,7 +333,7 @@ def render_posting(
     console.print()
 
     remote = f" ({job.remote_scope.value})" if job.remote_scope else ""
-    where = f"{_sanitize(place(job.location_raw)) or '—'} [{job.location.value}]{remote}"
+    where = f"{_sanitize(job.location_raw.strip()) or '-'} [{job.location.value}]{remote}"
 
     def state(label: str, value: str) -> None:
         if value and value != UNKNOWN_TERM:
@@ -365,20 +357,23 @@ def render_posting(
     if tracked is not None:
         _tracked_fields(console, tracked)
     console.print()
-    console.print(plain(_sanitize(job.apply_url_raw) or "—", style="blue"), soft_wrap=True)
+    console.print(plain(_sanitize(job.apply_url_raw) or "-", style="blue"), soft_wrap=True)
     console.print(plain(job.id, style="dim"), soft_wrap=True)
 
     if detail.canonical is not None:
         console.print()
         console.print(
             f"[yellow]Linked as a duplicate of[/yellow] {detail.canonical.id} "
-            f"({detail.canonical.source}) — that row is the one [bold]stage list[/bold] shows."
+            f"({detail.canonical.source}); that row is the one [bold]stage list[/bold] shows."
         )
     if detail.duplicates:
         console.print()
         console.print(f"[bold]Also published as[/bold] ({len(detail.duplicates)})")
         for other in detail.duplicates:
-            console.print(f"  {other.source:<16} {truncate(other.title_raw, 48):<48} {other.id}")
+            console.print(
+                f"  {other.source:<16} {truncate(other.title_raw, 48):<48} {other.id}",
+                soft_wrap=True,
+            )
 
     console.print()
     if job.description.strip():
@@ -485,13 +480,13 @@ def render_tracker(
     title_width = max(16, console.width - used - 2 * columns)
 
     table = Table(box=None, pad_edge=False, header_style="bold")
-    table.add_column("#", width=row_width, justify="right", no_wrap=True)
-    table.add_column("Status", width=status_width, no_wrap=True)
+    table.add_column("#", width=row_width, justify="right", no_wrap=True, overflow="fold")
+    table.add_column("Status", width=status_width, no_wrap=True, overflow="fold")
     if not narrow:
-        table.add_column("On", width=on_width, no_wrap=True)
-    table.add_column("Company", width=company_width, no_wrap=True, overflow="ellipsis")
-    table.add_column("Title", width=title_width, no_wrap=True, overflow="ellipsis")
-    table.add_column("Posting", width=state_width, no_wrap=True)
+        table.add_column("On", width=on_width, no_wrap=True, overflow="fold")
+    table.add_column("Company", width=company_width, no_wrap=True, overflow="crop")
+    table.add_column("Title", width=title_width, no_wrap=True, overflow="crop")
+    table.add_column("Posting", width=state_width, no_wrap=True, overflow="fold")
 
     for position, row in enumerate(listing.rows, start=1):
         entry = row.entry
@@ -580,15 +575,15 @@ def render_preferences(
     def listed(values: Sequence[str], separator: str = ", ") -> str:
         return separator.join(values) if values else "-"
 
-    def counted(name: str, folded: str) -> str:
+    def with_open(name: str, folded: str) -> str:
         return name if counts is None else f"{name} ({counts.get(folded, 0):,} open)"
 
     console.print(plain("Saved your preferences." if saved else "Your preferences", "bold"))
     console.print(_field("Locations", listed([v.value for v in preferences.locations])))
     console.print(_field("Roles", listed([v.value for v in preferences.roles])))
     console.print(_field("Terms", listed(list(preferences.terms))))
-    follow = [counted(e.name, e.folded) for e in preferences.follow]
-    avoid = [counted(e.name, e.folded) for e in preferences.avoid]
+    follow = [with_open(e.name, e.folded) for e in preferences.follow]
+    avoid = [with_open(e.name, e.folded) for e in preferences.avoid]
     console.print(_field("Following", listed(follow, COMPANY_SEPARATOR)))
     console.print(_field("Leaving out", listed(avoid, COMPANY_SEPARATOR)))
     about = f"{len(preferences.about):,} characters" if preferences.about else "-"
@@ -613,25 +608,21 @@ def render_preferences(
 
 
 def render_export(console: Console, result: "ExportResult") -> None:
-    console.print(export_summary(result))
+    console.print(export_summary(result), soft_wrap=True)
     for note in result.notes:
-        console.print(f"  [yellow]{sanitize(note)}[/yellow]")
-    if result.notes:
-        console.print(
-            "  [dim]Those characters are absent from the embedded font and were dropped from "
-            "the PDF only. Export json or csv to keep them.[/dim]"
-        )
+        console.print(f"  [yellow]{escape(sanitize(note))}[/yellow]")
 
 
 def export_summary(result: "ExportResult") -> str:
     truncated = (
-        f" [yellow]{result.total_matching - result.count} more match the filters — raise "
+        f" [yellow]{result.total_matching - result.count:,} more match the filters; raise "
         "--limit to include them.[/yellow]"
         if result.total_matching > result.count
         else ""
     )
     return (
-        f"Exported {result.count} posting(s) as {result.fmt.value} to "
+        f"Exported {result.count:,} posting{'' if result.count == 1 else 's'} as "
+        f"{result.fmt.value} to "
         f"[bold]{sanitize(str(result.path))}[/bold].{truncated}"
     )
 
@@ -653,9 +644,9 @@ def render_contradictions(console: Console, report: "CoverageReport") -> None:
     table = Table(
         title="Review verdicts to re-derive", box=None, pad_edge=False, header_style="bold"
     )
-    table.add_column("Company")
-    table.add_column("Verdict")
-    table.add_column("Why it no longer holds")
+    table.add_column("Company", overflow="fold")
+    table.add_column("Verdict", overflow="fold")
+    table.add_column("Why it no longer holds", overflow="fold")
     for record, reason in report.contradictions:
         table.add_row(
             sanitize(record.company), sanitize(record.disposition.value), sanitize(reason)
@@ -688,11 +679,16 @@ def render_coverage(
         for state in CoverageState
         if state in counts
     )
-    console.print(f"[bold]{report.enabled}[/bold] enabled row(s): {breakdown or 'none'}")
-    console.print(f"[dim]{report.disabled} disabled row(s) are not expected to produce.[/dim]")
+    console.print(
+        f"[bold]{report.enabled:,}[/bold] enabled {'row' if report.enabled == 1 else 'rows'}: "
+        f"{breakdown or 'none'}"
+    )
+    console.print(
+        f"[dim]{counted(report.disabled, 'disabled row')}, not expected to produce.[/dim]"
+    )
 
     notes = (
-        (CoverageState.FAILING, "have never succeeded", "a fetch problem; see stage doctor"),
+        (CoverageState.FAILING, "failed on their last fetch", "a fetch problem; see stage doctor"),
         (CoverageState.STALE, "have not succeeded lately", "stale rather than empty"),
         (CoverageState.UNROUTABLE, "have no adapter", "enabled rows nothing will ever fetch"),
         (CoverageState.NEVER_REACHED, "have not been polled yet", "no evidence either way"),
@@ -705,12 +701,12 @@ def render_coverage(
         console.print()
         console.print(
             f"[bold]No internships open right now[/bold] ({len(gaps)}) "
-            "[dim]— these boards answered, they just had nothing matching[/dim]"
+            "[dim]these boards answered, they just had nothing matching[/dim]"
         )
         table = Table(box=None, pad_edge=False, header_style="bold")
-        table.add_column("company")
-        table.add_column("board")
-        table.add_column("last success", justify="right")
+        table.add_column("company", overflow="fold")
+        table.add_column("board", overflow="fold")
+        table.add_column("last success", justify="right", overflow="fold")
         shown = gaps if limit is None else gaps[:limit]
         for row in shown:
             table.add_row(
@@ -719,7 +715,7 @@ def render_coverage(
         console.print(table)
         if len(gaps) > len(shown):
             console.print(
-                f"  [dim]… and {len(gaps) - len(shown)} more; --all lists every row[/dim]"
+                f"  [dim]... and {len(gaps) - len(shown)} more; --all lists every row[/dim]"
             )
         console.print("[dim]Expected most of the year. Internship postings are seasonal.[/dim]")
 
@@ -729,9 +725,9 @@ def render_coverage(
             f"[bold]Seen in a feed, absent from the registry[/bold] ({len(report.unregistered)})"
         )
         table = Table(box=None, pad_edge=False, header_style="bold")
-        table.add_column("company")
-        table.add_column("postings", justify="right")
-        table.add_column("sources")
+        table.add_column("company", overflow="fold")
+        table.add_column("postings", justify="right", overflow="fold")
+        table.add_column("sources", overflow="fold")
         listed = report.unregistered if limit is None else report.unregistered[:limit]
         for unknown in listed:
             table.add_row(
@@ -741,7 +737,7 @@ def render_coverage(
             )
         console.print(table)
         if len(report.unregistered) > 30:
-            console.print(f"  [dim]… and {len(report.unregistered) - 30} more[/dim]")
+            console.print(f"  [dim]... and {len(report.unregistered) - 30} more[/dim]")
         console.print(
             '[dim]After researching an employer, record it with [bold]stage classify "Company" '
             '--status feed-only --note "why"[/bold]. To identify a career-board URL without '
@@ -753,10 +749,10 @@ def render_coverage(
         if report.classifications:
             console.print(f"[bold]Reviewed feed employers[/bold] ({len(report.classifications)})")
             table = Table(box=None, pad_edge=False, header_style="bold")
-            table.add_column("company")
-            table.add_column("status")
-            table.add_column("checked", justify="right")
-            table.add_column("note")
+            table.add_column("company", overflow="fold")
+            table.add_column("status", overflow="fold")
+            table.add_column("checked", justify="right", overflow="fold")
+            table.add_column("note", overflow="fold")
             for entry in report.classifications:
                 table.add_row(
                     truncate(entry.company, 26),
@@ -785,18 +781,21 @@ def _render_coverage_note(
     names = ", ".join(truncate(row.company, 24) for row in rows[:cap])
     more = f" and {len(rows) - cap} more" if len(rows) > cap else ""
     console.print()
-    console.print(f"[bold]{len(rows)} row(s) {label}[/bold] — {note}")
+    console.print(f"[bold]{counted(len(rows), 'row')} {label}[/bold]: {note}")
     console.print(f"  [dim]{names}{more}[/dim]")
 
 
 def _ago(when: datetime | None, now: datetime) -> str:
     if when is None:
         return "[red]never[/red]"
-    return _duration((now - when).total_seconds()) + " ago"
+    seconds = (now - when).total_seconds()
+    if seconds < -60:
+        return "[yellow]in the future; check this computer's clock[/yellow]"
+    return _duration(max(seconds, 0)) + " ago"
 
 
 def _ratio(value: float | None) -> str:
-    return "[dim]—[/dim]" if value is None else f"{value:.0%}"
+    return "[dim]-[/dim]" if value is None else f"{value:.0%}"
 
 
 def render_source_health(
@@ -806,16 +805,18 @@ def render_source_health(
         console.print("[dim]No sync has run yet. Run stage sync.[/dim]")
         return
 
+    narrow = console.width < WIDE_HEALTH
     table = Table(box=None, pad_edge=False, header_style="bold")
-    table.add_column("source", no_wrap=True)
-    table.add_column("open", justify="right")
-    table.add_column("volume", no_wrap=True)
-    table.add_column("ok", justify="right")
-    table.add_column("cache", justify="right")
-    table.add_column("mid", justify="right")
-    table.add_column("slow", justify="right")
-    table.add_column("calls", justify="right")
-    table.add_column("boards")
+    table.add_column("source", no_wrap=True, overflow="fold")
+    table.add_column("open", justify="right", overflow="fold")
+    table.add_column("volume", no_wrap=True, overflow="fold")
+    table.add_column("ok", justify="right", overflow="fold")
+    if not narrow:
+        table.add_column("cache", justify="right", overflow="fold")
+        table.add_column("mid", justify="right", overflow="fold")
+        table.add_column("slow", justify="right", overflow="fold")
+        table.add_column("calls", justify="right", overflow="fold")
+    table.add_column("boards", overflow="fold")
 
     for source in sources:
         verdict = source.volume.verdict
@@ -838,54 +839,62 @@ def render_source_health(
         elif source.boards:
             boards = f"[green]{len(source.boards)} ok[/green]"
         else:
-            boards = "[dim]—[/dim]"
+            boards = "[dim]-[/dim]"
 
         rate = source.success_rate
         if rate is None:
-            success = "[dim]—[/dim]"
+            success = "[dim]-[/dim]"
         elif rate < 1.0:
             success = f"[yellow]{rate:.0%}[/yellow]"
         else:
             success = f"[green]{rate:.0%}[/green]"
 
-        table.add_row(
-            source.source,
-            str(source.stored),
-            volume,
-            success,
-            _ratio(source.cache_hit_ratio),
-            f"{source.latency_p50_ms:.0f}ms",
-            f"{source.latency_p95_ms:.0f}ms",
-            str(source.requests),
-            boards,
-        )
+        cells = [source.source, str(source.stored), volume, success]
+        if not narrow:
+            cells += [
+                _ratio(source.cache_hit_ratio),
+                f"{source.latency_p50_ms:.0f}ms",
+                f"{source.latency_p95_ms:.0f}ms",
+                str(source.requests),
+            ]
+        table.add_row(*cells, boards)
 
     console.print(table)
+    timing = (
+        ""
+        if narrow
+        else "  cache: served unchanged.\nmid and slow: typical and worst response times.  "
+        "calls: requests made."
+    )
     console.print(
-        "[dim]open: postings held now.  ok: successful fetches.  cache: served "
-        "unchanged.\nmid and slow: typical and worst response times.  calls: requests "
-        f"made.\nA board is stale after {stale_after_days} days without a success, and "
-        "failing when it has never succeeded.[/dim]"
+        f"[dim]open: postings held now.  ok: successful fetches.{timing}\nA board is stale "
+        f"after {counted(stale_after_days, 'day')} without a success, and failing when its "
+        "last fetch failed.[/dim]"
     )
 
 
-def render_workday_crawl_progress(console: Console, crawls: Sequence["WorkdayCrawl"]) -> None:
+def render_workday_crawl_progress(
+    console: Console, crawls: Sequence["WorkdayCrawl"], limit: int | None = None
+) -> None:
     console.print("[bold]Workday crawl progress[/bold]")
     if not crawls:
         console.print("[dim]No incomplete Workday crawl is retained.[/dim]")
         return
 
+    room = max(12, min(48, console.width - 31))
     table = Table(box=None, pad_edge=False, header_style="bold")
-    table.add_column("board")
-    table.add_column("next offset", justify="right")
-    table.add_column("reported total", justify="right")
-    for crawl in crawls:
+    table.add_column("board", overflow="fold")
+    table.add_column("next offset", justify="right", overflow="fold")
+    table.add_column("reported total", justify="right", overflow="fold")
+    for crawl in crawls[:limit]:
         table.add_row(
-            truncate(crawl.board, 48),
+            truncate(crawl.board, room),
             str(crawl.next_offset),
             str(crawl.total) if crawl.total is not None else "[dim]unknown[/dim]",
         )
     console.print(table)
+    if limit is not None and len(crawls) > limit:
+        console.print(f"  [dim]... and {len(crawls) - limit} more; --all lists every row[/dim]")
     console.print(
         "[dim]These boards are part-way through a paged crawl and resume next sync. "
         "Their postings stay open until a full pass finishes.[/dim]"
@@ -910,12 +919,12 @@ def render_board_health(
         return
 
     table = Table(box=None, pad_edge=False, header_style="bold")
-    table.add_column("board")
-    table.add_column("source")
-    table.add_column("state")
-    table.add_column("last success", justify="right")
-    table.add_column("fails", justify="right")
-    table.add_column("error")
+    table.add_column("board", overflow="fold")
+    table.add_column("source", overflow="fold")
+    table.add_column("state", overflow="fold")
+    table.add_column("last success", justify="right", overflow="fold")
+    table.add_column("fails", justify="right", overflow="fold")
+    table.add_column("error", overflow="fold")
 
     for board in rows:
         colour = "red" if board.state is VisitState.FAILING else "yellow"
@@ -925,7 +934,7 @@ def render_board_health(
             f"[{colour}]{board.state.value}[/{colour}]",
             _ago(board.last_success_at, now),
             str(board.consecutive_failures),
-            summary(board.last_error, 4000 if verbose else 40) or "[dim]—[/dim]",
+            summary(board.last_error, 4000 if verbose else 40) or "[dim]-[/dim]",
         )
 
     console.print(table)
@@ -944,11 +953,11 @@ def render_canary(
     verbose: bool = False,
 ) -> None:
     table = Table(box=None, pad_edge=False, header_style="bold")
-    table.add_column("source")
-    table.add_column("board")
-    table.add_column("result")
-    table.add_column("postings", justify="right")
-    table.add_column("note")
+    table.add_column("source", overflow="fold")
+    table.add_column("board", overflow="fold")
+    table.add_column("result", overflow="fold")
+    table.add_column("postings", justify="right", overflow="fold")
+    table.add_column("note", overflow="fold")
 
     for probe in report.probes:
         if probe.is_failure:
@@ -968,8 +977,8 @@ def render_canary(
             probe.source,
             truncate(probe.company, 28),
             result,
-            "[dim]—[/dim]" if probe.unchanged else str(probe.fetched),
-            summary(note, 4000 if verbose else 44) or "[dim]—[/dim]",
+            "[dim]-[/dim]" if probe.unchanged else str(probe.fetched),
+            summary(note, 4000 if verbose else 44) or "[dim]-[/dim]",
         )
 
     console.print(table)
@@ -981,14 +990,15 @@ def render_canary(
     console.print()
     if report.unreachable:
         console.print(
-            f"[yellow]{len(report.unreachable)} board(s) refused or dropped the request.[/yellow] "
+            f"[yellow]{counted(len(report.unreachable), 'board')} refused or dropped the "
+            "request.[/yellow] "
             "That is their server, not the parser. [bold]stage doctor[/bold] tracks "
             "repeat failures."
         )
     if report.passed:
         console.print(
-            f"[green]{len(report.probes) - len(report.unreachable)} board(s) still answer "
-            "the shape we parse.[/green]"
+            f"[green]Boards still answering in the shape we parse: "
+            f"{len(report.probes) - len(report.unreachable)}.[/green]"
         )
     else:
         console.print(
@@ -1002,7 +1012,9 @@ def render_repairs(console: "Console", repairs: Sequence[IntegrityRepair]) -> No
         return
     console.print("[bold]Repaired[/bold]")
     for entry in repairs:
-        console.print(f"  {entry.repaired} × {sanitize(entry.check)} — {sanitize(entry.detail)}")
+        console.print(
+            f"  {sanitize(entry.check)}: {entry.repaired} repaired ({sanitize(entry.detail)})"
+        )
     console.print()
 
 
@@ -1049,7 +1061,7 @@ def render_doctor(
     if problems:
         console.print("[bold red]Integrity[/bold red]")
         for finding in problems:
-            console.print(f"  [red]{finding.count}[/red] {finding.check} — {finding.detail}")
+            console.print(f"  [red]{finding.count}[/red] {finding.check}: {finding.detail}")
     else:
         console.print(
             f"[bold green]Integrity[/bold green] all {len(report.integrity)} checks clean"
@@ -1059,7 +1071,7 @@ def render_doctor(
     console.print("[bold]Sources[/bold]")
     render_source_health(console, report.sources, report.stale_after_days)
     console.print()
-    render_workday_crawl_progress(console, report.workday_crawls)
+    render_workday_crawl_progress(console, report.workday_crawls, limit)
 
     alerts = report.volume_alerts
     if alerts:
@@ -1074,8 +1086,8 @@ def render_doctor(
         for state in report.blocks:
             console.print(
                 f"  [red]{state.bucket}[/red] for another "
-                f"{_duration(state.blocks_remaining_s(now))} — "
-                f"{first_line(state.reason) or 'no reason recorded'}"
+                f"{_duration(state.blocks_remaining_s(now))} "
+                f"({first_line(state.reason) or 'no reason recorded'})"
             )
         console.print("  [dim]Clear one with stage sources --reset-rate-limit <bucket>.[/dim]")
 
@@ -1087,15 +1099,29 @@ def render_doctor(
         for board in shown_boards:
             console.print(
                 f"  [yellow]{truncate(board.label, 32)}[/yellow] "
-                f"({board.source}) {board.consecutive_failures} consecutive failure(s) — "
+                f"({board.source}) {counted(board.consecutive_failures, 'consecutive failure')}; "
                 f"{summary(board.last_error, 4000 if verbose else 48) or 'no error recorded'}"
             )
         if len(failing) > len(shown_boards):
             console.print(
-                f"  [dim]… and {len(failing) - len(shown_boards)} more; --all lists every row[/dim]"
+                f"  [dim]... and {len(failing) - len(shown_boards)} more; "
+                "--all lists every row[/dim]"
             )
+        breaker = sum(1 for board in failing if "BreakerOpenError" in board.last_error)
+        if breaker == len(failing):
+            advice = (
+                "Stage's own circuit breaker skipped these after their host failed; "
+                "they retry next sync."
+            )
+        elif breaker:
+            advice = (
+                f"{breaker:,} of these were skipped by Stage's own circuit breaker and retry next "
+                "sync; the rest are registry rows to fix or switch off."
+            )
+        else:
+            advice = "These are registry rows to fix or switch off."
         console.print(
-            "[dim]These are registry rows to fix or switch off."
+            f"[dim]{advice}"
             + ("" if verbose else "  --verbose prints each error in full.")
             + "[/dim]"
         )
@@ -1109,7 +1135,7 @@ def render_doctor(
             console.print(f"  [yellow]{truncate(entry, 60)}[/yellow]")
         if len(due) > len(shown_due):
             console.print(
-                f"  [dim]… and {len(due) - len(shown_due)} more; --all lists every row[/dim]"
+                f"  [dim]... and {len(due) - len(shown_due)} more; --all lists every row[/dim]"
             )
         console.print("[dim]Read each note and re-check before deciding.[/dim]")
 
@@ -1117,7 +1143,7 @@ def render_doctor(
     if not report.is_healthy:
         console.print("[red]Problems above need attention.[/red]")
     elif report.warnings:
-        console.print(f"[yellow]No errors, {report.warnings} warning(s).[/yellow]")
+        console.print(f"[yellow]No errors, {counted(report.warnings, 'warning')}.[/yellow]")
     else:
         console.print("[green]Healthy.[/green]")
 
@@ -1130,27 +1156,29 @@ def render_stats(
     limit: int | None = BOARD_PREVIEW,
 ) -> None:
     console.print(
-        f"[bold]{report.total_jobs}[/bold] canonical posting(s), "
-        f"{report.duplicates} linked as duplicate(s), "
-        f"[bold]{sum(report.quarantined.values())}[/bold] quarantined, "
-        f"{report.tombstones} tombstone(s), {report.cached_urls} cached validator(s), "
+        f"[bold]{report.total_jobs:,}[/bold] canonical "
+        f"{'posting' if report.total_jobs == 1 else 'postings'}, {report.duplicates:,} linked as "
+        f"{'a duplicate' if report.duplicates == 1 else 'duplicates'}, "
+        f"[bold]{sum(report.quarantined.values()):,}[/bold] quarantined, "
+        f"{counted(report.tombstones, 'tombstone')}, "
+        f"{counted(report.cached_urls, 'cached validator')}, "
         f"schema v{report.schema_version}"
     )
     console.print()
 
     if not report.runs:
-        console.print("[dim]No sync runs recorded yet — run stage sync.[/dim]")
+        console.print("[dim]No sync runs recorded yet. Run stage sync.[/dim]")
     else:
         table = Table(box=None, pad_edge=False, header_style="bold", title="Recent syncs")
         table.title_justify = "left"
-        table.add_column("when")
-        table.add_column("outcome")
-        table.add_column("elapsed", justify="right")
-        table.add_column("added", justify="right")
-        table.add_column("closed", justify="right")
-        table.add_column("quarantined", justify="right")
-        table.add_column("requests", justify="right")
-        table.add_column("cache", justify="right")
+        table.add_column("when", overflow="fold")
+        table.add_column("outcome", overflow="fold")
+        table.add_column("elapsed", justify="right", overflow="fold")
+        table.add_column("added", justify="right", overflow="fold")
+        table.add_column("closed", justify="right", overflow="fold")
+        table.add_column("quarantined", justify="right", overflow="fold")
+        table.add_column("requests", justify="right", overflow="fold")
+        table.add_column("cache", justify="right", overflow="fold")
         for run in report.runs:
             requests = sum(stats.requests for stats in run.sources)
             cached = sum(stats.not_modified for stats in run.sources)
@@ -1177,11 +1205,11 @@ def render_stats(
         listed = list(counts.items())
         shown = listed if limit is None else listed[:limit]
         for bucket, count in shown:
-            share = f"{count / total:.1%}" if total else "—"
+            share = f"{count / total:.1%}" if total else "-"
             console.print(f"  {truncate(bucket, 24):26} {count:>6}  [dim]{share}[/dim]")
         if len(listed) > len(shown):
             console.print(
-                f"  [dim]… and {len(listed) - len(shown)} more; --all lists every row[/dim]"
+                f"  [dim]... and {len(listed) - len(shown)} more; --all lists every row[/dim]"
             )
 
 
@@ -1191,7 +1219,11 @@ def render_quarantine(
     *,
     total_matching: int,
     reason_counts: dict[str, int],
+    filtered: bool = False,
 ) -> None:
+    if not entries and (filtered or any(reason_counts.values())):
+        console.print("[yellow]No rejected posting matches those filters.[/yellow]")
+        return
     if not entries:
         console.print(
             "[yellow]Nothing quarantined.[/yellow] Rejections appear here after "
@@ -1210,12 +1242,12 @@ def render_quarantine(
 
     table = Table(box=None, pad_edge=False, header_style="bold")
     if not narrow:
-        table.add_column("Seen", width=seen_width, no_wrap=True)
-    table.add_column("Company", width=company_width, no_wrap=True, overflow="ellipsis")
-    table.add_column("Title", width=title_width, no_wrap=True, overflow="ellipsis")
+        table.add_column("Seen", width=seen_width, no_wrap=True, overflow="fold")
+    table.add_column("Company", width=company_width, no_wrap=True, overflow="crop")
+    table.add_column("Title", width=title_width, no_wrap=True, overflow="crop")
     if not narrow:
-        table.add_column("Location", width=location_width, no_wrap=True, overflow="ellipsis")
-    table.add_column("Rejected for", width=reason_width, no_wrap=True, overflow="ellipsis")
+        table.add_column("Location", width=location_width, no_wrap=True, overflow="crop")
+    table.add_column("Rejected for", width=reason_width, no_wrap=True, overflow="crop")
 
     for entry in entries:
         title = clipped(entry.title_raw, title_width, style="dim")
@@ -1226,20 +1258,23 @@ def render_quarantine(
         cells = []
         if not narrow:
             cells.append(Text(entry.first_seen.astimezone().strftime("%m-%d")))
-        cells.append(Text(truncate(entry.company, 22)))
+        cells.append(Text(_truncate(entry.company, company_width)))
         cells.append(title)
         if not narrow:
-            cells.append(Text(truncate(place(entry.location_raw) or "—", 26)))
-        cells.append(Text(matched, style="yellow"))
+            cells.append(Text(_truncate(place(entry.location_raw) or "-", location_width)))
+        cells.append(Text(_truncate(matched, reason_width), style="yellow"))
         table.add_row(*cells)
 
     console.print(table)
     shown = len(entries)
-    suffix = f" of {total_matching}" if total_matching > shown else ""
-    console.print(f"\n[dim]{shown} rejected posting(s){suffix}.[/dim]")
+    suffix = f" of {total_matching:,}" if total_matching > shown else ""
+    console.print(f"\n[dim]{counted(shown, 'rejected posting')}{suffix}.[/dim]")
     if reason_counts:
-        breakdown = ", ".join(f"{reason} {count}" for reason, count in reason_counts.items())
-        console.print(f"[dim]Across the whole table: {breakdown}.[/dim]")
+        breakdown = ", ".join(f"{reason} {count:,}" for reason, count in reason_counts.items())
+        scope = (
+            "Matching the other filters, by reason" if filtered else "Every rejection, by reason"
+        )
+        console.print(f"[dim]{scope}: {breakdown}.[/dim]")
 
 
 def _empty_state(
@@ -1250,11 +1285,11 @@ def _empty_state(
 ) -> str:
     if last_sync_at is None:
         return (
-            "[yellow]No postings yet.[/yellow] The database is empty — run [bold]stage sync[/bold] "
+            "[yellow]No postings yet.[/yellow] The database is empty. Run [bold]stage sync[/bold] "
             "to fetch from the registry."
         )
-    age = (now - last_sync_at).days
-    when = "today" if age == 0 else f"{age} day(s) ago"
+    age = max((now - last_sync_at).days, 0)
+    when = "today" if age == 0 else f"{counted(age, 'day')} ago"
     window = f" in the last {window_days} days" if window_days is not None else ""
     if hint:
         return f"[yellow]No matching postings{window}.[/yellow] {hint}"
@@ -1282,24 +1317,37 @@ async def render_sync(
     validated = 0
     total = 0
     done = 0
+    named = 0
+    planned_by: dict[str, int] = {}
+    done_by: dict[str, int] = {}
 
-    def step() -> str:
-        return f"[dim]{done:>4}/{total}[/dim] " if total else ""
+    def step(marker: str, width: int) -> str:
+        counter = f"[dim]{done:>4}/{total}[/dim] " if total else ""
+        tag = f"[dim]{truncate(under, named):<{named}}[/dim] " if named else ""
+        return f"  {counter}{marker}{' ' * (width - len(Text.from_markup(marker)))} {tag}"
 
     async for event in events:
         if progress is not None:
             progress(event)
+        under = getattr(event, "source", "")
+        if isinstance(event, CompanyFinished | CompanyUnchanged | CompanyFailed | CompanyDeferred):
+            done_by[under] = done_by.get(under, 0) + 1
+        elif isinstance(event, SourceStarted):
+            planned_by[under] = event.companies or 1
+            total += planned_by[under]
+        elif isinstance(event, SourceFinished) and under in planned_by:
+            total += done_by.get(under, 0) - planned_by.pop(under)
         match event:
             case SyncStarted(sources=sources, companies=companies):
-                total = companies
+                named = min(15, max(map(len, sources))) if len(sources) > 1 else 0
                 source_names = ", ".join(sources)
                 console.print(
-                    f"[bold]Syncing[/bold] {companies} company board(s) via {source_names}"
+                    f"[bold]Syncing[/bold] {counted(companies, 'company board')} via {source_names}"
                 )
             case UnroutableCompanies(companies=stranded, platforms=platforms):
                 console.print(
-                    f"\n[bold red]No adapter for {', '.join(platforms)}[/bold red] — "
-                    f"{len(stranded)} enabled row(s) will never be fetched: "
+                    f"\n[bold red]No adapter for {', '.join(platforms)}.[/bold red] "
+                    f"{counted(len(stranded), 'enabled row')} will never be fetched: "
                     f"{truncate(', '.join(stranded), 70)}"
                 )
                 console.print(
@@ -1318,44 +1366,48 @@ async def render_sync(
                 else:
                     detail = ""
                 console.print(
-                    f"  {open_tag}bucket {bound.bucket}{close_tag}{shared} — "
+                    f"  {open_tag}bucket {bound.bucket}{close_tag}{shared}: "
                     f"{bound.planned} planned{detail}"
                 )
             case SourceBlocked() as blocked:
                 console.print(
-                    f"\n[bold yellow]{blocked.source} blocked[/bold yellow] — bucket "
+                    f"\n[bold yellow]{blocked.source} blocked:[/bold yellow] bucket "
                     f"[bold]{blocked.bucket}[/bold] is throttled for another "
                     f"{_duration(blocked.remaining_s)} "
                     f"(clears {blocked.blocked_until:%Y-%m-%d %H:%M UTC})"
                 )
                 reason = summary(blocked.reason, 70) if blocked.reason else "unknown"
                 console.print(
-                    f"  [dim]{blocked.consecutive_failures} consecutive failure(s): "
-                    f"{reason}. Not fetched this run — clear it with "
+                    f"  [dim]{counted(blocked.consecutive_failures, 'consecutive failure')}: "
+                    f"{reason}. Not fetched this run; clear it with "
                     f"[bold]stage sources --reset-rate-limit {blocked.bucket}[/bold].[/dim]"
                 )
             case SourceStarted(source=source, companies=companies):
-                console.print(f"\n[bold cyan]{source}[/bold cyan] — {companies} board(s)")
+                size = counted(companies, "board") if companies else "feed"
+                if named:
+                    console.print(f"  [cyan]{source}[/cyan][dim]: {size}[/dim]")
+                else:
+                    console.print(f"\n[bold cyan]{source}[/bold cyan] - {size}")
             case SourceRotated() as rotated:
                 phase = "cycle complete" if rotated.wrapped else f"resumes after {rotated.cursor}"
                 console.print(
-                    f"  [dim]rotating[/dim] — {rotated.deferred} board(s) deferred to a later "
-                    f"run on bucket {rotated.bucket} ({phase})"
+                    f"  [dim]rotating:[/dim] {counted(rotated.deferred, 'board')} deferred to "
+                    f"a later run on bucket {rotated.bucket} ({phase})"
                 )
             case SourceCapped() as capped:
                 console.print(
-                    f"  [yellow]capped[/yellow] — {capped.spent} spent by {capped.source} in 24h "
+                    f"  [yellow]capped:[/yellow] {capped.spent} spent by {capped.source} in 24h "
                     f"across its buckets, so this run may use "
                     f"{capped.allowance} of {capped.ceiling} per bucket"
                 )
             case SourceFresh() as fresh:
                 console.print(
-                    f"  [dim]fresh[/dim] — {fresh.skipped} refreshed within "
+                    f"  [dim]fresh:[/dim] {fresh.skipped} refreshed within "
                     f"{fresh.refresh_interval_h:.0f}h, {fresh.remaining} left"
                 )
             case SourceResting() as resting:
                 console.print(
-                    f"  [dim]resting[/dim] — {resting.skipped} board(s) backing off after "
+                    f"  [dim]resting:[/dim] {counted(resting.skipped, 'board')} backing off after "
                     f"repeated failures, {resting.remaining} left"
                 )
             case PlannedRequest(company=company, url=url, has_validator=cached):
@@ -1374,32 +1426,35 @@ async def render_sync(
             case CompanyFinished(
                 company=company, fetched=fetched, elapsed_ms=elapsed, degraded=degraded
             ):
-                status_marker = "[yellow]part[/yellow]" if degraded else "[green]ok[/green]  "
+                status_marker = "[yellow]part[/yellow]" if degraded else "[green]ok[/green]"
                 done += 1
                 console.print(
-                    f"  {step()}{status_marker} {sanitize(company):<28} "
-                    f"{fetched:>4} posting(s)  {elapsed:>7.0f}ms"
+                    f"{step(status_marker, 6)}{truncate(company, 24):<24} "
+                    f"{counted(fetched, 'posting'):>14} {elapsed / 1000:>6.1f}s"
                 )
                 if degraded:
-                    console.print(f"         [yellow]{truncate(degraded, 88)}[/yellow]")
+                    room = max(20, min(88, console.width - 10))
+                    console.print(f"        [yellow]{truncate(degraded, room)}[/yellow]")
             case CompanyUnchanged(company=company, elapsed_ms=elapsed):
                 done += 1
                 console.print(
-                    f"  {step()}[cyan]304[/cyan]  {sanitize(company):<28} "
-                    f"{'unchanged':>14}  {elapsed:>7.0f}ms"
+                    f"{step('[cyan]304[/cyan]', 6)}{truncate(company, 24):<24} "
+                    f"{'unchanged':>14} {elapsed / 1000:>6.1f}s"
                 )
             case CompanyFailed(source=source, company=company, error=error, elapsed_ms=elapsed):
                 failures.append((source, company, error))
                 done += 1
+                head = step("[red]fail[/red]", 6)
+                room = max(14, min(60, console.width - Text.from_markup(head).cell_len - 33))
                 console.print(
-                    f"  {step()}[red]fail[/red] {sanitize(company):<28} "
-                    f"{summary(error, 60)}  {elapsed:>7.0f}ms"
+                    f"{head}{truncate(company, 24):<24} {summary(error, room)} "
+                    f"{elapsed / 1000:>6.1f}s"
                 )
             case CompanyDeferred(company=company):
                 done += 1
                 console.print(
-                    f"  {step()}[yellow]budget[/yellow] {sanitize(company):<26} "
-                    f"{'not attempted, deferred to the next run':>40}"
+                    f"{step('[yellow]budget[/yellow]', 6)}{truncate(company, 24):<24} "
+                    f"{'not attempted':>14}"
                 )
             case SourceFailed(source=source, error=error):
                 failures.append((source, source, error))
@@ -1408,15 +1463,19 @@ async def render_sync(
                 _render_source_summary(console, finished)
             case SyncFinished(dry_run=True) as finished:
                 outcome = finished.outcome
+                carry = "carries" if validated == 1 else "carry"
                 console.print(
-                    f"\n[bold]dry run[/bold] — {planned} request(s) planned, none sent. "
-                    f"{validated} carry a validator, so a real run would likely transfer "
-                    f"{planned - validated} full response(s)."
+                    f"\n[bold]dry run:[/bold] {counted(planned, 'request')} planned, none sent. "
+                    f"{validated:,} {carry} a validator, so a real run would likely transfer "
+                    f"{counted(planned - validated, 'full response')}."
                 )
                 if outcome is not SyncOutcome.SUCCESS:
+                    culprits = (
+                        ", ".join(finished.failed_sources) or "a registry row no adapter routes"
+                    )
                     console.print(
-                        "[red]Pre-flight failed[/red] on a fault that needs no network to "
-                        "see. Fix it before running the real sync."
+                        f"[red]Pre-flight failed[/red] for {sanitize(culprits)}, on a fault that "
+                        "needs no network to see. Fix it before running the real sync."
                     )
             case SyncFinished() as finished:
                 outcome = finished.outcome
@@ -1429,16 +1488,16 @@ async def render_sync(
                 purge_note = f", {finished.purged} purged" if finished.purged else ""
                 quarantine_note = ""
                 if finished.quarantined:
-                    quarantine_note = f", [yellow]{finished.quarantined} quarantined[/yellow]"
+                    quarantine_note = f", {finished.quarantined:,} rejected"
                 reason_note = (
                     f" [dim]({sanitize(finished.partial_reason)})[/dim]"
                     if finished.partial_reason
                     else ""
                 )
                 console.print(
-                    f"\n[bold]{finished.outcome.value}[/bold]{reason_note} — "
-                    f"{finished.added} added, {finished.updated} updated, "
-                    f"{finished.closed} closed"
+                    f"\n[bold]{finished.outcome.value}[/bold]{reason_note}: "
+                    f"{finished.added:,} added, {finished.updated:,} updated, "
+                    f"{finished.closed:,} closed"
                     f"{quarantine_note}{purge_note}{cache_note}"
                 )
                 if finished.quarantined:
@@ -1452,7 +1511,8 @@ async def render_sync(
     if failures:
         console.print("\n[bold red]Failed sources[/bold red]")
         for source, company, error in failures:
-            console.print(f"  {source}/{sanitize(company)}: {first_line(error)}")
+            console.print(f"  {source}/{sanitize(company)}")
+            console.print(Padding(Text(_first_line(error)), (0, 0, 0, 6)))
         console.print(
             "\n[dim]Re-run one source with [bold]stage sync --source <name>[/bold] "
             "to reproduce.[/dim]"
@@ -1502,8 +1562,9 @@ async def render_discovery(
         match event:
             case DiscoveryStarted(companies=names, platforms=platforms, probes_planned=planned):
                 console.print(
-                    f"[bold]Probing[/bold] {len(names)} name(s) across {len(platforms)} "
-                    f"platform(s) — {planned} probe(s), plus one board-metadata request "
+                    f"[bold]Probing[/bold] {counted(len(names), 'name')} across "
+                    f"{counted(len(platforms), 'platform')}: {counted(planned, 'probe')}, "
+                    "plus one board-metadata request "
                     "per positive"
                 )
                 console.print(
@@ -1515,7 +1576,7 @@ async def render_discovery(
             case CandidateSkipped(company=company, slug=slug, reason=reason):
                 console.print(
                     f"  [dim]skip[/dim]   {truncate(company, 22):<22} "
-                    f"[dim]{sanitize(slug)} — {sanitize(reason)}[/dim]"
+                    f"[dim]{sanitize(slug)}: {sanitize(reason)}[/dim]"
                 )
             case UrlResolved(candidate=candidate, detail=detail):
                 resolved = True
@@ -1523,7 +1584,7 @@ async def render_discovery(
                 if display_name is None:
                     note = (
                         f"{detail + '. ' if detail else ''}Set the display name with "
-                        "--name — the slug is a board token, not a company name"
+                        "--name; the slug is a board token, not a company name"
                     )
                 show_entry(display_name or candidate.slug, candidate, note)
             case UrlUnrecognized(url=url, detail=detail):
@@ -1532,7 +1593,7 @@ async def render_discovery(
                 _show_custom_skeleton(console, url, display_name)
             case PlatformProbed(result=result) if result.verdict is not ProbeVerdict.MISS:
                 style, label = _VERDICT_STYLE[result.verdict]
-                count = "" if result.job_count is None else f"{result.job_count:>5} job(s)"
+                count = "" if result.job_count is None else f"{counted(result.job_count, 'job')}"
                 console.print(
                     f"  [{style}]{label:<6}[/{style}] {truncate(result.company, 22):<22} "
                     f"{result.candidate.label:<34} {count}"
@@ -1590,18 +1651,19 @@ def _render_discovery_summary(
 ) -> None:
     for warning in event.ceiling_hit:
         console.print(
-            f"\n[bold red]Per-host ceiling reached[/bold red] — {sanitize(warning)}. "
+            f"\n[bold red]Per-host ceiling reached:[/bold red] {sanitize(warning)}. "
             "Probing stopped for that platform; split the batch across runs."
         )
     for platform, count in event.non_json:
         console.print(
-            f"\n[yellow]{platform}: all {count} probe(s) returned non-JSON.[/yellow] "
+            f"\n[yellow]{platform}: no probe returned JSON "
+            f"({counted(count, 'probe')} sent).[/yellow] "
             "Open one URL by hand before trusting a miss here."
         )
     console.print(
-        f"\n[bold]{len(event.matched)} match(es)[/bold], {len(event.unverified)} needing a "
-        f"manual check, {len(event.rejected)} rejected, {event.missed} miss(es), "
-        f"{event.errors} error(s) in {event.requests} request(s) "
+        f"\n[bold]{len(event.matched)} matched[/bold], {len(event.unverified)} needing a "
+        f"manual check, {len(event.rejected)} rejected, {event.missed} missed, "
+        f"{counted(event.errors, 'error')} in {counted(event.requests, 'request')} "
         f"({event.elapsed_ms / 1000:.1f}s)"
     )
     for result in () if quiet else event.matched:
@@ -1622,30 +1684,34 @@ def _render_discovery_summary(
 
 
 def _render_source_summary(console: Console, event: SourceFinished) -> None:
-    parts = [
-        f"{event.added} added",
-        f"{event.updated} updated",
-        f"{event.closed} closed",
+    if not (event.added or event.updated or event.closed or event.quarantined or event.requests):
+        return
+    counts = [
+        f"{event.added:,} added",
+        f"{event.updated:,} updated",
+        f"{event.closed:,} closed",
     ]
     if event.quarantined:
-        parts.append(f"[yellow]{event.quarantined} quarantined[/yellow]")
+        counts.append(f"{event.quarantined:,} rejected")
+    if event.tightenings:
+        counts.append(f"[yellow]{counted(event.tightenings, 'rate tightening')}[/yellow]")
+    console.print(
+        f"  [bold cyan]{event.source}[/bold cyan] done in {event.elapsed_ms / 1000:.1f}s: "
+        f"{', '.join(counts)}"
+    )
+    timings = []
     if event.requests:
-        parts.append(f"{event.not_modified}/{event.requests} cached")
-        parts.append(f"p50 {event.latency_p50_ms:.0f}ms")
-        parts.append(f"p95 {event.latency_p95_ms:.0f}ms")
+        timings.append(f"{event.not_modified:,}/{event.requests:,} cached")
+        timings.append(f"p50 {event.latency_p50_ms:.0f}ms, p95 {event.latency_p95_ms:.0f}ms")
     if event.fetch_ms or event.normalize_ms or event.write_ms:
-        parts.extend(
-            (
-                f"fetch {event.fetch_ms / 1000:.1f}s",
-                f"process {event.normalize_ms / 1000:.1f}s",
-                f"write {event.write_ms / 1000:.1f}s",
-            )
+        timings.append(
+            f"fetch {event.fetch_ms / 1000:.1f}s, process {event.normalize_ms / 1000:.1f}s, "
+            f"write {event.write_ms / 1000:.1f}s"
         )
     if event.retries:
-        parts.append(f"{event.retries} retried")
-    if event.tightenings:
-        parts.append(f"[yellow]{event.tightenings} rate tightening(s)[/yellow]")
-    console.print(f"  [dim]{', '.join(parts)} in {event.elapsed_ms / 1000:.1f}s[/dim]")
+        timings.append(f"{event.retries} retried")
+    if timings:
+        console.print(f"    [dim]{'; '.join(timings)}[/dim]")
 
 
 def _write_request_log(stream: TextIO | None, record: RequestLogged) -> None:

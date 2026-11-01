@@ -13,8 +13,11 @@ from stage.cli.options import (
     _count,
     _database,
     _parse_enum,
+    _print_error,
     _print_failure,
+    _refuse,
     _require_enum,
+    _validated_source,
     app,
     run_async,
 )
@@ -144,8 +147,7 @@ def classify(
     console = terminal()
     if clear:
         if disposition is not None or note is not None or url is not None:
-            console.print("[red]--clear cannot be combined with --status, --note, or --url.[/red]")
-            raise typer.Exit(code=2)
+            _refuse("[red]--clear cannot be combined with --status, --note, or --url.[/red]")
         try:
 
             async def clear_entry() -> bool:
@@ -157,16 +159,15 @@ def classify(
             _print_failure(exc)
             raise typer.Exit(code=2) from exc
         if not removed:
-            console.print("[yellow]No matching classification was recorded.[/yellow]")
+            _print_error("[yellow]No matching classification was recorded.[/yellow]")
             raise typer.Exit(code=1)
         console.print("Classification removed.")
         return
     if disposition is None or note is None:
         options = ", ".join(item.value for item in CoverageDisposition)
-        console.print(
-            f"[red]Pass both --status and --note, or pass --clear.[/red]\n"
-            f"--status must be one of: {options}"
-        )
+        _print_error("[red]Pass both --status and --note, or pass --clear.[/red]")
+        if disposition is None:
+            _print_error(f"--status must be one of: {options}")
         raise typer.Exit(code=2)
     try:
         entry = CoverageClassification(
@@ -210,7 +211,6 @@ def doctor(
 
     from stage.cli.render import (
         BOARD_PREVIEW,
-        failure,
         render_app_health,
         render_doctor,
         render_repairs,
@@ -230,7 +230,7 @@ def doctor(
     try:
         rows = load_companies(registry)
     except RegistryError as exc:
-        console.print(failure(exc))
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
 
     async def run() -> tuple[DoctorReport, tuple[IntegrityRepair, ...]]:
@@ -341,6 +341,7 @@ def sources(
     stale_days: StaleDaysOption = None,
     as_json: JsonOption = False,
     db: DatabaseOption = None,
+    registry: RegistryOption = None,
 ) -> None:
     from datetime import UTC, datetime
 
@@ -352,6 +353,8 @@ def sources(
         terminal,
     )
     from stage.cli.serialize import emit, sources_to_json
+    from stage.companies import RegistryError, load_companies
+    from stage.domain.text import counted
     from stage.services.health import DoctorReport
     from stage.services.health import doctor as run_doctor
     from stage.services.maintenance import RateStateView, rate_state
@@ -361,13 +364,15 @@ def sources(
     now = datetime.now(UTC)
 
     if reset_rate_limit is not None and reset_all_rate_limits:
-        console.print("[red]Pass either --reset-rate-limit BUCKET or --reset-all, not both.[/red]")
-        raise typer.Exit(code=2)
+        _refuse("[red]Pass either --reset-rate-limit BUCKET or --reset-all, not both.[/red]")
     if clear_cache is not None and clear_cache_all:
-        console.print(
-            "[red]Pass either --clear-cache <source> or --clear-cache-all, not both.[/red]"
-        )
-        raise typer.Exit(code=2)
+        _refuse("[red]Pass either --clear-cache <source> or --clear-cache-all, not both.[/red]")
+    try:
+        clear_cache = _validated_source(clear_cache)
+        rows = load_companies(registry)
+    except (InvalidOptionError, RegistryError) as exc:
+        _print_failure(exc)
+        raise typer.Exit(code=2) from exc
 
     async def run() -> tuple[RateStateView, DoctorReport]:
         async with open_repository(_database(db)) as repository:
@@ -379,26 +384,30 @@ def sources(
                 clear_cache_all=clear_cache_all,
             )
             report = (
-                await run_doctor(repository, now=now)
+                await run_doctor(repository, now=now, companies=rows)
                 if stale_days is None
-                else await run_doctor(repository, now=now, stale_after_days=stale_days)
+                else await run_doctor(
+                    repository, now=now, stale_after_days=stale_days, companies=rows
+                )
             )
             return view, report
 
     view, report = run_async(run())
     cleared, states = view.cleared, view.states
 
-    if view.validators_cleared or clear_cache is not None or clear_cache_all:
+    if not as_json and (view.validators_cleared or clear_cache is not None or clear_cache_all):
         target = "every source" if clear_cache_all else f"source {clear_cache!r}"
-        console.print(f"Cleared {view.validators_cleared} saved HTTP validator(s) for {target}.")
+        console.print(
+            f"Cleared {counted(view.validators_cleared, 'saved HTTP validator')} for {target}."
+        )
         console.print("[dim]The next sync will fully refetch those sources.[/dim]")
 
-    if reset_rate_limit is not None or reset_all_rate_limits:
+    if not as_json and (reset_rate_limit is not None or reset_all_rate_limits):
         target = (
             "every host bucket" if reset_all_rate_limits else f"host bucket {reset_rate_limit!r}"
         )
         if cleared:
-            console.print(f"Reset rate-limit state for {target} ({cleared} row(s)).")
+            console.print(f"Reset rate-limit state for {target} ({counted(cleared, 'row')}).")
         else:
             console.print(f"[yellow]No stored rate state for {target}.[/yellow]")
 
@@ -443,7 +452,7 @@ def quarantine(
     ] = None,
     company: Annotated[
         str | None,
-        typer.Option("--company", metavar="NAME", help="Filter by exact employer name"),
+        typer.Option("--company", metavar="NAME", help="One employer, in any case"),
     ] = None,
     show_all: Annotated[
         bool,
@@ -454,7 +463,7 @@ def quarantine(
         typer.Option(
             "--limit",
             metavar="N",
-            click_type=_count(1, None),
+            click_type=_count(1),
             help="Maximum number of rejected postings to show; --all shows every match",
         ),
     ] = 50,
@@ -472,7 +481,7 @@ def quarantine(
     try:
         filters = QuarantineFilters(
             reason=_parse_enum(reason, RejectionReason, "--reason"),
-            source=source,
+            source=_validated_source(source),
             company=company,
             limit=None if show_all else limit,
         )
@@ -495,4 +504,5 @@ def quarantine(
         listing.entries,
         total_matching=listing.total_matching,
         reason_counts=listing.reason_counts,
+        filtered=bool(filters.reason or filters.source or filters.company),
     )

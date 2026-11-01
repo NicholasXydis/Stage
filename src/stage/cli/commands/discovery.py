@@ -14,6 +14,7 @@ from stage.cli.options import (
     _lock_path,
     _parse_enum,
     _print_failure,
+    _refuse,
     _require_enum,
     app,
     run_async,
@@ -136,7 +137,7 @@ def discover(
     from contextlib import ExitStack
 
     from stage.cli.logfile import open_request_log
-    from stage.cli.render import failure, plain, render_discovery, terminal
+    from stage.cli.render import plain, render_discovery, terminal
     from stage.cli.runlock import AnotherRunInProgressError, single_run
     from stage.cli.schedule_state import ScheduleStateWriter
     from stage.companies import RegistryError
@@ -153,32 +154,28 @@ def discover(
     progress = scheduled_state.discovery_event if scheduled_state is not None else None
 
     if url is not None and companies:
-        console.print("[red]Pass either company names or --url, not both.[/red]")
-        raise typer.Exit(code=2)
+        _refuse("[red]Pass either company names or --url, not both.[/red]")
     if verify and unregistered:
-        console.print("[red]Pass either --verify or --unregistered, not both.[/red]")
-        raise typer.Exit(code=2)
+        _refuse("[red]Pass either --verify or --unregistered, not both.[/red]")
+    if url is not None and (verify or unregistered):
+        flag = "--verify" if verify else "--unregistered"
+        _refuse(f"[red]Pass either --url or {flag}, not both.[/red]")
     if direct_only and not unregistered:
-        console.print("[red]--direct-only requires --unregistered.[/red]")
-        raise typer.Exit(code=2)
+        _refuse("[red]--direct-only requires --unregistered.[/red]")
     if adopt_unnamed and not direct_only:
-        console.print(
-            "[red]--adopt-unnamed requires --direct-only[/red] — the token must come from an "
+        _refuse(
+            "[red]--adopt-unnamed requires --direct-only[/red]; the token must come from an "
             "apply URL."
         )
-        raise typer.Exit(code=2)
     if apply and not (verify or unregistered):
-        console.print("[red]--apply only means something with --verify or --unregistered.[/red]")
-        raise typer.Exit(code=2)
+        _refuse("[red]--apply only means something with --verify or --unregistered.[/red]")
     if platform and exclude:
-        console.print("[red]Pass either --platform or --exclude, not both.[/red]")
-        raise typer.Exit(code=2)
+        _refuse("[red]Pass either --platform or --exclude, not both.[/red]")
     if not verify and not unregistered and url is None and not companies:
-        console.print(
+        _refuse(
             "[red]Nothing to discover.[/red] Pass a company name, a careers page with "
             "[bold]--url[/bold], or [bold]--verify[/bold] to re-probe the registry."
         )
-        raise typer.Exit(code=2)
 
     try:
         size = _parse_enum(expect_size, EmployerSize, "--expect-size")
@@ -197,6 +194,7 @@ def discover(
     async def run() -> object:
         from datetime import UTC, datetime
 
+        from stage.domain.text import counted
         from stage.services.discover import probe_companies, resolve_careers_url
 
         today = datetime.now(UTC).date()
@@ -230,7 +228,8 @@ def discover(
                     target, (ok, off) = update_registry(update, registry)
                     console.print(
                         plain(
-                            f"\napplied — {ok} row(s) verified, {off} disabled, written to {target}"
+                            f"\napplied: {counted(ok, 'row')} verified, {off} disabled, "
+                            f"written to {target}"
                         )
                     )
                 return isinstance(outcome, DiscoveryFinished) and bool(outcome.matched)
@@ -274,7 +273,7 @@ def discover(
         try:
             checked = load_registry(registry)
         except RegistryError as exc:
-            console.print(failure(exc))
+            _print_failure(exc)
             raise typer.Exit(code=2) from exc
 
     try:
@@ -286,9 +285,9 @@ def discover(
     except AnotherRunInProgressError as exc:
         if scheduled_state is not None:
             scheduled_state.blocked(str(exc))
-        console.print(failure(exc))
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
     except (RegistryError, NoMatchingCompanyError) as exc:
-        console.print(failure(exc))
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
     raise typer.Exit(code=0 if resolved or unregistered else 1)

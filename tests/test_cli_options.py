@@ -84,7 +84,7 @@ def test_sources_rejects_conflicting_rate_limit_resets() -> None:
     )
 
     assert result.exit_code == 2
-    assert "not both" in result.stdout
+    assert "not both" in result.stderr
 
 
 def test_sources_rejects_conflicting_cache_resets() -> None:
@@ -94,7 +94,7 @@ def test_sources_rejects_conflicting_cache_resets() -> None:
     )
 
     assert result.exit_code == 2
-    assert "not both" in result.stdout
+    assert "not both" in result.stderr
 
 
 def test_sources_json_contains_every_report_section(tmp_path: Path) -> None:
@@ -115,14 +115,14 @@ def test_purge_dry_run_reports_no_removal(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["purge", "--dry-run", "--db", str(tmp_path / "stage.db")])
 
     assert result.exit_code == 0
-    assert "No postings removed" in result.stdout
+    assert "purge would remove nothing" in result.stdout
 
 
 def test_discover_direct_only_requires_unregistered() -> None:
     result = CliRunner().invoke(app, ["discover", "--direct-only"])
 
     assert result.exit_code == 2
-    assert "requires --unregistered" in result.stdout
+    assert "requires --unregistered" in result.stderr
 
 
 def test_discover_rejects_platform_and_exclude_together() -> None:
@@ -132,7 +132,7 @@ def test_discover_rejects_platform_and_exclude_together() -> None:
     )
 
     assert result.exit_code == 2
-    assert "not both" in result.stdout
+    assert "not both" in result.stderr
 
 
 def test_posting_ids_are_not_rewritten_as_emoji(tmp_path: Path) -> None:
@@ -141,7 +141,7 @@ def test_posting_ids_are_not_rewritten_as_emoji(tmp_path: Path) -> None:
         ["show", "lever:id:5", "--db", str(tmp_path / "s.db")],
     )
 
-    assert "lever:id:5" in result.stdout
+    assert "lever:id:5" in result.stderr
     assert "🆔" not in result.stdout
 
 
@@ -203,6 +203,45 @@ def test_a_file_that_is_not_a_database_is_reported_without_a_traceback(
     assert "cannot be read" in messages[0]
 
 
+@pytest.mark.parametrize(
+    ("problem", "said", "never"),
+    [
+        ("database is locked", "Another Stage process is using the database", "move the"),
+        ("attempt to write a readonly database", "Check that the file and its folder", "move the"),
+        ("unable to open database file", "Check that the file and its folder", "move the"),
+        ("file is not a database", "move the file aside", "remove"),
+    ],
+)
+def test_each_database_problem_gets_advice_that_fits_it(
+    problem: str, said: str, never: str
+) -> None:
+    import sqlite3
+
+    from stage.cli.options import database_problem
+
+    advice = database_problem(sqlite3.OperationalError(problem))
+
+    assert said in advice and never not in advice, "a locked database must never be deleted"
+
+
+def test_the_tui_refuses_a_damaged_database_before_it_starts(tmp_path: Path) -> None:
+    import subprocess
+    import sys
+
+    damaged = tmp_path / "stage.db"
+    damaged.write_bytes(b"SQLite format 3\x00" + b"\x00" * 200)
+    done = subprocess.run(
+        [sys.executable, "-m", "stage", "tui", "--db", str(damaged)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        stdin=subprocess.DEVNULL,
+    )
+
+    assert done.returncode == 2 and "cannot be read" in done.stderr, done.stderr[-400:]
+    assert "Traceback" not in done.stdout + done.stderr
+
+
 def _sample_job(index: int) -> "Job":
     from datetime import UTC, datetime
 
@@ -247,6 +286,51 @@ def test_the_posting_table_never_overflows_the_terminal(width: int) -> None:
     assert longest <= width
 
 
+def test_brackets_in_a_company_or_place_print_without_a_backslash() -> None:
+    import io
+    from dataclasses import replace
+
+    from rich.console import Console
+
+    from stage.cli.render import render_jobs
+
+    buffer = io.StringIO()
+    job = replace(_sample_job(1), company="[Remote] Acme", location_raw="[HQ] Montreal")
+    render_jobs(
+        Console(file=buffer, width=160, emoji=False),
+        [job],
+        total_matching=1,
+        window_days=None,
+        last_sync_at=None,
+    )
+
+    printed = buffer.getvalue()
+    assert "[Remote] Acme" in printed and "[HQ] Montreal" in printed
+    assert "\\[" not in printed
+
+
+def test_sanitize_drops_characters_that_reorder_text_on_screen() -> None:
+    from stage.domain.text import sanitize
+
+    flipped = "Intern " + chr(0x202E) + "gnp.exe" + chr(0x2066) + chr(0x200F) + chr(0x061C)
+
+    assert sanitize(flipped) == "Intern gnp.exe"
+    assert sanitize("a" + chr(0x200D) + "b") == "a" + chr(0x200D) + "b", "joiners stay"
+
+
+def test_an_empty_filtered_quarantine_says_the_filter_matched_nothing() -> None:
+    import io
+
+    from rich.console import Console
+
+    from stage.cli.render import render_quarantine
+
+    buffer = io.StringIO()
+    render_quarantine(Console(file=buffer, width=100), [], total_matching=0, reason_counts={"x": 3})
+
+    assert "No rejected posting matches those filters." in buffer.getvalue()
+
+
 def test_a_narrow_terminal_drops_the_optional_columns() -> None:
     import io
 
@@ -275,8 +359,8 @@ def test_classify_without_a_status_lists_the_valid_ones() -> None:
     result = CliRunner().invoke(app, ["classify", "Meta"])
 
     assert result.exit_code == 2
-    assert "feed-only" in result.stdout
-    assert "adapter-candidate" in result.stdout
+    assert "feed-only" in result.stderr
+    assert "adapter-candidate" in result.stderr
 
 
 @pytest.mark.parametrize("width", [50, 60, 80, 120, 200])
@@ -468,28 +552,50 @@ def test_discover_refuses_names_and_a_url_together() -> None:
     result = CliRunner().invoke(app, ["discover", "Acme", "--url", "https://example.com"])
 
     assert result.exit_code == 2
-    assert "not both" in result.stdout
+    assert "not both" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("args", "pointer"),
+    [
+        (["list", "--role", "swe", "--role", "data"], "save several with stage prefs"),
+        (["search", "intern", "--company", "a", "--company", "b"], "stage prefs --follow"),
+    ],
+)
+def test_a_repeated_filter_is_refused_with_a_pointer_to_prefs(
+    args: list[str], pointer: str
+) -> None:
+    result = CliRunner().invoke(app, args)
+
+    assert result.exit_code == 2
+    assert pointer in result.stderr
+
+
+def test_the_same_filter_given_twice_is_read_once() -> None:
+    result = CliRunner().invoke(app, ["list", "--role", "swe", "--role", "swe"])
+
+    assert result.exit_code == 0
 
 
 def test_discover_refuses_verify_and_unregistered_together() -> None:
     result = CliRunner().invoke(app, ["discover", "--verify", "--unregistered"])
 
     assert result.exit_code == 2
-    assert "not both" in result.stdout
+    assert "not both" in result.stderr
 
 
 def test_discover_refuses_apply_without_a_target() -> None:
     result = CliRunner().invoke(app, ["discover", "Acme", "--apply"])
 
     assert result.exit_code == 2
-    assert "--apply" in result.stdout
+    assert "--apply" in result.stderr
 
 
 def test_discover_refuses_adopt_unnamed_without_direct_only() -> None:
     result = CliRunner().invoke(app, ["discover", "--unregistered", "--adopt-unnamed"])
 
     assert result.exit_code == 2
-    assert "--adopt-unnamed" in result.stdout
+    assert "--adopt-unnamed" in result.stderr
 
 
 def test_discover_refuses_platform_and_exclude_together() -> None:
@@ -498,21 +604,21 @@ def test_discover_refuses_platform_and_exclude_together() -> None:
     )
 
     assert result.exit_code == 2
-    assert "not both" in result.stdout
+    assert "not both" in result.stderr
 
 
 def test_discover_with_nothing_to_do_explains_itself() -> None:
     result = CliRunner().invoke(app, ["discover"])
 
     assert result.exit_code == 2
-    assert "Nothing to discover" in result.stdout
+    assert "Nothing to discover" in result.stderr
 
 
 def test_classify_refuses_clear_with_other_options() -> None:
     result = CliRunner().invoke(app, ["classify", "Acme", "--clear", "--status", "feed-only"])
 
     assert result.exit_code == 2
-    assert "--clear" in result.stdout
+    assert "--clear" in result.stderr
 
 
 def test_classify_reports_a_missing_decision(tmp_path: Path) -> None:
@@ -521,21 +627,21 @@ def test_classify_reports_a_missing_decision(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 1
-    assert "No matching classification" in result.stdout
+    assert "No matching classification" in result.stderr
 
 
 def test_an_unknown_role_names_the_valid_ones(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["list", "--role", "wizard", "--db", str(tmp_path / "r.db")])
 
     assert result.exit_code == 2
-    assert "swe" in result.stdout
+    assert "swe" in result.stderr
 
 
 def test_an_unknown_export_format_names_the_valid_ones(tmp_path: Path) -> None:
     result = CliRunner().invoke(app, ["export", "--format", "xlsx", "--db", str(tmp_path / "e.db")])
 
     assert result.exit_code == 2
-    assert "csv" in result.stdout
+    assert "csv" in result.stderr
 
 
 def test_showing_a_missing_posting_suggests_where_to_look(tmp_path: Path) -> None:
@@ -544,7 +650,7 @@ def test_showing_a_missing_posting_suggests_where_to_look(tmp_path: Path) -> Non
     )
 
     assert result.exit_code == 1
-    assert "stage list" in result.stdout
+    assert "stage list" in result.stderr
 
 
 def test_opening_a_missing_posting_fails_cleanly(tmp_path: Path) -> None:
@@ -575,7 +681,7 @@ def test_schedule_status_refuses_watch_with_json() -> None:
     result = CliRunner().invoke(app, ["schedule", "status", "--watch", "--json"])
 
     assert result.exit_code == 2
-    assert "--watch" in result.stdout
+    assert "--watch" in result.stderr
 
 
 def test_sync_refuses_source_and_exclude_together(tmp_path: Path) -> None:
@@ -585,7 +691,7 @@ def test_sync_refuses_source_and_exclude_together(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 2
-    assert "not both" in result.stdout
+    assert "not both" in result.stderr
 
 
 def test_rescreen_on_an_empty_database_says_so(tmp_path: Path) -> None:
@@ -627,21 +733,21 @@ def test_export_refuses_an_existing_file_without_force(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 2
-    assert "--force" in result.stdout
+    assert "--force" in result.stderr
 
 
 @pytest.mark.parametrize("query", ["c++", "c#", "node.js", ".net"])
 def test_a_query_losing_punctuation_says_so(query: str) -> None:
-    from stage.cli.render import _dropped_punctuation
+    from stage.domain.text import dropped_punctuation
 
-    assert _dropped_punctuation(query) == query
+    assert dropped_punctuation(query) == query
 
 
 @pytest.mark.parametrize("query", ["python", "cafe", "machine learning", "summer 2027"])
 def test_a_clean_query_warns_about_nothing(query: str) -> None:
-    from stage.cli.render import _dropped_punctuation
+    from stage.domain.text import dropped_punctuation
 
-    assert _dropped_punctuation(query) == ""
+    assert dropped_punctuation(query) == ""
 
 
 def test_all_lifts_the_row_cap_on_list() -> None:
@@ -771,7 +877,7 @@ def test_open_refuses_more_tabs_than_it_should(tmp_path: Path) -> None:
 
     rows = [str(index) for index in range(1, MAX_OPEN_AT_ONCE + 2)]
     result = CliRunner().invoke(app, ["open", *rows, "--db", str(tmp_path / "o.db")])
-    output = ANSI_ESCAPE.sub("", result.stdout)
+    output = ANSI_ESCAPE.sub("", result.stderr)
 
     assert result.exit_code == 2
     assert "--print" in output
@@ -845,9 +951,9 @@ def test_open_counts_the_rows_a_range_expands_to(tmp_path: Path) -> None:
 
     assert MAX_OPEN_AT_ONCE == 50
     later = CliRunner().invoke(app, ["open", "50-100", "--db", db])
-    assert "stage open 50-99" in " ".join(ANSI_ESCAPE.sub("", later.stdout).split())
+    assert "stage open 50-99" in " ".join(ANSI_ESCAPE.sub("", later.stderr).split())
     assert wide.exit_code == 2
-    said = " ".join(ANSI_ESCAPE.sub("", wide.stdout).split())
+    said = " ".join(ANSI_ESCAPE.sub("", wide.stderr).split())
     assert f"open {MAX_OPEN_AT_ONCE + 1} tabs" in said
     assert f"stage open 1-{MAX_OPEN_AT_ONCE}" in said
     assert backwards.exit_code == 2
@@ -952,8 +1058,8 @@ def test_showing_all_rows_returns_more_than_one_page(tmp_path: Path) -> None:
     paged = ANSI_ESCAPE.sub("", runner.invoke(app, ["list", "--limit", "10", "--db", db]).stdout)
     every = ANSI_ESCAPE.sub("", runner.invoke(app, ["list", "--all", "--db", db]).stdout)
 
-    assert "10 posting(s) of 60" in paged
-    assert "60 posting(s)" in every
+    assert "10 postings of 60" in paged
+    assert "60 postings" in every
 
 
 def test_a_listing_longer_than_the_store_numbers_only_what_it_kept(tmp_path: Path) -> None:
@@ -977,8 +1083,8 @@ def test_showing_all_no_longer_widens_the_window(tmp_path: Path) -> None:
         "", runner.invoke(app, ["list", "--all", "--last", "0", "--db", db]).stdout
     )
 
-    assert "4 posting(s)" in every
-    assert "6 posting(s)" in unwindowed
+    assert "4 postings" in every
+    assert "6 postings" in unwindowed
 
 
 def test_the_lookback_flag_turns_the_window_off_at_zero() -> None:
@@ -1051,6 +1157,22 @@ def test_every_constrained_filter_names_its_valid_values(tmp_path: Path) -> None
         ), flag
 
 
+@pytest.mark.parametrize("source", ["simplify", "speedyapply", "greenhouse"])
+def test_a_feed_is_a_source_like_any_board_platform(tmp_path: Path, source: str) -> None:
+    result = CliRunner().invoke(app, ["list", "--source", source, "--db", str(tmp_path / "s.db")])
+
+    assert result.exit_code == 0, result.output
+
+
+def test_clearing_the_cache_of_an_unknown_source_is_refused(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app, ["sources", "--clear-cache", "greenhose", "--db", str(tmp_path / "s.db")]
+    )
+    output = " ".join(ANSI_ESCAPE.sub("", result.output).split())
+
+    assert result.exit_code == 2 and "Did you mean 'greenhouse'?" in output
+
+
 def test_a_near_miss_on_a_source_suggests_the_real_one(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app, ["list", "--source", "greenhous", "--db", str(tmp_path / "s.db")]
@@ -1109,7 +1231,7 @@ def test_only_new_returns_what_arrived_since_the_previous_sync(tmp_path: Path) -
 
     output = ANSI_ESCAPE.sub("", CliRunner().invoke(app, ["list", "--new", "--db", db]).stdout)
 
-    assert "2 posting(s)" in output
+    assert "2 postings" in output
 
 
 def test_a_listing_with_no_earlier_sync_shows_everything(tmp_path: Path) -> None:
@@ -1117,7 +1239,7 @@ def test_a_listing_with_no_earlier_sync_shows_everything(tmp_path: Path) -> None
 
     output = ANSI_ESCAPE.sub("", CliRunner().invoke(app, ["list", "--new", "--db", db]).stdout)
 
-    assert "5 posting(s)" in output
+    assert "5 postings" in output
 
 
 def test_closed_postings_are_counted_not_listed(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1131,7 +1253,7 @@ def test_closed_postings_are_counted_not_listed(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(selection, "read", lambda *_, **__: selection.Selection(("a", "b"), ""))
     message = run_async(_closed_since_you_looked(_Repo()))
 
-    assert "2 posting(s)" in message
+    assert "2 postings" in message
     assert "closed" in message
 
 
@@ -1317,7 +1439,7 @@ def test_open_launches_a_whole_page_of_a_long_listing(
     assert len(first_tabs) == 50
     assert len(opened) == len(set(opened)) == 100
     assert too_many.exit_code == 2
-    assert "stage open 50-99" in " ".join(ANSI_ESCAPE.sub("", too_many.stdout).split())
+    assert "stage open 50-99" in " ".join(ANSI_ESCAPE.sub("", too_many.stderr).split())
 
 
 def test_a_long_link_stays_on_one_line_to_copy_or_pipe(tmp_path: Path) -> None:
@@ -1432,3 +1554,57 @@ def test_the_first_sync_note_reaches_search_but_not_json_or_an_empty_database(
     assert "Only one sync so far" in ANSI_ESCAPE.sub("", searched)
     assert len(loads(as_json)) == 3
     assert "Only one sync so far" not in nothing
+
+
+@pytest.mark.parametrize("name", ["last-listing.json", "notify.json"])
+def test_a_garbled_small_file_is_treated_as_missing(tmp_path: Path, name: str) -> None:
+    from stage.cli import notify, selection
+
+    damaged = tmp_path / name
+    damaged.write_bytes(b"\xff\xfe\x00garbage\x9c")
+
+    if name == "notify.json":
+        assert notify.read(damaged) == ""
+    else:
+        assert selection.read(damaged) is None
+
+
+@pytest.mark.parametrize("flag", ["--verify", "--unregistered"])
+def test_discover_refuses_a_url_with_a_registry_wide_run(flag: str) -> None:
+    result = CliRunner().invoke(app, ["discover", "--url", "https://boards.greenhouse.io/x", flag])
+
+    assert result.exit_code == 2 and f"--url or {flag}, not both" in result.stderr
+
+
+@pytest.mark.parametrize(
+    "flags", [["--reset-all"], ["--clear-cache-all"], ["--clear-cache", "greenhouse"]]
+)
+def test_sources_json_stays_parseable_after_a_reset(tmp_path: Path, flags: list[str]) -> None:
+    result = CliRunner().invoke(
+        app, ["sources", *flags, "--json", "--db", str(tmp_path / "stage.db")]
+    )
+
+    assert result.exit_code == 0 and "sources" in loads(result.stdout)
+
+
+def test_a_missing_word_list_is_reported_without_a_traceback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import typer
+
+    from stage.cli.options import main
+    from stage.lexicon import LexiconError
+
+    def explode() -> None:
+        raise LexiconError(f"lexicon not found at {tmp_path}")
+
+    monkeypatch.setenv("STAGE_LEXICON", str(tmp_path))
+    monkeypatch.setattr("stage.cli.options.app", explode)
+    messages: list[str] = []
+    monkeypatch.setattr(typer, "echo", lambda text, **_: messages.append(str(text)))
+
+    with pytest.raises(SystemExit) as caught:
+        main()
+
+    assert caught.value.code == 2
+    assert "could not read its word lists" in messages[0] and "STAGE_LEXICON" in messages[0]

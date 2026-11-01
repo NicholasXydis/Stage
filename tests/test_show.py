@@ -89,7 +89,7 @@ def test_show_renders_a_posting_and_names_its_duplicate(seeded: Path) -> None:
 def test_show_says_how_to_find_an_id_when_the_posting_is_absent(seeded: Path) -> None:
     result = CliRunner().invoke(app, ["show", "greenhouse:coveo:404", "--db", str(seeded)])
     assert result.exit_code == 1
-    assert "stage list --json" in result.stdout
+    assert "stage list --json" in result.stderr
 
 
 def test_open_prints_the_url_without_launching_a_browser(seeded: Path) -> None:

@@ -7,20 +7,20 @@ from typing import TYPE_CHECKING
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, VerticalScroll
 from textual.css.query import NoMatches
 from textual.screen import Screen
 from textual.timer import Timer
 from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 
 from stage.domain import DEFAULT_WINDOW_DAYS, MAX_OPEN_AT_ONCE, ExportFormat, JobFilters
-from stage.domain.text import sanitize
+from stage.domain.text import paragraphs, sanitize
 from stage.domain.tracker import MARKERS, ApplicationStatus
 from stage.normalize.location import display_location
 from stage.services.tracker import Change, ChangeReport, TrackerView
 from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay
-from stage.tui.safe import cell, quoted, told
+from stage.tui.help import HelpOverlay, HelpPanel
+from stage.tui.safe import cell, counted, quoted, told
 from stage.tui.state import (
     DEBOUNCE_SECONDS,
     PAGE_SIZE,
@@ -34,9 +34,10 @@ if TYPE_CHECKING:
     from stage.storage import AsyncRepository
 
 COLUMNS = ("#", "Age", "Company", "Title", "Location")
+AGE_WIDTH = 5
 
 HELP_TEXT = """[b]Find[/b]
-  /        search titles and bodies
+  /        search title, employer, text
   f        filters, arrows then enter
   c        clear filters and search
   r        reload from the database
@@ -44,9 +45,9 @@ HELP_TEXT = """[b]Find[/b]
 [b]Act on a row[/b]
   up down  move between postings
   space    mark a row
-  w        expand the description
+  w        read the whole description
   o        open marked rows, or this one
-  e        export what you see
+  e        export every match
   g        change the export format
   m M      show 200 more, or 200 fewer
 
@@ -62,31 +63,36 @@ HELP_TEXT = """[b]Find[/b]
   q        quit
 
 [dim]? closes this[/dim]"""
-NARROW = 80
+SHORT = 30
 
 
 def _tracked_notice(status: ApplicationStatus, report: ChangeReport) -> str:
     count = len(report.changed)
     if not count:
         kept = report.unchanged[0].status.value if report.unchanged else status.value
-        return f"Nothing to change; already marked {kept}. The tracker screen (l) can change it."
-    noun = "posting" if count == 1 else "postings"
+        return (
+            f"Nothing to change; already marked {kept}. The applications screen (l) can change it."
+        )
+    noun = counted(count, "posting")
     if status is ApplicationStatus.SAVED:
-        line = f"Saved {count} {noun}."
+        line = f"Saved {noun}."
     elif status is ApplicationStatus.APPLIED:
-        line = f"Marked {count} {noun} applied."
+        line = f"Marked {noun} applied."
     else:
-        line = f"Hid {count} {noun}."
+        line = f"Hid {noun}."
     skipped = len(report.unchanged)
     if skipped:
-        line += f" {skipped} already further along stayed as they were."
+        line += f" {skipped:,} already further along stayed as they were."
     return f"{line} z undoes it."
 
 
 def _mine_notice(preferences: "Preferences", filters: JobFilters, left_out: int | None) -> str:
     notice = preferences.describe(filters)
     if left_out:
-        notice += f". {left_out:,} with no location given are left out; turn Mine off to see them."
+        notice += (
+            f". {left_out:,} with no location given are left out; "
+            "turn off Only my preferences (f) to see them."
+        )
     return notice
 
 
@@ -126,8 +132,10 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         super().__init__()
         self.state = FilterState()
         self._jobs: tuple[Job, ...] = ()
+        self._layout: tuple[int, int, int, int] = (0, 0, 0, 0)
         self._export_format = "csv"
         self._expanded = False
+        self._never_synced = False
         self._total = 0
         self._pending: Timer | None = None
         self._marked: set[str] = set()
@@ -154,30 +162,49 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             id="search-bar",
         )
         yield DataTable(id="results", cursor_type="row", zebra_stripes=False)
-        yield Static("", id="detail")
-        yield Static("", id="help")
+        yield VerticalScroll(Static("", id="detail"), id="reader", can_focus=False)
+        yield HelpPanel(id="help")
         yield Footer()
 
     def on_mount(self) -> None:
+        self.set_class(self.app.size.height < SHORT, "narrow")
         table = self.query_one("#results", DataTable)
-        table.add_column("#", width=4)
-        table.add_column("Age", width=5)
-        table.add_column("Company", width=22)
-        table.add_column("Title", width=self._title_width())
-        table.add_column("Location", width=18)
+        self._add_columns(table)
         self._load_preferences()
         self._render_filters()
         table.focus()
         self.refresh_results()
 
-    def _title_width(self) -> int:
-        fixed = 4 + 5 + 22 + 18 + 12
-        return max(24, self.app.size.width - fixed)
+    def _add_columns(self, table: DataTable[object], rows: int = 0) -> None:
+        self._layout = self._widths(rows)
+        number, company, title, location = self._layout
+        table.add_column("#", width=number)
+        table.add_column("Age", width=AGE_WIDTH)
+        table.add_column("Company", width=company)
+        table.add_column("Title", width=title)
+        table.add_column("Location", width=location)
+
+    def on_resize(self) -> None:
+        self.set_class(self.app.size.height < SHORT, "narrow")
+        if not any(self._layout) or self._widths(len(self._jobs)) == self._layout:
+            return
+        table = self.query_one("#results", DataTable)
+        selected = self._selected()
+        if selected is not None:
+            self._keep = (selected.id, max(table.cursor_row, 0))
+        self._fill(self._jobs)
+
+    def _widths(self, rows: int) -> tuple[int, int, int, int]:
+        number = max(4, len(str(rows)) + 1)
+        room = max(40, self.app.size.width - number - AGE_WIDTH - 2 * len(COLUMNS) - 1)
+        company = min(30, max(12, room // 4))
+        location = min(26, max(12, room // 4))
+        return number, company, room - company - location, location
 
     def _set_busy(self, busy: bool) -> None:
         self.query_one("#chips", Static).set_class(busy, "busy")
         if busy:
-            self.query_one("#chips", Static).update("[dim]searching…[/dim]")
+            self.query_one("#chips", Static).update("[dim]searching...[/dim]")
 
     def _render_chips(self) -> None:
         if self._arming_export:
@@ -191,8 +218,9 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             parts.insert(0, f'[reverse] "{quoted(self.state.query)}" [/reverse]')
         if self.state.only_new:
             parts.append("[reverse] new [/reverse]")
-        if self.state.last_days != DEFAULT_WINDOW_DAYS:
-            window = "any date" if self.state.last_days == 0 else f"{self.state.last_days}d"
+        days = self.state.window_days
+        if days != (None if self.state.query.strip() else DEFAULT_WINDOW_DAYS):
+            window = "any date" if days is None else f"{days}d"
             parts.append(f"[reverse] {window} [/reverse]")
         if self.state.mine:
             parts.append("[reverse] mine [/reverse]")
@@ -200,11 +228,11 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             parts.append("[reverse] not acted on [/reverse]")
         shown = " ".join(parts) if parts else "[dim]all postings[/dim]"
         count = (
-            f"[b]{len(self._jobs)}[/b] of [b]{self._total}[/b]"
+            f"[b]{len(self._jobs):,}[/b] of [b]{self._total:,}[/b]"
             if len(self._jobs) < self._total
-            else f"[b]{self._total}[/b] posting(s)"
+            else f"[b]{self._total:,}[/b] {'posting' if self._total == 1 else 'postings'}"
         )
-        marked = f"   [b]{len(self._marked)}[/b] marked" if self._marked else ""
+        marked = f"   [b]{len(self._marked):,}[/b] marked" if self._marked else ""
         marked += f"   [dim]{self._hidden:,} hidden[/dim]" if self._hidden else ""
         clear = (
             "   [dim]c to clear[/dim]"
@@ -285,6 +313,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             raise
         self._jobs = listing.jobs
         self._total = listing.total_matching
+        self._never_synced = listing.last_sync_at is None
         self._statuses = view.statuses
         self._hidden = hidden
         try:
@@ -308,10 +337,15 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         return replace(filters, excluded_ids=filters.excluded_ids | excluded), view
 
     def _fill(self, jobs: "tuple[Job, ...]") -> None:
+        self._marked &= {job.id for job in jobs}
         table = self.query_one("#results", DataTable)
-        table.clear()
+        if self._widths(len(jobs)) == self._layout:
+            table.clear()
+        else:
+            table.clear(columns=True)
+            self._add_columns(table, len(jobs))
+        _, company, width, location = self._layout
         now = datetime.now(UTC)
-        width = self._title_width()
         for position, job in enumerate(jobs, start=1):
             marker = "*" if job.id in self._marked else " "
             status = self._statuses.get(job.id)
@@ -319,9 +353,9 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             table.add_row(
                 cell(f"{marker}{position}"),
                 cell(age_label(job.first_seen, now)),
-                cell(job.company, 20),
+                cell(job.company, company),
                 cell(f"{tag} {job.title_raw}" if tag else job.title_raw, width),
-                cell(display_location(job.location_raw) or "-", 18),
+                cell(display_location(job.location_raw) or "-", location),
             )
         if self._keep is not None and jobs:
             kept, row = self._keep
@@ -339,13 +373,16 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         return self._jobs[row]
 
     def _show_detail(self) -> None:
-        from stage.domain.text import summary
+        from stage.domain.text import first_line, graphemes
 
         job = self._selected()
         panel = self.query_one("#detail", Static)
         if job is None:
             panel.update(
-                "[dim]Nothing selected. Press [b]/[/b] to search, "
+                "[dim]No postings yet. Run [b]stage sync[/b] in a terminal, "
+                "or press [b]y[/b].[/dim]"
+                if self._never_synced
+                else "[dim]Nothing selected. Press [b]/[/b] to search, "
                 "[b]f[/b] for filters, [b]?[/b] for help.[/dim]"
             )
             return
@@ -362,18 +399,27 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             )
             if part
         )
-        body = quoted(summary(job.description, len(job.description) if self._expanded else 360))
+        whole = paragraphs(job.description)
+        shown = whole if self._expanded else first_line(whole)
+        clusters = graphemes(shown)
+        cut = not self._expanded and len(clusters) > 360
+        body = quoted("".join(clusters[:360] if cut else clusters))
+        if cut:
+            body = f"{body}[dim]...[/dim]"
         if not body:
             body = "[dim]This board publishes no description. Press o to open it.[/dim]"
-        elif not self._expanded and len(job.description) > 360:
-            body = f"{body}[dim] … press w for the full description[/dim]"
+        if self._expanded:
+            facts = f"{facts}  [dim]|  w or escape goes back[/dim]"
+        elif shown != whole:
+            facts = f"{facts}  [dim]|  w reads it all[/dim]"
         panel.update(
             f"[b]{quoted(job.title_raw)}[/b]\n"
-            f"[$blue]{quoted(job.company)}[/$blue]   {facts}\n\n{body}"
+            f"[$primary]{quoted(job.company)}[/$primary]   {facts}\n\n{body}"
         )
 
     def on_data_table_row_highlighted(self) -> None:
         self._show_detail()
+        self.query_one("#reader", VerticalScroll).scroll_home(animate=False)
 
     def on_unmount(self) -> None:
         if self._pending is not None:
@@ -415,6 +461,11 @@ class PostingsScreen(HelpOverlay, Screen[None]):
                 stop()
             return
         if not self.query_one("#search-bar").has_class("visible"):
+            if self._expanded:
+                self.action_expand()
+                stop = getattr(event, "stop", None)
+                if callable(stop):
+                    stop()
             return
         self._leave_search()
         stop = getattr(event, "stop", None)
@@ -426,17 +477,37 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self.query_one("#results", DataTable).focus()
 
     def action_search(self) -> None:
+        self.dismiss_overlays()
+        self.close_help()
         self.query_one("#search-bar").add_class("visible")
         self.query_one("#search", Input).focus()
 
     def action_expand(self) -> None:
+        job = self._selected()
+        if not self._expanded and (job is None or not paragraphs(job.description)):
+            told(self, "This board publishes no description. Press o to open it.")
+            return
+        if not self._expanded:
+            self.dismiss_overlays()
+            self.close_help()
         self._expanded = not self._expanded
-        self.query_one("#detail").set_class(self._expanded, "expanded")
+        reader = self.query_one("#reader", VerticalScroll)
+        reader.set_class(self._expanded, "expanded")
+        reader.can_focus = self._expanded
         self._show_detail()
+        reader.scroll_home(animate=False)
+        table = self.query_one("#results", DataTable)
+        if self._expanded:
+            reader.focus()
+        else:
+            table.focus()
+        if self._jobs:
+            table.call_after_refresh(table.move_cursor, row=table.cursor_row)
 
     def action_filters(self) -> None:
         panel = self.query_one("#filters", OptionList)
         if panel.has_class("hidden"):
+            self.dismiss_overlays()
             self.close_help()
             self._render_filters()
             panel.remove_class("hidden")
@@ -474,6 +545,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self.refresh_results()
 
     def action_reload(self) -> None:
+        self._hold()
         self.refresh_results()
 
     def action_more(self) -> None:
@@ -481,17 +553,26 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             told(self, "Every match is already listed.", "warning")
             return
         self.state.widen()
+        self._hold()
         self.refresh_results()
 
     def action_fewer(self) -> None:
         if self.state.show_all:
             self.state.show_all = False
             self.state.limit = PAGE_SIZE
+            self._hold()
             self.refresh_results()
             return
         if not self.state.narrow():
+            told(self, "Already down to one page; m shows more.", "warning")
             return
+        self._hold()
         self.refresh_results()
+
+    def _hold(self) -> None:
+        selected = self._selected()
+        if selected is not None:
+            self._keep = (selected.id, max(self.query_one("#results", DataTable).cursor_row, 0))
 
     def action_mark(self) -> None:
         job = self._selected()
@@ -526,7 +607,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         if len(targets) > MAX_OPEN_AT_ONCE:
             told(
                 self,
-                f"{len(targets)} rows are marked; Stage opens at most {MAX_OPEN_AT_ONCE} "
+                f"{len(targets):,} rows are marked; Stage opens at most {MAX_OPEN_AT_ONCE} "
                 "tabs at once. Press space on a marked row to unmark it.",
                 "warning",
             )
@@ -543,17 +624,19 @@ class PostingsScreen(HelpOverlay, Screen[None]):
                 return
             opened += 1
         if refused:
-            self.notify(
-                f"{refused} posting(s) had an apply link that is not a plain "
-                "http or https address, so they were not opened.",
-                severity="error",
+            they = "it was" if refused == 1 else "they were"
+            told(
+                self,
+                f"{counted(refused, 'posting')} had an apply link that is not a plain "
+                f"http or https address, so {they} not opened.",
+                "error",
             )
         if not opened:
             return
         if opened == 1 and len(targets) == 1:
             told(self, f"Opened {sanitize(targets[0].company)}")
             return
-        told(self, f"Opened {opened} posting(s)")
+        told(self, f"Opened {counted(opened, 'posting')}")
 
     def action_cycle_format(self) -> None:
         order = [item.value for item in ExportFormat]
@@ -569,6 +652,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             told(self, "Nothing to export.", "warning")
             return
         if not self._arming_export:
+            self.dismiss_overlays()
             self.close_help()
             self._arming_export = True
             self._render_chips()
@@ -591,7 +675,12 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         root = export_root()
         stamp = datetime.now(UTC).astimezone().strftime("%Y%m%d-%H%M%S")
         try:
-            filters, _ = await self._tracked_filters(repo, self.state.as_filters(self._preferences))
+            every = replace(self.state.as_filters(self._preferences), limit=None)
+            filters, _ = await self._tracked_filters(repo, every)
+            if self.state.only_new:
+                since = await repo.previous_sync_at()
+                if since is not None:
+                    filters = replace(filters, first_seen_after=since)
             result = await export_jobs(
                 repo,
                 filters,
@@ -604,7 +693,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         except (ExportError, OSError) as exc:
             told(self, f"Could not write the export: {sanitize(str(exc))}", "error")
             return
-        told(self, f"Exported {result.count} posting(s) to {sanitize(str(result.path))}")
+        told(self, f"Exported {counted(result.count, 'posting')} to {sanitize(str(result.path))}")
 
     def action_stats(self) -> None:
         from stage.tui.screens.stats import StatsScreen
@@ -693,16 +782,19 @@ class PostingsScreen(HelpOverlay, Screen[None]):
 
     @work(group="tracker")
     async def _revert(self, changes: tuple[Change, ...]) -> None:
-        from stage.services.tracker import TrackerProblemError, undo_changes
+        from stage.services.tracker import TrackerProblemError, restore_unless_changed
 
         try:
-            undo_changes(changes)
+            restored, kept = restore_unless_changed(changes)
         except TrackerProblemError as exc:
             told(self, str(exc), "error")
             return
         self._undo = ()
-        count = len(changes)
-        told(self, f"Undone: {count} posting{'' if count == 1 else 's'} back as before.")
+        said = f"Undone: {counted(len(restored), 'posting')} back as before."
+        if kept:
+            left = "it as it is" if len(kept) == 1 else "them as they are"
+            said = f"{said} {len(kept):,} changed again since, so Stage left {left}."
+        told(self, said, "warning" if kept else "information")
         self.refresh_results()
 
     def action_about(self) -> None:

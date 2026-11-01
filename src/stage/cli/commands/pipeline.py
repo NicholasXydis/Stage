@@ -10,6 +10,7 @@ from stage.cli.options import (
     _count,
     _database,
     _lock_path,
+    _print_error,
     _print_failure,
     app,
     run_async,
@@ -66,7 +67,7 @@ def sync(
     from contextlib import ExitStack
 
     from stage.cli.logfile import open_request_log
-    from stage.cli.render import failure, render_sync, terminal
+    from stage.cli.render import render_sync, terminal
     from stage.cli.runlock import AnotherRunInProgressError, single_run
     from stage.cli.schedule_state import ScheduleStateWriter
     from stage.companies import RegistryError, load_companies
@@ -91,7 +92,7 @@ def sync(
         progress = tracked.sync_event
 
     if source and exclude:
-        console.print("[red]Pass either --source or --exclude, not both.[/red]")
+        _print_error("[red]Pass either --source or --exclude, not both.[/red]")
         if tracked is not None:
             tracked.failed("Pass either --source or --exclude, not both.")
         raise typer.Exit(code=2)
@@ -99,7 +100,7 @@ def sync(
     try:
         companies = load_companies(registry)
     except RegistryError as exc:
-        console.print(failure(exc))
+        _print_failure(exc)
         if tracked is not None:
             tracked.failed(str(exc))
         raise typer.Exit(code=2) from exc
@@ -138,12 +139,12 @@ def sync(
             scheduled_state.blocked(str(exc))
         if tracked is not None:
             tracked.blocked(str(exc))
-        console.print(failure(exc))
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
     except (RegistryError, NoSourcesSelectedError) as exc:
         if tracked is not None:
             tracked.failed(str(exc))
-        console.print(failure(exc))
+        _print_failure(exc)
         raise typer.Exit(code=2) from exc
     except Exception as exc:
         if tracked is not None:
@@ -205,7 +206,8 @@ def purge(
     from datetime import UTC, datetime
 
     from stage.cli.render import terminal
-    from stage.domain import PurgeResult
+    from stage.domain import QUARANTINE_RETENTION_DAYS, PurgeResult
+    from stage.domain.text import counted
     from stage.services.maintenance import preview_purge, purge_expired
     from stage.storage import open_repository
 
@@ -227,32 +229,47 @@ def purge(
         parts = []
         if swept.captures_removed:
             verb = "Would remove" if dry_run else "Removed"
-            parts.append(f"{verb} {swept.captures_removed} old captured payload(s)")
+            parts.append(f"{verb} {counted(swept.captures_removed, 'old captured payload')}")
         if swept.journal_rotated:
             parts.append("rotated the probe journal" if not dry_run else "would rotate the journal")
         console.print(f"[dim]{', '.join(parts)}.[/dim]")
 
+    forgotten = (
+        f" {counted(result.forgotten, 'rejected posting')} no board has listed for "
+        f"{QUARANTINE_RETENTION_DAYS} days {'would go' if dry_run else 'went'} too."
+        if result.forgotten
+        else ""
+    )
     if dry_run:
         if result.purged:
             console.print(
-                f"Would purge {result.purged} posting(s) and create or refresh "
-                f"{result.tombstoned} tombstone(s). No postings removed."
+                f"Would purge {counted(result.purged, 'posting')} and create or refresh "
+                f"{counted(result.tombstoned, 'tombstone')}. Nothing was removed.{forgotten}"
             )
         else:
-            console.print("[dim]Nothing would be removed. No postings removed.[/dim]")
+            console.print(
+                "[dim]Nothing is outside the retention window, so purge would remove "
+                f"nothing.{forgotten}[/dim]"
+            )
         return
+    if result.tracker_busy:
+        console.print(
+            "[yellow]Your tracker was busy, so postings you track may not have moved to the "
+            "copy that stays. Run stage tracker to check them.[/yellow]"
+        )
     if not result.purged:
         if result.promoted:
             console.print(
-                f"Nothing outside the retention window, and {result.promoted} orphaned "
-                "duplicate(s) were promoted back into view."
+                f"Nothing outside the retention window. Promoted "
+                f"{counted(result.promoted, 'orphaned duplicate')} back into view."
             )
             return
-        console.print("[dim]Nothing outside the retention window.[/dim]")
+        console.print(f"[dim]Nothing outside the retention window.{forgotten}[/dim]")
         return
-    promoted = f", {result.promoted} duplicate(s) promoted" if result.promoted else ""
+    promoted = f", {counted(result.promoted, 'duplicate')} promoted" if result.promoted else ""
     console.print(
-        f"Purged {result.purged} posting(s), {result.tombstoned} tombstone(s) kept{promoted}."
+        f"Purged {counted(result.purged, 'posting')}, "
+        f"{counted(result.tombstoned, 'tombstone')} kept{promoted}.{forgotten}"
     )
     console.print(
         "[dim]Tombstones keep the original first_seen so a still-open posting is not "
@@ -268,11 +285,13 @@ def rescreen(db: DatabaseOption = None) -> None:
     from datetime import UTC, datetime
 
     from stage.cli.render import terminal
+    from stage.domain.text import counted
     from stage.services.maintenance import RESCREEN_LIMIT, RescreenResult
     from stage.services.maintenance import rescreen as rescreen_service
     from stage.storage import open_repository
 
     console = terminal()
+    console.print("[dim]Rescreening stored and rejected postings; this takes a few seconds.[/dim]")
 
     async def run() -> RescreenResult:
         async with open_repository(_database(db)) as repository:
@@ -280,30 +299,32 @@ def rescreen(db: DatabaseOption = None) -> None:
 
     result = run_async(run())
     if not result.examined and not result.released:
-        console.print("[dim]Nothing stored yet — run stage sync.[/dim]")
+        console.print("[dim]Nothing stored yet. Run stage sync.[/dim]")
         return
     if result.skipped:
         console.print(
-            f"[yellow]{result.skipped} posting(s) were not examined[/yellow] — this pass reads "
+            f"[yellow]{counted(result.skipped, 'posting')} not examined.[/yellow] This pass reads "
             f"at most {RESCREEN_LIMIT} rows. Run stage purge, then rescreen again."
         )
     if not result.changed:
         console.print(
-            f"Re-screened {result.examined} posting(s); the lexicon agrees with every one."
+            f"Re-screened {counted(result.examined, 'posting')}; the lexicon agrees with every one."
         )
         return
     changes: list[str] = []
     if result.updated:
-        changes.append(f"[yellow]{result.updated} classification(s) updated[/yellow]")
+        changes.append(f"[yellow]{counted(result.updated, 'classification')} updated[/yellow]")
     if result.quarantined:
         changes.append(f"[yellow]{result.quarantined} moved to quarantine[/yellow]")
     if result.released:
         changes.append(f"[green]{result.released} restored from quarantine[/green]")
     if result.relabelled:
-        changes.append(f"[dim]{result.relabelled} rejection(s) given a sharper reason[/dim]")
+        changes.append(
+            f"[dim]{counted(result.relabelled, 'rejection')} given a sharper reason[/dim]"
+        )
     if result.relocated:
-        changes.append(f"[dim]{result.relocated} quarantine location(s) re-read[/dim]")
-    console.print(f"Re-screened {result.examined} posting(s) — {', '.join(changes)}.")
+        changes.append(f"[dim]{counted(result.relocated, 'quarantine location')} re-read[/dim]")
+    console.print(f"Re-screened {counted(result.examined, 'posting')}: {', '.join(changes)}.")
     if result.released:
         console.print(
             "[dim]Restored postings keep their original title, link, and location. A later source "
@@ -352,7 +373,7 @@ def canary(
         _print_failure(exc)
         raise typer.Exit(code=2) from exc
     except TimeoutError:
-        console.print(
+        _print_error(
             f"[red]Gave up after {timeout}s.[/red] Boards can be slow or unreachable; "
             "raise the ceiling with [bold]--timeout[/bold]."
         )

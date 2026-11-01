@@ -48,7 +48,7 @@ def read(path: Path | None = None) -> Selection | None:
     target = path or selection_path()
     try:
         payload = json.loads(target.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):
         return None
     if not isinstance(payload, dict):
         return None
@@ -73,9 +73,8 @@ def resolve(row: int, synced_at: datetime | None, path: Path | None = None) -> s
             "The database has changed since that listing. Run stage list again."
         )
     if row < 1 or row > len(selection.ids):
-        raise StaleSelectionError(
-            f"That listing had {len(selection.ids)} row(s), so {row} is out of range."
-        )
+        rows = "1 row" if len(selection.ids) == 1 else f"{len(selection.ids):,} rows"
+        raise StaleSelectionError(f"That listing had {rows}, so {row} is out of range.")
     return selection.ids[row - 1]
 
 

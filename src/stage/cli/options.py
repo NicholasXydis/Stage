@@ -1,3 +1,4 @@
+import os
 import sys
 from collections.abc import Callable, Coroutine, Iterable
 from datetime import date
@@ -11,6 +12,7 @@ from typer.core import TyperGroup
 
 if TYPE_CHECKING:
     from rich.console import Console
+    from rich.text import Text
 
     from stage.domain import DiscoveryEvent, JobFilters
     from stage.domain.preferences import Preferences
@@ -61,9 +63,28 @@ class _Count(IntRange):
 
 
 WORD = _Word()
+MAX_COUNT = 1_000_000_000
 
 
-def _count(minimum: int, maximum: int | None = None) -> _Count:
+def output_path(raw: str) -> Path:
+    path = Path(raw).expanduser()
+    if raw.strip() in ("", "-"):
+        raise typer.BadParameter("name a file or a folder; Stage does not write exports to stdout")
+    if raw.endswith(("/", os.sep)) and not path.is_dir():
+        raise typer.BadParameter(f"the folder {path} does not exist; create it first")
+    return path
+
+
+def database_file(raw: str) -> Path:
+    path = Path(raw).expanduser()
+    if not raw.strip() or path.is_dir():
+        raise typer.BadParameter("name a database file, not a folder")
+    if not path.parent.is_dir():
+        raise typer.BadParameter(f"the folder {path.parent} does not exist; create it first")
+    return path
+
+
+def _count(minimum: int, maximum: int | None = MAX_COUNT) -> _Count:
     return _Count(min=minimum, max=maximum)
 
 
@@ -81,7 +102,7 @@ UNMATCHABLE_VALUES = {
 
 def _require_enum[E: StrEnum](value: str, enum: type[E], flag: str) -> E:
     try:
-        return enum(value)
+        return enum(value.strip().lower())
     except ValueError as exc:
         hidden = UNMATCHABLE_VALUES.get(flag, frozenset())
         options = ", ".join(v for v in enum.__members__.values() if v not in hidden)
@@ -176,12 +197,17 @@ def _root(
 RegistryOption = Annotated[
     Path | None,
     typer.Option(
-        "--registry", metavar="FILE", help="Use this company registry instead of the default"
+        "--registry", metavar="DIR", help="Use this company registry folder instead of the default"
     ),
 ]
 DatabaseOption = Annotated[
     Path | None,
-    typer.Option("--db", metavar="FILE", help="Use this SQLite database instead of the default"),
+    typer.Option(
+        "--db",
+        metavar="FILE",
+        parser=database_file,
+        help="Use this SQLite database instead of the default",
+    ),
 ]
 JsonOption = Annotated[bool, typer.Option("--json", help="Print machine-readable JSON")]
 RepairOption = Annotated[
@@ -189,19 +215,19 @@ RepairOption = Annotated[
     typer.Option("--repair", help="Fix the integrity findings that can be fixed safely"),
 ]
 LocationOption = Annotated[
-    str | None,
+    list[str] | None,
     typer.Option(
         "--location",
         metavar="PLACE",
-        help="Filter by location: montreal, canada, usa, unknown",
+        help="Filter by location: montreal, canada (the rest of Canada), usa, unknown",
     ),
 ]
 TermOption = Annotated[
-    str | None,
+    list[str] | None,
     typer.Option("--term", metavar="TERM", help="Filter by term, such as summer-2027"),
 ]
 RoleOption = Annotated[
-    str | None,
+    list[str] | None,
     typer.Option(
         "--role",
         metavar="ROLE",
@@ -212,26 +238,30 @@ RoleOption = Annotated[
     ),
 ]
 LanguageOption = Annotated[
-    str | None,
+    list[str] | None,
     typer.Option("--lang", metavar="LANG", help="Filter by language: en, fr, bilingual, unknown"),
 ]
 SourceOption = Annotated[
-    str | None,
+    list[str] | None,
     typer.Option(
-        "--source", metavar="SOURCE", help="Filter by source adapter, such as greenhouse or lever"
+        "--source", metavar="SOURCE", help="Filter by source, such as greenhouse, lever or simplify"
     ),
 ]
 CompanyOption = Annotated[
-    str | None,
-    typer.Option("--company", metavar="NAME", help="Filter by exact employer name"),
+    list[str] | None,
+    typer.Option("--company", metavar="NAME", help="One employer, in any case"),
 ]
 AllOption = Annotated[
     bool,
     typer.Option("--all", help="Show every match instead of the first page"),
 ]
+ExportAllOption = Annotated[
+    bool,
+    typer.Option("--all", help="Export every match even when --limit is set"),
+]
 NewOption = Annotated[
     bool,
-    typer.Option("--new", help="Only postings that appeared since the sync before last"),
+    typer.Option("--new", help="Only postings the last sync brought in"),
 ]
 UntrackedOption = Annotated[
     bool,
@@ -272,19 +302,23 @@ def _lock_path(explicit: Path | None) -> Path:
     return target.with_name(f".{target.name}.lock")
 
 
-def _print_failure(exc: BaseException) -> None:
-    from stage.cli.render import failure, terminal
+def _print_error(message: "str | Text") -> None:
+    from stage.cli.render import terminal
 
-    terminal().print(failure(exc))
+    terminal(stderr=True).print(message)
+
+
+def _print_failure(exc: BaseException) -> None:
+    from stage.cli.render import failure
+
+    _print_error(failure(exc))
 
 
 def _print_missing(posting: str) -> None:
-    from stage.cli.render import terminal
-
-    terminal().print(_no_such_posting(posting))
+    _print_error(_no_such_posting(posting))
 
 
-def _validated_term(value: str | None) -> str | None:
+def _validated_term(value: str | None, *, offer_unknown: bool = True) -> str | None:
     if value is None:
         return None
     from stage.domain import UNKNOWN_TERM
@@ -293,29 +327,31 @@ def _validated_term(value: str | None) -> str | None:
     head, _, year = value.lower().partition("-")
     if value.lower() == UNKNOWN_TERM or (head in SEASONS and year.isdigit() and len(year) == 4):
         return value.lower()
-    seasons = ", ".join(f"{season}-2027" for season in SEASONS)
-    raise InvalidOptionError(f"--term must look like {seasons}, or {UNKNOWN_TERM}")
+    examples = [f"{season}-2027" for season in SEASONS]
+    if offer_unknown:
+        examples.append(UNKNOWN_TERM)
+    raise InvalidOptionError(f"--term must look like {', '.join(examples[:-1])}, or {examples[-1]}")
 
 
 def _validated_source(value: str | None) -> str | None:
     if value is None:
         return None
-    from stage.sources import get_adapters
+    from stage.sources import get_adapters, get_feeds
 
-    names = sorted(get_adapters())
-    if value in names:
-        return value
+    names = sorted({*get_adapters(), *get_feeds()})
+    if value.strip().lower() in names:
+        return value.strip().lower()
     raise InvalidOptionError(_did_you_mean(value, names, "source"))
 
 
 def _filters(
     *,
-    location: str | None,
-    term: str | None,
-    role: str | None,
-    language: str | None,
-    source: str | None,
-    company: str | None,
+    location: list[str] | None,
+    term: list[str] | None,
+    role: list[str] | None,
+    language: list[str] | None,
+    source: list[str] | None,
+    company: list[str] | None,
     limit: int | None,
 ) -> "JobFilters":
     from stage.domain import (
@@ -326,14 +362,27 @@ def _filters(
     )
 
     return JobFilters(
-        location=_parse_enum(location, LocationBucket, "--location"),
-        term=_validated_term(term),
-        role=_parse_enum(role, RoleCategory, "--role"),
-        language=_parse_enum(language, Language, "--lang"),
-        source=_validated_source(source),
-        company=company,
+        location=_parse_enum(_one(location, "--location"), LocationBucket, "--location"),
+        term=_validated_term(_one(term, "--term")),
+        role=_parse_enum(_one(role, "--role"), RoleCategory, "--role"),
+        language=_parse_enum(_one(language, "--lang"), Language, "--lang"),
+        source=_validated_source(_one(source, "--source")),
+        company=_one(company, "--company"),
         limit=limit,
     )
+
+
+def _one(values: list[str] | None, flag: str) -> str | None:
+    if not values:
+        return None
+    if len(set(values)) > 1:
+        several = (
+            "follow several with stage prefs --follow"
+            if flag == "--company"
+            else "save several with stage prefs"
+        )
+        raise InvalidOptionError(f"{flag} takes one value; {several} and add --mine.")
+    return values[0]
 
 
 def _mine(filters: "JobFilters", as_json: bool = False) -> "tuple[JobFilters, Preferences]":
@@ -354,17 +403,16 @@ def _mine(filters: "JobFilters", as_json: bool = False) -> "tuple[JobFilters, Pr
             "places, roles and terms."
         )
     if not preferences.narrows:
+        held = "followed employers" if preferences.follow else "a note about you"
         _refuse(
-            "[red]Your saved preferences only hold a note about you.[/red] Add places, roles "
-            "or terms with [bold]stage prefs[/bold]."
+            f"[red]Your saved preferences only hold {held}, so --mine would show "
+            "everything.[/red] Add places, roles or terms with [bold]stage prefs[/bold]."
         )
     return preferences.apply(filters), preferences
 
 
-def _refuse(message: str) -> NoReturn:
-    from stage.cli.render import terminal
-
-    terminal().print(message)
+def _refuse(message: "str | Text") -> NoReturn:
+    _print_error(message)
     raise typer.Exit(code=2)
 
 
@@ -392,9 +440,10 @@ def _did_you_mean(value: str, choices: "Iterable[str]", label: str = "command") 
 
     options = list(choices)
     near = get_close_matches(value.lower(), options, n=1, cutoff=0.6)
+    shown = value if len(value) <= 60 else f"{value[:57]}..."
     if near:
-        return f"Unknown {label} {value!r}. Did you mean {near[0]!r}?"
-    return f"Unknown {label} {value!r}. Choose from: {', '.join(options)}"
+        return f"Unknown {label} {shown!r}. Did you mean {near[0]!r}?"
+    return f"Unknown {label} {shown!r}. Choose from: {', '.join(options)}"
 
 
 def _needs_a_row(command: str) -> str:
@@ -408,9 +457,14 @@ def _needs_a_row(command: str) -> str:
 def _no_such_posting(posting: str) -> str:
     from stage.cli.render import quoted
 
+    if posting.isdecimal():
+        return (
+            f"[red]Row {posting} of the last listing is no longer stored.[/red] Its posting "
+            "was purged or rejected since; run [bold]stage list[/bold] again."
+        )
     return (
         f"[red]No posting with id {quoted(posting, 80)}.[/red] Ids look like "
-        "[bold]greenhouse:acme:1234[/bold] — find one with [bold]stage list --json[/bold] "
+        "[bold]greenhouse:acme:1234[/bold]; find one with [bold]stage list --json[/bold] "
         "or [bold]stage search[/bold]."
     )
 
@@ -436,6 +490,7 @@ async def _adopt_unregistered(
     from stage.cli.render import plain
     from stage.companies import load_companies, update_registry
     from stage.domain import PlatformProbed
+    from stage.domain.text import counted
     from stage.services.coverage import coverage
     from stage.services.discover import (
         adopt_unregistered,
@@ -466,7 +521,10 @@ async def _adopt_unregistered(
 
     total = len(names) + len(direct)
     console.print(
-        plain(f"Probing {total} unregistered employer(s); {len(direct)} from direct feed links…")
+        plain(
+            f"Probing {counted(total, 'unregistered employer')}; "
+            f"{len(direct)} from direct feed links..."
+        )
     )
     results: list[tuple[str, Any]] = []
     streams = []
@@ -498,17 +556,17 @@ async def _adopt_unregistered(
     outcome = adopt_unregistered(rows, results, today=today, adopt_unnamed=adopt_unnamed)
     console.print(
         plain(
-            f"{outcome.probed} probed — {len(outcome.adopted)} adoptable "
-            f"({outcome.postings} posting(s)), {len(outcome.review)} needing review, "
+            f"{outcome.probed} probed: {len(outcome.adopted)} adoptable "
+            f"({counted(outcome.postings, 'posting')}), {len(outcome.review)} needing review, "
             f"{len(outcome.refused)} refused, {outcome.already_known} already known"
         )
     )
     adopted = outcome.adopted if show_all else outcome.adopted[:20]
     for row in adopted:
-        console.print(plain(f"  + {row.company.name} — {row.job_count} job(s)"))
+        console.print(plain(f"  + {row.company.name}: {counted(row.job_count, 'job')}"))
     if len(outcome.adopted) > len(adopted):
         console.print(
-            plain(f"  … and {len(outcome.adopted) - len(adopted)} more; --all lists every row")
+            plain(f"  ... and {len(outcome.adopted) - len(adopted)} more; --all lists every row")
         )
     if outcome.review:
         console.print(
@@ -519,20 +577,20 @@ async def _adopt_unregistered(
             mark = "slug is distinctive" if candidate.distinctive else "slug is generic, check it"
             console.print(
                 plain(
-                    f"  ? {candidate.company} ({candidate.label}) — "
-                    f"{candidate.job_count} job(s), {mark}"
+                    f"  ? {candidate.company} ({candidate.label}): "
+                    f"{counted(candidate.job_count, 'job')}, {mark}"
                 )
             )
         if len(outcome.review) > len(review):
             console.print(
-                plain(f"  … and {len(outcome.review) - len(review)} more; --all lists every row")
+                plain(f"  ... and {len(outcome.review) - len(review)} more; --all lists every row")
             )
     refused = outcome.refused if show_all else outcome.refused[:10]
     for company, board, reason in refused:
         console.print(plain(f"  - {company} ({board}): {reason}"))
     if len(outcome.refused) > len(refused):
         console.print(
-            plain(f"  … and {len(outcome.refused) - len(refused)} more; --all lists every row")
+            plain(f"  ... and {len(outcome.refused) - len(refused)} more; --all lists every row")
         )
     console.print(plain(f"Every probe result was journalled to {probe_journal_path()}"))
 
@@ -547,7 +605,9 @@ async def _adopt_unregistered(
         return [*existing, *(row.company for row in latest.adopted)], latest
 
     target, applied = update_registry(update, registry)
-    console.print(plain(f"applied — {len(applied.adopted)} row(s) added, written to {target}"))
+    console.print(
+        plain(f"applied: {counted(len(applied.adopted), 'row')} added, written to {target}")
+    )
     return True
 
 
@@ -557,24 +617,24 @@ _HELP_GUIDE = (
     "  stage sync                          Fetch and save current postings\n"
     "  stage tui                           Browse everything in a full screen\n"
     "  stage list                          Recent open postings, newest first\n"
-    "  stage list --new                    Only what appeared since the last sync\n"
-    '  stage search "machine learning"     Search titles, employers, bodies\n'
+    "  stage list --new                    Only what the last sync brought in\n"
+    '  stage search "machine learning"     Search titles, employers, descriptions\n'
     "  stage show 3                        Inspect row 3 of the last listing\n"
     "  stage open 1-5 9                    Open a range of rows in a browser\n"
     "  stage export --format csv           Save every match to a file\n"
     "\nFilters, on list, search, and export:\n"
     "  stage list --role swe --last 3      Filters combine\n"
-    '  stage search "python" --lang en     Quote a phrase\n'
-    "  stage export --format csv --all     Every match, no cap\n"
+    "  stage search python --lang en       English postings only\n"
+    "  stage list --all                    Every match, not just the first page\n"
     "  stage list --last 1                 Only the last day\n"
     "  stage prefs                         Save the places, roles, terms you want\n"
     "  stage list --mine                   Only postings that fit them\n"
     "\n"
-    "  [--role --location --term --lang --source --company --mine --new --all --last]\n"
+    "  [--role --location --term --lang --source --company --mine --untracked --last]\n"
     "\nYour applications:\n"
     "  stage save 3                        Keep a posting to come back to\n"
     "  stage applied 1-4                   Mark postings as applied today\n"
-    "  stage hide 7                        Never show a posting again\n"
+    "  stage hide 7                        Hide a posting from every list\n"
     "  stage tracker                       Everything you saved or applied to\n"
     "  stage list --untracked              Only postings you have not acted on\n"
     "\nAI apps:\n"
@@ -590,7 +650,7 @@ _HELP_GUIDE = (
     "  stage quarantine                    Review rejected postings\n"
     "  stage coverage --unregistered       Employers seen but not tracked\n"
     "\nDiscovery:\n"
-    "  stage discover --url URL            Read the platform from a careers page\n"
+    "  stage discover --url URL            Read the platform from a careers page link\n"
     "  stage discover NAME                 Find a company board by name\n"
     "\nLearn any command:\n"
     "  stage --help                        Every command, grouped\n"
@@ -603,18 +663,18 @@ def _render_schedule(console: Any, report: Any) -> None:
     console.print(f"Scheduler: {report.backend} (per user)")
     for index, (action, enabled, installed) in enumerate(report.actions):
         state = "enabled" if enabled else "disabled"
-        console.print(f"  {action.label}: {state} — {action.cadence} at {action.time} local time")
+        console.print(f"  {action.label}: {state}, {action.cadence} at {action.time} local time")
         needs_update = index < len(report.needs_update) and report.needs_update[index]
         if enabled and not needs_update and not action.cadence.startswith(installed):
             needs_update = True
         if enabled and needs_update:
             console.print(
-                "    [yellow]needs a scheduler update — run stage schedule enable[/yellow]"
+                "    [yellow]needs a scheduler update; run stage schedule enable[/yellow]"
             )
         stale = report.stale_interpreter[index] if index < len(report.stale_interpreter) else ""
         if enabled and stale:
             console.print(
-                f"    [red]interpreter is missing: {stale}[/red] — this run will fail; "
+                f"    [red]interpreter is missing: {stale}[/red]. This run will fail; "
                 "re-run stage schedule enable"
             )
         run = report.states[index] if index < len(report.states) else None
@@ -629,29 +689,34 @@ def _render_scheduled_run(console: Any, run: dict[str, object] | None) -> None:
     if phase == "finished":
         outcome = run.get("outcome")
         outcome_name = outcome if isinstance(outcome, str) else ""
-        message = {
-            "success": "completed successfully",
-            "partial": "completed with attention",
-            "failure": "failed",
-        }.get(outcome_name, "finished")
-        console.print(f"    [green]{message}[/green] {_schedule_time(run.get('finished_at'))}")
+        message, colour = {
+            "success": ("completed successfully", "green"),
+            "partial": ("completed with attention", "yellow"),
+            "failure": ("failed", "red"),
+        }.get(outcome_name, ("finished", "default"))
+        console.print(
+            f"    [{colour}]{message}[/{colour}] {_schedule_time(run.get('finished_at'))}"
+        )
     elif phase == "blocked":
-        console.print(f"    [yellow]another run holds the lock[/yellow] — {run.get('error', '')}")
+        from stage.cli.render import summary
+
+        error = summary(str(run.get("error", "")), 200)
+        console.print(f"    [yellow]another run holds the lock[/yellow]: {error}")
     elif phase == "unresponsive":
         console.print(
-            "    [yellow]run is unresponsive[/yellow] — "
+            "    [yellow]run is unresponsive[/yellow], "
             f"last heartbeat {_schedule_time(run.get('heartbeat_at'))}"
         )
     elif phase == "waiting":
         expected = _schedule_time(run.get("starts_after"))
-        console.print(f"    [cyan]waiting to start[/cyan] — expected {expected}")
+        console.print(f"    [cyan]waiting to start[/cyan], expected {expected}")
     elif isinstance(phase, str) and phase in {"syncing", "discovering", "checking"}:
         label = {
             "syncing": "syncing",
             "discovering": "discovering",
             "checking": "checking health",
         }[phase]
-        console.print(f"    [cyan]{label}[/cyan] — started {_schedule_time(run.get('started_at'))}")
+        console.print(f"    [cyan]{label}[/cyan], started {_schedule_time(run.get('started_at'))}")
     else:
         return
     progress = run.get("progress")
@@ -661,9 +726,13 @@ def _render_scheduled_run(console: Any, run: dict[str, object] | None) -> None:
         if complete or total:
             source = progress.get("source")
             company = progress.get("company")
-            detail = " / ".join(str(value) for value in (source, company) if value)
-            suffix = f" — {detail}" if detail else ""
-            console.print(f"      progress: {complete}/{total}{suffix}")
+            from stage.cli.render import summary
+
+            detail = " / ".join(summary(str(value), 80) for value in (source, company) if value)
+            suffix = f": {detail}" if detail else ""
+            console.print(
+                f"      progress: {summary(str(complete), 12)}/{summary(str(total), 12)}{suffix}"
+            )
     if phase == "finished" and isinstance(run.get("exit_code"), int):
         console.print(f"      exit code: {run['exit_code']}")
 
@@ -676,7 +745,9 @@ def _schedule_time(value: object) -> str:
 
         return datetime.fromisoformat(value).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     except ValueError:
-        return value
+        from stage.cli.render import summary
+
+        return summary(value, 40)
 
 
 @app.command(
@@ -717,24 +788,48 @@ def _print_guide() -> None:
     typer.echo(_HELP_GUIDE)
 
 
+def database_problem(exc: Exception) -> str:
+    said = str(exc)
+    if "locked" in said:
+        return (
+            "Another Stage process is using the database right now, such as a scheduled sync. "
+            "Try again when it finishes."
+        )
+    if "readonly" in said or "unable to open" in said:
+        return (
+            f"Stage cannot use that database ({said}). Check that the file and its folder "
+            "are yours and writable."
+        )
+    return (
+        f"That database cannot be read ({said}). Point --db at a Stage database, or move the "
+        "file aside to start a new one."
+    )
+
+
 def main() -> None:
     import sqlite3
 
     from stage.cli.serialize import configure_terminal_output
+    from stage.lexicon import LexiconError
     from stage.storage.migrations import SchemaVersionError
 
     configure_terminal_output(sys.stdout, sys.platform)
+    configure_terminal_output(sys.stderr, sys.platform)
     try:
         app()
     except SchemaVersionError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from None
-    except sqlite3.DatabaseError as exc:
-        typer.echo(
-            f"That database cannot be read ({exc}). Point --db at a Stage database, "
-            "or remove the file to start a new one.",
-            err=True,
+    except LexiconError as exc:
+        hint = (
+            " Unset STAGE_LEXICON to use the built-in lists."
+            if "STAGE_LEXICON" in os.environ
+            else ""
         )
+        typer.echo(f"Stage could not read its word lists: {exc}.{hint}", err=True)
+        raise SystemExit(2) from None
+    except sqlite3.DatabaseError as exc:
+        typer.echo(database_problem(exc), err=True)
         raise SystemExit(2) from None
     except OSError as exc:
         target = getattr(exc, "filename", None)
