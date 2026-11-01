@@ -16,6 +16,7 @@ concurrency:
 env:
   COVERAGE_FLOOR: "87"
   UV_VERSION: "0.11.28"
+  PLAYWRIGHT_VERSION: "1.64.0"
   UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
 
 jobs:
@@ -150,6 +151,40 @@ jobs:
       - name: Trim the cache before it is saved
         run: uv cache prune --ci
 
+  card:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Restore the uv cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ env.UV_CACHE_DIR }}
+          key: uv-${{ runner.os }}-3.12-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-3.12-
+      - name: Install locked dependencies and Chromium
+        run: |
+          python -m pip install "uv==$UV_VERSION"
+          uv sync --frozen
+          uv run --no-sync --with "playwright==$PLAYWRIGHT_VERSION" \
+            playwright install --with-deps chromium
+      - name: Render the posting card against a real stage mcp
+        run: |
+          uv run --no-sync --with "playwright==$PLAYWRIGHT_VERSION" \
+            python scripts/card_check.py --shots card-shots
+      - name: Upload the screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: card-shots
+          path: card-shots
+          if-no-files-found: ignore
+
   wheel:
     strategy:
       fail-fast: false
@@ -185,9 +220,9 @@ jobs:
           from pathlib import Path
           import stage
           from stage.companies import load_companies
-          from stage.paths import font_path, lexicon_dir, registry_path
+          from stage.paths import card_path, font_path, lexicon_dir, registry_path
           package = Path(stage.__file__).resolve().parent
-          for path in (registry_path(), lexicon_dir(), font_path()):
+          for path in (registry_path(), lexicon_dir(), font_path(), card_path()):
               assert path.exists(), f"{path} is missing from the wheel"
               assert package in path.parents, f"{path} resolves outside {package}"
           rows = load_companies()
@@ -256,6 +291,119 @@ jobs:
               --out "$RUNNER_TEMP/smoke.$format"
             test -s "$RUNNER_TEMP/smoke.$format"
           done
+      - name: stage mcp must write nothing but JSON-RPC from the installed wheel
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          cd "$RUNNER_TEMP"
+          cat > mcp_smoke.py <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          stage = Path(sys.executable).with_name("stage.exe" if os.name == "nt" else "stage")
+          env = dict(os.environ, STAGE_DB=str(Path(os.environ["RUNNER_TEMP"]) / "smoke.db"))
+          calls = [
+              ("initialize", {
+                  "protocolVersion": "2025-11-25",
+                  "capabilities": {"extensions": {"io.modelcontextprotocol/ui": {
+                      "mimeTypes": ["text/html;profile=mcp-app"]}}},
+                  "clientInfo": {"name": "smoke", "version": "1"},
+              }),
+              ("notifications/initialized", None),
+              ("tools/list", {}),
+              ("prompts/list", {}),
+              ("resources/list", {}),
+              ("resources/read", {"uri": "ui://stage/postings.html"}),
+              ("tools/call", {"name": "search_postings", "arguments": {"words": "intern"}}),
+              ("tools/call", {"name": "get_postings", "arguments": {"ids": ["nope:1"]}}),
+          ]
+          replies = []
+          with subprocess.Popen(
+              [str(stage), "mcp"],
+              stdin=subprocess.PIPE,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.DEVNULL,
+              env=env,
+          ) as process:
+              assert process.stdin is not None and process.stdout is not None
+              for number, (method, params) in enumerate(calls, start=1):
+                  message = {"jsonrpc": "2.0", "method": method}
+                  if params is not None:
+                      message["id"] = number
+                      message["params"] = params
+                  process.stdin.write(json.dumps(message).encode() + b"\n")
+                  process.stdin.flush()
+                  if params is not None:
+                      replies.append(json.loads(process.stdout.readline()))
+              process.stdin.close()
+              rest = process.stdout.read()
+              assert process.wait(timeout=60) == 0, process.returncode
+          assert rest == b"", rest[:200]
+          assert all(reply.get("jsonrpc") == "2.0" for reply in replies), replies
+          assert [reply.get("id") for reply in replies] == [1, 3, 4, 5, 6, 7, 8], replies
+          assert all("result" in reply for reply in replies), replies
+          tools = replies[1]["result"]["tools"]
+          card = [tool["name"] for tool in tools if tool.get("_meta", {}).get("ui", {}).get("resourceUri")]
+          assert card == ["search_postings"], card
+          [resource] = replies[4]["result"]["contents"]
+          assert resource["mimeType"] == "text/html;profile=mcp-app", resource["mimeType"]
+          assert resource["text"].startswith("<!doctype html>"), resource["text"][:40]
+          print(f"{len(replies)} replies, {len(tools)} tools, card {len(resource['text'])} chars")
+          PY
+          "$SMOKE_BIN/python" mcp_smoke.py
+      - name: stage mcp must read a database on a Windows network share
+        if: runner.os == 'Windows'
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          cd "$RUNNER_TEMP"
+          cat > share_smoke.py <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          from stage.storage.sqlite_repo import SqliteRepository
+
+          stage = Path(sys.executable).with_name("stage.exe")
+          local = Path(os.environ["RUNNER_TEMP"]).resolve() / "share.db"
+          SqliteRepository.connect(local).close()
+          unc = "\\\\localhost\\" + local.drive[0] + "$" + str(local)[2:]
+          assert Path(unc).exists(), f"{unc} is not reachable"
+          calls = [
+              ("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "share", "version": "1"}}),
+              ("notifications/initialized", None),
+              ("tools/call", {"name": "database_status", "arguments": {}}),
+          ]
+          replies = []
+          with subprocess.Popen(
+              [str(stage), "mcp"],
+              stdin=subprocess.PIPE,
+              stdout=subprocess.PIPE,
+              stderr=subprocess.DEVNULL,
+              env=dict(os.environ, STAGE_DB=unc),
+          ) as process:
+              assert process.stdin is not None and process.stdout is not None
+              for number, (method, params) in enumerate(calls, start=1):
+                  message = {"jsonrpc": "2.0", "method": method}
+                  if params is not None:
+                      message["id"] = number
+                      message["params"] = params
+                  process.stdin.write(json.dumps(message).encode() + b"\n")
+                  process.stdin.flush()
+                  if params is not None:
+                      replies.append(json.loads(process.stdout.readline()))
+              process.stdin.close()
+              assert process.wait(timeout=60) == 0, process.returncode
+          status = replies[-1]["result"]
+          assert not status.get("isError"), status["content"][0]["text"]
+          print(f"read {unc} over MCP: {sorted(status['structuredContent'])[:4]}")
+          PY
+          "$SMOKE_BIN/python" share_smoke.py
       - name: Connecting AI apps must work from the installed wheel
         env:
           PYTHONIOENCODING: utf-8
