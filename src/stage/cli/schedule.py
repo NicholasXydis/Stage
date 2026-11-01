@@ -115,7 +115,8 @@ def _chosen(keys: Sequence[str] | None) -> tuple[ScheduledAction, ...]:
     unknown = sorted(set(keys) - set(action_keys()))
     if unknown:
         raise ScheduleError(
-            f"unknown scheduled action(s): {', '.join(unknown)} (known: {', '.join(action_keys())})"
+            f"unknown scheduled {'action' if len(unknown) == 1 else 'actions'}: "
+            f"{', '.join(unknown)} (known: {', '.join(action_keys())})"
         )
     wanted = set(keys)
     return tuple(action for action in _ACTIONS if action.key in wanted)

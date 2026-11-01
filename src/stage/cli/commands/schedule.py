@@ -6,6 +6,7 @@ from stage.cli.options import (
     WORD,
     JsonOption,
     _print_failure,
+    _refuse,
     _render_schedule,
     schedule_app,
 )
@@ -19,6 +20,7 @@ def schedule_enable(
         list[str] | None,
         typer.Option(
             "--action",
+            metavar="ACTION",
             help="Schedule only these actions: sync, discover, verify; repeatable",
         ),
     ] = None,
@@ -76,6 +78,7 @@ def schedule_disable(
         list[str] | None,
         typer.Option(
             "--action",
+            metavar="ACTION",
             help="Remove only these actions: sync, discover, verify; repeatable",
         ),
     ] = None,
@@ -147,11 +150,10 @@ def schedule_test_notify() -> None:
     console = terminal()
     stored = notify.read()
     if not stored:
-        console.print(
+        _refuse(
             "[yellow]No Discord webhook stored.[/yellow] Run "
             "[bold]stage schedule notify URL[/bold] first."
         )
-        raise typer.Exit(code=2)
     payload = notify.compose(
         [
             notify.Posting(

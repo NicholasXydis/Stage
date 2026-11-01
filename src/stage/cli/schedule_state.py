@@ -40,7 +40,9 @@ def read_state_path(path: Path) -> dict[str, object] | None:
         try:
             with path.open(encoding="utf-8") as stream:
                 payload = json.load(stream)
-        except (OSError, json.JSONDecodeError):
+        except FileNotFoundError:
+            return None
+        except (OSError, ValueError):
             continue
         return payload if isinstance(payload, dict) else None
     return None
@@ -154,7 +156,7 @@ class ScheduleStateWriter:
         if self._payload.get("phase") != "blocked":
             values["phase"] = "finished"
             values["outcome"] = _outcome(
-                self._payload.get("sync_outcome"), exit_code, doctor_exit_code
+                self._payload.get("sync_outcome"), sync_exit_code, doctor_exit_code
             )
         self._set(values, force=True)
 
@@ -304,12 +306,16 @@ class ScheduleStateWriter:
                     staged.unlink(missing_ok=True)
 
 
-def _outcome(sync_outcome: object, exit_code: int, doctor_exit_code: int | None) -> str:
-    if exit_code >= 2 or doctor_exit_code not in (None, 0):
+def _outcome(sync_outcome: object, sync_exit_code: int | None, doctor_exit_code: int | None) -> str:
+    worked = sync_exit_code or 0
+    recorded = sync_outcome if isinstance(sync_outcome, str) and sync_outcome in _OUTCOMES else None
+    if worked >= 2 or worked < 0 or (doctor_exit_code or 0) >= 2 or (worked and recorded is None):
         return SyncOutcome.FAILURE.value
-    if isinstance(sync_outcome, str) and sync_outcome in _OUTCOMES:
-        return sync_outcome
-    return SyncOutcome.PARTIAL.value if exit_code else SyncOutcome.SUCCESS.value
+    if recorded == SyncOutcome.SUCCESS.value and (worked or doctor_exit_code):
+        return SyncOutcome.PARTIAL.value
+    if recorded is not None:
+        return recorded
+    return SyncOutcome.PARTIAL.value if doctor_exit_code else SyncOutcome.SUCCESS.value
 
 
 def _progress() -> dict[str, object]:

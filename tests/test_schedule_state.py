@@ -295,3 +295,49 @@ def test_state_writer_does_not_interrupt_work_when_state_storage_fails(
     writer.waiting(1)
 
     assert not target.exists()
+
+
+def test_a_doctor_warning_marks_a_clean_sync_for_attention_but_not_as_failed() -> None:
+    from stage.cli.schedule_state import _outcome
+
+    assert _outcome("success", 0, 1) == "partial"
+    assert _outcome("partial", 1, 1) == "partial"
+    assert _outcome("success", 0, 0) == "success"
+    assert _outcome("success", 1, 0) == "partial"
+    assert _outcome("failure", 1, 1) == "failure"
+    assert _outcome("partial", 2, 1) == "failure", "a sync that exits 2 failed"
+    assert _outcome("success", 0, 2) == "failure", "a doctor error is a failure"
+    assert _outcome("success", -9, 0) == "failure", "a killed sync failed"
+    assert _outcome(None, 1, 1) == "failure", "a sync that crashed recorded nothing"
+    assert _outcome(None, 0, 0) == "success"
+
+
+def test_schedule_status_prints_board_text_as_text() -> None:
+    import io
+
+    from rich.console import Console
+
+    from stage.cli.options import _render_scheduled_run
+
+    buffer = io.StringIO()
+    console = Console(file=buffer, width=200, emoji=False)
+    _render_scheduled_run(
+        console,
+        {
+            "phase": "finished",
+            "outcome": "success",
+            "finished_at": "[bold",
+            "exit_code": 0,
+            "progress": {
+                "source": "feed",
+                "company": "Evil [/bold] Corp",
+                "complete": 1,
+                "total": 2,
+            },
+        },
+    )
+    _render_scheduled_run(console, {"phase": "blocked", "error": "[link=file:///x]held[/link]"})
+    said = buffer.getvalue()
+
+    assert "Evil [/bold] Corp" in said and "[bold" in said
+    assert "[link=file:///x]held[/link]" in said

@@ -1,12 +1,14 @@
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-from stage.paths import data_dir, restrict_permissions
+from stage.domain.text import counted
+from stage.paths import data_dir, restrict_permissions, tighten_permissions
 
 WEBHOOK_HOSTS = frozenset(
     {
@@ -21,7 +23,7 @@ DESCRIPTION_LIMIT = 4096
 DESCRIPTION_BUDGET = 3900
 MAX_LISTED = 40
 TITLE_LIMIT = 200
-LOCATION_ORDER = ("montreal", "canada")
+LOCATION_ORDER = ("montreal", "canada", "usa")
 ROLE_ORDER = ("swe", "quant")
 TIMEOUT_SECONDS = 15
 
@@ -58,7 +60,8 @@ def redact(url: str) -> str:
     except ValueError:
         return "<unreadable url>"
     tail = parts.path.rsplit("/", 1)[-1]
-    return f"{parts.scheme}://{parts.netloc}/…/{tail[:4]}…" if tail else url
+    host = parts.hostname or ""
+    return f"{parts.scheme}://{host}/.../{tail[:4]}..." if tail else f"{parts.scheme}://{host}/..."
 
 
 def validate(url: str) -> str:
@@ -74,8 +77,16 @@ def validate(url: str) -> str:
             "That is not a Discord webhook. Create one in a channel you manage: "
             "Edit Channel, Integrations, New Webhook, then copy the URL."
         )
-    if "/api/webhooks/" not in parts.path:
-        raise NotifyError("A Discord webhook URL contains /api/webhooks/.")
+    if parts.username or parts.password or parts.port or parts.query or parts.fragment:
+        raise NotifyError(
+            "A Discord webhook URL has no name, password, port, query or fragment. "
+            "Copy the URL exactly as Discord shows it."
+        )
+    if not re.fullmatch(r"(/api(/v\d+)?)/webhooks/\d+/[\w-]+/?", parts.path):
+        raise NotifyError(
+            "That webhook URL is cut short. Copy the whole URL, which ends with "
+            "/api/webhooks/ followed by a number and a token."
+        )
     return url
 
 
@@ -83,10 +94,15 @@ def remember(url: str, path: Path | None = None) -> None:
     target = path or webhook_path()
     body = json.dumps({"webhook": validate(url)})
     target.parent.mkdir(parents=True, exist_ok=True)
+    tighten_permissions(target)
     descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
         handle.write(body)
-    restrict_permissions(target)
+    try:
+        restrict_permissions(target)
+    except OSError:
+        target.unlink(missing_ok=True)
+        raise
 
 
 def forget(path: Path | None = None) -> None:
@@ -98,7 +114,7 @@ def read(path: Path | None = None) -> str:
     target = path or webhook_path()
     try:
         payload = json.loads(target.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):
         return ""
     stored = payload.get("webhook") if isinstance(payload, dict) else None
     return str(stored) if stored else ""
@@ -135,7 +151,7 @@ def compose(postings: list[Posting], total: int) -> dict[str, object]:
         "username": "Stage",
         "embeds": [
             {
-                "title": f"{total} new posting(s)"[:256],
+                "title": f"{counted(total, 'new posting')}"[:256],
                 "description": description,
                 "color": 0x4A9EFF,
             }

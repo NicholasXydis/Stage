@@ -23,6 +23,12 @@ def test_a_discord_webhook_is_accepted() -> None:
         "https://evil.com/api/webhooks/1/x",
         "https://discord.com/channels/1",
         "file:///etc/passwd",
+        "https://discord.com/api/webhooks/",
+        "https://discord.com/api/webhooks/...",
+        "https://discord.com/api/webhooks/123",
+        "https://user:secret@discord.com/api/webhooks/123/x",
+        "https://discord.com:8443/api/webhooks/123/x",
+        "https://discord.com/api/webhooks/123/x?wait=true",
     ],
 )
 def test_anything_else_is_refused(url: str) -> None:
@@ -35,6 +41,12 @@ def test_the_token_never_appears_in_full() -> None:
 
     assert "SUPERSECRETTOKEN" not in redacted
     assert "discord.com" in redacted
+
+
+def test_a_redacted_url_never_shows_a_name_or_password() -> None:
+    redacted = notify.redact("https://user:secretpw@discord.com/api/webhooks/123/token")
+
+    assert "secretpw" not in redacted and "user" not in redacted
 
 
 def test_a_stored_webhook_round_trips(tmp_path: Path) -> None:
@@ -72,7 +84,7 @@ def test_the_message_names_the_count_and_links_each_row() -> None:
     payload = notify.compose(postings, total=5)
     embed = payload["embeds"][0]  # type: ignore[index]
 
-    assert embed["title"] == "5 new posting(s)"
+    assert embed["title"] == "5 new postings"
     assert "https://e.com/a" in embed["description"]
     assert "4 more" in embed["description"]
 
@@ -312,7 +324,7 @@ async def test_a_new_posting_reaches_discord(
     sent = await _announce(db, "https://discord.com/api/webhooks/1/tok", monkeypatch)
 
     assert len(sent) == 1
-    assert "1 new posting(s)" in sent[0]["embeds"][0]["title"]
+    assert "1 new posting" in sent[0]["embeds"][0]["title"]
     assert "https://example.com/1" in sent[0]["embeds"][0]["description"]
 
 
@@ -577,6 +589,18 @@ def test_an_unknown_place_or_role_still_ranks() -> None:
     order = [row.location.value for row in sorted(rows, key=notify.rank)]
 
     assert order == ["montreal", "unknown"]
+
+
+def test_a_posting_with_no_place_sorts_after_every_known_one() -> None:
+    rows = [
+        _ranked("unknown", "swe", day=9),
+        _ranked("usa", "data", day=1),
+        _ranked("canada", "data", day=1),
+    ]
+
+    order = [row.location.value for row in sorted(rows, key=notify.rank)]
+
+    assert order == ["canada", "usa", "unknown"], "a newer software title cannot lift it"
 
 
 def test_the_search_debounce_stays_under_a_quarter_second() -> None:
