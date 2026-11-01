@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
 from stage.dedup import resolve_duplicates
@@ -22,7 +22,12 @@ async def repair_integrity(repository: AsyncRepository) -> tuple[IntegrityRepair
 
 
 async def purge_expired(repository: AsyncRepository, *, now: datetime | None = None) -> PurgeResult:
-    return await repository.purge(now or datetime.now(UTC))
+    from stage.services.tracker import follow_successors
+
+    result = await repository.purge(now or datetime.now(UTC))
+    if follow_successors(result.successors) is None:
+        return replace(result, tracker_busy=True)
+    return result
 
 
 async def preview_purge(repository: AsyncRepository, *, now: datetime | None = None) -> PurgeResult:
@@ -76,6 +81,7 @@ class RescreenResult:
 
 async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) -> RescreenResult:
     from stage.domain import JobFilters
+    from stage.services.tracker import follow_successors
 
     moment = now or datetime.now(UTC)
     examined = 0
@@ -97,7 +103,7 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
         updates = tuple(entry for entry in changed if entry.id not in rejected_ids)
         sources = {entry.source for entry in updates} | {entry.source for entry in rejected}
         for source in sorted(sources):
-            await repository.apply_source_batch(
+            applied = await repository.apply_source_batch(
                 SourceBatch(
                     source=source,
                     run_started_at=moment,
@@ -105,6 +111,7 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
                     quarantined=tuple(entry for entry in rejected if entry.source == source),
                 )
             )
+            follow_successors(applied.successors)
         quarantined += len(rejected)
         updated += len(updates)
     released, relabelled = await _release_reclassified_quarantine(repository, moment)
@@ -141,15 +148,17 @@ def _reclassifications(
         screen_location,
     )
     from stage.classify.scope import to_quarantined
-    from stage.normalize import canonical_apply_url, resolve_location
+    from stage.normalize import canonical_apply_url, listed_place, resolve_location
 
     candidates: list[Job] = []
     rejected: list[QuarantinedJob] = []
     for job in jobs:
-        location = resolve_location(job.location_raw)
+        place = listed_place(job.location_raw, job.apply_url_raw)
+        location = resolve_location(place)
         title_role = classify_role(job.title_raw, job.description).role
         candidate = replace(
             job,
+            location_raw=place,
             apply_url_canonical=canonical_apply_url(job.apply_url_raw),
             location=location.bucket,
             remote_scope=location.remote_scope,

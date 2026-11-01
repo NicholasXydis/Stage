@@ -16,5 +16,5 @@ async def list_quarantined(
 ) -> QuarantineListing:
     entries = await repository.list_quarantined(filters)
     total = await repository.count_quarantined(filters)
-    counts = await repository.quarantine_reason_counts()
+    counts = await repository.quarantine_reason_counts(filters)
     return QuarantineListing(entries=tuple(entries), total_matching=total, reason_counts=counts)

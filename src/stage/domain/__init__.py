@@ -98,6 +98,7 @@ from stage.domain.rate_state import (
 from stage.domain.retention import (
     CLOSED_RETENTION_DAYS,
     OPEN_RETENTION_DAYS,
+    QUARANTINE_RETENTION_DAYS,
     PurgeResult,
     Tombstone,
 )
@@ -167,6 +168,7 @@ __all__ = [
     "PlatformProbed",
     "PlannedRequest",
     "OPEN_RETENTION_DAYS",
+    "QUARANTINE_RETENTION_DAYS",
     "SOURCE_PRIORITY",
     "PurgeResult",
     "ProbeResult",

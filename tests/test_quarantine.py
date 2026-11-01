@@ -292,3 +292,75 @@ async def test_quarantining_a_canonical_promotes_its_follower(
     assert [job.id for job in surviving] == [follower.id], (
         "quarantine deleted the canonical, so every copy vanished behind duplicate_of IS NULL"
     )
+
+
+async def test_a_quarantine_page_starts_at_its_offset_and_counts_follow_the_filters(
+    db_path: Path, run_time: datetime
+) -> None:
+    abroad = [_job(f"abroad-{n}", "Berlin, Germany", run_time) for n in range(3)]
+    full_time = replace(_job("full", "Toronto, ON", run_time, FULL_TIME), company="Beta")
+    async with open_repository(db_path) as repository:
+        _, rejected = normalize_batch([*abroad, full_time])
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=run_time, quarantined=rejected)
+        )
+        page = await repository.list_quarantined(
+            QuarantineFilters(company="acme", limit=2, offset=1)
+        )
+        counts = await repository.quarantine_reason_counts(QuarantineFilters(company="Acme"))
+
+    assert [entry.id for entry in page] == ["abroad-1", "abroad-2"]
+    assert counts == {"out-of-scope-location": 3}
+
+
+async def test_a_first_seen_from_a_clock_that_ran_ahead_is_pulled_back(
+    db_path: Path, run_time: datetime
+) -> None:
+    ahead = run_time + timedelta(days=90)
+    async with open_repository(db_path) as repository:
+        for when in (ahead, run_time):
+            kept, _ = normalize_batch([_job("keep", "Toronto, ON", when)])
+            await repository.apply_source_batch(
+                SourceBatch(source="greenhouse", run_started_at=when, jobs=kept)
+            )
+        stored = await repository.get_job("keep")
+
+    assert stored is not None and stored.first_seen == run_time
+
+
+async def test_purge_drops_only_rejections_no_board_lists_any_more(db_path: Path) -> None:
+    from stage.domain import QUARANTINE_RETENTION_DAYS
+
+    start = datetime(2026, 9, 1, tzinfo=UTC)
+    later = start + timedelta(days=QUARANTINE_RETENTION_DAYS + 5)
+
+    def rejected(ident: str) -> QuarantinedJob:
+        return QuarantinedJob(
+            id=ident,
+            source="greenhouse",
+            company="Acme",
+            title_raw="Staff Engineer",
+            reason=RejectionReason.NOT_AN_INTERNSHIP,
+            matched_phrase="staff engineer",
+            first_seen=start,
+            last_seen=start,
+        )
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=start,
+                quarantined=(rejected("greenhouse:still:1"), rejected("greenhouse:gone:1")),
+            )
+        )
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse", run_started_at=later, unchanged_boards=("greenhouse:still",)
+            )
+        )
+        result = await repository.purge(later)
+        left = await repository.list_quarantined(QuarantineFilters(limit=None))
+
+    assert result.forgotten == 1
+    assert [entry.id for entry in left] == ["greenhouse:still:1"]

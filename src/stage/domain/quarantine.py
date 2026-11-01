@@ -37,3 +37,4 @@ class QuarantineFilters:
     source: str | None = None
     company: str | None = None
     limit: int | None = DEFAULT_QUARANTINE_LIMIT
+    offset: int = 0

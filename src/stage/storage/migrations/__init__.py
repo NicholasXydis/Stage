@@ -67,10 +67,34 @@ def _refuse_a_pre_baseline_database(conn: sqlite3.Connection, db_path: Path) -> 
     if not missing:
         return
     raise SchemaVersionError(
-        f"database at {db_path} records the current schema version but is missing "
-        f"{', '.join(missing)} — it predates this baseline. Back it up or delete it, then run "
-        "stage sync; the corpus is reproducible in under a minute"
+        f"The database at {db_path} records the current schema version but is missing "
+        f"{', '.join(missing)}, so it predates this baseline. Back it up or delete it, then "
+        "run stage sync to collect postings again"
     )
+
+
+def _newer(db_path: Path, version: int) -> SchemaVersionError:
+    return SchemaVersionError(
+        f"The database at {db_path} has schema version {version}, newer than this build "
+        f"understands ({latest_version()}); upgrade stage-cli"
+    )
+
+
+def is_current(conn: sqlite3.Connection, db_path: Path) -> bool:
+    try:
+        rows = conn.execute("SELECT version FROM schema_migrations").fetchall()
+    except sqlite3.OperationalError as exc:
+        if "no such table" in str(exc):
+            return False
+        raise
+    applied = {int(row[0]) for row in rows}
+    known = {migration.version for migration in discover()}
+    if applied - known:
+        raise _newer(db_path, max(applied - known))
+    if known - applied:
+        return False
+    _refuse_a_pre_baseline_database(conn, db_path)
+    return True
 
 
 def snapshot_path(db_path: Path, when: datetime) -> Path:
@@ -87,6 +111,17 @@ def _snapshot(conn: sqlite3.Connection, db_path: Path) -> Path:
     return target
 
 
+def refuse_foreign_database(conn: sqlite3.Connection, db_path: Path) -> None:
+    tables = {
+        str(row[0]) for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+    }
+    if tables and not tables & {"schema_migrations", "jobs"}:
+        raise SchemaVersionError(
+            f"{db_path} is not a Stage database, so Stage left it alone. "
+            "Point --db or STAGE_DB at another file."
+        )
+
+
 def migrate(conn: sqlite3.Connection, db_path: Path) -> tuple[int, ...]:
     migrations = discover()
     known = {migration.version for migration in migrations}
@@ -94,10 +129,7 @@ def migrate(conn: sqlite3.Connection, db_path: Path) -> tuple[int, ...]:
 
     unknown = [version for version in applied if version not in known]
     if unknown:
-        raise SchemaVersionError(
-            f"database at {db_path} has schema version {max(unknown)}, newer than this build "
-            f"understands ({latest_version()}) — upgrade stage-cli"
-        )
+        raise _newer(db_path, max(unknown))
 
     pending = [migration for migration in migrations if migration.version not in applied]
     if not pending:
@@ -116,6 +148,8 @@ def migrate(conn: sqlite3.Connection, db_path: Path) -> tuple[int, ...]:
             )
         except Exception:
             conn.rollback()
+            if migration.version in applied_versions(conn):
+                continue
             raise
         conn.commit()
 
@@ -127,8 +161,10 @@ __all__ = [
     "BASELINE_TABLES",
     "Migration",
     "SchemaVersionError",
+    "refuse_foreign_database",
     "applied_versions",
     "discover",
+    "is_current",
     "latest_version",
     "migrate",
     "snapshot_path",

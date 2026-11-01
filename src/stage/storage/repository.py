@@ -57,6 +57,7 @@ class SourceBatchResult:
     quarantined: int = 0
     duplicates: int = 0
     stored: int = 0
+    successors: tuple[tuple[str, str], ...] = ()
 
 
 class Repository(Protocol):
@@ -114,7 +115,7 @@ class Repository(Protocol):
     def refresh_quarantine_locations(self, resolve: Callable[[str], tuple[str, str | None]]) -> int:
         pass
 
-    def quarantine_reason_counts(self) -> dict[str, int]:
+    def quarantine_reason_counts(self, filters: QuarantineFilters | None = None) -> dict[str, int]:
         pass
 
     def list_jobs(self, filters: JobFilters) -> list[Job]:

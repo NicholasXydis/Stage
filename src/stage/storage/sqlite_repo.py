@@ -4,12 +4,13 @@ from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any
 
 from stage.domain import (
     CLOSED_RETENTION_DAYS,
     OPEN_RETENTION_DAYS,
+    QUARANTINE_RETENTION_DAYS,
     UNKNOWN_TERM,
     CoverageClassification,
     CoverageDisposition,
@@ -41,8 +42,8 @@ from stage.domain import (
     public_https_url,
     source_rank,
 )
-from stage.paths import restrict_permissions
-from stage.storage.migrations import migrate
+from stage.paths import create_private, discard_new, restrict_permissions, tighten_permissions
+from stage.storage.migrations import is_current, migrate, refuse_foreign_database
 from stage.storage.repository import SourceBatch, SourceBatchResult
 from stage.storage.search import match_expression, search_terms
 
@@ -123,6 +124,7 @@ _UPDATE_ON_CONFLICT = (
     "employment_type = excluded.employment_type",
     "source_category = excluded.source_category",
     "status = excluded.status",
+    "first_seen = MIN(jobs.first_seen, excluded.first_seen)",
     "last_seen = excluded.last_seen",
     "source_posted_at = excluded.source_posted_at",
 )
@@ -396,28 +398,67 @@ def _quarantined_to_params(entry: QuarantinedJob) -> tuple[Any, ...]:
 MAX_CHAIN_REPAIR_PASSES = 8
 
 
+def read_only_uri(path: PurePath) -> str:
+    uri = path.as_uri()
+    if not uri.startswith("file:///"):
+        uri = "file:////" + uri.removeprefix("file://")
+    return f"{uri}?mode=ro"
+
+
 class SqliteRepository:
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._conn = connection
         connection.create_function("stage_board_of", 2, board_of, deterministic=True)
 
     @classmethod
-    def connect(cls, db_path: Path) -> "SqliteRepository":
-        is_new = not db_path.exists()
+    def connect(cls, db_path: Path, *, read_only: bool = False) -> "SqliteRepository":
+        if read_only and db_path.exists():
+            reader = cls._reader(db_path)
+            if reader is not None:
+                return reader
         db_path.parent.mkdir(parents=True, exist_ok=True)
+        is_new = create_private(db_path)
         conn = sqlite3.connect(db_path, isolation_level=None)
         try:
             conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA busy_timeout = 5000")
+            if not is_new:
+                refuse_foreign_database(conn, db_path)
+                tighten_permissions(
+                    db_path,
+                    db_path.with_name(f"{db_path.name}-wal"),
+                    db_path.with_name(f"{db_path.name}-shm"),
+                )
             conn.execute("PRAGMA journal_mode = WAL")
             conn.execute("PRAGMA synchronous = NORMAL")
             conn.execute("PRAGMA foreign_keys = ON")
-            conn.execute("PRAGMA busy_timeout = 5000")
             migrate(conn, db_path)
-            if is_new:
-                restrict_permissions(db_path)
         except Exception:
             conn.close()
             raise
+        if is_new:
+            try:
+                restrict_permissions(db_path)
+            except OSError:
+                conn.close()
+                discard_new(db_path)
+                raise
+        return cls(conn)
+
+    @classmethod
+    def _reader(cls, db_path: Path) -> "SqliteRepository | None":
+        conn = sqlite3.connect(read_only_uri(db_path.resolve()), uri=True, isolation_level=None)
+        try:
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA query_only = ON")
+            conn.execute("PRAGMA busy_timeout = 5000")
+            current = is_current(conn, db_path)
+        except Exception:
+            conn.close()
+            raise
+        if not current:
+            conn.close()
+            return None
         return cls(conn)
 
     def close(self) -> None:
@@ -570,7 +611,7 @@ class SqliteRepository:
             swapped += 1
         return swapped
 
-    def _promote_orphaned_duplicates(self, purged: Sequence[str]) -> int:
+    def _promote_orphaned_duplicates(self, purged: Sequence[str]) -> dict[str, str]:
         doomed = set(purged)
         clusters: dict[str, list[tuple[int, str]]] = {}
         for chunk in self._chunked(purged):
@@ -596,8 +637,8 @@ class SqliteRepository:
                 source_rank(str(row["source"]), str(row["id"]))
             )
 
-        promoted = 0
-        for members in clusters.values():
+        successors: dict[str, str] = {}
+        for former, members in clusters.items():
             unique = sorted(set(members))
             if not unique:
                 continue
@@ -607,8 +648,24 @@ class SqliteRepository:
                 self._conn.execute(
                     "UPDATE jobs SET duplicate_of = ? WHERE id = ?", (winner, member)
                 )
-            promoted += 1
-        return promoted
+            successors[former] = winner
+        return successors
+
+    def _heirs(self, leaving: Sequence[str], promoted: Mapping[str, str]) -> dict[str, str]:
+        doomed = set(leaving)
+        heirs = dict(promoted)
+        for chunk in self._chunked(leaving):
+            placeholders = ", ".join("?" * len(chunk))
+            for row in self._conn.execute(
+                f"SELECT id, duplicate_of FROM jobs WHERE duplicate_of IS NOT NULL "
+                f"AND id IN ({placeholders})",
+                tuple(chunk),
+            ).fetchall():
+                main = str(row["duplicate_of"])
+                heir = promoted.get(main, main if main not in doomed else "")
+                if heir:
+                    heirs[str(row["id"])] = heir
+        return heirs
 
     def purge(
         self,
@@ -619,6 +676,7 @@ class SqliteRepository:
     ) -> PurgeResult:
         open_cutoff = _to_text(now - timedelta(days=open_days))
         closed_cutoff = _to_text(now - timedelta(days=closed_days))
+        quarantine_cutoff = _to_text(now - timedelta(days=QUARANTINE_RETENTION_DAYS))
         with self._transaction() as conn:
             rows = conn.execute(
                 "SELECT id, source, first_seen FROM jobs WHERE "
@@ -627,9 +685,14 @@ class SqliteRepository:
             ).fetchall()
             ids = [str(row["id"]) for row in rows]
             reseated = self._reseat_inverted_links()
-            promoted = self._promote_orphaned_duplicates(ids) + reseated
+            successors = self._promote_orphaned_duplicates(ids)
+            promoted = len(successors) + reseated
+            followed = tuple(sorted(self._heirs(ids, successors).items()))
+            forgotten = conn.execute(
+                "DELETE FROM quarantine WHERE last_seen < ?", (quarantine_cutoff,)
+            ).rowcount
             if not ids:
-                return PurgeResult(promoted=promoted)
+                return PurgeResult(promoted=promoted, successors=followed, forgotten=forgotten)
             conn.executemany(
                 "INSERT INTO tombstones (id, source, first_seen, purged_at) "
                 "VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET "
@@ -647,7 +710,13 @@ class SqliteRepository:
             for chunk in self._chunked(ids):
                 placeholders = ", ".join("?" * len(chunk))
                 conn.execute(f"DELETE FROM jobs WHERE id IN ({placeholders})", tuple(chunk))
-        return PurgeResult(purged=len(ids), tombstoned=len(ids), promoted=promoted)
+        return PurgeResult(
+            purged=len(ids),
+            tombstoned=len(ids),
+            promoted=promoted,
+            successors=followed,
+            forgotten=forgotten,
+        )
 
     def preview_purge(
         self,
@@ -664,7 +733,11 @@ class SqliteRepository:
             (JobStatus.OPEN.value, open_cutoff, JobStatus.CLOSED.value, closed_cutoff),
         ).fetchone()
         count = int(row["total"])
-        return PurgeResult(purged=count, tombstoned=count)
+        stale = self._conn.execute(
+            "SELECT COUNT(*) AS total FROM quarantine WHERE last_seen < ?",
+            (_to_text(now - timedelta(days=QUARANTINE_RETENTION_DAYS)),),
+        ).fetchone()
+        return PurgeResult(purged=count, tombstoned=count, forgotten=int(stale["total"]))
 
     def tombstone_count(self) -> int:
         row = self._conn.execute("SELECT COUNT(*) AS total FROM tombstones").fetchone()
@@ -680,13 +753,19 @@ class SqliteRepository:
         stamp = _to_text(batch.run_started_at)
         quarantined_ids = [entry.id for entry in batch.quarantined]
 
+        heirs: dict[str, str] = {}
         with self._transaction() as conn:
             expired = self._expired_tombstones(
                 [job.id for job in batch.jobs],
                 batch.run_started_at - timedelta(days=OPEN_RETENTION_DAYS),
             )
             arriving = [job for job in batch.jobs if job.id not in expired]
-            known = self._preserved_first_seen([job.id for job in arriving] + quarantined_ids)
+            known = {
+                key: min(seen, batch.run_started_at)
+                for key, seen in self._preserved_first_seen(
+                    [job.id for job in arriving] + quarantined_ids
+                ).items()
+            }
             jobs = tuple(
                 replace(job, first_seen=known[job.id]) if job.id in known else job
                 for job in arriving
@@ -703,7 +782,9 @@ class SqliteRepository:
                     _QUARANTINE_UPSERT_SQL,
                     [_quarantined_to_params(entry) for entry in quarantined],
                 )
-                self._promote_orphaned_duplicates(quarantined_ids)
+                heirs = self._heirs(
+                    quarantined_ids, self._promote_orphaned_duplicates(quarantined_ids)
+                )
                 for chunk in self._chunked(quarantined_ids):
                     placeholders = ", ".join("?" * len(chunk))
                     conn.execute(f"DELETE FROM jobs WHERE id IN ({placeholders})", tuple(chunk))
@@ -755,6 +836,10 @@ class SqliteRepository:
                     (stamp, batch.source, _board_glob(board), JobStatus.OPEN.value),
                 )
                 touched += cursor.rowcount
+                conn.execute(
+                    "UPDATE quarantine SET last_seen = ? WHERE source = ? AND id GLOB ?",
+                    (stamp, batch.source, _board_glob(board)),
+                )
 
             closed = 0
             if batch.closes_whole_source:
@@ -876,6 +961,7 @@ class SqliteRepository:
             quarantined=len(batch.quarantined),
             duplicates=linked,
             stored=int(stored["total"]),
+            successors=tuple(sorted(heirs.items())),
         )
 
     def load_validators(self, source: str) -> Mapping[str, HttpValidator]:
@@ -1007,14 +1093,17 @@ class SqliteRepository:
             clauses.append("source = ?")
             params.append(filters.source)
         if filters.company is not None:
-            clauses.append("company = ?")
-            params.append(filters.company)
+            clauses.append("company = ? COLLATE NOCASE")
+            params.append(filters.company.strip())
         where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
         return where, params
 
     def list_quarantined(self, filters: QuarantineFilters) -> list[QuarantinedJob]:
         where, params = self._quarantine_where(filters)
         limit, limit_params = _limit_clause(filters.limit)
+        if filters.offset:
+            limit = (limit or " LIMIT -1") + " OFFSET ?"
+            limit_params = (*limit_params, filters.offset)
         rows = self._conn.execute(
             f"SELECT * FROM quarantine{where} ORDER BY company COLLATE NOCASE, "
             f"first_seen DESC, title_raw COLLATE NOCASE, id{limit}",
@@ -1055,8 +1144,12 @@ class SqliteRepository:
             "WHERE location_raw IS NOT NULL AND location_raw <> ''"
         ).fetchall()
         updates = []
+        resolved: dict[str, tuple[str, str | None]] = {}
         for row in rows:
-            bucket, scope = resolve(str(row["location_raw"]))
+            raw = str(row["location_raw"])
+            if raw not in resolved:
+                resolved[raw] = resolve(raw)
+            bucket, scope = resolved[raw]
             if bucket == str(row["location"]) and scope == row["remote_scope"]:
                 continue
             updates.append((bucket, scope, str(row["id"])))
@@ -1068,9 +1161,14 @@ class SqliteRepository:
             )
         return len(updates)
 
-    def quarantine_reason_counts(self) -> dict[str, int]:
+    def quarantine_reason_counts(self, filters: QuarantineFilters | None = None) -> dict[str, int]:
+        where, params = self._quarantine_where(
+            replace(filters, reason=None) if filters else QuarantineFilters()
+        )
         rows = self._conn.execute(
-            "SELECT reason, COUNT(*) AS total FROM quarantine GROUP BY reason ORDER BY total DESC"
+            f"SELECT reason, COUNT(*) AS total FROM quarantine{where} GROUP BY reason "
+            "ORDER BY total DESC",
+            tuple(params),
         ).fetchall()
         return {str(row["reason"]): int(row["total"]) for row in rows}
 
@@ -1108,8 +1206,9 @@ class SqliteRepository:
             clauses.append("jobs.source = ?")
             params.append(filters.source)
         if filters.company is not None:
-            clauses.append("jobs.company = ?")
-            params.append(filters.company)
+            folded = fold_company(filters.company)
+            clauses.append("jobs.company_fold = ?" if folded else "jobs.company = ?")
+            params.append(folded or filters.company)
         if filters.first_seen_after is not None:
             clauses.append("jobs.first_seen >= ?")
             params.append(_to_text(filters.first_seen_after))
@@ -1230,10 +1329,10 @@ class SqliteRepository:
 
     def _match(self, query: str, filters: JobFilters) -> tuple[str, str, list[Any]]:
         clauses, params = self._clauses(filters)
-        clauses.insert(0, "jobs_fts MATCH ?")
+        clauses.insert(0, "jobs.rowid IN (SELECT rowid FROM jobs_fts WHERE jobs_fts MATCH ?)")
         return (
             match_expression(search_terms(query)),
-            f"FROM jobs JOIN jobs_fts ON jobs_fts.rowid = jobs.rowid WHERE {' AND '.join(clauses)}",
+            f"FROM jobs WHERE {' AND '.join(clauses)}",
             params,
         )
 

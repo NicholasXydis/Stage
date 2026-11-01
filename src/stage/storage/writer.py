@@ -36,8 +36,9 @@ class WriterNotStartedError(RuntimeError):
 
 
 class DatabaseWriter:
-    def __init__(self, db_path: Path) -> None:
+    def __init__(self, db_path: Path, *, read_only: bool = False) -> None:
         self._db_path = db_path
+        self._read_only = read_only
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stage-writer")
         self._repository: Repository | None = None
         self._thread_id: int | None = None
@@ -52,7 +53,7 @@ class DatabaseWriter:
 
     def _open(self) -> None:
         self._thread_id = threading.get_ident()
-        self._repository = SqliteRepository.connect(self._db_path)
+        self._repository = SqliteRepository.connect(self._db_path, read_only=self._read_only)
 
     def _shutdown(self) -> None:
         if self._repository is not None:
@@ -131,8 +132,12 @@ class AsyncRepository:
     async def count_quarantined(self, filters: QuarantineFilters) -> int:
         return await self._writer.run(lambda repository: repository.count_quarantined(filters))
 
-    async def quarantine_reason_counts(self) -> dict[str, int]:
-        return await self._writer.run(lambda repository: repository.quarantine_reason_counts())
+    async def quarantine_reason_counts(
+        self, filters: QuarantineFilters | None = None
+    ) -> dict[str, int]:
+        return await self._writer.run(
+            lambda repository: repository.quarantine_reason_counts(filters)
+        )
 
     async def count_duplicates(self) -> int:
         return await self._writer.run(lambda repository: repository.count_duplicates())

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -414,3 +415,97 @@ def test_a_chained_duplicate_never_demotes_the_higher_priority_canonical() -> No
         assert link.duplicate_id != canonical.id
         assert link.canonical_id == canonical.id, (link.duplicate_id, link.canonical_id)
     assert any(link.duplicate_id == incoming.id and link.evidence for link in links)
+
+
+def test_a_feed_copy_with_a_blank_place_joins_the_same_workday_posting() -> None:
+    from stage.services.screening import normalize_batch
+    from stage.sources.speedyapply import SpeedyApplyFeed, SpeedyApplyListing
+
+    path = "job/Des-Moines/Software-Development-Intern_REQ00471"
+    listed = Job(
+        id="simplify:dee-zee:1",
+        source="simplify",
+        company="Dee Zee",
+        title_raw="Software Development Intern",
+        title_normalized="Software Development Intern",
+        apply_url_raw=f"https://deezee.wd108.myworkdayjobs.com/DeeZee_Careers/{path}",
+        description="",
+        location_raw="Des Moines, IA",
+        first_seen=WHEN,
+        last_seen=WHEN,
+    )
+    blank = SpeedyApplyListing(
+        company="Dee Zee",
+        title="Software Development Intern",
+        url=f"https://deezee.wd108.myworkdayjobs.com/en-US/deezee_careers/{path}",
+    )
+    kept, rejected = normalize_batch([listed, SpeedyApplyFeed()._to_job(blank, WHEN)])
+
+    assert not rejected
+    assert {entry.location for entry in kept} == {LocationBucket.USA}
+    links = resolve_duplicates(kept, ())
+    assert [(link.canonical_id, link.kind) for link in links] == [(listed.id, "url")]
+
+
+def test_a_multi_site_workday_posting_is_screened_with_its_first_place() -> None:
+    from stage.services.screening import normalize_batch
+
+    posting = Job(
+        id="workday:desjardins-external:r1",
+        source="workday",
+        company="Desjardins",
+        title_raw="Software Developer Intern",
+        title_normalized="software developer intern",
+        apply_url_raw="https://desjardins.wd10.myworkdayjobs.com/External/job/Montral/Intern_R1",
+        description="",
+        location_raw="2 Locations",
+        first_seen=WHEN,
+        last_seen=WHEN,
+    )
+
+    kept, rejected = normalize_batch([posting])
+
+    assert not rejected and kept[0].location is LocationBucket.MONTREAL
+    assert kept[0].location_raw == "Montréal / 1 more"
+
+
+def test_rescreen_gives_a_stored_multi_site_posting_its_first_place() -> None:
+    from stage.services.maintenance import _reclassifications
+
+    stored = job("workday:sunlife-external:r2", "workday", "Sun Life", "Software Intern")
+    stored = replace(
+        stored,
+        location=LocationBucket.UNKNOWN,
+        location_raw="2 Locations",
+        apply_url_raw="https://sunlife.wd3.myworkdayjobs.com/External/job/Toronto-Ontario/I_R2",
+    )
+
+    [candidate], _ = _reclassifications([stored])
+
+    assert candidate.location is LocationBucket.CANADA
+    assert candidate.location_raw == "Toronto Ontario / 1 more"
+
+
+@pytest.mark.parametrize(
+    ("posted", "kept"),
+    [
+        (datetime(1, 1, 1, tzinfo=UTC), None),
+        (datetime(9999, 12, 31, tzinfo=UTC), None),
+        (datetime(2026, 8, 1, tzinfo=UTC).replace(tzinfo=None), datetime(2026, 8, 1, tzinfo=UTC)),
+        (datetime(2026, 7, 30, tzinfo=UTC), datetime(2026, 7, 30, tzinfo=UTC)),
+    ],
+)
+def test_an_implausible_posting_date_is_dropped_and_a_naive_one_read_as_utc(
+    posted: datetime, kept: datetime | None
+) -> None:
+    from stage.services.screening import normalize_batch
+
+    posting = replace(
+        job("greenhouse:acme:1", "greenhouse", "Acme", "Software Engineer Intern"),
+        source_posted_at=posted,
+        location_raw="Toronto, ON",
+    )
+
+    kept_jobs, rejected = normalize_batch([posting])
+
+    assert not rejected and kept_jobs[0].source_posted_at == kept

@@ -130,4 +130,4 @@ def test_purge_reports_what_it_swept(tmp_path: Path, monkeypatch: pytest.MonkeyP
     result = CliRunner().invoke(app, ["purge", "--db", str(tmp_path / "p.db")])
 
     assert result.exit_code == 0
-    assert "3 old captured payload(s)" in result.stdout
+    assert "3 old captured payloads" in result.stdout

@@ -3,6 +3,7 @@ from datetime import datetime
 
 OPEN_RETENTION_DAYS = 14
 CLOSED_RETENTION_DAYS = 3
+QUARANTINE_RETENTION_DAYS = 30
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,6 +11,9 @@ class PurgeResult:
     purged: int = 0
     tombstoned: int = 0
     promoted: int = 0
+    successors: tuple[tuple[str, str], ...] = ()
+    tracker_busy: bool = False
+    forgotten: int = 0
 
 
 @dataclass(frozen=True, slots=True)
