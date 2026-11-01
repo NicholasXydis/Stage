@@ -6,6 +6,7 @@ from collections.abc import Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 from multiprocessing import get_context
 
 from stage.classify import (
@@ -21,6 +22,7 @@ from stage.domain import Job, QuarantinedJob
 from stage.normalize import (
     canonical_apply_url,
     detect_language,
+    listed_place,
     resolve_location,
     resolve_term,
 )
@@ -32,10 +34,27 @@ WORKERS = 2
 Screened = tuple[tuple[Job, ...], tuple[QuarantinedJob, ...]]
 
 
+EARLIEST_POSTED = datetime(1990, 1, 1, tzinfo=UTC)
+
+
+def _plausible(posted: datetime | None, seen: datetime) -> datetime | None:
+    if posted is None:
+        return None
+    if posted.tzinfo is None:
+        posted = posted.replace(tzinfo=UTC)
+    latest = (seen if seen.tzinfo else seen.replace(tzinfo=UTC)) + timedelta(days=366)
+    return posted if EARLIEST_POSTED <= posted <= latest else None
+
+
 def normalize_batch(jobs: Sequence[Job]) -> Screened:
     kept: list[Job] = []
     rejected: list[QuarantinedJob] = []
     for job in jobs:
+        job = replace(
+            job,
+            location_raw=listed_place(job.location_raw, job.apply_url_raw),
+            source_posted_at=_plausible(job.source_posted_at, job.first_seen),
+        )
         location = resolve_location(job.location_raw)
         term = resolve_term(
             title=job.title_raw,

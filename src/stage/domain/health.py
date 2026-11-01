@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from statistics import median
 
+from stage.domain.text import counted
+
 MIN_VOLUME_HISTORY = 3
 VOLUME_DROP_RATIO = 0.5
 STALE_AFTER_DAYS = 14
@@ -81,7 +83,7 @@ def assess_volume(source: str, history: list[VolumePoint]) -> VolumeSignal:
             latest=latest,
             baseline=0.0,
             samples=len(prior),
-            detail=f"{len(prior)} comparable run(s), {MIN_VOLUME_HISTORY} needed",
+            detail=f"{counted(len(prior), 'comparable run')}, {MIN_VOLUME_HISTORY} needed",
         )
 
     baseline = float(median(prior))

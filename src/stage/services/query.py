@@ -121,13 +121,19 @@ async def search_jobs(
 async def company_match(repository: AsyncRepository, company: str) -> tuple[bool, str | None]:
     from difflib import get_close_matches
 
+    from stage.lexicon import fold
+
     names = await repository.company_names()
-    if company in names:
+    wanted = fold(company)
+    if company in names or (wanted and any(fold(name) == wanted for name in names)):
         return True, None
+    contained = sorted((name for name in names if wanted and wanted in fold(name)), key=len)
+    if contained:
+        return False, contained[0]
     folded: dict[str, str] = {}
     for name in names:
         folded.setdefault(name.casefold(), name)
-    near = get_close_matches(company.casefold(), list(folded), n=1, cutoff=0.6)
+    near = get_close_matches(company.casefold(), list(folded), n=1, cutoff=0.8)
     return False, folded[near[0]] if near else None
 
 

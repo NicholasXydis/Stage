@@ -1,11 +1,17 @@
 import csv
 import io
 import logging
+import os
+import re
+import secrets
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
+
+from anyio import to_thread
 
 from stage.domain import (
     DEFAULT_WINDOW_DAYS,
@@ -17,12 +23,14 @@ from stage.domain import (
     sanitize,
     truncate,
 )
+from stage.domain.text import counted
 from stage.paths import font_path
 from stage.services.query import list_jobs
 from stage.storage import AsyncRepository
 
 FORMULA_PREFIXES = ("=", "+", "-", "@")
 FORMULA_GUARD = "'"
+MAX_NAMES = 10_000
 
 
 def _place(raw: str) -> str:
@@ -65,7 +73,7 @@ class ExportResult:
 
 
 def default_filename(fmt: ExportFormat, when: datetime, stem: str = "stage-export") -> str:
-    return f"{stem}-{when.astimezone(UTC):%Y%m%d}.{fmt.value}"
+    return f"{stem}-{when.astimezone():%Y%m%d}.{fmt.value}"
 
 
 def export_root() -> Path:
@@ -88,13 +96,22 @@ def downloads_root() -> Path:
 def free_destination(
     root: Path, fmt: ExportFormat, when: datetime, stem: str = "stage-export"
 ) -> Path:
-    first = root / default_filename(fmt, when, stem)
-    candidate = first
-    number = 2
-    while candidate.exists():
-        candidate = first.with_name(f"{first.stem}-{number}{first.suffix}")
-        number += 1
-    return candidate
+    first = root.resolve() / default_filename(fmt, when, stem)
+    for number in range(1, MAX_NAMES + 1):
+        suffix = f"-{number}" if number > 1 else ""
+        candidate = first.with_name(f"{first.stem}{suffix}{first.suffix}")
+        try:
+            _create(candidate)
+        except FileExistsError:
+            continue
+        except OSError as exc:
+            raise ExportError(_write_failure(candidate, exc)) from exc
+        return candidate
+    raise ExportError(f"{first.parent} already holds {MAX_NAMES:,} exports from today")
+
+
+def _create(path: Path) -> None:
+    os.close(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666))
 
 
 def resolve_destination(
@@ -109,9 +126,9 @@ def resolve_destination(
         target = target / default_filename(fmt, when, stem)
     target = target.resolve()
     if not target.parent.is_dir():
-        raise ExportError(f"{target.parent} does not exist — create it or pass another --out")
+        raise ExportError(f"{target.parent} does not exist; create it or pass another --out")
     if target.exists() and not force:
-        raise ExportError(f"{target} already exists — pass --force to overwrite it")
+        raise ExportError(f"{target} already exists; pass --force to overwrite it")
     return target
 
 
@@ -138,15 +155,18 @@ def render_json(jobs: Sequence[Job]) -> str:
 
 
 def _markdown_cell(value: str) -> str:
-    return _cell(value).replace("\\", "\\\\").replace("|", "\\|")
+    text = _cell(value).replace("\\", "\\\\")
+    for mark, safe in (("|", "\\|"), ("[", "\\["), ("]", "\\]"), ("<", "&lt;"), (">", "&gt;")):
+        text = text.replace(mark, safe)
+    return text
 
 
 def render_markdown(jobs: Sequence[Job], *, generated_at: datetime) -> str:
     names = [name for name, _ in COLUMNS]
     lines = [
-        f"# Stage export — {generated_at.astimezone(UTC):%Y-%m-%d %H:%M UTC}",
+        f"# Stage export, {generated_at.astimezone(UTC):%Y-%m-%d %H:%M UTC}",
         "",
-        f"{len(jobs)} posting(s).",
+        f"{counted(len(jobs), 'posting')}.",
         "",
         "| " + " | ".join(names) + " |",
         "| " + " | ".join("---" for _ in names) + " |",
@@ -165,15 +185,16 @@ def _write_text(target: Path, payload: str, *, encoding: str = "utf-8") -> None:
 
 
 def _write_failure(target: Path, exc: OSError) -> str:
+    reason = exc.strerror or str(exc) or type(exc).__name__
     return (
-        f"could not write {target.name} ({exc.strerror or type(exc).__name__}). Check the "
+        f"could not write {target.name} ({reason}). Check the "
         "destination is writable and has room, then try again"
     )
 
 
 @contextmanager
 def _replaced(target: Path) -> Iterator[Path]:
-    staged = target.with_name(f"{target.name}.partial")
+    staged = _staging(target)
     try:
         yield staged
         staged.replace(target)
@@ -181,6 +202,19 @@ def _replaced(target: Path) -> Iterator[Path]:
         raise ExportError(_write_failure(target, exc)) from exc
     finally:
         staged.unlink(missing_ok=True)
+
+
+def _staging(target: Path) -> Path:
+    for _ in range(MAX_NAMES):
+        staged = target.with_name(f".{target.name}.{secrets.token_hex(6)}.partial")
+        try:
+            _create(staged)
+        except FileExistsError:
+            continue
+        except OSError as exc:
+            raise ExportError(_write_failure(target, exc)) from exc
+        return staged
+    raise ExportError(f"could not find a free name beside {target.name}")
 
 
 class _RendererNotes(logging.Handler):
@@ -196,6 +230,7 @@ def write_pdf(jobs: Sequence[Job], target: Path, *, generated_at: datetime) -> t
     collected = _RendererNotes()
     logger = logging.getLogger(PDF_LOGGER)
     logger.addHandler(collected)
+    propagates, logger.propagate = logger.propagate, False
     try:
         _render_pdf(jobs, target, generated_at=generated_at)
     except ExportError:
@@ -209,7 +244,20 @@ def write_pdf(jobs: Sequence[Job], target: Path, *, generated_at: datetime) -> t
         ) from exc
     finally:
         logger.removeHandler(collected)
-    return tuple(truncate(first_line(message), 160) for message in collected.messages)
+        logger.propagate = propagates
+    return tuple(_plain_note(message) for message in collected.messages)
+
+
+def _plain_note(message: str) -> str:
+    missing = re.findall(r"'(.)' \(", message) if "missing the following glyphs" in message else []
+    if not missing:
+        return truncate(first_line(message), 160)
+    shown = " ".join(dict.fromkeys(missing[:8]))
+    count = counted(len(set(missing)), "character")
+    return (
+        f"The PDF cannot show {count}, such as {shown}, and leaves them out. "
+        "csv, json and md keep them."
+    )
 
 
 def _render_pdf(jobs: Sequence[Job], target: Path, *, generated_at: datetime) -> None:
@@ -222,10 +270,10 @@ def _render_pdf(jobs: Sequence[Job], target: Path, *, generated_at: datetime) ->
     pdf.add_font("dejavu", style="", fname=str(font_path()))
     pdf.add_page()
     pdf.set_font("dejavu", size=14)
-    pdf.cell(0, 8, _cell(f"Stage export — {generated_at.astimezone(UTC):%Y-%m-%d %H:%M UTC}"))
+    pdf.cell(0, 8, _cell(f"Stage export, {generated_at.astimezone(UTC):%Y-%m-%d %H:%M UTC}"))
     pdf.ln(10)
     pdf.set_font("dejavu", size=8)
-    pdf.cell(0, 5, _cell(f"{len(jobs)} posting(s)"))
+    pdf.cell(0, 5, _cell(counted(len(jobs), "posting")))
     pdf.ln(8)
 
     with pdf.table(
@@ -252,29 +300,42 @@ async def export_jobs(
     destination: Path | None = None,
     window_days: int | None = DEFAULT_WINDOW_DAYS,
     force: bool = False,
+    claimed: bool = False,
     now: datetime | None = None,
     query: str = "",
 ) -> ExportResult:
     moment = now or datetime.now(UTC)
-    target = resolve_destination(destination, fmt, moment, force)
-    if query.strip():
-        from stage.services.query import search_jobs
-
-        listing = await search_jobs(repository, query, filters, window_days=window_days, now=moment)
+    if claimed and destination is not None:
+        target = destination
     else:
-        listing = await list_jobs(repository, filters, window_days=window_days, now=moment)
-    jobs = listing.jobs
+        target = resolve_destination(destination, fmt, moment, force)
+    try:
+        if query.strip():
+            from stage.services.query import search_jobs
 
-    notes: tuple[str, ...] = ()
-    with _replaced(target) as staged:
-        if fmt is ExportFormat.CSV:
-            _write_text(staged, render_csv(jobs), encoding="utf-8-sig")
-        elif fmt is ExportFormat.JSON:
-            _write_text(staged, render_json(jobs))
-        elif fmt is ExportFormat.MD:
-            _write_text(staged, render_markdown(jobs, generated_at=moment))
+            listing = await search_jobs(
+                repository, query, filters, window_days=window_days, now=moment
+            )
         else:
-            notes = write_pdf(jobs, staged, generated_at=moment)
+            listing = await list_jobs(repository, filters, window_days=window_days, now=moment)
+        jobs = listing.jobs
+
+        notes: tuple[str, ...] = ()
+        with _replaced(target) as staged:
+            if fmt is ExportFormat.CSV:
+                _write_text(staged, render_csv(jobs), encoding="utf-8-sig")
+            elif fmt is ExportFormat.JSON:
+                _write_text(staged, render_json(jobs))
+            elif fmt is ExportFormat.MD:
+                _write_text(staged, render_markdown(jobs, generated_at=moment))
+            else:
+                notes = await to_thread.run_sync(
+                    partial(write_pdf, jobs, staged, generated_at=moment)
+                )
+    except BaseException:
+        if claimed:
+            target.unlink(missing_ok=True)
+        raise
 
     return ExportResult(
         path=target,

@@ -6,8 +6,11 @@ from datetime import UTC, datetime
 from ipaddress import ip_address
 from urllib.parse import urlsplit
 
-_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
+_CONTROL = re.compile(
+    r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]"
+)
 _UNSAFE_IN_URL = re.compile(r"[\x00-\x20\x7f-\x9f]")
+_BLANK_RUN = re.compile(r"\n{3,}")
 WEB_SCHEMES = ("http", "https")
 MAX_OPEN_AT_ONCE = 50
 
@@ -49,9 +52,18 @@ def public_https_url(raw: str) -> str | None:
     return candidate if address.is_global else None
 
 
+def counted(count: int, noun: str) -> str:
+    return f"{count:,} {noun}" + ("" if count == 1 else "s")
+
+
 def first_line(value: str) -> str:
     lines = [line.strip() for line in sanitize(value).splitlines() if line.strip()]
     return lines[0] if lines else ""
+
+
+def paragraphs(value: str) -> str:
+    lines = [line.strip() for line in sanitize(value).splitlines()]
+    return _BLANK_RUN.sub("\n\n", "\n".join(lines)).strip()
 
 
 def graphemes(value: str) -> list[str]:
@@ -69,7 +81,7 @@ def truncate(value: str, width: int) -> str:
     clusters = graphemes(clean)
     if len(clusters) <= width:
         return clean
-    return "".join(clusters[: max(width - 1, 0)]) + "…"
+    return "".join(clusters[: max(width - 3, 0)]) + "..."
 
 
 def summary(value: str, width: int) -> str:
@@ -123,9 +135,21 @@ __all__ = [
     "graphemes",
     "json_default",
     "json_safe",
+    "paragraphs",
     "public_https_url",
     "sanitize",
     "summary",
     "truncate",
     "web_url",
 ]
+
+
+def dropped_punctuation(query: str) -> str:
+    import unicodedata
+
+    def carries_punctuation(word: str) -> bool:
+        return any(
+            unicodedata.category(character)[0] in "PS" and character != "_" for character in word
+        )
+
+    return ", ".join(word for word in query.split() if carries_punctuation(word))

@@ -103,6 +103,14 @@ def test_markdown_escapes_a_pipe_so_the_table_survives() -> None:
     assert row.replace("\\|", "").count("|") == len(COLUMNS) + 1
 
 
+def test_markdown_cannot_carry_a_live_image_link_or_tag() -> None:
+    title = "Intern ![x](https://evil.example/i.png) [Apply](https://evil.example) <img src=x>"
+    row = render_markdown([_job("greenhouse:acme:1", title)], generated_at=NOW).splitlines()[-1]
+
+    assert "!\\[x\\](https://evil.example/i.png)" in row and "\\[Apply\\]" in row
+    assert "&lt;img src=x&gt;" in row and "<img" not in row
+
+
 def test_a_newline_in_a_field_never_breaks_a_row() -> None:
     rendered = render_markdown([_job("greenhouse:acme:1", "Intern\nSecond line")], generated_at=NOW)
     assert len(rendered.splitlines()) == 7
@@ -234,11 +242,11 @@ def test_export_is_reachable_from_the_command_line(db_path: Path, tmp_path: Path
         app, ["export", "--format", "csv", "--out", str(target), "--db", str(db_path)]
     )
     assert blocked.exit_code == 2
-    assert "--force" in blocked.stdout
+    assert "--force" in blocked.stderr
 
     unknown = runner.invoke(app, ["export", "--format", "xlsx", "--db", str(db_path)])
     assert unknown.exit_code == 2
-    assert "csv, json, md, pdf" in unknown.stdout
+    assert "csv, json, md, pdf" in unknown.stderr
 
 
 def test_a_backslash_before_a_pipe_cannot_break_the_markdown_table() -> None:
@@ -284,7 +292,7 @@ def test_a_glyph_the_font_cannot_draw_is_reported_rather_than_dropped_silently(
     cjk = _job("greenhouse:acme:1", "実習生 Intern", company="株式会社")
     notes = write_pdf([cjk], tmp_path / "cjk.pdf", generated_at=NOW)
     assert notes, "a PDF that lost characters must say so"
-    assert "missing the following glyphs" in notes[0]
+    assert notes[0].startswith("The PDF cannot show 7 characters, such as ") and "csv" in notes[0]
 
 
 def test_a_latin_export_reports_nothing(tmp_path: Path) -> None:
@@ -417,3 +425,43 @@ async def test_exporting_a_search_writes_what_the_search_found(tmp_path: Path) -
     assert searched.count == 1
     assert "Machine Learning" in (tmp_path / "search.csv").read_text(encoding="utf-8-sig")
     assert "Warehouse" not in (tmp_path / "search.csv").read_text(encoding="utf-8-sig")
+
+
+def test_a_failed_export_removes_the_name_it_claimed(
+    db_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services import export as export_module
+
+    SqliteRepository.connect(db_path).close()
+
+    def refuse(*_: object, **__: object) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(export_module, "render_csv", refuse)
+    claimed = tmp_path / "claimed.csv"
+    claimed.touch()
+
+    async def run() -> None:
+        async with open_repository(db_path) as repo:
+            await export_jobs(
+                repo,
+                JobFilters(limit=10),
+                fmt=ExportFormat.CSV,
+                destination=claimed,
+                claimed=True,
+                now=NOW,
+            )
+
+    import asyncio
+
+    with pytest.raises(ExportError, match="No space left on device"):
+        asyncio.run(run())
+    assert not claimed.exists(), "an AI export that failed must not leave its empty file behind"
+
+
+def test_a_write_failure_without_an_error_code_still_says_why() -> None:
+    from stage.services.export import _write_failure
+
+    said = _write_failure(Path("x.csv"), OSError("the share went away"))
+
+    assert "could not write x.csv (the share went away)" in said

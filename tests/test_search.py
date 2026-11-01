@@ -257,6 +257,13 @@ def test_search_is_reachable_from_the_command_line(db_path: Path) -> None:
     assert unsearchable.exit_code == 0, unsearchable.stdout
     assert "Nothing searchable" in unsearchable.stdout
 
+    unquoted = runner.invoke(app, ["search", "stagiaire", "developpement", "--db", str(db_path)])
+    assert unquoted.exit_code == 0, unquoted.stderr
+    assert "Coveo Solutions" in unquoted.stdout
+
+    empty = runner.invoke(app, ["search", "  ", "--db", str(db_path)])
+    assert empty.exit_code == 2 and "needs words to find" in empty.stderr
+
 
 @pytest.mark.serial
 def test_a_pathological_query_is_bounded_rather_than_slow(repository: SqliteRepository) -> None:
@@ -312,3 +319,21 @@ def test_search_lists_matches_newest_first_however_often_the_word_appears(
     assert [job.id for job in found] == ["greenhouse:b:1", "greenhouse:c:1", "greenhouse:a:1"]
     shown = CliRunner().invoke(app, ["search", "software", "--last", "0", "--db", str(db_path)])
     assert "Matched software as prefixes, newest first." in shown.stdout
+
+
+def test_a_date_window_matches_the_text_once_not_per_row(repository: SqliteRepository) -> None:
+    from datetime import timedelta
+
+    windowed = JobFilters(first_seen_after=NOW - timedelta(days=1))
+    expression, source, params = repository._match("intern", windowed)
+    plan = " | ".join(
+        str(row[-1])
+        for row in repository._conn.execute(
+            f"EXPLAIN QUERY PLAN SELECT jobs.id {source}", (expression, *params)
+        )
+    )
+
+    assert "LIST SUBQUERY" in plan, f"FTS ran once per dated row (41s for 'a'): {plan}"
+    assert _ids(repository.search_jobs("intern", windowed)) == {"greenhouse:coveo:2"}
+    later = JobFilters(first_seen_after=NOW + timedelta(seconds=1))
+    assert repository.search_jobs("intern", later) == []

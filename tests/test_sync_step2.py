@@ -374,8 +374,10 @@ def test_excluding_an_unknown_source_is_an_error_not_a_silent_no_op() -> None:
     from stage.services.sync import NoSourcesSelectedError, _select
 
     rows = (Company(name="A", platform=Platform.GREENHOUSE, slug="a"),)
-    with pytest.raises(NoSourcesSelectedError, match="unknown source"):
+    with pytest.raises(NoSourcesSelectedError, match="'greehnouse' to exclude. Did you mean"):
         _select(rows, None, ["greehnouse"])
+    with pytest.raises(NoSourcesSelectedError, match="Unknown source 'nope'. Choose from: "):
+        _select(rows, ["nope"])
 
 
 def test_excluding_a_source_with_no_enabled_rows_still_works() -> None:
@@ -391,9 +393,9 @@ def test_a_partial_run_says_which_kind_of_partial_it_was() -> None:
     from stage.services.sync import _partial_reason
 
     unroutable = [Company(name="Acme", platform=Platform.TEAMTAILOR, slug="acme")]
-    assert _partial_reason([], [], [], ["workday"]) == (
-        "1 source(s) stopped on their host budget"
-    ), "budget deferral is rotation working, not a failure"
+    assert _partial_reason([], [], [], ["workday"]) == ("1 source stopped at the host budget"), (
+        "budget deferral is rotation working, not a failure"
+    )
     assert "failed" in _partial_reason(["themuse"], [], [], [])
     assert "blocked" in _partial_reason([], [], ["workable"], [])
     assert "route" in _partial_reason([], unroutable, [], [])

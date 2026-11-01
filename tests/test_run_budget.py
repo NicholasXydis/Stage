@@ -212,7 +212,7 @@ def test_a_broken_registry_is_reported_even_while_another_run_holds_the_lock(
         )
 
     assert result.exit_code == 2
-    assert "last_verified" in result.stdout, (
+    assert "last_verified" in result.stderr, (
         "a config error needs no network, so the lock must never mask it"
     )
 

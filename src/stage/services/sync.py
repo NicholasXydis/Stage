@@ -45,6 +45,7 @@ from stage.domain import (
     is_resting,
     rotate,
 )
+from stage.domain.text import counted
 from stage.http import (
     CEILING_BACKSTOP,
     BreakerOpenError,
@@ -192,6 +193,15 @@ def _registry_boards(
     return tuple(sorted(covered - unreadable)), tuple(sorted(boards))
 
 
+def _unknown_sources(unknown: set[str], known: set[str], purpose: str = "") -> str:
+    from difflib import get_close_matches
+
+    names = ", ".join(repr(name) for name in sorted(unknown))
+    near = get_close_matches(sorted(unknown)[0], sorted(known), n=1) if len(unknown) == 1 else []
+    hint = f"Did you mean {near[0]!r}?" if near else f"Choose from: {', '.join(sorted(known))}"
+    return f"Unknown source {names}{purpose}. {hint}"
+
+
 def _select(
     companies: Sequence[Company],
     sources: Sequence[str] | None,
@@ -201,30 +211,26 @@ def _select(
     feeds = dict(get_feeds())
     known = set(grouped) | set(feeds) | set(get_adapters())
     if sources is not None:
-        selected = set(sources)
+        selected = {name.strip().lower() for name in sources}
         unknown = selected - known
         if unknown:
-            raise NoSourcesSelectedError(
-                f"no enabled companies for source(s): {', '.join(sorted(unknown))}"
-            )
+            raise NoSourcesSelectedError(_unknown_sources(unknown, known))
         grouped = {name: value for name, value in grouped.items() if name in selected}
         feeds = {name: value for name, value in feeds.items() if name in selected}
     if excluded:
-        dropped = set(excluded)
+        dropped = {name.strip().lower() for name in excluded}
         unknown = dropped - known
         if unknown:
-            raise NoSourcesSelectedError(
-                f"unknown source(s) to exclude: {', '.join(sorted(unknown))}"
-            )
+            raise NoSourcesSelectedError(_unknown_sources(unknown, known, " to exclude"))
         grouped = {name: value for name, value in grouped.items() if name not in dropped}
         feeds = {name: value for name, value in feeds.items() if name not in dropped}
     if not grouped and not feeds:
         detail = ""
         if unroutable:
             platforms = ", ".join(sorted({company.platform.value for company in unroutable}))
-            detail = f" ({len(unroutable)} enabled row(s) sit on unrouted platform(s): {platforms})"
+            detail = f" ({counted(len(unroutable), 'enabled row')} with no adapter: {platforms})"
         raise NoSourcesSelectedError(
-            f"the registry has no enabled companies with a matching adapter{detail}"
+            f"The registry has no enabled companies with a matching adapter{detail}"
         )
     return grouped, feeds, unroutable
 
@@ -351,13 +357,13 @@ def _partial_reason(
 ) -> str:
     reasons = []
     if failed_sources:
-        reasons.append(f"{len(failed_sources)} source(s) failed")
+        reasons.append(f"{counted(len(failed_sources), 'source')} failed")
     if blocked_sources:
-        reasons.append(f"{len(blocked_sources)} source(s) blocked")
+        reasons.append(f"{counted(len(blocked_sources), 'source')} blocked")
     if deferred_sources:
-        reasons.append(f"{len(deferred_sources)} source(s) stopped on their host budget")
+        reasons.append(f"{counted(len(deferred_sources), 'source')} stopped at the host budget")
     if unroutable:
-        reasons.append(f"{len(unroutable)} row(s) no adapter could route")
+        reasons.append(f"{counted(len(unroutable), 'row')} no adapter could route")
     return "; ".join(reasons)
 
 
@@ -570,6 +576,10 @@ async def _persist_source_batch(
     normalize_ms = (time.perf_counter() - normalize_clock) * 1000
     write_clock = time.perf_counter()
     counts = await repository.apply_source_batch(replace(template, jobs=kept, quarantined=rejected))
+    if counts.successors:
+        from stage.services.tracker import follow_successors
+
+        follow_successors(counts.successors)
     return counts, normalize_ms, (time.perf_counter() - write_clock) * 1000
 
 
@@ -1160,11 +1170,7 @@ async def sync(
         for event in _bucket_plans(ledger.plan_bounds, postures):
             yield event
         yield SyncFinished(
-            outcome=(
-                SyncOutcome.PARTIAL
-                if ledger.failed or unroutable or ledger.blocked
-                else SyncOutcome.SUCCESS
-            ),
+            outcome=(SyncOutcome.PARTIAL if ledger.failed or unroutable else SyncOutcome.SUCCESS),
             added=0,
             updated=0,
             closed=0,
@@ -1189,7 +1195,10 @@ async def sync(
     sources_with_boards, known_boards = _registry_boards(companies)
     await repository.close_orphan_boards(sources_with_boards, known_boards)
 
+    from stage.services.tracker import follow_successors
+
     purged = await repository.purge(now_fn())
+    follow_successors(purged.successors)
 
     await repository.record_sync_run(
         SyncRun(
