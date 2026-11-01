@@ -8,7 +8,7 @@ from textual.widgets import DataTable, Footer, Header, Static
 
 from stage.domain.text import sanitize
 from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay
+from stage.tui.help import HelpOverlay, HelpPanel
 from stage.tui.safe import cell, quoted, told
 
 if TYPE_CHECKING:
@@ -39,6 +39,8 @@ class BoardsScreen(HelpOverlay, Screen[None]):
     def __init__(self) -> None:
         super().__init__()
         self._companies: tuple[str, ...] = ()
+        self._boards: tuple[str, ...] = ()
+        self._stay = False
         self._arming_disable: str | None = None
 
     @property
@@ -50,7 +52,7 @@ class BoardsScreen(HelpOverlay, Screen[None]):
         yield Static("", id="chips")
         yield DataTable(id="results", cursor_type="row")
         yield Static("", id="detail")
-        yield Static("", id="help")
+        yield HelpPanel(id="help")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -59,7 +61,7 @@ class BoardsScreen(HelpOverlay, Screen[None]):
         self.load()
 
     def _mark_loading(self) -> None:
-        self.query_one("#chips", Static).update("[dim]loading…[/dim]")
+        self.query_one("#chips", Static).update("[dim]loading...[/dim]")
 
     def on_data_table_row_highlighted(self) -> None:
         self._arming_disable = None
@@ -71,10 +73,17 @@ class BoardsScreen(HelpOverlay, Screen[None]):
             return None
         return self._companies[row]
 
+    def selected_board(self) -> str | None:
+        table = self.query_one("#results", DataTable)
+        row = table.cursor_row
+        if not self._boards or row < 0 or row >= len(self._boards):
+            return None
+        return self._boards[row]
+
     @work(exclusive=True)
     async def load(self) -> None:
         from stage.companies import RegistryError, load_companies
-        from stage.services.coverage import coverage
+        from stage.services.coverage import board_of, coverage
 
         repo = self.repository
         if repo is None:
@@ -86,25 +95,29 @@ class BoardsScreen(HelpOverlay, Screen[None]):
             return
         report = await coverage(repo, companies)
         table = self.query_one("#results", DataTable)
+        keep = self.selected_board()
+        row = table.cursor_row
         table.clear()
         names = []
-        for row in report.rows:
+        boards = []
+        for entry in report.rows:
             seen = (
-                row.last_success_at.astimezone().strftime("%Y-%m-%d")
-                if row.last_success_at
-                else "—"
+                entry.last_success_at.astimezone().strftime("%Y-%m-%d")
+                if entry.last_success_at
+                else "-"
             )
             table.add_row(
-                cell(row.state.value),
-                cell(row.company, 26),
-                cell(row.platform),
-                cell(str(row.postings)),
+                cell(entry.state.value),
+                cell(entry.company, 26),
+                cell(entry.platform),
+                cell(f"{entry.postings:,}"),
                 cell(seen),
             )
-            names.append(row.company)
-        listed = set(names)
+            names.append(entry.company)
+            boards.append(entry.board)
+        listed = set(boards)
         for company in companies:
-            if company.enabled or company.name in listed:
+            if company.enabled or board_of(company) in listed:
                 continue
             table.add_row(
                 cell("disabled"),
@@ -114,10 +127,16 @@ class BoardsScreen(HelpOverlay, Screen[None]):
                 cell("-"),
             )
             names.append(company.name)
+            boards.append(board_of(company))
         self._companies = tuple(names)
+        self._boards = tuple(boards)
+        if names:
+            wanted = row if self._stay or keep not in boards else boards.index(keep)
+            self._stay = False
+            table.move_cursor(row=min(max(wanted, 0), len(names) - 1))
         self.query_one("#chips", Static).update(
-            f"[b]{report.enabled}[/b] enabled · [dim]{report.disabled} disabled · "
-            f"{len(report.gaps)} producing nothing[/dim]"
+            f"[b]{report.enabled:,}[/b] enabled, [dim]{report.disabled:,} disabled, "
+            f"{len(report.gaps):,} producing nothing[/dim]"
         )
         self.query_one("#detail", Static).update(
             "[b]e[/b] enable  [b]d[/b] disable, twice to confirm  [b]?[/b] keys\n"
@@ -146,17 +165,20 @@ class BoardsScreen(HelpOverlay, Screen[None]):
 
         from stage.companies import RegistryError, update_registry
         from stage.domain import Company
+        from stage.services.coverage import board_of
 
         company = self.selected_company()
         if company is None:
             told(self, "Highlight a board first.", "warning")
             return
+        board = self.selected_board()
 
         def apply(rows: tuple[Company, ...]) -> tuple[list[Company], int]:
             changed = 0
             updated = []
             for row in rows:
-                if row.name == company and row.enabled != enabled:
+                here = row.name == company and (board is None or board_of(row) == board)
+                if here and row.enabled != enabled:
                     updated.append(replace(row, enabled=enabled))
                     changed += 1
                     continue
@@ -173,6 +195,7 @@ class BoardsScreen(HelpOverlay, Screen[None]):
             told(self, f"{sanitize(company)} is already {state}.", "warning")
             return
         told(self, f"{'Enabled' if enabled else 'Disabled'} {sanitize(company)}")
+        self._stay = True
         self.load()
 
     def action_reload(self) -> None:

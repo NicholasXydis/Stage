@@ -288,6 +288,14 @@ def test_every_guide_entry_fits_one_aligned_row() -> None:
         assert len(row) <= 80, row
 
 
+def test_every_command_summary_fits_one_row_at_80_columns() -> None:
+    result = CliRunner().invoke(app, ["--help"], env={"COLUMNS": "80"})
+    rows = ANSI_ESCAPE.sub("", result.stdout).split("\n")
+
+    assert max(len(row) for row in rows) <= 80
+    assert not [row for row in rows if row.startswith("│   ")]
+
+
 def test_the_guide_names_a_command_the_same_way_its_help_does() -> None:
     import re
 

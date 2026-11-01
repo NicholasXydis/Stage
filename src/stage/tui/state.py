@@ -46,7 +46,7 @@ def filter_rows(
             if option == "unknown":
                 continue
             rows.append((name, option, f"{label}: {option}", state.values.get(name) == option))
-    window = state.last_days
+    window = state.window_days or 0
     for days in LAST_DAYS_CHOICES:
         shown = "any date" if days == 0 else f"last {days} days"
         rows.append(("last_days", str(days), f"Window: {shown}", window == days))
@@ -70,6 +70,7 @@ class FilterState:
     show_all: bool = False
     mine: bool = False
     untracked: bool = False
+    window_chosen: bool = False
 
     def toggle(self, name: str, value: str) -> None:
         if self.values.get(name) == value:
@@ -86,6 +87,7 @@ class FilterState:
         self.show_all = False
         self.mine = False
         self.untracked = False
+        self.window_chosen = False
 
     def widen(self) -> None:
         self.limit += PAGE_SIZE
@@ -99,6 +101,7 @@ class FilterState:
     def choose(self, name: str, value: str) -> None:
         if name == "last_days":
             self.last_days = int(value)
+            self.window_chosen = True
         elif name == "only_new":
             self.only_new = not self.only_new
         elif name == "show_all":
@@ -113,6 +116,8 @@ class FilterState:
 
     @property
     def window_days(self) -> int | None:
+        if self.query.strip() and not self.window_chosen:
+            return None
         return self.last_days or None
 
     @property

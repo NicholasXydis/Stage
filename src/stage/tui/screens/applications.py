@@ -12,7 +12,7 @@ from stage.domain.tracker import ApplicationStatus, PostingState, TrackerError, 
 from stage.normalize.location import display_location
 from stage.services.tracker import TrackerListing, TrackerRow
 from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay
+from stage.tui.help import HelpOverlay, HelpPanel
 from stage.tui.safe import cell, quoted, told
 
 if TYPE_CHECKING:
@@ -30,7 +30,8 @@ HELP_TEXT = """[b]Your applications[/b]
 [dim]? closes this   escape goes back[/dim]"""
 
 STATUSES = tuple(ApplicationStatus)
-FIXED_WIDTH = 4 + 12 + 10 + 20 + 7 + 14
+STATUS_WIDTH, ON_WIDTH, POSTING_WIDTH = 12, 10, 7
+SHORT = 30
 
 
 class ApplicationsScreen(HelpOverlay, Screen[bool]):
@@ -49,6 +50,7 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         super().__init__()
         self._rows: tuple[TrackerRow, ...] = ()
         self._listing: TrackerListing | None = None
+        self._layout: tuple[int, int, int] = (0, 0, 0)
         self._status: ApplicationStatus | None = None
         self._picking = ""
         self._choices: tuple[ApplicationStatus | None, ...] = ()
@@ -69,23 +71,43 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         )
         yield DataTable(id="results", cursor_type="row")
         yield Static("", id="detail")
-        yield Static("", id="help")
+        yield HelpPanel(id="help")
         yield Footer()
 
     def on_mount(self) -> None:
+        self.set_class(self.app.size.height < SHORT, "narrow")
         table = self.query_one("#results", DataTable)
-        table.add_column("#", width=4)
-        table.add_column("Status", width=12)
-        table.add_column("On", width=10)
-        table.add_column("Company", width=20)
-        table.add_column("Title", width=self._title_width())
-        table.add_column("Posting", width=7)
+        self._add_columns(table)
         self.query_one("#chips", Static).update("[dim]loading...[/dim]")
         table.focus()
         self.load()
 
-    def _title_width(self) -> int:
-        return max(24, self.app.size.width - FIXED_WIDTH)
+    def _add_columns(self, table: DataTable[object], rows: int = 0) -> None:
+        self._layout = self._widths(rows)
+        number, company, title = self._layout
+        table.add_column("#", width=number)
+        table.add_column("Status", width=STATUS_WIDTH)
+        table.add_column("On", width=ON_WIDTH)
+        table.add_column("Company", width=company)
+        table.add_column("Title", width=title)
+        table.add_column("Posting", width=POSTING_WIDTH)
+
+    def on_resize(self) -> None:
+        self.set_class(self.app.size.height < SHORT, "narrow")
+        rows = len(self._rows) if self._listing is not None else 0
+        if not any(self._layout) or self._widths(rows) == self._layout:
+            return
+        selected = self._selected()
+        chosen = selected.entry.posting_id if selected is not None else None
+        if self._listing is not None:
+            self._fill(self._listing, chosen)
+
+    def _widths(self, rows: int) -> tuple[int, int, int]:
+        number = max(4, len(str(rows)) + 1)
+        fixed = number + STATUS_WIDTH + ON_WIDTH + POSTING_WIDTH + 2 * 6 + 1
+        room = max(30, self.app.size.width - fixed)
+        company = min(28, max(10, room // 3))
+        return number, company, room - company
 
     @work(exclusive=True)
     async def load(self, keep: str | None = None) -> None:
@@ -116,15 +138,19 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         self._listing = listing
         self._rows = listing.rows
         table = self.query_one("#results", DataTable)
-        table.clear()
-        width = self._title_width()
+        if self._widths(len(self._rows)) == self._layout:
+            table.clear()
+        else:
+            table.clear(columns=True)
+            self._add_columns(table, len(self._rows))
+        _, company, width = self._layout
         for position, row in enumerate(self._rows, start=1):
             entry = row.entry
             table.add_row(
                 cell(str(position)),
                 cell(entry.status.value),
                 cell(entry.on.isoformat()),
-                cell(entry.snapshot.company, 20),
+                cell(entry.snapshot.company, company),
                 cell(entry.snapshot.title, width),
                 cell(row.state.value),
             )
@@ -142,12 +168,12 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
             return
         stats = listing.stats
         parts = [
-            f"[b]{stats.tracked}[/b] tracked",
-            f"{stats.applied_last_7} applied this week",
-            f"heard back from {stats.heard_back} of {stats.applications}",
+            f"[b]{stats.tracked:,}[/b] tracked",
+            f"{stats.applied_last_7:,} applied in the last 7 days",
+            f"heard back from {stats.heard_back:,} of {stats.applications:,}",
         ]
         if listing.hidden:
-            parts.append(f"{listing.hidden} hidden")
+            parts.append(f"{listing.hidden:,} hidden")
         shown = "   ".join(parts)
         if self._status is not None:
             shown = f"[reverse] {self._status.value} [/reverse]   {shown}"
@@ -180,7 +206,7 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         note = f"note: {quoted(entry.note)}" if entry.note else "[dim]no note; n adds one[/dim]"
         panel.update(
             f"[b]{quoted(snapshot.title)}[/b]\n"
-            f"[$blue]{quoted(snapshot.company)}[/$blue]   {quoted(place)}  [dim]|[/dim]  "
+            f"[$primary]{quoted(snapshot.company)}[/$primary]   {quoted(place)}  [dim]|[/dim]  "
             f"{posting}\n\n"
             f"{entry.status.value} on {entry.on.isoformat()}{steps}\n"
             f"{note}"

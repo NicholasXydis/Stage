@@ -9,7 +9,7 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
 from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay
+from stage.tui.help import HelpOverlay, HelpPanel
 from stage.tui.safe import quoted
 
 SAMPLE = 5000
@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 BAR_WIDTH = 28
 TOP_N = 12
+LABEL_WIDTH = 32
 TREND_DAYS = 30
 
 
@@ -35,12 +36,18 @@ def trend(jobs: "tuple[Job, ...]", days: int = TREND_DAYS) -> Counter[str]:
 def bars(counts: Counter[str], width: int = BAR_WIDTH, top: int = TOP_N) -> str:
     if not counts:
         return "[dim]nothing recorded yet[/dim]"
+    from rich.cells import cell_len
+
+    from stage.domain.text import truncate
+
     ranked = counts.most_common(top)
     highest = ranked[0][1] or 1
-    label_width = max(len(name) for name, _ in ranked)
+    labels = [truncate(name, LABEL_WIDTH) for name, _ in ranked]
+    label_width = max(cell_len(label) for label in labels)
     return "\n".join(
-        f"{quoted(name):<{label_width}}  [b]{'#' * round(width * value / highest)}[/b] {value}"
-        for name, value in ranked
+        f"{quoted(label)}{' ' * (label_width - cell_len(label))}  "
+        f"[b]{'#' * round(width * value / highest)}[/b] {value:,}"
+        for label, (_, value) in zip(labels, ranked, strict=True)
     )
 
 
@@ -61,8 +68,8 @@ class StatsScreen(HelpOverlay, Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield VerticalScroll(Static("[dim]loading…[/dim]", id="stats-grid"))
-        yield Static("", id="help")
+        yield VerticalScroll(Static("[dim]loading...[/dim]", id="stats-grid"))
+        yield HelpPanel(id="help")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -70,7 +77,7 @@ class StatsScreen(HelpOverlay, Screen[None]):
         self.load()
 
     def _mark_loading(self) -> None:
-        self.query_one("#stats-grid", Static).update("[dim]loading…[/dim]")
+        self.query_one("#stats-grid", Static).update("[dim]loading...[/dim]")
 
     @work(exclusive=True)
     async def load(self) -> None:
@@ -99,9 +106,9 @@ class StatsScreen(HelpOverlay, Screen[None]):
         )
         seen = trend(jobs)
         scope = (
-            f"[b]{total}[/b] postings\n"
+            f"[b]{total:,}[/b] {'posting' if total == 1 else 'postings'}\n"
             if len(jobs) >= total
-            else f"[b]{total}[/b] postings, measured on the most recent {len(jobs)}\n"
+            else f"[b]{total:,}[/b] postings, measured on the most recent {len(jobs):,}\n"
         )
         parts = [scope]
         parts.extend(f"\n[b]{title}[/b]\n{bars(counts)}" for title, counts in blocks)

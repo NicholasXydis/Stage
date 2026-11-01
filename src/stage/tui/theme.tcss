@@ -15,7 +15,11 @@ Header {
     color: $on-blue;
 }
 
-#splash {
+HeaderIcon {
+    visibility: hidden;
+}
+
+SplashScreen {
     align: center middle;
     background: $surface;
 }
@@ -24,14 +28,14 @@ Header {
     color: $text;
     text-style: bold;
     text-align: center;
-    width: auto;
+    width: 100%;
 }
 
 #splash-stats {
     color: $text-muted;
     text-align: center;
     margin-top: 1;
-    width: auto;
+    width: 100%;
 }
 
 #chips {
@@ -115,6 +119,10 @@ DataTable {
     height: 1fr;
 }
 
+#tabs, #tabs > ContentSwitcher, #tabs TabPane {
+    height: 1fr;
+}
+
 DataTable > .datatable--cursor {
     background: $blue-deep;
     color: $on-blue;
@@ -134,8 +142,27 @@ DataTable > .datatable--header {
     border-top: solid $blue;
 }
 
-#detail.expanded {
+#reader {
+    height: 9;
+    min-height: 3;
+    padding: 1 2;
+    background: $panel;
+    border-top: solid $blue;
+    overflow-y: hidden;
+    scrollbar-size-vertical: 1;
+}
+
+#reader.expanded {
     height: 22;
+    max-height: 60%;
+    overflow-y: auto;
+}
+
+#reader > #detail {
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    border-top: none;
 }
 
 #detail-title {
@@ -168,7 +195,7 @@ Input:focus {
 }
 
 #stats-grid {
-    height: 1fr;
+    height: auto;
     padding: 1;
 }
 
@@ -196,8 +223,11 @@ Footer {
     display: block;
     layer: overlay;
     dock: top;
-    width: 46;
+    width: 47;
     height: auto;
+    max-height: 100%;
+    overflow-y: auto;
+    scrollbar-size-vertical: 1;
     margin: 2 0 0 4;
     padding: 1 2;
     background: $panel;

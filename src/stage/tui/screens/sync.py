@@ -7,7 +7,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, ProgressBar, Static
 
 from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay
+from stage.tui.help import HelpOverlay, HelpPanel
 from stage.tui.safe import cell, quoted
 
 if TYPE_CHECKING:
@@ -44,7 +44,6 @@ class SyncScreen(HelpOverlay, Screen[None]):
         self._sources: dict[str, tuple[int, int]] = {}
         self._warnings: list[str] = []
         self._done = 0
-        self._planned = 0
         self._fetched = 0
 
     @property
@@ -58,7 +57,7 @@ class SyncScreen(HelpOverlay, Screen[None]):
         yield DataTable(id="sources", cursor_type="row")
         yield Static("", id="warnings")
         yield Static("", id="detail")
-        yield Static("", id="help")
+        yield HelpPanel(id="help")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -88,7 +87,7 @@ class SyncScreen(HelpOverlay, Screen[None]):
             return
         self._sources.clear()
         self._warnings.clear()
-        self._done = self._planned = self._fetched = 0
+        self._done = self._fetched = 0
         self.run_sync()
 
     def action_cancel(self) -> None:
@@ -128,27 +127,29 @@ class SyncScreen(HelpOverlay, Screen[None]):
             CompanyUnchanged,
             SourceBlocked,
             SourceFailed,
+            SourceFinished,
             SourceStarted,
             SyncFinished,
             SyncStarted,
         )
 
         if isinstance(event, SyncStarted):
-            self._planned = event.companies
-            self.query_one("#overall", ProgressBar).update(total=max(event.companies, 1))
+            self.query_one("#overall", ProgressBar).update(total=1, progress=0)
         elif isinstance(event, SourceStarted):
-            self._sources[event.source] = (0, event.companies)
+            self._sources[event.source] = (0, event.companies or 1)
+        elif isinstance(event, SourceFinished):
+            done, _ = self._sources.get(event.source, (0, 0))
+            self._sources[event.source] = (done, done)
         elif isinstance(
             event, CompanyFinished | CompanyUnchanged | CompanyFailed | CompanyDeferred
         ):
             done, total = self._sources.get(event.source, (0, 0))
-            self._sources[event.source] = (done + 1, total)
+            self._sources[event.source] = (done + 1, max(total, done + 1))
             self._done += 1
             if isinstance(event, CompanyFinished):
                 self._fetched += event.fetched
             elif isinstance(event, CompanyFailed):
                 self._note(quoted(f"{event.source}/{event.company} - {event.error}"))
-            self.query_one("#overall", ProgressBar).update(progress=self._done)
         elif isinstance(event, SourceBlocked | SourceFailed):
             self._note(quoted(f"{event.source} - {getattr(event, 'reason', 'failed')}"))
         elif isinstance(event, SyncFinished):
@@ -160,20 +161,27 @@ class SyncScreen(HelpOverlay, Screen[None]):
         self._warnings.append(message)
         del self._warnings[:-MAX_WARNINGS]
 
+    @property
+    def planned(self) -> int:
+        return sum(total for _, total in self._sources.values())
+
     def _paint(self) -> None:
+        self.query_one("#overall", ProgressBar).update(
+            total=max(self.planned, 1), progress=self._done
+        )
         table = self.query_one("#sources", DataTable)
         table.clear()
         for name, (done, total) in sorted(self._sources.items()):
             mark = " ok" if total and done >= total else ""
             table.add_row(cell(name, 20), source_bar(done, total), f"{done}/{total}{mark}")
         self.query_one("#chips", Static).update(
-            f"[b]{self._done}[/b] of {self._planned} boards · "
-            f"[b]{self._fetched}[/b] postings fetched"
+            f"[b]{self._done:,}[/b] of {self.planned:,} boards and feeds, "
+            f"[b]{self._fetched:,}[/b] {'posting' if self._fetched == 1 else 'postings'} fetched"
         )
         if self._warnings:
             shown = "\n".join(f"  {line}" for line in self._warnings[-8:])
             self.query_one("#warnings", Static).update(
-                f"\n[yellow]Warnings ({len(self._warnings)})[/yellow]\n{shown}"
+                f"\n[yellow]Warnings ({len(self._warnings):,})[/yellow]\n{shown}"
             )
 
     def _finish(self, event: object) -> None:
@@ -184,8 +192,8 @@ class SyncScreen(HelpOverlay, Screen[None]):
         tone = {"success": "green", "partial": "yellow"}.get(outcome, "red")
         self._paint()
         self.query_one("#chips", Static).update(
-            f"[{tone}]{outcome}[/{tone}] — [b]{added}[/b] added, {updated} updated, "
-            f"{quarantined} quarantined"
+            f"[{tone}]{outcome}[/{tone}]: [b]{added:,}[/b] added, {updated:,} updated, "
+            f"{quarantined:,} quarantined"
         )
         self.query_one("#detail", Static).update(
             "[dim]Press escape to go back to the postings browser, or s to sync again.[/dim]"

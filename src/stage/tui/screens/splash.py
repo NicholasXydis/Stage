@@ -1,5 +1,6 @@
 from textual.app import ComposeResult
 from textual.containers import Center, Middle
+from textual.events import Key
 from textual.screen import Screen
 from textual.widgets import Static
 
@@ -29,7 +30,8 @@ class SplashScreen(Screen[None]):
         if self._dismiss_after is not None:
             self.set_timer(self._dismiss_after, self._done)
 
-    def on_key(self) -> None:
+    def on_key(self, event: Key) -> None:
+        event.stop()
         self._done()
 
     def _done(self) -> None:

@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual.css.query import NoMatches
 from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Static, TabbedContent, TabPane
 
 from stage.domain.text import sanitize
 from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay
+from stage.tui.help import HelpOverlay, HelpPanel
 from stage.tui.safe import cell, quoted, told
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ DISPOSITIONS: tuple[tuple[str, str, str], ...] = (
 
 HELP_TEXT = """[b]Review[/b]
   up down  move between rows
-  tab      switch tabs
+  tab      then left right switches tabs
 
 [b]File an employer[/b]
   a        worth a dedicated adapter
@@ -65,6 +66,7 @@ class ReviewScreen(HelpOverlay, Screen[None]):
         super().__init__()
         self._limit = PAGE
         self._employers: tuple[str, ...] = ()
+        self._filed: str | None = None
 
     @property
     def repository(self) -> "AsyncRepository | None":
@@ -79,17 +81,31 @@ class ReviewScreen(HelpOverlay, Screen[None]):
             with TabPane("Quarantine", id="tab-quarantine"):
                 yield DataTable(id="quarantine", cursor_type="row")
         yield Static("", id="detail")
-        yield Static("", id="help")
+        yield HelpPanel(id="help")
         yield Footer()
 
     def on_mount(self) -> None:
         self._mark_loading()
         self.query_one("#unregistered", DataTable).add_columns(*UNREGISTERED_COLUMNS)
         self.query_one("#quarantine", DataTable).add_columns(*QUARANTINE_COLUMNS)
+        self.query_one("#unregistered", DataTable).focus()
         self.load()
 
     def _mark_loading(self) -> None:
-        self.query_one("#chips", Static).update("[dim]loading…[/dim]")
+        self.query_one("#chips", Static).update("[dim]loading...[/dim]")
+
+    def check_action(self, action: str, _parameters: tuple[object, ...]) -> bool | None:
+        if action != "classify":
+            return True
+        try:
+            return self.query_one("#tabs", TabbedContent).active == "tab-unregistered"
+        except NoMatches:
+            return False
+
+    def on_tabbed_content_tab_activated(self, event: TabbedContent.TabActivated) -> None:
+        self.refresh_bindings()
+        if event.pane is not None:
+            event.pane.query_one(DataTable).focus()
 
     def selected_employer(self) -> str | None:
         table = self.query_one("#unregistered", DataTable)
@@ -99,7 +115,7 @@ class ReviewScreen(HelpOverlay, Screen[None]):
         return self._employers[row]
 
     @work(exclusive=True)
-    async def load(self) -> None:
+    async def load(self, keep: str | None = None) -> None:
         from stage.companies import RegistryError, load_companies
         from stage.domain import QuarantineFilters
         from stage.services.coverage import coverage
@@ -119,17 +135,22 @@ class ReviewScreen(HelpOverlay, Screen[None]):
         rows = report.unregistered[: self._limit]
         self._employers = tuple(entry.company for entry in rows)
         unregistered = self.query_one("#unregistered", DataTable)
+        spot = unregistered.cursor_row
         unregistered.clear()
         for entry in rows:
             unregistered.add_row(
                 cell(entry.company, 34),
-                cell(str(entry.postings)),
-                cell(str(entry.quarantined)),
+                cell(f"{entry.postings:,}"),
+                cell(f"{entry.quarantined:,}"),
                 cell("yes" if entry.posts_internships else "-"),
                 cell(", ".join(entry.sources) or "-", 24),
             )
+        if rows:
+            wanted = self._employers.index(keep) if keep in self._employers else spot
+            unregistered.move_cursor(row=min(max(wanted, 0), len(rows) - 1))
 
         quarantine = self.query_one("#quarantine", DataTable)
+        spot = quarantine.cursor_row
         quarantine.clear()
         for row in listing.entries:
             quarantine.add_row(
@@ -138,11 +159,14 @@ class ReviewScreen(HelpOverlay, Screen[None]):
                 cell(row.title_raw, 38),
                 cell(row.source, 14),
             )
+        if listing.entries:
+            quarantine.move_cursor(row=min(max(spot, 0), len(listing.entries) - 1))
 
         self.query_one("#chips", Static).update(
-            f"[b]{len(report.unregistered)}[/b] unregistered · "
-            f"[b]{listing.total_matching}[/b] quarantined "
-            f"[dim](showing {len(listing.entries)}, {len(report.classifications)} reviewed)[/dim]"
+            f"[b]{len(report.unregistered):,}[/b] unregistered, "
+            f"[b]{listing.total_matching:,}[/b] quarantined "
+            f"[dim](showing {len(listing.entries):,}, "
+            f"{len(report.classifications):,} reviewed)[/dim]"
         )
         self._render_help()
 
@@ -175,23 +199,25 @@ class ReviewScreen(HelpOverlay, Screen[None]):
             checked_on=datetime.now(UTC),
         )
         replaced = await repo.record_coverage_classification(entry)
+        self._filed = company
         verb = "Updated" if replaced else "Recorded"
-        told(self, f"{verb} {sanitize(company)} as {disposition}")
+        told(self, f"{verb} {sanitize(company)} as {disposition}. x undoes it.")
         self.load()
 
     @work(exclusive=True)
     async def action_unclassify(self) -> None:
         repo = self.repository
-        company = self.selected_employer()
+        company = self._filed
         if repo is None or company is None:
-            told(self, "Highlight an employer first.", "warning")
+            told(self, "Nothing to undo; file an employer first.", "warning")
             return
+        self._filed = None
         removed = await repo.clear_coverage_classification(company)
         if not removed:
             told(self, f"{sanitize(company)} had no recorded decision.", "warning")
             return
         told(self, f"Cleared the decision for {sanitize(company)}")
-        self.load()
+        self.load(keep=company)
 
     def action_more(self) -> None:
         self._limit += PAGE

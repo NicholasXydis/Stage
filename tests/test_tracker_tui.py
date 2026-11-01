@@ -179,6 +179,21 @@ async def test_z_puts_everything_back_exactly(db_path: Path) -> None:
         assert "Undone: 1 posting back as before." in _messages(app)
 
 
+async def test_z_leaves_alone_a_posting_changed_elsewhere_since(db_path: Path) -> None:
+    app = StageApp(_store(db_path), "")
+    async with app.run_test(size=SIZE) as pilot:
+        await _postings(app, pilot)
+        await pilot.press("s")
+        await _settle(app, pilot)
+        _seed(_entry("a", ApplicationStatus.APPLIED, note="from the terminal"))
+        await pilot.press("z")
+        await _settle(app, pilot)
+
+        kept = _entries()[_id("a")]
+        assert kept.status is ApplicationStatus.APPLIED and kept.note == "from the terminal"
+        assert any("changed again since" in message for message in _messages(app))
+
+
 async def test_z_after_a_first_save_untracks_and_then_has_nothing_left(db_path: Path) -> None:
     app = StageApp(_store(db_path), "")
     async with app.run_test(size=SIZE) as pilot:
@@ -393,6 +408,7 @@ async def test_your_applications_explains_an_empty_list(db_path: Path) -> None:
 
 async def test_your_applications_reports_a_damaged_tracker(db_path: Path) -> None:
     app = StageApp(_store(db_path), "")
+    tracker_path().parent.mkdir(parents=True, exist_ok=True)
     tracker_path().write_bytes(b"garbage" * 200)
     async with app.run_test(size=SIZE) as pilot:
         screen = await _applications(app, pilot)
@@ -432,7 +448,9 @@ async def test_keys_with_nothing_to_act_on_say_so(db_path: Path) -> None:
         await pilot.press("n", "o", "x")
         await pilot.pause()
 
-        assert _messages(app).count("Nothing selected.") == 3
+        assert _messages(app).count("Nothing selected.") == 1, (
+            "a repeat within seconds is shown once"
+        )
 
 
 async def test_a_note_that_is_too_long_is_refused(db_path: Path) -> None:
@@ -515,4 +533,28 @@ async def test_the_quick_keys_need_a_posting(tmp_path: Path) -> None:
         await pilot.press("s", "p", "h")
         await pilot.pause()
 
-        assert _messages(app).count("Nothing selected.") == 3
+        assert _messages(app).count("Nothing selected.") == 1, (
+            "a repeat within seconds is shown once"
+        )
+
+
+async def test_the_applications_title_column_follows_the_window_width(db_path: Path) -> None:
+    _seed(*(_entry(name, ApplicationStatus.SAVED) for name in "abc"))
+    app = StageApp(_store(db_path), "")
+    async with app.run_test(size=(70, 30)) as pilot:
+        await _postings(app, pilot)
+        screen = await _applications(app, pilot)
+        table = screen.query_one("#results", DataTable)
+        await pilot.press("down")
+        await _settle(app, pilot)
+        before = table.cursor_row
+
+        def title() -> int:
+            return next(c.width for c in table.columns.values() if str(c.label) == "Title")
+
+        narrow = title()
+        await pilot.resize_terminal(220, 40)
+        await _settle(app, pilot)
+
+        assert title() > narrow + 100 and table.row_count == 3
+        assert table.cursor_row == before == 1

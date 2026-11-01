@@ -18,6 +18,7 @@ class StageApp(App[None]):
     CSS_PATH = THEME_PATH
     TITLE = "Stage"
     ALLOW_MAXIMIZE = False
+    ENABLE_COMMAND_PALETTE = False
 
     BINDINGS = [
         Binding("q", "quit", "quit"),
@@ -63,6 +64,7 @@ async def summarize(database: Path) -> str:
     from stage.companies import RegistryError, load_companies
     from stage.domain import JobFilters
     from stage.storage import open_repository
+    from stage.tui.safe import counted
 
     try:
         employers = len(load_companies(None))
@@ -73,9 +75,11 @@ async def summarize(database: Path) -> str:
             postings = await repo.count_jobs(JobFilters(limit=1))
             last = await repo.last_sync_at()
     except (OSError, sqlite3.DatabaseError):
-        return "no database yet — run stage sync"
+        if database.exists():
+            raise
+        return "no database yet; run stage sync"
     when = f"last sync {last.astimezone().strftime('%Y-%m-%d %H:%M')}" if last else "never synced"
-    return f"{postings:,} postings · {employers:,} employers · {when}"
+    return f"{counted(postings, 'posting')}, {counted(employers, 'employer')}, {when}"
 
 
 def launch(database: Path, summary: str = "") -> None:
