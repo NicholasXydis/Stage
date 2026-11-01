@@ -115,7 +115,7 @@ async def test_one_bad_row_is_dropped_and_costs_the_board_its_authority(
         result = await adapter.fetch(acme_lever, client, run_time)
 
     assert len(result.jobs) == 1
-    assert "1 posting(s) failed validation" in result.degraded
+    assert "dropped 1 posting that failed validation" in result.degraded
     assert not result.authoritative
 
 

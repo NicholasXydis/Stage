@@ -178,7 +178,7 @@ async def test_a_dropped_row_still_counts_against_the_page_total(
         result = await adapter.fetch(acme_sr, client, run_time)
 
     assert len(result.jobs) == 1
-    assert "1 posting(s) failed validation" in result.degraded
+    assert "dropped 1 posting that failed validation" in result.degraded
     assert not result.authoritative
     assert respx.calls.call_count == 1, "the total is reached once the drop is counted"
 

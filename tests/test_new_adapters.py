@@ -140,7 +140,7 @@ async def test_one_bad_row_is_dropped_and_costs_the_board_its_authority(name: st
         result = await get_adapter(name).fetch(_company(platform), client, NOW)
 
     assert len(result.jobs) == 1, "the good row survives its malformed neighbour"
-    assert "1 posting(s) failed validation" in result.degraded
+    assert "dropped 1 posting that failed validation" in result.degraded
     assert not result.authoritative, "an incomplete listing must close nothing"
 
     job = result.jobs[0]

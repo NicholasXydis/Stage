@@ -17,6 +17,7 @@ from stage.domain import (
     board_key,
     job_id,
 )
+from stage.domain.text import counted
 from stage.http import HttpClient, HttpError
 from stage.lexicon import fold, internship_lexicon, workday_facet_lexicon
 from stage.sources import register
@@ -120,7 +121,7 @@ def resolve_facet(page: WorkdayPage, tenant: str, site: str, now: datetime) -> W
 
 
 def facet_still_offered(page: WorkdayPage, facet: WorkdayFacet) -> bool:
-    if page.facets is None:
+    if not page.facets:
         return True
     for group in page.facets:
         if group.facetParameter != facet.parameter:
@@ -353,8 +354,8 @@ class WorkdayAdapter:
         if capped:
             if page_budget != MAX_PAGES and page_budget < MAX_CRAWL_PAGES:
                 degraded = (
-                    f"resumable crawl paused after {pages} page(s); resumes from offset {offset} "
-                    "on the next sync and closes nothing yet"
+                    f"resumable crawl paused after {counted(pages, 'page')}; resumes from "
+                    f"offset {offset} on the next sync and closes nothing yet"
                 )
             else:
                 degraded = f"stopped at the {page_budget}-page cap; the board may be truncated"

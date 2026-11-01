@@ -111,7 +111,7 @@ async def test_a_bad_listing_is_dropped_and_the_feed_closes_nothing(
         result = await feed.fetch(client, run_time)
 
     assert len(result.jobs) == 1
-    assert "1 posting(s) failed validation" in result.degraded
+    assert "dropped 1 posting that failed validation" in result.degraded
     assert not result.authoritative
 
 
@@ -140,6 +140,24 @@ def test_a_two_letter_segment_that_is_not_a_language_is_kept(segment: str) -> No
     assert canonical_apply_url(f"https://acme.com/{segment}/jobs/12345") == (
         f"https://acme.com/{segment}/jobs/12345"
     ), f"/{segment}/ is a department or country, not a locale"
+
+
+def test_a_workday_link_matches_whatever_its_case() -> None:
+    workday = canonical_apply_url(
+        "https://bakerhughes.wd5.myworkdayjobs.com/BakerHughes/job/GB-NU-CRAMLINGTON/"
+        "Intern---Software-Engineering---2027_R171503"
+    )
+    feed = canonical_apply_url(
+        "https://bakerhughes.wd5.myworkdayjobs.com/en-US/bakerhughes/job/GB-NU-CRAMLINGTON/"
+        "Intern---Software-Engineering---2027_R171503"
+    )
+    assert workday == feed, "Workday sites ignore case, so one posting must keep one link"
+    shouting = canonical_apply_url(
+        "https://bakerhughes.wd5.myworkdayjobs.com/EN-US/BakerHughes/job/GB-NU-CRAMLINGTON/"
+        "Intern---Software-Engineering---2027_R171503"
+    )
+    assert shouting == workday, "a capitalised locale is still a locale"
+    assert canonical_apply_url("https://acme.com/Jobs/A1") == "https://acme.com/Jobs/A1"
 
 
 def test_a_real_ats_url_survives_canonicalization() -> None:

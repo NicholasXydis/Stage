@@ -193,7 +193,7 @@ def test_every_registry_reading_command_reports_a_broken_registry(
         arguments += ["--db", str(tmp_path / "s.db")]
     result = CliRunner().invoke(app, arguments)
     assert result.exit_code == 2, result.stdout
-    assert "last_verified" in result.stdout, result.stdout
+    assert "last_verified" in result.stderr, result.stderr
     assert result.exception is None or isinstance(result.exception, SystemExit)
 
 
@@ -207,7 +207,7 @@ def test_a_missing_registry_is_reported_rather_than_raised(tmp_path: Path) -> No
         ["discover", "--verify", "--registry", str(tmp_path / "absent.yaml")],
     )
     assert result.exit_code == 2, result.stdout
-    assert "registry not found" in result.stdout
+    assert "registry not found" in result.stderr
 
 
 def test_a_disable_reason_survives_a_registry_rewrite(tmp_path: Path) -> None:

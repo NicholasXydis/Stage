@@ -7,6 +7,7 @@ from typing import Annotated, Any, ClassVar, Protocol, runtime_checkable
 from pydantic import BaseModel, BeforeValidator, StringConstraints, ValidationError
 
 from stage.domain import Company, Job, Platform, WorkdayCrawlStep, board_key
+from stage.domain.text import counted
 from stage.http import HttpClient
 from stage.paths import capture_dir
 from stage.sources.platforms import SlugRejectedError, safe_slug
@@ -57,7 +58,7 @@ def malformed_note(dropped: int) -> str:
     if not dropped:
         return ""
     return (
-        f"{dropped} posting(s) failed validation and were dropped, raw rows "
+        f"dropped {counted(dropped, 'posting')} that failed validation, raw rows "
         "captured; the listing is incomplete so it closes nothing"
     )
 

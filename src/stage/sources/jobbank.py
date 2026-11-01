@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 
 from stage.domain import Job, SourceSignals, job_id
+from stage.domain.text import counted
 from stage.http import HttpClient
 from stage.sources import register_feed
 from stage.sources._text import collapse_whitespace
@@ -146,7 +147,7 @@ class JobBankFeed:
         if malformed:
             notes.append(malformed_note(malformed))
         if unread:
-            notes.append(f"{unread} counted student or internship job(s) could not be read")
+            notes.append(f"could not read {counted(unread, 'counted student or internship job')}")
         declared_empty = counted_none and not seen and not malformed
         if declared_empty:
             notes.append("Job Bank lists no student jobs or internships for these searches")

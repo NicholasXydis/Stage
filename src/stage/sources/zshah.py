@@ -4,6 +4,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from stage.domain import Job, SourceSignals, job_id
+from stage.domain.text import counted
 from stage.http import HttpClient
 from stage.sources._text import collapse_whitespace
 from stage.sources.base import (
@@ -91,7 +92,7 @@ class ZshahFeed:
         return FetchResult(
             jobs=jobs,
             degraded=(
-                f"{malformed} malformed posting(s) were dropped; the feed closes nothing"
+                f"dropped {counted(malformed, 'malformed posting')}; the feed closes nothing"
                 if malformed
                 else ""
             ),

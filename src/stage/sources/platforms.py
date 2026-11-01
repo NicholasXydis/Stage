@@ -22,7 +22,7 @@ def safe_slug(slug: str) -> str:
     lowered = slug.strip().lower()
     if not SAFE_SLUG.match(lowered):
         raise SlugRejectedError(
-            f"{slug!r} is not a usable board token — it interpolates into a "
+            f"{slug!r} is not a usable board token; it interpolates into a "
             "hostname, so lowercase letters, digits and hyphens only"
         )
     return lowered
@@ -32,7 +32,7 @@ def safe_cased_slug(slug: str) -> str:
     stripped = slug.strip()
     if not SAFE_CASED_SLUG.match(stripped):
         raise SlugRejectedError(
-            f"{slug!r} is not a usable board token — it interpolates into a "
+            f"{slug!r} is not a usable board token; it interpolates into a "
             "request path, so letters, digits and hyphens only"
         )
     return stripped
@@ -42,8 +42,7 @@ def safe_path_slug(slug: str) -> str:
     lowered = slug.strip().lower()
     if not SAFE_PATH_SLUG.match(lowered):
         raise SlugRejectedError(
-            f"{slug!r} is not a usable path token — lowercase letters, digits, dots and "
-            "hyphens only"
+            f"{slug!r} is not a usable path token; lowercase letters, digits, dots and hyphens only"
         )
     return lowered
 
@@ -66,7 +65,7 @@ def workday_target(tenant: str, site: str, dc: str) -> tuple[str, str]:
     ]
     if missing:
         raise SlugRejectedError(
-            f"registry row is missing {', '.join(missing)} — a Workday tenant, site "
+            f"registry row is missing {', '.join(missing)}; a Workday tenant, site "
             "and datacenter cannot be guessed. Use `stage discover --url`"
         )
 
@@ -74,13 +73,13 @@ def workday_target(tenant: str, site: str, dc: str) -> tuple[str, str]:
     stripped_dc = dc.strip().lower()
     if not SAFE_WORKDAY_DC.match(stripped_dc):
         raise SlugRejectedError(
-            f"{dc!r} is not a Workday datacenter — expected wd followed by digits "
+            f"{dc!r} is not a Workday datacenter; expected wd followed by digits "
             "(it interpolates into the hostname)"
         )
     stripped_site = site.strip()
     if not SAFE_WORKDAY_SITE.match(stripped_site):
         raise SlugRejectedError(
-            f"{site!r} is not a usable Workday site — it interpolates into the "
+            f"{site!r} is not a usable Workday site; it interpolates into the "
             "request path, so letters, digits, underscores and hyphens only"
         )
     host = f"{safe_tenant}.{stripped_dc}.myworkdayjobs.com"
@@ -95,19 +94,19 @@ def oracle_target(host: str, site: str) -> tuple[str, str]:
     ]
     if missing:
         raise SlugRejectedError(
-            f"registry row is missing {', '.join(missing)} — an Oracle candidate site "
+            f"registry row is missing {', '.join(missing)}; an Oracle candidate site "
             "cannot be guessed. Use `stage discover --url`"
         )
     safe_host = host.strip().lower()
     if not SAFE_ORACLE_HOST.match(safe_host):
         raise SlugRejectedError(
-            f"{host!r} is not a usable Oracle Cloud host — it interpolates into the request "
+            f"{host!r} is not a usable Oracle Cloud host; it interpolates into the request "
             "URL, so it must be a dotted public hostname"
         )
     safe_site = site.strip()
     if not SAFE_ORACLE_SITE.match(safe_site):
         raise SlugRejectedError(
-            f"{site!r} is not a usable Oracle candidate site — it interpolates into the "
+            f"{site!r} is not a usable Oracle candidate site; it interpolates into the "
             "request path, so letters, digits, underscores and hyphens only"
         )
     return safe_host, safe_site

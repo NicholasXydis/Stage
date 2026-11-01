@@ -8,7 +8,7 @@ import respx
 from stage.http import HttpClient, profile
 from stage.sources import get_feeds
 from stage.sources.base import PayloadValidationError
-from stage.sources.speedyapply import SpeedyApplyFeed
+from stage.sources.speedyapply import SpeedyApplyFeed, SpeedyApplyListing
 
 
 def _client(feed: SpeedyApplyFeed) -> HttpClient:
@@ -119,7 +119,7 @@ async def test_a_missing_table_keeps_arrived_jobs_but_cannot_close_the_feed(
 
     assert len(result.jobs) == 3
     assert not result.authoritative
-    assert "1 of 4 file(s) unavailable" in result.degraded
+    assert "1 of 4 files unavailable" in result.degraded
     assert result.stale_urls == (urls[1],)
 
 
@@ -132,3 +132,30 @@ async def test_a_markup_shape_change_fails_loudly(run_time: datetime) -> None:
     async with _client(feed) as client:
         with pytest.raises(PayloadValidationError, match="no internship table rows"):
             await feed.fetch(client, run_time)
+
+
+@pytest.mark.parametrize(
+    ("location", "url", "expected"),
+    [
+        (
+            "",
+            "https://deezee.wd108.myworkdayjobs.com/en-US/deezee_careers/job/Des-Moines/"
+            "Software-Development-Intern_REQ00471",
+            "Des-Moines",
+        ),
+        (
+            "",
+            "https://bakerhughes.wd5.myworkdayjobs.com/bakerhughes/job/"
+            "GB-NU-CRAMLINGTON-ATLEY-WAY/Intern---Software-Engineering---2027_R171503",
+            "GB-NU-CRAMLINGTON-ATLEY-WAY",
+        ),
+        ("", "https://ryan.wd1.myworkdayjobs.com/en-US/ryan/job/Summer-Intern_R1", ""),
+        ("", "https://jobs.smartrecruiters.com/DeliveryHero/7440-data-analyst-intern", ""),
+        ("Austin, TX", "https://acme.wd1.myworkdayjobs.com/a/job/Toronto/Intern_R2", "Austin, TX"),
+    ],
+)
+def test_a_blank_place_is_read_from_a_workday_link(
+    run_time: datetime, location: str, url: str, expected: str
+) -> None:
+    listing = SpeedyApplyListing(company="Acme", title="Intern", location=location, url=url)
+    assert SpeedyApplyFeed()._to_job(listing, run_time).location_raw == expected

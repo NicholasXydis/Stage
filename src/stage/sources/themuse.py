@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from stage.domain import Job, SourceSignals, job_id
 from stage.http import HttpClient
 from stage.sources import register_feed
-from stage.sources._text import collapse_whitespace
+from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
     FetchResult,
     NonEmptyStr,
@@ -149,7 +149,7 @@ class TheMuseFeed:
             title_raw=title,
             title_normalized=title.lower(),
             apply_url_raw=landing or f"https://{HOST}/jobs/{listing.id}",
-            description=listing.contents,
+            description=strip_html(listing.contents),
             location_raw=" / ".join(places) or "Remote",
             first_seen=now,
             last_seen=now,

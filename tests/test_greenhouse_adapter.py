@@ -117,7 +117,7 @@ async def test_one_bad_row_is_dropped_and_costs_the_board_its_authority(
         result = await get_adapter("greenhouse").fetch(acme, client, run_time)
 
     assert len(result.jobs) == 1, "the good row must survive its neighbour"
-    assert "1 posting(s) failed validation" in result.degraded
+    assert "dropped 1 posting that failed validation" in result.degraded
     assert not result.authoritative, "an incomplete listing must close nothing"
 
     captured = sorted(capture_dir().glob("greenhouse-posting-*.json"))

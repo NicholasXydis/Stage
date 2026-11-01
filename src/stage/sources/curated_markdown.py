@@ -10,6 +10,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict
 
 from stage.domain import Job, SourceSignals, job_id
+from stage.domain.text import counted
 from stage.http import HttpClient, HttpStatusError, JsonResponse
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import FetchResult, NonEmptyStr, PayloadValidationError, capture_payload
@@ -114,7 +115,7 @@ class _GitHubMarkdownFeed:
         return FetchResult(
             jobs=jobs,
             degraded=(
-                f"{malformed} malformed Markdown row(s) were skipped; the feed closes nothing"
+                f"skipped {counted(malformed, 'malformed Markdown row')}; the feed closes nothing"
                 if malformed
                 else ""
             ),

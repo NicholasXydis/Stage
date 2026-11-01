@@ -4,6 +4,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from stage.domain import Job, SourceSignals, job_id
+from stage.domain.text import counted
 from stage.http import HttpClient
 from stage.sources._text import collapse_whitespace
 from stage.sources.base import (
@@ -79,12 +80,12 @@ class _CommunityFeed:
             malformed += dropped + unconvertible
             jobs.extend(converted)
         if failures and not jobs:
-            raise PayloadValidationError(f"{self.name}: every file failed — {'; '.join(failures)}")
+            raise PayloadValidationError(f"{self.name}: every file failed: {'; '.join(failures)}")
         if not modified and not failures:
             return FetchResult(not_modified=True)
         notes = []
         if failures:
-            notes.append(f"{len(failures)} of {len(self.plan(now))} file(s) unavailable")
+            notes.append(f"{len(failures)} of {counted(len(self.plan(now)), 'file')} unavailable")
         if malformed:
             notes.append(malformed_note(malformed))
         return FetchResult(

@@ -3,10 +3,12 @@ import binascii
 import re
 from datetime import datetime, timedelta
 from typing import Any, ClassVar
+from urllib.parse import unquote
 
 from pydantic import BaseModel, ConfigDict
 
 from stage.domain import Job, SourceSignals, job_id
+from stage.domain.text import counted
 from stage.http import HttpClient
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
@@ -25,6 +27,11 @@ CONTENT_URL = "https://api.github.com/repos/speedyapply/{repository}/contents/{p
 HREF = re.compile(r'<a\s+href="(?P<url>[^"]+)"', re.IGNORECASE)
 STRONG = re.compile(r"<strong>(?P<text>.*?)</strong>", re.IGNORECASE)
 AGE = re.compile(r"(?P<days>\d+)d")
+WORKDAY_PLACE = re.compile(
+    r"https?://[^/]+\.myworkdayjobs\.com/(?:[a-z]{2}-[a-z]{2}/)?[^/]+"
+    r"/job/(?P<place>[^/?#]+)/[^/?#]+",
+    re.IGNORECASE,
+)
 
 
 class GitHubContent(BaseModel):
@@ -96,13 +103,13 @@ class SpeedyApplyFeed:
             malformed += dropped + unconvertible
             jobs.extend(converted)
         if failures and not jobs:
-            raise PayloadValidationError(f"{self.name}: every file failed — {'; '.join(failures)}")
+            raise PayloadValidationError(f"{self.name}: every file failed: {'; '.join(failures)}")
         if not modified and not failures:
             return FetchResult(not_modified=True)
         unique = {job.id: job for job in jobs}
         notes = []
         if failures:
-            notes.append(f"{len(failures)} of {len(self.plan(now))} file(s) unavailable")
+            notes.append(f"{len(failures)} of {counted(len(self.plan(now)), 'file')} unavailable")
         if malformed:
             notes.append(malformed_note(malformed))
         return FetchResult(
@@ -192,9 +199,14 @@ class SpeedyApplyFeed:
             title_normalized=collapse_whitespace(listing.title),
             apply_url_raw=listing.url,
             description="",
-            location_raw=collapse_whitespace(listing.location),
+            location_raw=collapse_whitespace(listing.location) or _place_in_link(listing.url),
             first_seen=now,
             last_seen=now,
             source_posted_at=posted,
             signals=SourceSignals(employment_type="internship"),
         )
+
+
+def _place_in_link(url: str) -> str:
+    match = WORKDAY_PLACE.match(url)
+    return collapse_whitespace(unquote(match["place"])) if match is not None else ""

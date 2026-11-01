@@ -622,6 +622,22 @@ async def test_a_pinned_facet_is_sent_and_never_overwritten_by_resolution() -> N
 
 
 @respx.mock
+async def test_a_second_page_without_facets_leaves_a_pinned_facet_alone() -> None:
+    first = {"total": 22, "jobPostings": [_posting(i) for i in range(20)], "facets": _facets()}
+    second = {"total": 0, "jobPostings": [_posting(i) for i in range(20, 22)], "facets": []}
+    route = respx.post(CXS).mock(
+        side_effect=[httpx.Response(200, json=first), httpx.Response(200, json=second)]
+    )
+    async with _client() as client:
+        company = _company(workday_facet="timeType:f-intern")
+        result = await WorkdayAdapter().fetch(company, client, NOW)
+
+    assert route.call_count == 2
+    assert len(result.jobs) == 22
+    assert "no longer offered" not in result.degraded
+
+
+@respx.mock
 async def test_a_shape_change_fails_loudly_at_a_named_field() -> None:
     respx.post(CXS).mock(return_value=httpx.Response(200, json={"jobPostings": "not-a-list"}))
     async with _client() as client:
@@ -1067,7 +1083,7 @@ async def test_one_malformed_posting_is_dropped_captured_and_costs_the_page_auth
 
     assert len(result.jobs) == 3, "the good rows still ingest"
     assert not result.authoritative, "an incomplete listing must close nothing"
-    assert "1 posting(s) failed validation" in result.degraded
+    assert "dropped 1 posting that failed validation" in result.degraded
 
     after = set(capture_dir().glob("workday-posting-*.json")) - before
     assert len(after) == 1, "the dropped row is captured individually, per §17"

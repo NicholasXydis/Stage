@@ -377,7 +377,7 @@ class HttpClient:
             raise HostNotAllowedError(f"{host or url!r} is not a registry host")
         if split.scheme != "https":
             raise RedirectNotAllowedError(
-                f"{url} is {split.scheme or 'schemeless'}; TLS is never optional (§11)"
+                f"{url} is {split.scheme or 'schemeless'}; TLS is never optional"
             )
         bucket = self.bucket_for(host)
         return bucket, self._budget_for(bucket)
@@ -487,12 +487,12 @@ class HttpClient:
     def _validate_hop(self, url: httpx.URL) -> None:
         if url.scheme != "https":
             raise RedirectNotAllowedError(
-                f"redirect to {url} downgrades to {url.scheme}; TLS is never optional (§11)"
+                f"redirect to {url} downgrades to {url.scheme}; TLS is never optional"
             )
         if (url.host or "").lower() not in self._allowed_hosts:
             raise RedirectNotAllowedError(
-                f"redirect to {url.host!r} leaves the registry allow-list — "
-                "adapters may only contact hosts the registry names (§11)"
+                f"redirect to {url.host!r} leaves the registry allow-list; "
+                "adapters may only contact hosts the registry names"
             )
 
     async def _send(

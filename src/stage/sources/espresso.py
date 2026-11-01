@@ -111,7 +111,10 @@ class EspressoJobsFeed:
         if empty:
             notes.append(f"{len(empty)} of {len(TERMS)} searches matched nothing")
         if exhausted:
-            notes.append(f"{len(exhausted)} search(es) ran past their last page, which answers 404")
+            notes.append(
+                f"{len(exhausted)} of {len(TERMS)} searches ran past their last page, "
+                "which answers 404"
+            )
         if truncated:
             notes.append(f"stopped at the {MAX_ROWS}-posting cap for one run")
         if malformed:

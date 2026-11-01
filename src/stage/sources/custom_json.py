@@ -403,7 +403,7 @@ class CustomJsonAdapter:
     def _board(company: Company) -> CustomBoard:
         if company.custom is None:
             raise PayloadValidationError(
-                f"{company.name}: platform custom_json needs a 'custom' block — "
+                f"{company.name}: platform custom_json needs a 'custom' block; "
                 "add url and a title field mapping to the registry row"
             )
         return company.custom

@@ -174,7 +174,7 @@ def test_job_bank_that_counts_interns_it_cannot_read_is_not_declared_empty() -> 
     result = asyncio.run(_job_bank(page))
     assert result.jobs == ()
     assert not result.declared_empty
-    assert "could not be read" in result.degraded
+    assert "could not read" in result.degraded
 
 
 @respx.mock
