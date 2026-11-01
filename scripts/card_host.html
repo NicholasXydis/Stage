@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; background: var(--page, #f0efe9); font-family: sans-serif; }
+  body.dark { --page: #1b1b1a; }
+  #frame { display: block; margin: 16px; border: 1px solid #c9c6bd; border-radius: 12px; background: transparent; }
+  body.full #frame { position: fixed; inset: 0; margin: 0; width: 100vw !important; height: 100vh !important; border: 0; border-radius: 0; }
+</style>
+</head>
+<body>
+<iframe id="frame" title="card"></iframe>
+<script>
+const S = __SCENARIO__;
+const KNOWN_FROM_VIEW = new Set([
+  "ui/initialize", "ui/notifications/initialized", "ui/notifications/size-changed",
+  "ui/open-link", "ui/request-display-mode", "tools/call", "resources/read",
+  "ui/message", "ui/update-model-context", "ui/download-file", "ui/notifications/request-teardown",
+  "notifications/message", "ping",
+]);
+const LOG = window.LOG = {
+  received: [], violations: [], opened: [], sizes: [], modes: [], calls: [], answered: [], initialized: false,
+};
+const frame = document.getElementById("frame");
+frame.setAttribute("sandbox", S.sandbox || "allow-scripts");
+frame.style.width = (S.inlineWidth || 640) + "px";
+frame.style.height = "60px";
+if (S.theme === "dark") document.body.classList.add("dark");
+let mode = (S.context && S.context.displayMode) || "inline";
+let initAnswered = false;
+
+function post(message) { frame.contentWindow.postMessage(message, "*"); }
+let teardownId = null;
+window.hostSend = (message) => {
+  if (message && message.method === "ui/resource-teardown") teardownId = message.id;
+  post(message);
+};
+window.hostMode = () => mode;
+
+function respond(id, result) { post({ jsonrpc: "2.0", id, result }); LOG.answered.push(id); }
+function fail(id, code, message) { post({ jsonrpc: "2.0", id, error: { code, message } }); LOG.answered.push(id); }
+
+function setMode(next) {
+  mode = next;
+  document.body.classList.toggle("full", next === "fullscreen");
+}
+setMode(mode);
+
+function deliver() {
+  if (!S.result) return;
+  const input = { jsonrpc: "2.0", method: "ui/notifications/tool-input", params: { arguments: S.args || {} } };
+  const result = { jsonrpc: "2.0", method: "ui/notifications/tool-result", params: S.result };
+  const order = S.order || "normal";
+  if (order === "normal") { post(input); post(result); }
+  else if (order === "result-first") { post(result); post(input); }
+  else if (order === "no-input") { post(result); }
+  else if (order === "duplicate") { post(input); post(result); post(input); post(result); }
+  else if (order === "cancelled") { post(input); post({ jsonrpc: "2.0", method: "ui/notifications/tool-cancelled", params: { reason: "user action" } }); }
+  else if (order === "partial") {
+    post({ jsonrpc: "2.0", method: "ui/notifications/tool-input-partial", params: { arguments: { words: "ba" } } });
+    post(input); post(result);
+  }
+}
+
+window.addEventListener("message", async (event) => {
+  if (event.source !== frame.contentWindow) return;
+  const m = event.data;
+  LOG.received.push(JSON.parse(JSON.stringify(m)));
+  if (LOG.tornDown && m && typeof m.method === "string") LOG.violations.push("after teardown: " + m.method);
+  if (m && teardownId !== null && m.id === teardownId && !("method" in m)) LOG.tornDown = true;
+  if (!m || typeof m !== "object" || m.jsonrpc !== "2.0") { LOG.violations.push("not json-rpc: " + JSON.stringify(m)); return; }
+  if (typeof m.method !== "string") { return; }
+  if (!KNOWN_FROM_VIEW.has(m.method)) LOG.violations.push("unknown method " + m.method);
+  if (!initAnswered && m.method !== "ui/initialize") LOG.violations.push("before initialize: " + m.method);
+  const isRequest = Object.prototype.hasOwnProperty.call(m, "id");
+  if (m.method === "ui/initialize") {
+    const p = m.params || {};
+    if (!p.protocolVersion || !p.appInfo || !p.appCapabilities) LOG.violations.push("initialize params incomplete");
+    if (S.initMode === "silent") return;
+    if (S.initDelay) await new Promise((r) => setTimeout(r, S.initDelay));
+    if (S.initMode === "error") { initAnswered = true; fail(m.id, -32603, "no"); return; }
+    initAnswered = true;
+    respond(m.id, {
+      protocolVersion: "2026-01-26",
+      hostInfo: { name: "stage-lab", version: "1" },
+      hostCapabilities: S.capabilities || {},
+      hostContext: Object.assign({ displayMode: mode }, S.context || {}),
+    });
+    return;
+  }
+  if (m.method === "ui/notifications/initialized") {
+    if (LOG.initialized) LOG.violations.push("initialized twice");
+    LOG.initialized = true;
+    if (isRequest) LOG.violations.push("initialized sent as a request");
+    setTimeout(deliver, S.delay || 0);
+    return;
+  }
+  if (m.method === "ui/notifications/size-changed") {
+    const p = m.params || {};
+    LOG.sizes.push(p);
+    if (typeof p.height !== "number" || p.height < 0 || !Number.isFinite(p.height)) LOG.violations.push("bad size " + JSON.stringify(p));
+    if (mode !== "fullscreen" && typeof p.height === "number") {
+      frame.style.height = Math.min(p.height, S.maxHeight || 100000) + "px";
+    }
+    return;
+  }
+  if (!isRequest) { LOG.violations.push("notification not expected: " + m.method); return; }
+  if (m.method === "ui/open-link") {
+    const url = m.params && m.params.url;
+    LOG.opened.push(url);
+    if (typeof url !== "string" || !/^https?:/.test(url)) LOG.violations.push("odd link " + url);
+    if (!(S.capabilities || {}).openLinks) { fail(m.id, -32601, "Method not found"); return; }
+    if (S.denyLinks) { respond(m.id, { isError: true }); return; }
+    if (S.linkReply === "string-error") { post({ jsonrpc: "2.0", id: m.id, error: "denied by policy" }); return; }
+    if (S.linkReply === "null") { respond(m.id, null); return; }
+    if (S.linkReply === "text-error") { respond(m.id, { isError: "true" }); return; }
+    respond(m.id, {});
+    return;
+  }
+  if (m.method === "ui/request-display-mode") {
+    const wanted = m.params && m.params.mode;
+    LOG.modes.push(wanted);
+    if (S.modeDelay) await new Promise((r) => setTimeout(r, S.modeDelay));
+    const available = (S.context && S.context.availableDisplayModes) || ["inline"];
+    const next = available.includes(wanted) ? wanted : mode;
+    setMode(next);
+    respond(m.id, { mode: next });
+    if (S.announceModes !== false) {
+      post({ jsonrpc: "2.0", method: "ui/notifications/host-context-changed", params: { displayMode: next } });
+    }
+    return;
+  }
+  if (m.method === "tools/call") {
+    const p = m.params || {};
+    LOG.calls.push(JSON.parse(JSON.stringify(p)));
+    if (!(S.capabilities || {}).serverTools) { fail(m.id, -32601, "Method not found"); return; }
+    if (S.blockTools) { fail(m.id, -32000, "The user did not allow this."); return; }
+    const visibility = (S.visibility || {})[p.name];
+    if (!visibility) { LOG.violations.push("unknown tool " + p.name); fail(m.id, -32602, "Unknown tool"); return; }
+    if (!visibility.includes("app")) { LOG.violations.push("model-only tool from the view " + p.name); fail(m.id, -32602, "Tool not available to apps"); return; }
+    if (S.slowTools) await new Promise((r) => setTimeout(r, S.slowTools));
+    try {
+      const answer = await window.labCallTool(p.name, JSON.stringify(p.arguments || {}));
+      const parsed = JSON.parse(answer);
+      if (parsed.__error) { fail(m.id, -32603, parsed.__error); return; }
+      respond(m.id, parsed);
+    } catch (problem) {
+      fail(m.id, -32603, String(problem));
+    }
+    return;
+  }
+  if (m.method === "ping") { respond(m.id, {}); return; }
+  fail(m.id, -32601, "Method not found");
+});
+
+frame.src = "https://card.test/card.html";
+</script>
+</body>
+</html>

@@ -1,0 +1,1528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Stage postings</title>
+<style>
+:root {
+  color-scheme: light;
+  --s-bg: #ffffff;
+  --s-bg2: #f5f4f0;
+  --s-text: #1d1c1a;
+  --s-muted: #63605a;
+  --s-line: #e3e1db;
+  --s-accent: #1f5bb8;
+  --s-warn: #8f4700;
+  --s-bad: #b3261e;
+  --s-good: #1b6e35;
+  --bg: var(--color-background-primary, var(--s-bg));
+  --bg2: var(--color-background-secondary, var(--s-bg2));
+  --text: var(--color-text-primary, var(--s-text));
+  --muted: var(--color-text-secondary, var(--s-muted));
+  --line: var(--color-border-primary, var(--s-line));
+  --accent: var(--color-text-info, var(--s-accent));
+  --warn: var(--color-text-warning, var(--s-warn));
+  --bad: var(--color-text-danger, var(--s-bad));
+  --good: var(--color-text-success, var(--s-good));
+  --ring: var(--color-ring-primary, var(--s-accent));
+  --radius: var(--border-radius-md, 8px);
+  --sans: var(--font-sans, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --s-bg: #262624;
+  --s-bg2: #31302d;
+  --s-text: #f2f0ea;
+  --s-muted: #b3b0a7;
+  --s-line: #45443f;
+  --s-accent: #8fb8f6;
+  --s-warn: #f2b763;
+  --s-bad: #f4948b;
+  --s-good: #86cf9b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --s-bg: #262624;
+    --s-bg2: #31302d;
+    --s-text: #f2f0ea;
+    --s-muted: #b3b0a7;
+    --s-line: #45443f;
+    --s-accent: #8fb8f6;
+    --s-warn: #f2b763;
+    --s-bad: #f4948b;
+    --s-good: #86cf9b;
+  }
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+html { scroll-padding-top: 72px; }
+body {
+  padding: calc(14px + var(--inset-top, 0px)) calc(16px + var(--inset-right, 0px))
+    calc(16px + var(--inset-bottom, 0px)) calc(16px + var(--inset-left, 0px));
+  overflow-wrap: anywhere;
+}
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.data { unicode-bidi: isolate; }
+.head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 14px; }
+.count { font-size: 15px; font-weight: 650; }
+.fresh { font-size: 12.5px; color: var(--muted); }
+.fresh.stale { color: var(--warn); }
+.scope {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.alert {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--bg2);
+  color: var(--warn);
+  font-size: 13px;
+}
+.problem { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.rows { list-style: none; margin: 10px 0 0; padding: 0; }
+.rows li { padding: 8px 0; border-top: 1px solid var(--line); min-width: 0; }
+.link {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--text);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.link:hover { color: var(--accent); text-decoration: underline; }
+.plain { display: block; font-weight: 600; }
+.clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px 12px;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.facts > span:not(.host), .co {
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.host { flex: none; max-width: 100%; color: var(--muted); overflow-wrap: anywhere; }
+.data { text-align: left; }
+.url { display: block; margin-top: 1px; color: var(--muted); font-size: 12px; font-weight: 400; overflow-wrap: anywhere; user-select: all; }
+.who { color: var(--text); }
+.badge {
+  display: inline-block;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--good);
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: nowrap;
+}
+.empty { margin: 12px 0 2px; color: var(--muted); }
+.more {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg2);
+  font-weight: 600;
+  cursor: pointer;
+}
+.more:hover { border-color: var(--accent); color: var(--accent); }
+.ghost {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+button:disabled, button[aria-disabled="true"] { opacity: 0.75; cursor: default; }
+.status { min-height: 1.2em; margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.status.bad { color: var(--bad); }
+.status:empty { display: none; }
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: calc(-14px - var(--inset-top, 0px)) calc(-16px - var(--inset-right, 0px)) 0
+    calc(-16px - var(--inset-left, 0px));
+  padding: calc(10px + var(--inset-top, 0px)) calc(16px + var(--inset-right, 0px)) 10px
+    calc(16px + var(--inset-left, 0px));
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.bar .count { margin-right: auto; }
+.filter {
+  flex: 1 1 200px;
+  max-width: 340px;
+  min-width: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--muted);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.filter::placeholder { color: var(--muted); opacity: 1; }
+table { width: 100%; margin-top: 4px; border-collapse: collapse; table-layout: fixed; }
+.w-place { width: 24%; }
+.w-term { width: 104px; }
+.w-day { width: 100px; }
+.w-acts { width: 11.5em; }
+.clamp3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.clamp2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+th {
+  padding: 8px 8px 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 13px; }
+th:first-child, td:first-child { padding-left: 0; }
+th:last-child, td:last-child { padding-right: 0; }
+td.side { color: var(--muted); white-space: nowrap; }
+td.place { white-space: normal; }
+td.acts { text-align: right; }
+td.acts > * + * { margin-left: 6px; }
+tr.gone td { color: var(--muted); }
+.site { display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--muted); font-size: 12px; }
+.site .co { flex: 1 1 8em; }
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table, tbody, tr, td { display: block; width: 100%; }
+  tr { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  td, th:first-child, td:first-child, td:last-child { padding: 1px 0; border: 0; }
+  td.side { display: inline-block; width: auto; max-width: 100%; margin-right: 12px; font-size: 12.5px; }
+  td.side:empty { display: none; }
+  td.acts { padding-top: 6px; text-align: left; }
+}
+</style>
+</head>
+<body>
+<main id="card"></main>
+<section id="full" hidden>
+  <div class="bar">
+    <button id="back" class="ghost" type="button">Back</button>
+    <div id="fullcount" class="count"></div>
+    <input id="filter" class="filter" type="search" placeholder="Filter by title, employer or place" aria-label="Filter the postings shown" autocomplete="off" spellcheck="false">
+    <span id="fullfresh" class="fresh"></span>
+  </div>
+  <p id="status" class="status"></p>
+  <table>
+    <colgroup>
+      <col>
+      <col class="w-place">
+      <col class="w-term">
+      <col class="w-day">
+      <col class="w-acts">
+    </colgroup>
+    <thead>
+      <tr>
+        <th scope="col">Posting</th>
+        <th scope="col">Place</th>
+        <th scope="col">Term</th>
+        <th scope="col">First seen</th>
+        <th scope="col"><span class="sr">Status and actions</span></th>
+      </tr>
+    </thead>
+    <tbody id="body"></tbody>
+  </table>
+  <div class="foot">
+    <span id="shown"></span>
+    <button id="more" class="ghost" type="button" hidden>Load more</button>
+  </div>
+</section>
+<div id="live" class="sr" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+(() => {
+  const PROTOCOL = "2026-01-26";
+  const SHOWN = 5;
+  const PAGE = 100;
+  const INLINE_PAGE = 25;
+  const FIELDS = ["words", "location", "role", "term", "language", "company", "mine", "untracked", "new", "days"];
+  const PLACES = new Map([
+    ["montreal", "Montreal"],
+    ["canada", "Canada outside Montreal"],
+    ["usa", "USA"],
+    ["unknown", "No place given"],
+  ]);
+  const ROLES = new Map([
+    ["swe", "Software"],
+    ["security", "Security"],
+    ["data", "Data"],
+    ["ml-ai", "ML and AI"],
+    ["quant", "Quant"],
+    ["infra", "Infrastructure"],
+    ["embedded", "Embedded"],
+    ["general-cs", "General CS"],
+    ["unknown", "Other roles"],
+  ]);
+  const LANGUAGES = new Map([
+    ["en", "English"],
+    ["fr", "French"],
+    ["bilingual", "Bilingual"],
+    ["unknown", "Language unknown"],
+  ]);
+  const STATUSES = new Map([
+    ["saved", "Saved"],
+    ["applied", "Applied"],
+    ["interviewing", "Interviewing"],
+    ["offer", "Offer"],
+    ["rejected", "Rejected"],
+    ["withdrawn", "Withdrawn"],
+    ["hidden", "Hidden"],
+  ]);
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const STYLE_KEY = /^--(color|font|border|shadow)-[a-z0-9-]+$/;
+  const SAFE_STYLE = /^[a-zA-Z0-9 #%.,()'"+*_/-]*$/;
+  const LOADS = /(url|image|image-set|cross-fade|element|paint|src)[(]/i;
+  const DAY = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
+  const QUAD = /^([0-9]+)[.]([0-9]+)[.]([0-9]+)[.]([0-9]+)$/;
+  const MODE_WAIT = 8000;
+
+  const state = {
+    host: {},
+    context: {},
+    ready: false,
+    closed: false,
+    generation: 0,
+    args: null,
+    searched: null,
+    result: null,
+    error: "",
+    view: "card",
+    expanded: false,
+    opening: false,
+    asking: false,
+    openingLinks: new Set(),
+    rows: [],
+    next: null,
+    total: 0,
+    loaded: false,
+    loading: false,
+    stamp: 0,
+    filter: "",
+    marks: new Map(),
+    painted: new Map(),
+    fresh: null,
+    notice: "",
+    noticeBad: false,
+    styled: new Set(),
+    observer: null,
+  };
+  const pending = new Map();
+  let lastId = 0;
+
+  const byId = (name) => document.getElementById(name);
+  const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+  const str = (value) => (typeof value === "string" ? value : "");
+  const count = (value) => (Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
+  const grouped = (value) => value.toLocaleString("en-US");
+  const plural = (value, noun) => grouped(value) + " " + noun + (value === 1 ? "" : "s");
+  const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+
+  function clip(value, limit) {
+    const text = str(value);
+    if (text.length <= limit) {
+      return text;
+    }
+    return Array.from(text.slice(0, limit * 2)).slice(0, limit - 3).join("") + "...";
+  }
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) {
+      node.className = className;
+    }
+    if (text !== undefined) {
+      node.textContent = text;
+    }
+    return node;
+  }
+
+  function data(tag, className, text) {
+    const node = el(tag, className ? className + " data" : "data", text);
+    node.dir = "auto";
+    return node;
+  }
+
+  function privateHost(host) {
+    const name = host.toLowerCase().replace(/[.]$/, "");
+    if (!name.includes(".") || name.startsWith("[")) {
+      return true;
+    }
+    if (name === "localhost" || name.endsWith(".localhost") || name.endsWith(".local") || name.endsWith(".internal")) {
+      return true;
+    }
+    const quad = QUAD.exec(name);
+    if (!quad) {
+      return false;
+    }
+    const first = Number(quad[1]);
+    const second = Number(quad[2]);
+    return first === 0 || first === 10 || first === 127 || (first === 169 && second === 254)
+      || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168)
+      || (first === 100 && second >= 64 && second <= 127);
+  }
+
+  function webLink(value) {
+    if (typeof value !== "string" || value.length > 4000) {
+      return null;
+    }
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+        return null;
+      }
+      if (parsed.username || parsed.password || privateHost(parsed.hostname)) {
+        return null;
+      }
+      return parsed.toString();
+    } catch (problem) {
+      return null;
+    }
+  }
+
+  function siteOf(link) {
+    try {
+      return new URL(link).hostname.replace(/^www[.]/, "");
+    } catch (problem) {
+      return "";
+    }
+  }
+
+  function send(message) {
+    if (!state.closed) {
+      window.parent.postMessage(message, "*");
+    }
+  }
+
+  function request(method, params) {
+    lastId += 1;
+    const id = lastId;
+    return new Promise((resolve, reject) => {
+      pending.set(id, { resolve, reject });
+      send({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+
+  function notify(method, params) {
+    send({ jsonrpc: "2.0", method, params });
+  }
+
+  function reply(message, result) {
+    send({ jsonrpc: "2.0", id: message.id, result });
+  }
+
+  function receive(event) {
+    if (event.source !== window.parent) return;
+    const message = event.data;
+    if (state.closed || !isObject(message) || message.jsonrpc !== "2.0") {
+      return;
+    }
+    const method = typeof message.method === "string" ? message.method : "";
+    if (!method) {
+      settle(message);
+    } else if (Object.hasOwn(message, "id")) {
+      answerHost(message, method);
+    } else {
+      heard(method, isObject(message.params) ? message.params : {});
+    }
+  }
+
+  function settle(message) {
+    const waiting = pending.get(message.id);
+    if (!waiting) {
+      return;
+    }
+    pending.delete(message.id);
+    if (Object.hasOwn(message, "error")) {
+      const said = isObject(message.error) ? message.error.message : message.error;
+      waiting.reject(new Error(clip(typeof said === "string" ? said : "", 300) || "The app refused."));
+    } else {
+      waiting.resolve(message.result);
+    }
+  }
+
+  function answerHost(message, method) {
+    if (method === "ui/resource-teardown") {
+      reply(message, {});
+      state.closed = true;
+      pending.clear();
+      if (state.observer) {
+        state.observer.disconnect();
+      }
+    } else if (method === "ping") {
+      reply(message, {});
+    } else {
+      send({ jsonrpc: "2.0", id: message.id, error: { code: -32601, message: "Method not found" } });
+    }
+  }
+
+  function heard(method, params) {
+    if (method === "ui/notifications/tool-input") {
+      state.args = isObject(params.arguments) ? params.arguments : {};
+      render();
+    } else if (method === "ui/notifications/tool-result") {
+      took(params);
+    } else if (method === "ui/notifications/tool-cancelled") {
+      if (!state.result) {
+        state.error = "The search was cancelled.";
+        render();
+      }
+    } else if (method === "ui/notifications/host-context-changed") {
+      blend(params);
+    }
+  }
+
+  function payloadOf(result) {
+    if (!isObject(result)) {
+      return null;
+    }
+    if (isObject(result.structuredContent)) {
+      return result.structuredContent;
+    }
+    try {
+      const parsed = JSON.parse(textOf(result, 2000000));
+      return isObject(parsed) ? parsed : null;
+    } catch (problem) {
+      return null;
+    }
+  }
+
+  function textOf(result, limit) {
+    const blocks = isObject(result) && Array.isArray(result.content) ? result.content : [];
+    const block = blocks.find((item) => isObject(item) && item.type === "text" && typeof item.text === "string");
+    return block ? clip(block.text, limit) : "";
+  }
+
+  function spoken(text) {
+    const bare = text.replace(/^Error executing tool [\w.-]+: /, "");
+    const kept = bare.split(/(?<=[.!?])\s+/)
+      .filter((part) => !/\b[a-z]+_[a-z_]+\b|^(Ask|Send|Leave|Call)\b/.test(part));
+    return (kept.join(" ") || bare).replace(/\bThe user can\b/g, "You can").replace(/\bthe user\b/g, "you");
+  }
+
+  function took(result) {
+    state.generation += 1;
+    state.rows = [];
+    state.painted = new Map();
+    state.marks = new Map();
+    state.next = null;
+    state.loaded = false;
+    state.loading = false;
+    state.filter = "";
+    state.notice = "";
+    byId("filter").value = "";
+    const meta = isObject(result._meta) ? result._meta : {};
+    state.searched = isObject(meta["stage/search"]) ? meta["stage/search"] : null;
+    if (result.isError === true) {
+      state.result = null;
+      state.error = spoken(textOf(result, 600)) || "Stage could not search.";
+    } else {
+      const payload = payloadOf(result);
+      state.result = payload;
+      state.error = payload ? "" : "Stage sent an answer this card cannot read.";
+    }
+    if (state.view === "full" && (state.error || !canLoad())) {
+      state.view = "card";
+    }
+    render();
+    if (state.view === "full") {
+      ensureLoaded();
+    }
+  }
+
+  function blend(update) {
+    if (!isObject(update)) {
+      return;
+    }
+    const before = state.context.displayMode;
+    if (Object.hasOwn(update, "theme") && !isObject(update.styles)) {
+      clearHostStyles();
+    }
+    Object.assign(state.context, update);
+    paintTheme(update);
+    const mode = state.context.displayMode;
+    if (mode === "fullscreen" && state.view === "full") {
+      state.expanded = false;
+    }
+    if (mode !== before) {
+      if (mode === "fullscreen" && state.view !== "full" && canLoad() && rowsOf(state.result).length) {
+        state.view = "full";
+        state.expanded = false;
+        ensureLoaded();
+      } else if (mode !== "fullscreen" && state.view === "full" && !state.expanded) {
+        state.view = "card";
+        render();
+        const again = document.querySelector("#card .more");
+        const active = document.activeElement;
+        if (again && (!active || active === document.body || !byId("card").contains(active))) {
+          again.focus();
+        }
+        return;
+      }
+    }
+    render();
+  }
+
+  function clearHostStyles() {
+    for (const key of state.styled) {
+      document.documentElement.style.removeProperty(key);
+    }
+    state.styled.clear();
+  }
+
+  function paintTheme(update) {
+    const root = document.documentElement;
+    const theme = state.context.theme;
+    if (theme === "dark" || theme === "light") {
+      root.dataset.theme = theme;
+    }
+    const styles = isObject(update.styles) ? update.styles : {};
+    const variables = isObject(styles.variables) ? styles.variables : {};
+    for (const [key, value] of Object.entries(variables)) {
+      if (STYLE_KEY.test(key) && typeof value === "string" && value.length < 300 && SAFE_STYLE.test(value) && !LOADS.test(value)) {
+        root.style.setProperty(key, value);
+        state.styled.add(key);
+      }
+    }
+    const insets = isObject(state.context.safeAreaInsets) ? state.context.safeAreaInsets : {};
+    for (const side of ["top", "right", "bottom", "left"]) {
+      const value = insets[side];
+      if (Number.isFinite(value) && value >= 0 && value < 400) {
+        root.style.setProperty("--inset-" + side, Math.round(value) + "px");
+      }
+    }
+  }
+
+  function canLoad() {
+    return isObject(state.host.serverTools);
+  }
+
+  function canOpen() {
+    return isObject(state.host.openLinks);
+  }
+
+  function rowsOf(payload) {
+    if (!isObject(payload)) {
+      return [];
+    }
+    if (Array.isArray(payload.postings)) {
+      return payload.postings.filter(isObject).map(rowOf);
+    }
+    if (Array.isArray(payload.rows) && Array.isArray(payload.columns)) {
+      const columns = payload.columns.map(str);
+      return payload.rows
+        .filter(Array.isArray)
+        .map((cells) => rowOf(Object.fromEntries(columns.map((name, at) => [name, cells[at]]))));
+    }
+    return [];
+  }
+
+  function rowOf(raw) {
+    return {
+      id: clip(raw.id, 2000),
+      title: clip(raw.title, 300) || "Untitled posting",
+      company: clip(raw.company, 160),
+      location: str(raw.location).toLowerCase() === "unknown" ? PLACES.get("unknown") : clip(raw.location, 200),
+      term: str(raw.term),
+      seen: str(raw.first_seen),
+      link: webLink(raw.url),
+      tracked: str(raw.tracked),
+    };
+  }
+
+  function markOf(id) {
+    return state.marks.get(id) || {};
+  }
+
+  function mark(id, change) {
+    state.marks.set(id, Object.assign({}, markOf(id), change));
+  }
+
+  function statusOf(row) {
+    const marked = markOf(row.id);
+    return Object.hasOwn(marked, "status") ? marked.status : row.tracked;
+  }
+
+  function hiddenCount(stamp) {
+    let found = 0;
+    for (const marked of state.marks.values()) {
+      if (marked.hidden && marked.here && (stamp === undefined || marked.stamp === stamp)) {
+        found += 1;
+      }
+    }
+    return found;
+  }
+
+  function termText(term) {
+    const found = /^(summer|fall|winter|spring)-([0-9]{4})$/.exec(str(term));
+    return found ? found[1][0].toUpperCase() + found[1].slice(1) + " " + found[2] : "";
+  }
+
+  function dayText(value) {
+    const found = DAY.exec(str(value));
+    if (!found) {
+      return "";
+    }
+    const month = MONTHS[Number(found[2]) - 1];
+    if (!month) {
+      return "";
+    }
+    const day = String(Number(found[3]));
+    return Number(found[1]) === new Date().getFullYear() ? month + " " + day : month + " " + day + ", " + found[1];
+  }
+
+  function ago(minutes) {
+    if (minutes < 1) {
+      return "just now";
+    }
+    if (minutes < 60) {
+      return plural(minutes, "minute") + " ago";
+    }
+    const hours = Math.floor(minutes / 60);
+    if (hours < 48) {
+      return plural(hours, "hour") + " ago";
+    }
+    return plural(Math.floor(hours / 24), "day") + " ago";
+  }
+
+  function paintFresh(node, payload) {
+    node.className = "fresh";
+    const stamp = Date.parse(str(payload && payload.last_sync_at));
+    if (Number.isNaN(stamp)) {
+      node.textContent = "Never synced. Run stage sync in a terminal.";
+      node.classList.add("stale");
+      return node;
+    }
+    const minutes = Math.max(0, Math.floor((Date.now() - stamp) / 60000));
+    node.textContent = "Synced " + ago(minutes);
+    if (minutes > 24 * 60) {
+      node.textContent += ". Run stage sync for newer postings.";
+      node.classList.add("stale");
+    }
+    return node;
+  }
+
+  function named(map, key) {
+    return typeof key === "string" && map.has(key) ? map.get(key) : "";
+  }
+
+  function searchArgs() {
+    const source = isObject(state.searched) ? state.searched : isObject(state.args) ? state.args : {};
+    const chosen = {};
+    for (const field of FIELDS) {
+      if (Object.hasOwn(source, field) && source[field] !== null && source[field] !== "" && source[field] !== false) {
+        chosen[field] = source[field];
+      }
+    }
+    if (!isObject(state.args) && !isObject(state.searched) && state.result && str(state.result.preferences)) {
+      chosen.mine = true;
+    }
+    return chosen;
+  }
+
+  function scopeOf(payload) {
+    const args = searchArgs();
+    const parts = [];
+    const words = str(args.words).trim();
+    if (words) {
+      parts.push('"' + clip(words, 60) + '"');
+    }
+    if (str(payload.preferences)) {
+      parts.push("your preferences");
+    }
+    const company = str(args.company).trim();
+    if (company) {
+      parts.push(clip(company, 60));
+    }
+    for (const [map, key] of [[PLACES, args.location], [ROLES, args.role], [LANGUAGES, args.language]]) {
+      const label = named(map, key);
+      if (label) {
+        parts.push(label);
+      }
+    }
+    const term = termText(args.term);
+    if (term) {
+      parts.push(term);
+    }
+    if (args.new === true) {
+      parts.push("brought in by the last sync");
+    }
+    if (args.untracked === true) {
+      parts.push("not tracked yet");
+    }
+    const days = count(payload.window_days);
+    if (days) {
+      parts.push("first seen in the last " + plural(days, "day"));
+    }
+    const line = parts.join(", ");
+    return line.charAt(0).toUpperCase() + line.slice(1);
+  }
+
+  function titleNode(row, className) {
+    if (!row.link || !canOpen()) {
+      const plain = el("span", "plain");
+      plain.append(data("span", className, row.title));
+      if (row.link) {
+        plain.append(data("span", "url", row.link));
+      }
+      return plain;
+    }
+    const button = el("button", "link");
+    button.type = "button";
+    button.append(data("span", className, row.title));
+    button.setAttribute("aria-label", "Open " + row.title + (row.company ? " at " + row.company : ""));
+    button.addEventListener("click", () => openPosting(row));
+    return button;
+  }
+
+  async function openPosting(row) {
+    if (state.openingLinks.has(row.link)) {
+      return;
+    }
+    state.openingLinks.add(row.link);
+    const settled = pause(1000).then(() => state.openingLinks.delete(row.link));
+    try {
+      const answer = await request("ui/open-link", { url: row.link });
+      if (!isObject(answer) || answer.isError) {
+        throw new Error("refused");
+      }
+      say("");
+    } catch (problem) {
+      say("The app did not open the link: " + row.link, true);
+    }
+    await settled;
+  }
+
+  function say(text, bad) {
+    state.notice = text;
+    state.noticeBad = Boolean(bad);
+    paintNotice();
+    announce(text);
+  }
+
+  function paintNotice() {
+    for (const node of document.querySelectorAll(".status")) {
+      node.textContent = state.notice;
+      node.classList.toggle("bad", state.noticeBad);
+    }
+  }
+
+  function announce(text) {
+    const live = byId("live");
+    live.textContent = "";
+    if (text) {
+      requestAnimationFrame(() => {
+        live.textContent = text;
+      });
+    }
+  }
+
+  function focusKey() {
+    const active = document.activeElement;
+    if (!active || active === document.body) {
+      return null;
+    }
+    if (active.classList.contains("more")) {
+      return { kind: "more" };
+    }
+    const links = [...document.querySelectorAll("#card .link")];
+    const at = links.indexOf(active);
+    return at >= 0 ? { kind: "link", at } : null;
+  }
+
+  function refocus(key) {
+    if (!key) {
+      return;
+    }
+    const target = key.kind === "more"
+      ? document.querySelector("#card .more")
+      : document.querySelectorAll("#card .link")[key.at];
+    if (target) {
+      target.focus();
+    }
+  }
+
+  function render() {
+    const full = state.view === "full";
+    byId("card").hidden = full;
+    byId("full").hidden = !full;
+    if (full) {
+      renderFull();
+    } else {
+      renderCard();
+    }
+  }
+
+  function renderCard() {
+    const root = byId("card");
+    const kept = root.contains(document.activeElement) ? focusKey() : null;
+    root.replaceChildren();
+    if (state.error) {
+      root.append(el("div", "count", "Stage could not search"));
+      root.append(data("p", "problem", state.error));
+      return;
+    }
+    const payload = state.result;
+    if (!payload) {
+      root.append(el("p", "empty", state.args ? "Searching Stage..." : "Waiting for Stage..."));
+      return;
+    }
+    const rows = rowsOf(payload);
+    const visible = rows.filter((row) => !markOf(row.id).hidden);
+    const hiding = hiddenCount();
+    const total = Math.max(0, count(payload.total) - hiding);
+    const head = el("div", "head");
+    head.append(el("div", "count", total ? plural(total, "posting") : hiding ? "Every match is hidden" : "No postings match"));
+    head.append(paintFresh(el("span"), payload));
+    root.append(head);
+    const scope = scopeOf(payload);
+    if (scope) {
+      const line = data("div", "scope", scope);
+      if (str(payload.preferences)) {
+        line.title = clip(payload.preferences, 300);
+      }
+      root.append(line);
+    }
+    if (str(payload.warning)) {
+      root.append(data("p", "alert", clip(payload.warning, 300)));
+    }
+    if (visible.length) {
+      const list = el("ol", "rows");
+      for (const row of visible.slice(0, SHOWN)) {
+        list.append(cardRow(row));
+      }
+      root.append(list);
+    } else if ((total || hiding) && rows.length) {
+      root.append(el("p", "empty", "The postings shown here are hidden now."));
+    } else if (!total) {
+      root.append(el("p", "empty", "Nothing matches this search right now."));
+    }
+    if ((total || hiding) && canLoad()) {
+      const label = state.opening ? "Opening..." : total > Math.min(visible.length, SHOWN) ? "Show all " + grouped(total) : "Open the full list";
+      const all = el("button", "more", label);
+      all.type = "button";
+      all.setAttribute("aria-disabled", String(state.opening));
+      all.addEventListener("click", openAll);
+      root.append(all);
+    }
+    root.append(el("p", "status"));
+    paintNotice();
+    refocus(kept);
+  }
+
+  function cardRow(row) {
+    const item = el("li");
+    item.append(titleNode(row, "clamp"));
+    const facts = el("div", "facts");
+    if (row.company) {
+      facts.append(data("span", "who", row.company));
+    }
+    if (row.location) {
+      facts.append(data("span", "", row.location));
+    }
+    const term = termText(row.term);
+    if (term) {
+      facts.append(el("span", "", term));
+    }
+    const day = dayText(row.seen);
+    if (day) {
+      facts.append(el("span", "", "Seen " + day));
+    }
+    if (row.link && canOpen()) {
+      facts.append(data("span", "host", siteOf(row.link)));
+    }
+    const status = named(STATUSES, statusOf(row));
+    if (status) {
+      facts.append(el("span", "badge", status));
+    }
+    item.append(facts);
+    return item;
+  }
+
+  function modes() {
+    const listed = state.context.availableDisplayModes;
+    return Array.isArray(listed) ? listed : null;
+  }
+
+  async function openAll() {
+    if (state.opening || !canLoad()) {
+      return;
+    }
+    const listed = modes();
+    if (listed && !listed.includes("fullscreen")) {
+      showFull(false);
+      return;
+    }
+    state.opening = true;
+    renderCard();
+    const generation = state.generation;
+    state.asking = true;
+    const asked = request("ui/request-display-mode", { mode: "fullscreen" }).then(
+      (answer) => (isObject(answer) ? str(answer.mode) : ""),
+      () => "",
+    );
+    asked.then(() => {
+      state.asking = false;
+    });
+    const mode = await Promise.race([asked, pause(MODE_WAIT).then(() => "late")]);
+    state.opening = false;
+    if (generation !== state.generation || state.closed) {
+      if (!state.closed) {
+        render();
+      }
+      return;
+    }
+    if (mode === "late") {
+      showFull(false);
+      asked.then((granted) => {
+        if (granted !== "fullscreen" || state.closed) {
+          return;
+        }
+        state.context.displayMode = "fullscreen";
+        if (state.view === "full") {
+          state.expanded = false;
+          renderFull();
+        } else {
+          request("ui/request-display-mode", { mode: "inline" }).then(
+            (answer) => {
+              if (isObject(answer) && str(answer.mode)) {
+                state.context.displayMode = str(answer.mode);
+              }
+            },
+            () => {},
+          );
+        }
+      });
+      return;
+    }
+    showFull(mode === "fullscreen");
+  }
+
+  function showFull(fullscreen) {
+    if (fullscreen) {
+      state.context.displayMode = "fullscreen";
+    }
+    state.view = "full";
+    state.expanded = !fullscreen;
+    say("");
+    render();
+    ensureLoaded();
+    byId("back").focus();
+  }
+
+  function closeAll() {
+    if (state.context.displayMode === "fullscreen" || state.asking) {
+      request("ui/request-display-mode", { mode: "inline" }).then(
+        (answer) => {
+          if (isObject(answer) && str(answer.mode)) {
+            state.context.displayMode = str(answer.mode);
+          }
+        },
+        () => {},
+      );
+    }
+    state.view = "card";
+    state.expanded = false;
+    say("");
+    render();
+    const again = document.querySelector("#card .more");
+    if (again) {
+      again.focus();
+    }
+  }
+
+  function ensureLoaded() {
+    if (!state.loaded && !state.loading) {
+      loadPage("first");
+    }
+  }
+
+  async function callTool(name, args) {
+    const result = await request("tools/call", { name, arguments: args });
+    if (!isObject(result) || result.isError) {
+      throw new Error(spoken(textOf(result, 300)) || "Stage did not answer.");
+    }
+    const payload = payloadOf(result);
+    if (!payload) {
+      throw new Error("Stage sent an answer this card cannot read.");
+    }
+    return payload;
+  }
+
+  function merged(rows, more) {
+    const known = new Set(rows.map((row) => row.id));
+    const found = rows.slice();
+    for (const row of more) {
+      if (!known.has(row.id)) {
+        known.add(row.id);
+        found.push(row);
+      }
+    }
+    return found;
+  }
+
+  function keepHidden(rows, before) {
+    const found = rows.slice();
+    const known = new Set(found.map((row) => row.id));
+    before.forEach((row, at) => {
+      const marked = markOf(row.id);
+      if (marked.hidden && marked.here && !known.has(row.id)) {
+        found.splice(Math.min(at, found.length), 0, row);
+        known.add(row.id);
+      }
+    });
+    return found;
+  }
+
+  async function loadPage(mode) {
+    if (state.loading) {
+      return;
+    }
+    const onMore = document.activeElement === byId("more");
+    const shownBefore = byId("body").children.length;
+    const generation = state.generation;
+    const page = state.expanded ? INLINE_PAGE : PAGE;
+    const before = mode === "again" ? state.rows.slice() : null;
+    const wanted = before ? before.filter((row) => !markOf(row.id).hidden).length + page : 0;
+    let rows = mode === "more" ? state.rows.slice() : [];
+    let cursor = mode === "more" ? state.next : null;
+    state.loading = true;
+    if (mode === "first") {
+      say("Loading postings...");
+    }
+    renderFull();
+    let again = false;
+    try {
+      do {
+        const args = Object.assign(searchArgs(), { limit: page });
+        if (cursor) {
+          args.cursor = cursor;
+        }
+        const payload = await callTool("search_postings", args);
+        if (generation !== state.generation) {
+          return;
+        }
+        rows = merged(rows, rowsOf(payload));
+        cursor = typeof payload.next_cursor === "string" ? payload.next_cursor : null;
+        state.total = count(payload.total);
+        state.fresh = payload;
+      } while (before && cursor && rows.filter((row) => !markOf(row.id).hidden).length < wanted);
+      state.rows = before ? keepHidden(rows, before) : rows;
+      state.next = cursor;
+      state.loaded = true;
+      state.stamp += 1;
+      if (before) {
+        say("Stage's data changed, so the list was read again from the top.");
+      } else if (mode === "first") {
+        say("");
+      }
+    } catch (problem) {
+      if (generation !== state.generation) {
+        return;
+      }
+      if (mode === "more" && /data changed/i.test(problem.message)) {
+        again = true;
+      } else {
+        say("Stage could not load the postings: " + problem.message, true);
+      }
+    } finally {
+      if (generation === state.generation) {
+        state.loading = false;
+      }
+    }
+    if (again) {
+      loadPage("again");
+      return;
+    }
+    renderFull();
+    if (onMore && byId("more").hidden) {
+      const next = byId("body").children[shownBefore] || byId("body").lastElementChild;
+      const target = (next && next.querySelector("button")) || byId("filter");
+      target.focus();
+    }
+  }
+
+  function renderFull() {
+    const shown = state.rows.filter((row) => !markOf(row.id).hidden);
+    const total = state.loaded
+      ? Math.max(0, state.total - hiddenCount(state.stamp))
+      : Math.max(0, count(state.result && state.result.total) - hiddenCount());
+    byId("back").textContent = state.expanded ? "Show less" : "Back";
+    byId("fullcount").textContent = total ? plural(total, "posting") : "No postings match";
+    paintFresh(byId("fullfresh"), state.fresh || state.result);
+    const body = byId("body");
+    const needle = state.filter;
+    const matching = state.rows.filter((row) => !needle || matches(row, needle));
+    const same = body.children.length === matching.length
+      && matching.every((row, at) => body.children[at] === state.painted.get(row.id));
+    if (!same) {
+      body.replaceChildren();
+      for (const row of matching) {
+        const node = state.painted.get(row.id) || paintRow(row);
+        state.painted.set(row.id, node);
+        body.append(node);
+      }
+    }
+    if (state.loaded && !state.rows.length) {
+      body.append(wideRow("Nothing matches this search right now."));
+    } else if (needle && !matching.length && state.rows.length) {
+      body.append(wideRow("None of the loaded postings match the filter."));
+    }
+    let summary = state.loaded ? "Showing " + grouped(shown.length) + " of " + plural(total, "posting") : "";
+    if (needle && state.loaded) {
+      summary = plural(matching.length, "loaded posting") + (matching.length === 1 ? " matches" : " match") + " the filter";
+    }
+    byId("shown").textContent = summary;
+    const more = byId("more");
+    more.hidden = !state.next;
+    more.setAttribute("aria-disabled", String(state.loading));
+    more.textContent = state.loading ? "Loading..." : "Load more";
+    paintNotice();
+    padUnderBar();
+  }
+
+  function padUnderBar() {
+    const bar = document.querySelector("#full .bar");
+    if (bar && !byId("full").hidden) {
+      document.documentElement.style.scrollPaddingTop = bar.offsetHeight + 16 + "px";
+    }
+  }
+
+  function wideRow(text) {
+    const line = el("tr");
+    const cell = el("td", "", text);
+    cell.colSpan = 5;
+    line.append(cell);
+    return line;
+  }
+
+  function folded(value) {
+    return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  }
+
+  function matches(row, needle) {
+    return [row.title, row.company, row.location].some((value) => folded(value).includes(needle));
+  }
+
+  function siteLine(row) {
+    const line = el("span", "site");
+    if (row.company) {
+      line.append(data("span", "co", row.company));
+    }
+    if (row.link && canOpen()) {
+      line.append(data("span", "host", siteOf(row.link)));
+    }
+    return line;
+  }
+
+  function paintRow(row) {
+    const line = el("tr");
+    const marked = markOf(row.id);
+    if (marked.hidden) {
+      line.className = "gone";
+      const cell = data("td", "", "Hidden: " + row.title);
+      cell.colSpan = 4;
+      line.append(cell);
+      const acts = el("td", "acts");
+      if (marked.undo) {
+        acts.append(action("Undo", "undo", row, () => undo(row), marked.busy));
+      }
+      line.append(acts);
+      return line;
+    }
+    const first = el("td");
+    first.append(titleNode(row, "clamp3"));
+    first.append(siteLine(row));
+    line.append(first);
+    const place = el("td", "side place");
+    place.append(data("span", "clamp2", row.location));
+    line.append(place);
+    line.append(el("td", "side", termText(row.term)));
+    line.append(el("td", "side", dayText(row.seen)));
+    const status = named(STATUSES, statusOf(row));
+    const acts = el("td", "acts");
+    if (status) {
+      acts.append(el("span", "badge", status));
+    } else {
+      acts.append(action("Save", "save", row, () => save(row), marked.busy));
+    }
+    acts.append(action("Hide", "hide", row, () => hide(row), marked.busy));
+    line.append(acts);
+    return line;
+  }
+
+  function action(label, kind, row, run, busy) {
+    const button = el("button", "ghost", busy ? label + "..." : label);
+    button.type = "button";
+    button.dataset.kind = kind;
+    const blocked = Boolean(busy) || !row.id;
+    button.setAttribute("aria-disabled", String(blocked));
+    button.setAttribute("aria-label", label + " " + row.title + (row.company ? " at " + row.company : "") + (row.location ? " in " + row.location : ""));
+    button.addEventListener("click", () => {
+      if (!blocked) {
+        run();
+      }
+    });
+    return button;
+  }
+
+  function repaint(row, focus) {
+    const old = state.painted.get(row.id);
+    const active = document.activeElement;
+    const ours = !active || active === document.body || (old && old.contains(active));
+    const fresh = paintRow(row);
+    if (old && old.parentNode) {
+      old.replaceWith(fresh);
+    }
+    state.painted.set(row.id, fresh);
+    if (focus && ours && fresh.isConnected) {
+      const target = fresh.querySelector("button[data-kind=" + focus + "]") || fresh.querySelector("button.ghost");
+      if (target) {
+        target.focus();
+      }
+    }
+    render();
+  }
+
+  function entryOf(answer, id) {
+    for (const key of ["changed", "unchanged"]) {
+      const rows = Array.isArray(answer[key]) ? answer[key].filter(isObject) : [];
+      const found = rows.find((item) => item.id === id) || rows[0];
+      if (found) {
+        return { key, entry: found };
+      }
+    }
+    return null;
+  }
+
+  async function save(row) {
+    const generation = state.generation;
+    mark(row.id, { busy: true });
+    repaint(row, "save");
+    try {
+      const answer = await callTool("track_postings", { ids: [row.id], status: "saved" });
+      if (generation !== state.generation) {
+        return;
+      }
+      const found = entryOf(answer, row.id);
+      if (!found) {
+        throw new Error("Stage did not confirm the change.");
+      }
+      const status = STATUSES.has(found.entry.status) ? found.entry.status : "saved";
+      mark(row.id, { busy: false, status });
+      say(status === "saved" ? "Saved " + clip(row.title, 80) + "." : "Already " + named(STATUSES, status).toLowerCase() + ", so it stays that way.");
+    } catch (problem) {
+      mark(row.id, { busy: false });
+      say("Could not save it: " + problem.message, true);
+    }
+    repaint(row, "hide");
+  }
+
+  async function hide(row) {
+    const generation = state.generation;
+    mark(row.id, { busy: true });
+    repaint(row, "hide");
+    try {
+      const answer = await callTool("track_postings", { ids: [row.id], status: "hidden" });
+      if (generation !== state.generation) {
+        return;
+      }
+      const found = entryOf(answer, row.id);
+      if (!found) {
+        throw new Error("Stage did not confirm the change.");
+      }
+      if (found.key === "changed" && typeof answer.undo === "string") {
+        mark(row.id, { busy: false, hidden: true, here: true, stamp: state.stamp, undo: answer.undo });
+        say("Hidden. Stage leaves it out of every search until you undo it.");
+      } else {
+        mark(row.id, { busy: false, hidden: true, here: true, stamp: state.stamp, undo: "" });
+        say("It was already hidden.");
+      }
+    } catch (problem) {
+      mark(row.id, { busy: false });
+      say("Could not hide it: " + problem.message, true);
+    }
+    repaint(row, "undo");
+  }
+
+  async function undo(row) {
+    const token = markOf(row.id).undo;
+    if (!token) {
+      return;
+    }
+    const generation = state.generation;
+    mark(row.id, { busy: true });
+    repaint(row, "undo");
+    try {
+      const answer = await callTool("undo_tracking", { undo: token });
+      if (generation !== state.generation) {
+        return;
+      }
+      const restored = Array.isArray(answer.restored) ? answer.restored.filter(isObject) : [];
+      const left = Array.isArray(answer.left_alone) ? answer.left_alone.filter(isObject) : [];
+      const back = restored.find((item) => item.id === row.id) || restored[0];
+      const moved = left.find((item) => item.id === row.id) || left[0];
+      const status = back ? str(back.status) : moved ? str(moved.status) : "";
+      if (back && markOf(row.id).stamp !== state.stamp) {
+        state.total += 1;
+      }
+      mark(row.id, { busy: false, hidden: status === "hidden", here: false, undo: "", status });
+      say(back ? "It is back." : "It changed again since, so Stage left it as it is.");
+    } catch (problem) {
+      mark(row.id, { busy: false });
+      say("Could not undo it: " + problem.message, true);
+    }
+    repaint(row, "hide");
+  }
+
+  function watchSize() {
+    let queued = false;
+    let width = 0;
+    let height = 0;
+    const measure = () => {
+      if (queued || state.closed) {
+        return;
+      }
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        const root = document.documentElement;
+        const kept = root.style.height;
+        root.style.height = "max-content";
+        const tall = Math.ceil(root.getBoundingClientRect().height);
+        root.style.height = kept;
+        const wide = Math.ceil(window.innerWidth);
+        padUnderBar();
+        if (wide !== width || tall !== height) {
+          width = wide;
+          height = tall;
+          notify("ui/notifications/size-changed", { width, height });
+        }
+      });
+    };
+    measure();
+    state.observer = new ResizeObserver(measure);
+    state.observer.observe(document.documentElement);
+    state.observer.observe(document.body);
+  }
+
+  async function start() {
+    window.addEventListener("message", receive);
+    byId("back").addEventListener("click", closeAll);
+    byId("more").addEventListener("click", () => {
+      if (!state.loading) {
+        loadPage("more");
+      }
+    });
+    let told = 0;
+    byId("filter").addEventListener("input", (event) => {
+      state.filter = folded(event.target.value.trim()).slice(0, 200);
+      renderFull();
+      clearTimeout(told);
+      told = setTimeout(() => announce(byId("shown").textContent), 700);
+    });
+    render();
+    try {
+      const answer = await request("ui/initialize", {
+        protocolVersion: PROTOCOL,
+        appInfo: { name: "stage-postings", version: "1" },
+        appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
+      });
+      if (isObject(answer)) {
+        state.host = isObject(answer.hostCapabilities) ? answer.hostCapabilities : {};
+        blend(isObject(answer.hostContext) ? answer.hostContext : {});
+      }
+      state.ready = true;
+      notify("ui/notifications/initialized", {});
+      watchSize();
+      render();
+    } catch (problem) {
+      state.ready = false;
+    }
+  }
+
+  start();
+})();
+</script>
+</body>
+</html>
