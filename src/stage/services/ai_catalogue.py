@@ -132,6 +132,7 @@ APPS: tuple[AiApp, ...] = (
         markers=(Where.everywhere("{env:COPILOT_HOME|~/.copilot}"), *VSCODE_FOUND),
         note="Read by VS Code 1.140 and later and by the Copilot CLI.",
         docs="https://code.visualstudio.com/docs/copilot/customization/mcp-servers",
+        also=("vscode", "vs-code", "code"),
     ),
     AiApp(
         "vscode",

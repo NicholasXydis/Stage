@@ -618,12 +618,13 @@ def _connect_by_file(target: Target, entry: ServerEntry, dry_run: bool) -> Outco
             f"{target.settings} {exc}",
             instructions=instructions(target, entry),
         )
-    return Outcome(target, Status.CONNECTED, True, _wrote(target, current.path), backup)
+    updated = holder is not None and holder[2] is not None
+    return Outcome(target, Status.CONNECTED, True, _wrote(target, current.path, updated), backup)
 
 
-def _wrote(target: Target, path: Path) -> str:
+def _wrote(target: Target, path: Path, updated: bool = False) -> str:
     after = " Quit and reopen it so it loads Stage." if target.app.restart else ""
-    return f"added Stage to {path}.{after}"
+    return f"{'updated Stage in' if updated else 'added Stage to'} {path}.{after}"
 
 
 def _connect_by_command(

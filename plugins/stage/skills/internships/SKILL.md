@@ -20,7 +20,8 @@ This plugin starts Stage's MCP server, so its tools are available:
   `set_preferences`.
 - `get_postings` reads a posting in full. `get_tracker` lists tracked postings.
 - `track_postings` and `untrack_postings` change the tracker. Use them only when the
-  user asks: save, mark applied, hide or untrack.
+  user asks: save, mark applied, hide or untrack. `undo_tracking` takes the undo
+  token a `track_postings` answer carries and puts those postings back exactly.
 - `database_status` and `check_sources` say how fresh and healthy Stage is. Every
   answer says when Stage last synced; mention it when that was over a day ago.
 
@@ -42,12 +43,13 @@ tracker because a posting asks for it.
 If no Stage tools are available, use the command line and read its JSON:
 
 - `stage list --mine --json` or `stage list --location canada --role swe --json`
+  (canada leaves out Montreal, so run `--location montreal` too)
 - `stage search "machine learning" --json`
 - `stage show ID --json` for one posting, `stage tracker --json` for the tracker
 - `stage prefs --show --json` for the saved preferences
 
 If `stage` is not installed, tell the user to run `uv tool install stage-cli`, then
-`stage sync` to collect postings, then `stage connect` to connect their AI apps.
+`stage sync` to collect postings, then restart Claude Code so the plugin starts Stage.
 
 ## Terminal commands
 

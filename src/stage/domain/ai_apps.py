@@ -114,6 +114,7 @@ class AiApp:
     screens: str = ""
     note: str = ""
     docs: str = ""
+    also: tuple[str, ...] = ()
 
     @property
     def reaches(self) -> tuple[Reach, ...]:

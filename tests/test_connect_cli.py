@@ -172,6 +172,47 @@ def test_nothing_found_is_said_plainly(home: Path, monkeypatch: pytest.MonkeyPat
     assert code == 1 and "found no AI app" in said
 
 
+def test_a_misspelled_app_is_named_even_when_no_app_is_installed(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services import ai_catalogue
+
+    monkeypatch.setattr(ai_catalogue, "APPS", (DELTA,))
+
+    code, said = _run("connect", "nosuchapp")
+    absent, missing = _run("disconnect", DELTA.key)
+
+    assert code == 2 and "does not know an app called nosuchapp" in said
+    assert absent == 2 and f"did not find {DELTA.key} on this computer" in missing
+
+
+def test_another_name_finds_the_app_that_is_installed(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dataclasses import replace
+
+    from stage.services import ai_catalogue
+
+    current = replace(ALPHA, also=("delta",))
+    monkeypatch.setattr(ai_catalogue, "APPS", (current, DELTA))
+
+    code, said = _run("connect", "delta")
+
+    assert code == 0 and "Alpha" in said, "an older row that is not installed gives way"
+    assert (Path.home() / ".alpha" / "mcp.json").is_file()
+    (Path.home() / ".delta").mkdir()
+    code, said = _run("connect", "delta")
+    assert code == 0 and (Path.home() / ".delta" / "mcp.json").is_file()
+
+
+def test_vscode_names_the_current_vs_code_row() -> None:
+    from stage.services.ai_catalogue import APPS
+
+    rows = {app.key: app for app in APPS}
+    assert "vscode" in rows["copilot"].also and "code" in rows["copilot"].also
+    assert rows["vscode"].before, "the vscode row covers only older VS Code"
+
+
 def test_a_chosen_database_is_written_into_the_entry(home: Path, tmp_path: Path) -> None:
     _run("connect", "alpha", "--db", str(tmp_path / "mine.db"))
 
@@ -185,12 +226,11 @@ def test_a_chosen_database_is_written_into_the_entry(home: Path, tmp_path: Path)
 )
 def test_choosing_by_number(home: Path, answer: str, chosen: list[str]) -> None:
     from stage.cli.commands.ai import _picked
-    from stage.cli.render import terminal
     from stage.services.connect import Machine, targets
 
     found = targets(Machine.here())
 
-    assert [target.app.key for target in _picked(terminal(), found, answer)] == chosen
+    assert [target.app.key for target in _picked(found, answer)] == chosen
 
 
 @pytest.mark.parametrize("answer", ["", "0", "9", "one"])
@@ -198,11 +238,10 @@ def test_an_empty_or_wrong_choice_changes_nothing(home: Path, answer: str) -> No
     import typer
 
     from stage.cli.commands.ai import _picked
-    from stage.cli.render import terminal
     from stage.services.connect import Machine, targets
 
     with pytest.raises(typer.Exit):
-        _picked(terminal(), targets(Machine.here()), answer)
+        _picked(targets(Machine.here()), answer)
     assert not (home / ".alpha" / "mcp.json").exists()
 
 

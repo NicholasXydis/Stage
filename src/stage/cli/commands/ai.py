@@ -4,7 +4,15 @@ from typing import TYPE_CHECKING, Annotated
 
 import typer
 
-from stage.cli.options import DatabaseOption, _database, app, run_async
+from stage.cli.options import (
+    WORD,
+    DatabaseOption,
+    _database,
+    _print_error,
+    _refuse,
+    app,
+    run_async,
+)
 
 if TYPE_CHECKING:
     from rich.console import Console
@@ -25,6 +33,7 @@ AppsArgument = Annotated[
     list[str] | None,
     typer.Argument(
         metavar="APP...",
+        click_type=WORD,
         help="Apps to change, such as claude-code, cursor or cline; leave out to choose",
         show_default=False,
     ),
@@ -37,7 +46,7 @@ DryRunOption = Annotated[
 ]
 ACTIONS_ON = (
     "Actions are on: {apps} can open postings in your browser, export them and start a sync. "
-    "The app asks you before each one."
+    "Claude Code asks you before each one; other apps follow their own approval settings."
 )
 ACTIONS_OFF = "Actions are off: {apps} can search and keep your tracker, and nothing more."
 
@@ -80,8 +89,9 @@ def connect(
         typer.Option(
             "--allow-actions/--no-actions",
             help=(
-                "Let the apps also open postings, export them and start a sync, asking you "
-                "each time; --no-actions turns that off. Left out, each app keeps its setting"
+                "Let the apps also open postings, export them and start a sync, which Claude "
+                "Code asks about each time; --no-actions turns that off. Left out, each app "
+                "keeps its setting"
             ),
             show_default=False,
         ),
@@ -94,17 +104,13 @@ def connect(
 
     console = terminal()
     if known and not status:
-        console.print(
-            plain("--every lists apps with --status; it does not connect anything.", "red")
-        )
-        raise typer.Exit(code=2)
+        _refuse(plain("--every lists apps with --status; it does not connect anything.", "red"))
     if status and actions is not None:
-        console.print(
+        _refuse(
             plain(
                 "--status changes nothing, so it takes no --allow-actions or --no-actions.", "red"
             )
         )
-        raise typer.Exit(code=2)
     entry = server_entry(database=db)
     machine = Machine.here()
     found = targets(machine, every=known and status)
@@ -172,30 +178,29 @@ def _choose(
 ) -> "list[Target]":
     from stage.cli.render import plain
 
+    if apps and not every:
+        return _named(found, apps)
     if not found:
-        console.print(plain(NOTHING_FOUND, "yellow"))
+        _print_error(plain(NOTHING_FOUND, "yellow"))
         raise typer.Exit(code=1)
     if every:
         return list(found)
-    if apps:
-        return _named(console, found, apps)
     _show_status(console, found, entry)
     if not (sys.stdin.isatty() and sys.stdout.isatty()):
-        console.print(
+        _refuse(
             plain(
                 f"Name the apps to {verb}, such as stage {verb} {found[0].app.key}, or use --all.",
             )
         )
-        raise typer.Exit(code=2)
     answer = typer.prompt(
         f"\nWhich apps should Stage {verb}? Numbers like 1 3, all, or Enter to cancel",
         default="",
         show_default=False,
     )
-    return _picked(console, found, answer)
+    return _picked(found, answer)
 
 
-def _picked(console: "Console", found: "tuple[Target, ...]", answer: str) -> "list[Target]":
+def _picked(found: "tuple[Target, ...]", answer: str) -> "list[Target]":
     from stage.cli.render import plain
 
     words = answer.replace(",", " ").split()
@@ -206,15 +211,14 @@ def _picked(console: "Console", found: "tuple[Target, ...]", answer: str) -> "li
     chosen: list[Target] = []
     for word in words:
         if not word.isdecimal() or not 1 <= int(word) <= len(found):
-            console.print(plain(f"{word} is not one of the numbers above.", "red"))
-            raise typer.Exit(code=2)
+            _refuse(plain(f"{word} is not one of the numbers above.", "red"))
         target = found[int(word) - 1]
         if target not in chosen:
             chosen.append(target)
     return chosen
 
 
-def _named(console: "Console", found: "tuple[Target, ...]", apps: list[str]) -> "list[Target]":
+def _named(found: "tuple[Target, ...]", apps: list[str]) -> "list[Target]":
     from difflib import get_close_matches
 
     from stage.cli.render import plain
@@ -223,16 +227,16 @@ def _named(console: "Console", found: "tuple[Target, ...]", apps: list[str]) -> 
     chosen: list[Target] = []
     for wanted in apps:
         name = _folded(wanted)
-        matches = [target for target in found if name in _names(target)]
+        matches = [target for target in found if name in _names(target)] or [
+            target for target in found if name in target.app.also
+        ]
         if not matches:
-            everything = {key for app in APPS for key in (app.key, _folded(app.name))}
+            everything = {key for app in APPS for key in (app.key, _folded(app.name), *app.also)}
             if name in everything:
-                console.print(plain(f"Stage did not find {wanted} on this computer.", "red"))
-            else:
-                near = get_close_matches(name, sorted(everything), n=1)
-                hint = f" Did you mean {near[0]}?" if near else ""
-                console.print(plain(f"Stage does not know an app called {wanted}.{hint}", "red"))
-            raise typer.Exit(code=2)
+                _refuse(plain(f"Stage did not find {wanted} on this computer.", "red"))
+            near = get_close_matches(name, sorted(everything), n=1)
+            hint = f" Did you mean {near[0]}?" if near else ""
+            _refuse(plain(f"Stage does not know an app called {wanted}.{hint}", "red"))
         chosen.extend(target for target in matches if target not in chosen)
     return chosen
 
@@ -260,9 +264,9 @@ def _show_status(console: "Console", found: "tuple[Target, ...]", entry: "Server
         console.print(plain(NOTHING_FOUND, "yellow"))
         return
     table = Table(box=None, pad_edge=False, show_header=True, header_style="bold")
-    table.add_column("#", justify="right", no_wrap=True)
-    table.add_column("App", no_wrap=True)
-    table.add_column("Stage", no_wrap=True)
+    table.add_column("#", justify="right", no_wrap=True, overflow="fold")
+    table.add_column("App", no_wrap=True, overflow="fold")
+    table.add_column("Stage", no_wrap=True, overflow="fold")
     table.add_column("How", overflow="fold")
     for number, target in enumerate(found, start=1):
         own = entry_for(target, entry)
