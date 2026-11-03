@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 import pytest
 
 from stage.http import PROFILES, RatePosture, UnknownProfileError, profile, resolve
@@ -163,7 +165,7 @@ def test_every_jibe_job_hub_honours_its_five_second_crawl_delay() -> None:
         for company in load_companies()
         if company.custom is not None
         and (
-            "jibeapply.com" in company.custom.url
+            (urlsplit(company.custom.url).hostname or "").endswith(".jibeapply.com")
             or "Jibe" in (company.notes or "")
             or "/api/jobs?limit=100" in company.custom.url
         )

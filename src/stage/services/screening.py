@@ -9,7 +9,6 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from multiprocessing import get_context
 from typing import cast
 
 from stage.classify import (
@@ -204,7 +203,7 @@ class Screener:
             with _terminal_stderr():
                 self._pool = ProcessPoolExecutor(
                     max_workers=self.workers,
-                    mp_context=get_context("spawn"),
+                    mp_context=multiprocessing.get_context("spawn"),
                     initializer=_ignore_interrupts,
                 )
         return self._pool

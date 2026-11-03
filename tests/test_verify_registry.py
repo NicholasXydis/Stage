@@ -150,9 +150,9 @@ LISTED = (
 def _boards(requests: list[httpx.Request]) -> Handler:
     def handler(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        if request.url.host.endswith("myworkdayjobs.com"):
+        if request.url.host.endswith(".myworkdayjobs.com"):
             return httpx.Response(200, json={"total": 7, "jobPostings": [{"title": "Intern"}]})
-        if request.url.host.endswith("oraclecloud.com"):
+        if request.url.host.endswith(".oraclecloud.com"):
             return httpx.Response(200, json={"items": [{"TotalJobsCount": 4}]})
         return httpx.Response(200, text=LISTED)
 

@@ -436,6 +436,6 @@ def test_help_explains_a_subcommand() -> None:
     nested = CliRunner().invoke(app, ["help", "sync", "status"])
 
     assert result.exit_code == 0
-    assert "schedule status" in ANSI_ESCAPE.sub("", result.stdout)
-    assert "--watch" in result.stdout
+    shown = ANSI_ESCAPE.sub("", result.stdout)
+    assert "schedule status" in shown and "--watch" in shown
     assert nested.exit_code == 2 and "stage sync has no subcommands" in nested.stderr

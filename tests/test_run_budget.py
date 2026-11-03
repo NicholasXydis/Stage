@@ -163,10 +163,14 @@ def test_the_lock_is_released_when_the_run_finishes(tmp_path: Path) -> None:
         assert owner.exists(), "the lock was not reusable once the first run finished"
 
 
+def _boom() -> None:
+    raise ValueError("boom")
+
+
 def test_the_lock_is_released_even_when_the_run_raises(tmp_path: Path) -> None:
     lock = tmp_path / "network.lock"
     with pytest.raises(ValueError), single_run("sync", lock):
-        raise ValueError("boom")
+        _boom()
     with single_run("sync", lock):
         pass
 

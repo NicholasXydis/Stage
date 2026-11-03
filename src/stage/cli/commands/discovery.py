@@ -567,7 +567,7 @@ async def _adopt_unregistered(
     adopt_unnamed: bool,
     apply_rows: bool,
     today: date,
-    stream: "TextIO | None",
+    stream: TextIO | None,
     progress: "ProgressCallback | None",
     show_all: bool = False,
 ) -> bool:

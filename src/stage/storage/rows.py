@@ -154,10 +154,14 @@ UPSERT_PUSHBACK = upsert(
     "bucket",
     [
         *_LONGER_BLOCK,
-        "min_interval_override = NULLIF(MAX(COALESCE(rate_state.min_interval_override, 0), "
-        "COALESCE(excluded.min_interval_override, 0)), 0)",
-        "consecutive_failures = MAX(rate_state.consecutive_failures, "
-        "excluded.consecutive_failures)",
+        (
+            "min_interval_override = NULLIF(MAX(COALESCE(rate_state.min_interval_override, 0), "
+            "COALESCE(excluded.min_interval_override, 0)), 0)"
+        ),
+        (
+            "consecutive_failures = MAX(rate_state.consecutive_failures, "
+            "excluded.consecutive_failures)"
+        ),
         "last_failure_at = COALESCE(excluded.last_failure_at, rate_state.last_failure_at)",
         "updated_at = excluded.updated_at",
     ],
@@ -180,8 +184,10 @@ UPSERT_VISIT = upsert(
     [
         *refreshed("label", "last_attempt_at"),
         "last_success_at = COALESCE(excluded.last_success_at, source_visits.last_success_at)",
-        "consecutive_failures = CASE WHEN excluded.consecutive_failures = 0 THEN 0 "
-        "ELSE source_visits.consecutive_failures + 1 END",
+        (
+            "consecutive_failures = CASE WHEN excluded.consecutive_failures = 0 THEN 0 "
+            "ELSE source_visits.consecutive_failures + 1 END"
+        ),
         "last_error = excluded.last_error",
     ],
 )

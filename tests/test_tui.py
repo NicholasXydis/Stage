@@ -2875,7 +2875,7 @@ def test_stat_labels_stay_inside_their_column() -> None:
     lines = bars(Counter({"株式会社" * 12: 3, "👨‍👩‍👧‍👦" * 20: 2, "Acme": 1})).splitlines()
     starts = {cell_len(line.split("  [b]")[0]) for line in lines}
 
-    assert len(starts) == 1 and starts.pop() <= LABEL_WIDTH
+    assert len(starts) == 1 and max(starts) <= LABEL_WIDTH
 
 
 def _seed_long(path: Path) -> None:

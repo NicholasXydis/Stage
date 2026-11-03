@@ -98,8 +98,10 @@ def test_a_missing_list_means_no_rows(tmp_path: Path, monkeypatch: pytest.Monkey
     [
         "- name: [unclosed\n",
         "name: not a list\n",
-        "- name: Fresh\n  platform: greenhouse\n  slug: fresh\n"
-        "- name: Typo\n  platform: greenhose\n  slug: typo\n",
+        (
+            "- name: Fresh\n  platform: greenhouse\n  slug: fresh\n"
+            "- name: Typo\n  platform: greenhose\n  slug: typo\n"
+        ),
         b"\xff\xfe not utf-8",
     ],
 )

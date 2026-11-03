@@ -167,7 +167,7 @@ async def test_an_interrupted_first_read_is_announced_by_the_next_scheduled_sync
 
     async with open_repository(db) as repository:
         stream = cast(
-            "AsyncGenerator[object, None]", sync(repository, [acme], sources=["greenhouse"])
+            AsyncGenerator[object, None], sync(repository, [acme], sources=["greenhouse"])
         )
         async for event in stream:
             if isinstance(event, SourceFinished):
