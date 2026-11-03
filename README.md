@@ -20,7 +20,7 @@ Free and open source. No account, no hosted service, no telemetry.
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=3%2C570&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=92%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=5%2C361&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=94%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -49,22 +49,22 @@ Free and open source. No account, no hosted service, no telemetry.
 ## Why
 Internships disappear fast. By the time you find the right posting, hundreds of students may already be ahead of you. Most job boards make it worse by burying relevant roles under senior positions, research jobs, and listings nowhere near you.
 
-Stage scans 1,450+ employer career boards and finds internships CS undergrads in Canada and the U.S. can actually apply to. Every rejected posting is logged with the exact reason it was filtered out.
+Stage scans 2,000+ employer career boards and finds internships CS undergrads in Canada and the U.S. can actually apply to. Every rejected posting is logged with the exact reason it was filtered out.
 
-It has kept **3,693** postings out of **337,765** screened so far.
+It has kept **3,877** postings out of **341,837** screened so far.
 
 ## A look at it
 
 <div align="center">
-  <img src="assets/tui.png" alt="The Stage TUI listing internship postings, with columns for age, company, title and location, a search bar, and the full description of the highlighted posting below" width="100%">
-  <br><sub><b>stage tui</b>: browse everything, filter with <b>f</b>, open with <b>o</b></sub>
+  <img src="assets/cli.png" alt="The stage command line help, showing commands grouped into Everyday, Applications, Keeping current, Registry and maintenance, Health, and AI apps" width="100%">
+  <br><sub><b>stage --help</b>: commands grouped by what you are doing</sub>
 </div>
 
 <br>
 
 <div align="center">
-  <img src="assets/cli.png" alt="The stage command line help, showing commands grouped into Everyday, Applications, Keeping current, Registry and maintenance, Health, and AI apps" width="100%">
-  <br><sub><b>stage --help</b>: commands grouped by what you are doing</sub>
+  <img src="assets/tui.png" alt="The Stage TUI listing internship postings, with columns for age, company, title and location, a search bar, and the full description of the highlighted posting below" width="100%">
+  <br><sub><b>stage tui</b>: browse everything, filter with <b>f</b>, open with <b>o</b></sub>
 </div>
 
 ## Install
@@ -140,7 +140,7 @@ Rows are numbered, so you can act on what you just saw:
 ```bash
 stage list --role swe --location montreal
 stage show 3                          # read the third row in full
-stage open 1-5 9                      # open rows 1 to 5 and 9 in your browser
+stage open 1-5 9                      # open rows 1 to 5 and 9, then check they are up
 ```
 
 Filters work the same on `list`, `search`, and `export`:
@@ -174,7 +174,7 @@ description, `e` exports what you are looking at, and `ctrl+t` changes the theme
 Press `?` for the full key list.
 
 Same database as the CLI. `--term` and `--source` stay CLI-only. Row
-numbers are a CLI idea; in the TUI you move a cursor instead.
+numbers are a CLI idea. In the TUI you move a cursor instead.
 
 ## Your preferences and applications
 
@@ -195,12 +195,26 @@ file, so they stay after a board takes them down.
 ## Keeping it fresh
 
 ```bash
-stage schedule enable     # sync every 6 hours, look for new boards weekly
+stage schedule enable     # sync every 30 minutes, find new boards weekly
 stage schedule status     # check on it
 ```
 
 Opt-in, and it uses whatever scheduler your system already has: launchd,
 systemd, or Task Scheduler. Nothing runs until you turn it on.
+
+Each run reads only what is due, and Stage learns how often each board needs it.
+Community lists are checked every time, and a new posting on one sends Stage to
+that employer's own board on the next run. A board with a new internship this week,
+or a company you follow, is read every hour, and the rest every one to six hours
+depending on how much they post. Workable boards get a gentler three to ten hours.
+A site that pushes back or slows down gets fewer
+requests, and each computer starts at its own minute.
+`stage schedule enable --every 6h` brings back the old pace.
+
+Every Monday the schedule also adds the boards behind internships it kept from
+the lists to your own list, `boards.yaml` in Stage's data folder. Every Wednesday
+it switches off the ones that died and removes them a week later. Upgrades leave
+that list alone.
 
 Want to hear about new postings without checking? Point Stage at a Discord
 channel you manage:
@@ -212,7 +226,7 @@ stage schedule test-notify        # make sure it works
 
 Create a Discord webhook in the channel you want Stage to post to. It is just a URL Stage uses to send new internships.
 
-Notifications only follow scheduled syncs, not stage sync. Your machine also needs to be awake. If it misses runs, Stage catches up once when it can run again.
+Notifications only follow scheduled syncs, not stage sync. Montreal comes first, then the rest of Canada and the US, software before other roles, and a busy run is split over up to four messages so every posting is named. Your machine also needs to be awake. If it misses runs, Stage catches up once when it can run again. Set the webhook on one machine only, because every machine that syncs on a schedule sends its own message.
 
 <details>
 <summary><b>Want notifications around the clock?</b></summary>
@@ -229,7 +243,9 @@ stage schedule enable              # systemd, launchd, or Task Scheduler
 ```
 
 That machine keeps its own database and posts to Discord on its own schedule.
-Yours stays free for browsing.
+Yours stays free for browsing. On a Linux server, run
+`sudo loginctl enable-linger $USER` so the schedule keeps going after you log out.
+`stage schedule status` says when it is needed.
 
 </details>
 
@@ -261,13 +277,12 @@ teaches Claude to use them:
 
 Use the plugin or `stage connect claude-code`, not both.
 
-[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=Stage&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJzdGFnZS1jbGkiLCJzdGFnZSIsIm1jcCJdfQ%3D%3D)
-[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Stage-0098FF?style=flat-square)](https://vscode.dev/redirect/mcp/install?name=Stage&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22stage-cli%22%2C%22stage%22%2C%22mcp%22%5D%7D)
-[![Add to LM Studio](https://files.lmstudio.ai/deeplink/mcp-install-dark.svg)](https://lmstudio.ai/install-mcp?name=stage&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJzdGFnZS1jbGkiLCJzdGFnZSIsIm1jcCJdfQ%3D%3D)
-[![Install in Goose](https://block.github.io/goose/img/extension-install-dark.svg)](https://goose-docs.ai/extension/?cmd=uvx&arg=--from&arg=stage-cli&arg=stage&arg=mcp&id=stage&name=Stage&description=Internship%20postings%20and%20your%20tracker%2C%20from%20Stage)
+[![Install in Cursor](https://img.shields.io/badge/Cursor-Install_Stage-1E1E1E?style=for-the-badge)](https://cursor.com/install-mcp?name=Stage&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJzdGFnZS1jbGkiLCJzdGFnZSIsIm1jcCJdfQ%3D%3D)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Stage-0098FF?style=for-the-badge)](https://vscode.dev/redirect/mcp/install?name=Stage&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22uvx%22%2C%22args%22%3A%5B%22--from%22%2C%22stage-cli%22%2C%22stage%22%2C%22mcp%22%5D%7D)
 
 The buttons run Stage through `uvx`, so uv has to be where the app can find it.
-`stage connect` is more dependable and takes over an entry a button made.
+`stage connect` is more dependable, also sets up Claude, Codex and about 50 more
+apps, and takes over an entry a button made.
 
 </details>
 
@@ -280,7 +295,7 @@ Stage/
 │  ├─ tui/                  Textual screens over the same services; safe.py escapes output
 │  ├─ ai/                   stage mcp: tools, prompts and answers for AI apps
 │  ├─ domain/               the types every layer speaks: jobs, filters, enums, events
-│  ├─ sources/              13 ATS adapters + 11 curated feeds
+│  ├─ sources/              13 ATS adapters + 13 curated feeds
 │  ├─ services/             sync, discover, query, export, preferences, tracker, connect, health
 │  ├─ classify/             role, internship scope, degree eligibility, location
 │  ├─ normalize/            location, term, language, apply-url canonicalisation
@@ -293,41 +308,7 @@ Stage/
 ```
 
 <div align="center">
-<pre>
-┌──────────────────────────────────────────────────────────────┐
-│                    1,450+ employer boards                    │
-│    Greenhouse · Lever · Ashby · Workday · SmartRecruiters    │
-│                + 11 curated internship feeds                 │
-└───────────────────────────┬──────────────────────────────────┘
-                            │  rate-limited, cached, backed off
-                            ▼
-┌──────────────────────────────────────────────────────────────┐
-│                          normalize                           │
-│       location · term · language · canonical apply URL       │
-└───────────────────────────┬──────────────────────────────────┘
-                            ▼
-┌──────────────────────────────────────────────────────────────┐
-│                            screen                            │
-│    internship? · CS role? · degree scope? · Canada or US?    │
-│        every rejection keeps the rule that caught it         │
-└──────────────┬───────────────────────────────┬───────────────┘
-               │ kept                          │ rejected
-               ▼                               ▼
-        ┌─────────────┐                 ┌─────────────┐
-        │    jobs     │                 │ quarantine  │
-        │    5,475    │                 │   332,290   │
-        └──────┬──────┘                 └─────────────┘
-               │  dedup collapses the same posting across sources
-               ▼
-     ┌───────────────────────┐
-     │     SQLite + FTS5     │
-     │    on your machine    │
-     └──────┬────────┬───────┘
-            ▼        ▼
-      stage list   stage tui
-      search       full-screen browser
-      export       Discord on a schedule
-</pre>
+  <img src="assets/architecture.svg" alt="Stage reads 2,000+ employer boards and 12 community lists with rate limits and caching, normalizes each posting, screens it for internship, CS role, degree and place, keeps what passes and records why the rest was rejected, merges duplicates into one SQLite file on your computer, and serves it to stage list, stage tui, AI apps and Discord" width="100%">
 </div>
 
 ## CI
@@ -335,7 +316,7 @@ Stage/
 | Workflow | File | Purpose |
 | --- | --- | --- |
 | CI | `.github/workflows/ci.yml` | Ruff, format, mypy strict, every test, coverage floor, pip-audit, actionlint, badge drift |
-| Supported Pythons | `.github/workflows/ci.yml` | The full suite again on 3.13 and 3.14 |
+| Supported Pythons | `.github/workflows/ci.yml` | The full suite again on 3.13 and 3.14, and on Windows and macOS |
 | Wheel | `.github/workflows/ci.yml` | Builds and smoke-tests the wheel on Ubuntu, Windows and macOS |
 | Card | `.github/workflows/ci.yml` | Renders the AI apps' posting card in Chromium against a real `stage mcp` |
 | CodeQL | `.github/workflows/codeql.yml` | Static analysis for Python and the workflows themselves |
@@ -344,7 +325,7 @@ Stage/
 | Release | `.github/workflows/release.yml` | Re-runs lint, types, tests, coverage and pip-audit, checks the sdist installs, then publishes from a `v*` tag |
 
 <div align="center">
-  <img src="assets/ci-flow.svg" alt="Quality checks on Python 3.12, the full suite on 3.13 and 3.14, the posting card in a browser, a wheel smoke test on three operating systems, and CodeQL. Any failing check fails the run" width="100%">
+  <img src="assets/ci-flow.svg" alt="Quality checks on Python 3.12, the full suite on 3.13, 3.14, Windows and macOS, the posting card in a browser, a wheel smoke test on three operating systems, and CodeQL. Any failing check fails the run" width="100%">
 </div>
 
 Any failing gate blocks the merge. The canary runs weekly and opens an issue
@@ -359,22 +340,24 @@ and connects two AI apps in a sandbox. What ships is what gets tested.
 
 ## Good to know
 
-- Your postings sit in one SQLite file, with your tracker and preferences beside
-  it. All of it is yours to open with any SQLite client, back up, or delete.
+- Your postings sit in one SQLite file, with your tracker and preferences in the
+  same data folder. All of it is yours to open with any SQLite client, back up, or
+  delete.
 - The only network traffic is Stage reading public job boards, plus the Discord
   webhook if you set one. No account, no telemetry.
 - Posting text reaches AI apps marked as data, with an instruction never to
   follow anything written inside it.
 - Requests are rate limited per host, cached, and retried with backoff, so it
   does not hammer anyone's site.
-- Nearly nine in ten postings arrive with no description at all. Stage marks those
+- More than nine in ten postings arrive with no description at all. Stage marks those
   fields `unknown` instead of guessing.
 - Missing something you expected? `stage quarantine` shows which rule caught it.
+- Stage also reads community lists such as [Zapply's Internships](https://github.com/zapplyjobs/Internships-2027), [Canada Internships](https://github.com/zapplyjobs/Canada-Internships-2027) and [Vansh's Summer 2027 Internships](https://github.com/vanshb03/Summer2027-Internships).
 
 ## Learn more
 
 `stage help` walks through the common workflows with real examples.
-`stage help COMMAND` explains one command; `stage --help` lists them all.
+`stage help COMMAND` explains one command, and `stage --help` lists them all.
 
 [CHANGELOG.md](CHANGELOG.md) lists what changed in each release.
 

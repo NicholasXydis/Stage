@@ -23,7 +23,7 @@ I review reports quickly and fix the most severe first.
 
 In scope:
 
-- posting text that injects terminal escapes or control characters, or changes what the posting card shows or loads
+- posting text that injects terminal escapes or control characters, changes what the posting card shows or loads, or gets Stage to open anything but a public web page
 - a registry field or redirect that sends a request, or its headers, to a host it was not meant for
 - source data that gets past validation, the response size limit or the per-host request limit
 - unsafe loading of source, registry or lexicon data
@@ -40,4 +40,4 @@ Out of scope:
 - social engineering, and scanner output without a working reproduction
 - anything that needs a machine, database or settings you do not own
 
-Stage runs on your computer with no network listener, accounts or logins. `stage mcp` talks only over the standard input and output of the app that starts it. Stage sends https requests only to hosts it ships with: the boards in its registry, its feeds, the platforms `stage discover` checks, and Discord if you set a webhook. A redirect to another origin drops the first origin's headers. The two registry rows that send a bearer token use the board's own public key, never one of yours.
+Stage runs on your computer with no network listener, accounts or logins. `stage mcp` talks only over the standard input and output of the app that starts it. Stage sends https requests only to the boards in its registry or your own board list, its feeds, the platforms `stage discover` checks, and Discord if you set a webhook. Before `stage discover` adds a board, it reads that host's robots.txt and leaves the board out if robots.txt disallows its job list, apart from two job platforms whose robots.txt blocks every reader. A redirect to http or to a host Stage does not know stops the request, and a redirect to another origin drops the first origin's headers. The three registry rows that send a bearer token use the board's own public key, never one of yours.

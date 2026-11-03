@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="220" viewBox="0 0 1000 220" role="img" aria-labelledby="title desc">
   <title id="title">Stage CI flow</title>
-  <desc id="desc">Every push and pull request runs quality checks on Python 3.12, the full suite again on 3.13 and 3.14, the posting card in a browser, a wheel smoke test on Ubuntu, Windows and macOS, and CodeQL. Any failure fails the run.</desc>
+  <desc id="desc">Every push and pull request runs quality checks on Python 3.12, the full suite again on 3.13, 3.14, Windows and macOS, the posting card in a browser, a wheel smoke test on Ubuntu, Windows and macOS, and CodeQL. Any failure fails the run.</desc>
 
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
@@ -22,13 +22,13 @@
 
     <rect x="240" y="42" width="180" height="58" rx="12" fill="#111C30" stroke="#3B82F6" stroke-width="2"/>
     <text x="330" y="66" fill="#F0F6FC" font-size="14">ruff, format, mypy</text>
-    <text x="330" y="86" fill="#F0F6FC" font-size="14">3,570 tests, 92%</text>
+    <text x="330" y="86" fill="#F0F6FC" font-size="14">5,361 tests, 94%</text>
 
     <path d="M420 71H470" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
 
     <rect x="480" y="42" width="170" height="58" rx="12" fill="#161B22" stroke="#30363D" stroke-width="2"/>
-    <text x="565" y="66" fill="#F0F6FC" font-size="14">3.13, 3.14, card</text>
-    <text x="565" y="86" fill="#F0F6FC" font-size="14">Wheel on 3 OSes</text>
+    <text x="565" y="66" fill="#F0F6FC" font-size="14">3.13, 3.14, Win, Mac</text>
+    <text x="565" y="86" fill="#F0F6FC" font-size="14">Card, 3-OS wheel</text>
 
     <path d="M650 71H700" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
 

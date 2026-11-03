@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="410" viewBox="0 0 1000 410" role="img" aria-labelledby="title desc">
+  <title id="title">How Stage works</title>
+  <desc id="desc">Stage reads 2,000+ employer boards and 12 community lists with rate limits and caching, normalizes each posting, and screens it for internship, CS role, degree and place. Kept postings are merged across sources into one SQLite file on your computer, and rejected ones are kept with the rule that caught them. The file feeds stage list, stage tui, AI apps through stage mcp, and Discord.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
+      <path d="M0 0L4 2L0 4Z" fill="#3B82F6"/>
+    </marker>
+    <marker id="green-arrow" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
+      <path d="M0 0L4 2L0 4Z" fill="#238636"/>
+    </marker>
+    <marker id="red-arrow" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
+      <path d="M0 0L4 2L0 4Z" fill="#F85149"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="410" rx="18" fill="#0D1117"/>
+
+  <g font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="600" text-anchor="middle">
+    <rect x="30" y="40" width="170" height="58" rx="12" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+    <text x="115" y="64" fill="#F0F6FC">2,000+ employer</text>
+    <text x="115" y="84" fill="#F0F6FC">boards</text>
+
+    <rect x="30" y="122" width="170" height="58" rx="12" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+    <text x="115" y="146" fill="#F0F6FC">12 community</text>
+    <text x="115" y="166" fill="#F0F6FC">lists</text>
+
+    <path d="M200 69C226 69 226 100 248 100" fill="none" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M200 151C226 151 226 120 248 120" fill="none" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect x="256" y="76" width="190" height="68" rx="12" fill="#111C30" stroke="#3B82F6" stroke-width="2"/>
+    <text x="351" y="102" fill="#F0F6FC" font-size="15">Fetch</text>
+    <text x="351" y="124" fill="#8B949E" font-size="12" font-weight="400">rate limited, cached, backs off</text>
+
+    <path d="M446 110H488" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect x="496" y="76" width="200" height="68" rx="12" fill="#111C30" stroke="#3B82F6" stroke-width="2"/>
+    <text x="596" y="102" fill="#F0F6FC" font-size="15">Normalize</text>
+    <text x="596" y="124" fill="#8B949E" font-size="12" font-weight="400">place, term, language, link</text>
+
+    <path d="M696 110H738" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect x="746" y="66" width="224" height="88" rx="12" fill="#111C30" stroke="#3B82F6" stroke-width="2"/>
+    <text x="858" y="92" fill="#F0F6FC" font-size="15">Screen</text>
+    <text x="858" y="114" fill="#8B949E" font-size="12" font-weight="400">internship? CS role?</text>
+    <text x="858" y="134" fill="#8B949E" font-size="12" font-weight="400">degree? Canada or US?</text>
+
+    <path d="M806 154V242" stroke="#238636" stroke-width="3" marker-end="url(#green-arrow)"/>
+    <path d="M912 154V242" stroke="#F85149" stroke-width="3" marker-end="url(#red-arrow)"/>
+
+    <rect x="746" y="250" width="110" height="58" rx="12" fill="#102A1C" stroke="#238636" stroke-width="2"/>
+    <text x="801" y="274" fill="#F0F6FC">Kept</text>
+    <text x="801" y="294" fill="#8B949E" font-size="12" font-weight="400">postings</text>
+
+    <rect x="866" y="250" width="104" height="58" rx="12" fill="#2D1619" stroke="#DA3633" stroke-width="2"/>
+    <text x="918" y="274" fill="#F0F6FC">Rejected</text>
+    <text x="918" y="294" fill="#8B949E" font-size="12" font-weight="400">with the reason</text>
+
+    <path d="M746 279H704" stroke="#238636" stroke-width="3" marker-end="url(#green-arrow)"/>
+
+    <rect x="496" y="250" width="200" height="58" rx="12" fill="#111C30" stroke="#3B82F6" stroke-width="2"/>
+    <text x="596" y="274" fill="#F0F6FC">Dedup</text>
+    <text x="596" y="294" fill="#8B949E" font-size="12" font-weight="400">one posting, many sources</text>
+
+    <path d="M496 279H454" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect x="256" y="250" width="190" height="58" rx="12" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+    <text x="351" y="274" fill="#F0F6FC">SQLite</text>
+    <text x="351" y="294" fill="#8B949E" font-size="12" font-weight="400">on your computer</text>
+
+    <path d="M256 279H228M228 233V362" fill="none" stroke="#3B82F6" stroke-width="3"/>
+    <path d="M228 233H206M228 276H206M228 319H206M228 362H206" fill="none" stroke="#3B82F6" stroke-width="3"/>
+    <path d="M216 233H206" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M216 276H206" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M216 319H206" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M216 362H206" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <g font-size="13">
+      <rect x="30" y="215" width="170" height="36" rx="10" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+      <text x="115" y="238" fill="#F0F6FC">list, search, export</text>
+      <rect x="30" y="258" width="170" height="36" rx="10" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+      <text x="115" y="281" fill="#F0F6FC">stage tui</text>
+      <rect x="30" y="301" width="170" height="36" rx="10" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+      <text x="115" y="324" fill="#F0F6FC">AI apps (stage mcp)</text>
+      <rect x="30" y="344" width="170" height="36" rx="10" fill="#161B22" stroke="#30363D" stroke-width="2"/>
+      <text x="115" y="367" fill="#F0F6FC">Discord</text>
+    </g>
+  </g>
+</svg>

@@ -4,54 +4,55 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2026-11-01
+## [1.2.0] - 2026-11-02
 
 ### Added
 
 - `stage prefs` saves the places, roles and terms you want, and `--mine` keeps
   only the postings that fit, in `list`, `search`, `export` and the TUI.
-- An application tracker. `stage save`, `applied`, `hide` and `track` set a
-  status, a date and a note, and `stage tracker` lists them. In the TUI, `s`, `p`
-  and `h` do the same, `z` undoes, and `l` opens your applications.
-- `stage mcp` lets AI apps such as Claude, VS Code and Cursor search your postings
-  and keep your tracker, and `stage connect` sets it up in about 55 of them.
-  Claude Desktop, VS Code and Goose show a search as a card where you can save and
-  hide postings. Opening, exporting and syncing stay off until you allow them.
-- `stage show`, `open` and the tracker commands take ranges such as `1-5`.
+- `stage save`, `applied` and `hide` keep a tracker, listed by `stage tracker`.
+- `stage mcp` lets AI apps such as Claude, Codex, VS Code and Cursor search your
+  postings and keep your tracker, and `stage connect` sets it up in about 55 apps.
+  Opening, exporting and syncing stay off until you allow them.
+- About 580 more employer boards, among them Montreal and other Canadian
+  employers, startups, and 55 insurers and health plans, plus Zapply's lists.
+- Your own board list. Every Monday Stage adds boards found through community
+  lists, and every Wednesday it retires dead ones.
+- `stage open` and the TUI check a posting is still up after opening it and close
+  it if the employer took it down. Syncs check the oldest ones too.
 
 ### Changed
 
-- `stage open` opens up to 50 tabs, up from 10.
-- Output is plain ASCII, errors go to stderr, and the TUI fits an 80x24 terminal.
-- Filters ignore case, so `--company google` and `--role SWE` work, and
-  `stage search software intern` no longer needs quotes.
+- `stage schedule enable` syncs every 30 minutes (`--every 6h` remains). A board
+  is read hourly after a new internship this week, at most 5.5 hours apart when
+  quiet, and right after a community list shows a new posting from it.
+- A host that pushed back or slowed down gets fewer requests. Unchanged answers
+  do not count against the daily allowance.
+- Big Workday boards with no internship filter are searched for internships on
+  every read and read in full once a week, which closes what they took down.
+- Cleaner place labels and stricter screening: graduate-only, plain IT and non-CS
+  roles stay out. The first sync after an upgrade checks stored postings again.
+- Errors are plain sentences everywhere. Ctrl-C stops cleanly and says what it
+  kept or left unchanged. A scheduled run fails only on a real database problem.
+- Discord puts Montreal and software first, names every posting over up to four
+  messages, links each one, cannot ping anyone and skips a new board's backlog.
+- `quarantine --all` is ten times faster and `rescreen` takes seconds.
+- Québec emploi is off until Stage can read its new site.
 
 ### Fixed
 
-- Some syncs lost up to 255 Workday boards at once, because screening a large
-  batch held every connection until they timed out together.
-- Every sync re-added about 3,000 postings that `purge` had removed.
-- Rejected postings were never removed, so the database grew by about 100,000
-  rows a month. `purge` now drops those no board has listed for 30 days.
-- Foreign Workday postings, such as "GB-NU-CRAMLINGTON" in England, counted as
-  Canadian or American. Run `stage rescreen` once after upgrading to fix the
-  postings you already have.
-- Postings in several places showed "2 Locations" or lost part of the list, and
-  the same Workday posting could show twice.
-- Job Bank student postings past the second page were missed.
-- Searching recent postings, which the TUI always does, took up to 14 seconds. It
-  takes under 0.2 seconds now.
-- A title with square brackets could crash the TUI, and long links wrapped, so
-  copying one broke it.
-- A new database's journal was readable by other accounts until it closed, and
-  pointing `--db` at another program's SQLite file wrote Stage's tables into it.
-- On Windows, Stage could not create its files when the account was named under
-  another domain, as it is over SSH.
-- A locked database got the advice to delete it.
-- A scheduled sync counted as failed whenever `doctor` found anything to look at.
-- Miro and Old Mission Capital work again. Beacon Software, Firetiger, Tilde
-  Research, Frima and Global Partners are off.
-
+- Half the Greenhouse boards went unread each run, and up to 255 Workday boards
+  could fail at once. A full read keeps about 510 Greenhouse internships, not 190.
+- One opening could show twice, and one title in two cities as one.
+- A mistyped `--db` made an empty database; reading commands now refuse it.
+- Postings a board took down came back from lists days later, a list dropping
+  its copy hid the other copies, and every sync re-added 3,000 purged postings.
+- Foreign postings counted as Canadian or American, and NVIDIA, Bosch and eight
+  other boards stopped before the end of their lists.
+- A TUI sync, `purge` or `rescreen` could run alongside a scheduled sync, and
+  stopping a scheduled run on Windows left its sync running.
+- A sync offline or behind a Wi-Fi login page marked boards as failing, and
+  `stage tui` without a terminal spun a CPU core.
 ## [1.1.3] - 2026-09-09
 
 ### Fixed
