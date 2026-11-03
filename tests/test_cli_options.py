@@ -10,6 +10,7 @@ from typer.testing import CliRunner
 
 if TYPE_CHECKING:
     from stage.domain import Job
+    from stage.storage import AsyncRepository
 
 from stage.cli.app import app
 from stage.cli.options import run_async
@@ -2005,3 +2006,20 @@ def test_reading_a_database_that_does_not_exist_refuses_and_creates_nothing(
     assert result.exit_code == 2
     assert "There is no Stage database at" in result.stderr and "stage sync --db" in result.stderr
     assert not missing.exists()
+
+
+def test_a_finished_command_leaves_no_name_behind_for_later_calls(
+    tmp_path: Path, empty_db: Path
+) -> None:
+    from stage.cli.options import _command_name, _with_db
+
+    CliRunner().invoke(app, ["list", "--db", str(empty_db)])
+
+    assert _command_name() == ""
+    assert _with_db(tmp_path / "fresh.db", _count_jobs) == 0
+
+
+async def _count_jobs(repository: "AsyncRepository") -> int:
+    from stage.domain import JobFilters
+
+    return await repository.count_jobs(JobFilters())

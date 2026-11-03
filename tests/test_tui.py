@@ -1,8 +1,9 @@
-from contextlib import closing
+from contextlib import closing, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from textual.worker import WorkerCancelled
 
 if TYPE_CHECKING:
     from stage.domain import Job
@@ -2407,7 +2408,9 @@ async def test_the_title_column_follows_the_window_width(tmp_path: Path) -> None
 
 async def _settled(app: "StageApp", pilot: Any) -> None:
     for _ in range(4):
-        await app.workers.wait_for_complete()
+        for worker in list(app.workers):
+            with suppress(WorkerCancelled):
+                await worker.wait()
         await pilot.pause()
 
 

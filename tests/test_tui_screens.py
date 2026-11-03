@@ -2,12 +2,14 @@ import ast
 import asyncio
 import re
 from collections.abc import AsyncIterator
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 from textual.widgets import DataTable, Footer, Input, Static
+from textual.worker import WorkerCancelled
 
 from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
 from stage.tui.app import StageApp
@@ -65,7 +67,9 @@ def _seed(path: Path, count: int = 3, description: str = "") -> Path:
 
 async def _settled(app: StageApp, pilot: Any) -> None:
     for _ in range(4):
-        await app.workers.wait_for_complete()
+        for worker in list(app.workers):
+            with suppress(WorkerCancelled):
+                await worker.wait()
         await pilot.pause()
 
 

@@ -218,6 +218,7 @@ def _root(
     ] = False,
 ) -> None:
     _INVOKED[:] = [context.invoked_subcommand or ""]
+    context.call_on_close(_INVOKED.clear)
     if context.invoked_subcommand is None:
         typer.echo(context.get_help())
         raise typer.Exit
