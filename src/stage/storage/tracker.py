@@ -14,6 +14,7 @@ from stage.domain.tracker import (
 )
 
 SCHEMA_VERSION = 1
+WAIT_S = 5.0
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS tracked (
@@ -58,6 +59,20 @@ class TrackerUnreadableError(Exception):
     pass
 
 
+_REASONS = {
+    "busy": "another Stage process is saving to it",
+    "full": "the disk holding it is full",
+    "read-only": "it is read-only",
+    "damaged": "it is damaged or is not a Stage tracker",
+}
+
+
+def _unreadable(exc: sqlite3.Error) -> TrackerUnreadableError:
+    from stage.storage.problems import problem_kind
+
+    return TrackerUnreadableError(_REASONS[problem_kind(exc)])
+
+
 class TrackerStore:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
@@ -66,9 +81,9 @@ class TrackerStore:
     def connect(cls, path: Path) -> "TrackerStore":
         created = _create_private(path)
         try:
-            conn = sqlite3.connect(path, timeout=5)
+            conn = sqlite3.connect(path, timeout=WAIT_S)
         except sqlite3.Error as exc:
-            raise TrackerUnreadableError(str(exc)) from exc
+            raise _unreadable(exc) from exc
         conn.row_factory = sqlite3.Row
         store = cls(conn)
         try:
@@ -89,7 +104,7 @@ class TrackerStore:
                     self._conn.executescript(_SCHEMA)
                     self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         except sqlite3.Error as exc:
-            raise TrackerUnreadableError(str(exc)) from exc
+            raise _unreadable(exc) from exc
         from stage.paths import discard_new, restrict_permissions, tighten_permissions
 
         if not created:
@@ -104,6 +119,12 @@ class TrackerStore:
 
     def close(self) -> None:
         self._conn.close()
+
+    def hold(self) -> None:
+        try:
+            self._conn.execute("BEGIN IMMEDIATE")
+        except sqlite3.Error as exc:
+            raise _unreadable(exc) from exc
 
     def __enter__(self) -> Self:
         return self
@@ -145,7 +166,7 @@ class TrackerStore:
                     _HISTORY, [_history_row(posting_id, change) for posting_id, change in changes]
                 )
         except sqlite3.Error as exc:
-            raise TrackerUnreadableError(str(exc)) from exc
+            raise _unreadable(exc) from exc
 
     def restore(self, removed: Collection[str], entries: Sequence[TrackedPosting]) -> None:
         try:
@@ -160,7 +181,20 @@ class TrackerStore:
                     [_history_row(e.posting_id, change) for e in entries for change in e.history],
                 )
         except sqlite3.Error as exc:
-            raise TrackerUnreadableError(str(exc)) from exc
+            raise _unreadable(exc) from exc
+
+    def follow(self, stale: Collection[str], renamed: Mapping[str, str]) -> None:
+        try:
+            with self._conn:
+                self._conn.executemany(
+                    "DELETE FROM tracked WHERE posting_id = ?", [(key,) for key in sorted(stale)]
+                )
+                for old, new in renamed.items():
+                    self._conn.execute(
+                        "UPDATE tracked SET posting_id = ? WHERE posting_id = ?", (new, old)
+                    )
+        except sqlite3.Error as exc:
+            raise _unreadable(exc) from exc
 
     def remove(self, ids: Collection[str]) -> None:
         try:
@@ -169,7 +203,7 @@ class TrackerStore:
                     "DELETE FROM tracked WHERE posting_id = ?", [(key,) for key in sorted(set(ids))]
                 )
         except sqlite3.Error as exc:
-            raise TrackerUnreadableError(str(exc)) from exc
+            raise _unreadable(exc) from exc
 
     def _history(self) -> dict[str, tuple[StatusChange, ...]]:
         rows = self._read(
@@ -191,7 +225,7 @@ class TrackerStore:
         try:
             return self._conn.execute(sql, tuple(params)).fetchall()
         except sqlite3.Error as exc:
-            raise TrackerUnreadableError(str(exc)) from exc
+            raise _unreadable(exc) from exc
 
 
 def _create_private(path: Path) -> bool:
@@ -203,7 +237,7 @@ def _create_private(path: Path) -> bool:
     except FileExistsError:
         return False
     except OSError as exc:
-        raise TrackerUnreadableError(exc.strerror or type(exc).__name__) from exc
+        raise TrackerUnreadableError(exc.strerror or "it could not be created") from exc
     os.close(descriptor)
     return True
 
@@ -213,7 +247,7 @@ def _status(value: object) -> ApplicationStatus:
         return ApplicationStatus(str(value))
     except ValueError as exc:
         raise TrackerUnreadableError(
-            f"it holds a status this Stage does not know: {value!r}"
+            f'it holds a status this Stage does not know: "{value}"'
         ) from exc
 
 
@@ -221,14 +255,14 @@ def _moment(value: object) -> datetime:
     try:
         return datetime.fromisoformat(str(value))
     except ValueError as exc:
-        raise TrackerUnreadableError(f"it holds a time Stage cannot read: {value!r}") from exc
+        raise TrackerUnreadableError(f'it holds a time Stage cannot read: "{value}"') from exc
 
 
 def _day(value: object) -> date:
     try:
         return date.fromisoformat(str(value))
     except ValueError as exc:
-        raise TrackerUnreadableError(f"it holds a date Stage cannot read: {value!r}") from exc
+        raise TrackerUnreadableError(f'it holds a date Stage cannot read: "{value}"') from exc
 
 
 def _entry(row: sqlite3.Row, history: tuple[StatusChange, ...]) -> TrackedPosting:

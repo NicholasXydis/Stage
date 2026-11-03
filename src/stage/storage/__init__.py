@@ -12,8 +12,8 @@ async def open_repository(
     db_path: Path, *, read_only: bool = False
 ) -> AsyncIterator[AsyncRepository]:
     writer = DatabaseWriter(db_path, read_only=read_only)
-    await writer.start()
     try:
+        await writer.start()
         yield AsyncRepository(writer)
     finally:
         await writer.aclose()

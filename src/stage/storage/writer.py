@@ -25,7 +25,8 @@ from stage.domain import (
     WorkdayCrawl,
     WorkdayFacet,
 )
-from stage.storage.repository import Repository, SourceBatch, SourceBatchResult
+from stage.domain.liveness import LivenessCheck
+from stage.storage.repository import Repository, Resolver, SourceBatch, SourceBatchResult
 from stage.storage.sqlite_repo import SqliteRepository
 
 T = TypeVar("T")
@@ -65,7 +66,8 @@ class DatabaseWriter:
         return self
 
     async def aclose(self) -> None:
-        await self._submit(self._shutdown)
+        closed = self._executor.submit(self._shutdown)
+        await asyncio.shield(asyncio.wrap_future(closed))
         self._executor.shutdown(wait=True)
 
     async def __aenter__(self) -> Self:
@@ -83,7 +85,7 @@ class DatabaseWriter:
         def call() -> T:
             repository = self._repository
             if repository is None:
-                raise WriterNotStartedError("DatabaseWriter.start() has not been awaited")
+                raise WriterNotStartedError("Stage used its database before opening it.")
             return fn(repository)
 
         return await self._submit(call)
@@ -142,14 +144,25 @@ class AsyncRepository:
     async def count_duplicates(self) -> int:
         return await self._writer.run(lambda repository: repository.count_duplicates())
 
+    async def screened_with(self) -> int:
+        return await self._writer.run(lambda repository: repository.screened_with())
+
+    async def mark_screened(self, stamp: int) -> None:
+        await self._writer.run(lambda repository: repository.mark_screened(stamp))
+
     async def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int:
         return await self._writer.run(lambda repository: repository.relabel_quarantine(entries))
 
     async def refresh_quarantine_locations(
-        self, resolve: Callable[[str], tuple[str, str | None]]
+        self, resolve: Callable[[str, str, str], tuple[str, str | None]]
     ) -> int:
         return await self._writer.run(
             lambda repository: repository.refresh_quarantine_locations(resolve)
+        )
+
+    async def relink_duplicates(self, resolve: Resolver, canonical: Callable[[str], str]) -> int:
+        return await self._writer.run(
+            lambda repository: repository.relink_duplicates(resolve, canonical)
         )
 
     async def repair_integrity(self) -> list[IntegrityRepair]:
@@ -157,6 +170,12 @@ class AsyncRepository:
 
     async def purge(self, now: datetime) -> PurgeResult:
         return await self._writer.run(lambda repository: repository.purge(now))
+
+    async def pending_heirs(self) -> list[tuple[str, str]]:
+        return await self._writer.run(lambda repository: repository.pending_heirs())
+
+    async def forget_heirs(self, formers: Sequence[str]) -> None:
+        await self._writer.run(lambda repository: repository.forget_heirs(formers))
 
     async def close_orphan_boards(self, sources: Sequence[str], boards: Sequence[str]) -> int:
         return await self._writer.run(
@@ -178,8 +197,34 @@ class AsyncRepository:
     async def closed_among(self, job_ids: Sequence[str]) -> int:
         return await self._writer.run(lambda repository: repository.closed_among(job_ids))
 
-    async def requests_since(self, since: datetime) -> tuple[dict[str, int], bool]:
-        return await self._writer.run(lambda repository: repository.requests_since(since))
+    async def requests_since(
+        self, since: datetime, until: datetime | None = None
+    ) -> tuple[dict[str, int], bool]:
+        return await self._writer.run(lambda repository: repository.requests_since(since, until))
+
+    async def pushback_since(
+        self, since: datetime, until: datetime | None = None
+    ) -> frozenset[str]:
+        return await self._writer.run(lambda repository: repository.pushback_since(since, until))
+
+    async def board_activity(self, month: datetime, week: datetime) -> dict[str, tuple[int, int]]:
+        return await self._writer.run(lambda repository: repository.board_activity(month, week))
+
+    async def earliest_copies(self, ids: Sequence[str]) -> dict[str, datetime]:
+        return await self._writer.run(lambda repository: repository.earliest_copies(ids))
+
+    async def first_reads(self) -> dict[str, datetime]:
+        return await self._writer.run(lambda repository: repository.first_reads())
+
+    async def full_reads(self, source: str, prefix: str) -> dict[str, tuple[datetime, bool, bool]]:
+        return await self._writer.run(lambda repository: repository.full_reads(source, prefix))
+
+    async def feed_tips(
+        self, sources: Collection[str], since: datetime, limit: int
+    ) -> dict[str, datetime]:
+        return await self._writer.run(
+            lambda repository: repository.feed_tips(sources, since, limit)
+        )
 
     async def previous_sync_at(self) -> datetime | None:
         return await self._writer.run(lambda repository: repository.previous_sync_at())
@@ -220,11 +265,19 @@ class AsyncRepository:
     async def quarantine_company_counts(self) -> dict[str, dict[str, int]]:
         return await self._writer.run(lambda repository: repository.quarantine_company_counts())
 
-    async def quarantine_company_reasons(self) -> dict[str, dict[str, int]]:
-        return await self._writer.run(lambda repository: repository.quarantine_company_reasons())
+    async def quarantine_company_reasons(
+        self, reasons: Collection[str] = ()
+    ) -> dict[str, dict[str, int]]:
+        return await self._writer.run(
+            lambda repository: repository.quarantine_company_reasons(reasons)
+        )
 
-    async def company_apply_urls(self, companies: Sequence[str]) -> dict[str, tuple[str, ...]]:
-        return await self._writer.run(lambda repository: repository.company_apply_urls(companies))
+    async def company_apply_urls(
+        self, companies: Sequence[str], *, kept_only: bool = False
+    ) -> dict[str, tuple[str, ...]]:
+        return await self._writer.run(
+            lambda repository: repository.company_apply_urls(companies, kept_only=kept_only)
+        )
 
     async def coverage_classifications(self) -> list[CoverageClassification]:
         return await self._writer.run(lambda repository: repository.coverage_classifications())
@@ -254,8 +307,10 @@ class AsyncRepository:
     async def all_visits(self) -> list[SourceVisit]:
         return await self._writer.run(lambda repository: repository.all_visits())
 
-    async def integrity_findings(self) -> list[IntegrityFinding]:
-        return await self._writer.run(lambda repository: repository.integrity_findings())
+    async def integrity_findings(self, *, whole_file: bool = False) -> list[IntegrityFinding]:
+        return await self._writer.run(
+            lambda repository: repository.integrity_findings(whole_file=whole_file)
+        )
 
     async def composition(self, column: str) -> dict[str, int]:
         return await self._writer.run(lambda repository: repository.composition(column))
@@ -265,3 +320,31 @@ class AsyncRepository:
 
     async def schema_version(self) -> int:
         return await self._writer.run(lambda repository: repository.schema_version())
+
+    async def boards_with_postings(self, boards: Sequence[str]) -> set[str]:
+        return await self._writer.run(lambda repository: repository.boards_with_postings(boards))
+
+    async def liveness_queue(
+        self,
+        since: datetime,
+        checked_before: datetime,
+        feeds: Collection[str],
+        boards: Collection[str],
+        url_marks: Sequence[str],
+    ) -> list[Job]:
+        return await self._writer.run(
+            lambda repository: repository.liveness_queue(
+                since, checked_before, feeds, boards, url_marks
+            )
+        )
+
+    async def record_checks(
+        self,
+        checks: Sequence[LivenessCheck],
+        pushback: Sequence[RateState] = (),
+        *,
+        wait_ms: int | None = None,
+    ) -> tuple[str, ...]:
+        return await self._writer.run(
+            lambda repository: repository.record_checks(checks, pushback, wait_ms=wait_ms)
+        )

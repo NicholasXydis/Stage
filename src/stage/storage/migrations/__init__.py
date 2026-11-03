@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from stage.storage.problems import newer_database
+
 _FILENAME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
 _MIGRATIONS_DIR = Path(__file__).resolve().parent
 
@@ -25,13 +27,17 @@ class Migration:
 def discover() -> tuple[Migration, ...]:
     found: list[Migration] = []
     for path in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+        if path.name.startswith("."):
+            continue
         match = _FILENAME.match(path.name)
         if match is None:
-            raise SchemaVersionError(f"migration {path.name!r} does not follow NNNN_name.sql")
+            raise SchemaVersionError(
+                f'The migration "{path.name}" is not named like 0001_name.sql.'
+            )
         found.append(Migration(version=int(match.group(1)), name=path.stem, path=path))
     versions = [migration.version for migration in found]
     if len(set(versions)) != len(versions):
-        raise SchemaVersionError("duplicate migration version numbers")
+        raise SchemaVersionError("Two migrations share a version number.")
     return tuple(found)
 
 
@@ -67,16 +73,9 @@ def _refuse_a_pre_baseline_database(conn: sqlite3.Connection, db_path: Path) -> 
     if not missing:
         return
     raise SchemaVersionError(
-        f"The database at {db_path} records the current schema version but is missing "
-        f"{', '.join(missing)}, so it predates this baseline. Back it up or delete it, then "
-        "run stage sync to collect postings again"
-    )
-
-
-def _newer(db_path: Path, version: int) -> SchemaVersionError:
-    return SchemaVersionError(
-        f"The database at {db_path} has schema version {version}, newer than this build "
-        f"understands ({latest_version()}); upgrade stage-cli"
+        f"The database at {db_path} comes from an early Stage that this one cannot upgrade "
+        f"(it has no {', '.join(missing)}). Move it aside and run stage sync to collect "
+        "postings again."
     )
 
 
@@ -90,7 +89,7 @@ def is_current(conn: sqlite3.Connection, db_path: Path) -> bool:
     applied = {int(row[0]) for row in rows}
     known = {migration.version for migration in discover()}
     if applied - known:
-        raise _newer(db_path, max(applied - known))
+        raise SchemaVersionError(newer_database(db_path))
     if known - applied:
         return False
     _refuse_a_pre_baseline_database(conn, db_path)
@@ -127,9 +126,8 @@ def migrate(conn: sqlite3.Connection, db_path: Path) -> tuple[int, ...]:
     known = {migration.version for migration in migrations}
     applied = applied_versions(conn)
 
-    unknown = [version for version in applied if version not in known]
-    if unknown:
-        raise _newer(db_path, max(unknown))
+    if set(applied) - known:
+        raise SchemaVersionError(newer_database(db_path))
 
     pending = [migration for migration in migrations if migration.version not in applied]
     if not pending:
@@ -153,6 +151,10 @@ def migrate(conn: sqlite3.Connection, db_path: Path) -> tuple[int, ...]:
             raise
         conn.commit()
 
+    if not applied:
+        from stage.paths import rules_stamp
+
+        conn.execute(f"PRAGMA user_version = {rules_stamp()}")
     return tuple(migration.version for migration in pending)
 
 

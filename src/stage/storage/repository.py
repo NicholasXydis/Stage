@@ -24,6 +24,24 @@ from stage.domain import (
     WorkdayCrawlStep,
     WorkdayFacet,
 )
+from stage.domain.liveness import LivenessCheck
+
+
+class Link(Protocol):
+    @property
+    def duplicate_id(self) -> str:
+        pass
+
+    @property
+    def canonical_id(self) -> str:
+        pass
+
+    @property
+    def evidence(self) -> str:
+        pass
+
+
+Resolver = Callable[[Sequence[Job], Sequence[Job]], Sequence[Link]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,9 +59,10 @@ class SourceBatch:
     detail_fetches: tuple[DetailFetch, ...] = field(default_factory=tuple)
     visits: tuple[CompanyVisit, ...] = field(default_factory=tuple)
     quarantined: tuple[QuarantinedJob, ...] = field(default_factory=tuple)
-    resolve_duplicates: "Callable[[Sequence[Job], Sequence[Job]], Sequence[object]] | None" = None
+    resolve_duplicates: Resolver | None = None
 
     closes_whole_source: bool = False
+    list_sources: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,7 +113,19 @@ class Repository(Protocol):
     def count_duplicates(self) -> int:
         pass
 
+    def screened_with(self) -> int:
+        pass
+
+    def mark_screened(self, stamp: int) -> None:
+        pass
+
     def purge(self, now: datetime) -> PurgeResult:
+        pass
+
+    def pending_heirs(self) -> list[tuple[str, str]]:
+        pass
+
+    def forget_heirs(self, formers: Sequence[str]) -> None:
         pass
 
     def close_orphan_boards(self, sources: Sequence[str], boards: Sequence[str]) -> int:
@@ -112,7 +143,9 @@ class Repository(Protocol):
     def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int:
         pass
 
-    def refresh_quarantine_locations(self, resolve: Callable[[str], tuple[str, str | None]]) -> int:
+    def refresh_quarantine_locations(
+        self, resolve: Callable[[str, str, str], tuple[str, str | None]]
+    ) -> int:
         pass
 
     def quarantine_reason_counts(self, filters: QuarantineFilters | None = None) -> dict[str, int]:
@@ -154,7 +187,29 @@ class Repository(Protocol):
     def previous_sync_at(self) -> datetime | None:
         pass
 
-    def requests_since(self, since: datetime) -> tuple[dict[str, int], bool]:
+    def requests_since(
+        self, since: datetime, until: datetime | None = None
+    ) -> tuple[dict[str, int], bool]:
+        pass
+
+    def pushback_since(self, since: datetime, until: datetime | None = None) -> frozenset[str]:
+        pass
+
+    def board_activity(self, month: datetime, week: datetime) -> dict[str, tuple[int, int]]:
+        pass
+
+    def earliest_copies(self, ids: Sequence[str]) -> dict[str, datetime]:
+        pass
+
+    def first_reads(self) -> dict[str, datetime]:
+        pass
+
+    def full_reads(self, source: str, prefix: str) -> dict[str, tuple[datetime, bool, bool]]:
+        pass
+
+    def feed_tips(
+        self, sources: Collection[str], since: datetime, limit: int
+    ) -> dict[str, datetime]:
         pass
 
     def closed_among(self, job_ids: Sequence[str]) -> int:
@@ -169,10 +224,14 @@ class Repository(Protocol):
     def quarantine_company_counts(self) -> dict[str, dict[str, int]]:
         pass
 
-    def quarantine_company_reasons(self) -> dict[str, dict[str, int]]:
+    def quarantine_company_reasons(
+        self, reasons: Collection[str] = ()
+    ) -> dict[str, dict[str, int]]:
         pass
 
-    def company_apply_urls(self, companies: Sequence[str]) -> dict[str, tuple[str, ...]]:
+    def company_apply_urls(
+        self, companies: Sequence[str], *, kept_only: bool = False
+    ) -> dict[str, tuple[str, ...]]:
         pass
 
     def coverage_classifications(self) -> list[CoverageClassification]:
@@ -205,10 +264,13 @@ class Repository(Protocol):
     def all_visits(self) -> list[SourceVisit]:
         pass
 
+    def relink_duplicates(self, resolve: Resolver, canonical: Callable[[str], str]) -> int:
+        pass
+
     def repair_integrity(self) -> list[IntegrityRepair]:
         pass
 
-    def integrity_findings(self) -> list[IntegrityFinding]:
+    def integrity_findings(self, *, whole_file: bool = False) -> list[IntegrityFinding]:
         pass
 
     def composition(self, column: str) -> dict[str, int]:
@@ -221,6 +283,28 @@ class Repository(Protocol):
         pass
 
     def close(self) -> None:
+        pass
+
+    def boards_with_postings(self, boards: Sequence[str]) -> set[str]:
+        pass
+
+    def liveness_queue(
+        self,
+        since: datetime,
+        checked_before: datetime,
+        feeds: Collection[str],
+        boards: Collection[str],
+        url_marks: Sequence[str],
+    ) -> list[Job]:
+        pass
+
+    def record_checks(
+        self,
+        checks: Sequence[LivenessCheck],
+        pushback: Sequence[RateState] = (),
+        *,
+        wait_ms: int | None = None,
+    ) -> tuple[str, ...]:
         pass
 
 
