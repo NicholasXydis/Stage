@@ -90,7 +90,7 @@ def _not_a_string(source: str, key: str, entry: object) -> str:
         word = "on/off" if entry else "no/off"
         return (
             f"{source}: {key!r} contains the boolean {entry!r}, which is YAML 1.1 reading a "
-            f"bareword like {word} as a truth value; quote it in the YAML"
+            f"bareword like {word} as a truth value. Quote it in the YAML"
         )
     return f"{source}: every {key!r} entry must be a string, found {entry!r}"
 
@@ -210,8 +210,8 @@ def language_lexicon() -> LanguageLexicon:
     overlap = (french | english) & loanwords
     if overlap:
         raise LexiconError(
-            f"{source}: {sorted(overlap)} are listed as loanwords and also as language "
-            "evidence; a loanword counts for neither side"
+            f"{source}: {', '.join(sorted(overlap))} are listed as loanwords and also as "
+            "language evidence. A loanword counts for neither side"
         )
     return LanguageLexicon(french=french, english=english, loanwords=loanwords)
 
@@ -251,6 +251,8 @@ class EligibilityLexicon:
     degree_list_tokens: frozenset[str]
     undergraduate_tokens: frozenset[str]
     graduate_title_tokens: frozenset[str]
+    graduate_by_convention: frozenset[str]
+    non_cs_exceptions: frozenset[str] = frozenset()
 
 
 @lru_cache(maxsize=1)
@@ -275,6 +277,12 @@ def eligibility_lexicon() -> EligibilityLexicon:
         degree_list_tokens=_folded_phrases(payload, "degree_list_tokens", source),
         undergraduate_tokens=_folded_phrases(payload, "undergraduate_tokens", source),
         graduate_title_tokens=_folded_phrases(payload, "graduate_title_tokens", source),
+        graduate_by_convention=_folded_phrases(payload, "graduate_by_convention", source),
+        non_cs_exceptions=(
+            _folded_phrases(payload, "non_cs_exceptions", source)
+            if payload.get("non_cs_exceptions")
+            else frozenset()
+        ),
     )
 
 
@@ -313,6 +321,7 @@ class TermLexicon:
     seasons: dict[str, frozenset[str]]
     fillers: frozenset[str]
     blocked_bigrams: frozenset[str]
+    graduation_words: frozenset[str]
 
 
 @lru_cache(maxsize=1)
@@ -322,6 +331,7 @@ def term_lexicon() -> TermLexicon:
         seasons={season: _folded_phrases(payload, season, source) for season in SEASONS},
         fillers=_folded_phrases(payload, "fillers", source),
         blocked_bigrams=_folded_phrases(payload, "blocked_bigrams", source),
+        graduation_words=_folded_phrases(payload, "graduation_words", source),
     )
 
 
@@ -392,3 +402,12 @@ def name_root_tokens(name: str) -> tuple[str, ...]:
 
 def division_qualifiers() -> frozenset[str]:
     return _company_tokens()[2]
+
+
+@lru_cache(maxsize=1)
+def employer_aliases() -> dict[str, str]:
+    payload, source = _load(COMPANY_TOKENS_FILE)
+    if not payload.get("employer_aliases"):
+        return {}
+    named = _folded_aliases(payload, "employer_aliases", source)
+    return {spelling: fold(canonical) for spelling, canonical in named.items()}

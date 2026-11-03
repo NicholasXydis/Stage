@@ -1,6 +1,8 @@
 import re
 from urllib.parse import SplitResult, parse_qsl, urlsplit, urlunsplit
 
+from stage.domain.text import WORKDAY_DOMAINS
+
 TRACKER_DOMAINS: frozenset[str] = frozenset(
     {
         "simplify.jobs",
@@ -67,9 +69,10 @@ IDENTITY_PARAMS: frozenset[str] = frozenset(
     }
 )
 
-CASELESS_PATH_DOMAINS: frozenset[str] = frozenset({"myworkdayjobs.com", "myworkdaysite.com"})
+CASELESS_PATH_DOMAINS: frozenset[str] = frozenset(WORKDAY_DOMAINS)
 
 _LOCALE_REGION = re.compile(r"^[a-z]{2}[-_][a-zA-Z]{2}$")
+_WORKDAY_REQUISITION = re.compile(r"_((?:[a-z]+-?)?\d{5,})(?:-\d{1,2})?$")
 _IDENTITY_VALUE = re.compile(r"^[A-Za-z0-9._~-]{1,128}$")
 _IDENTITY_KEYS: frozenset[str] = frozenset(name.replace("_", "") for name in IDENTITY_PARAMS)
 
@@ -123,6 +126,21 @@ def canonical_apply_url(raw: str) -> str:
     )
     path = parts.path.lower() if caseless else parts.path
     segments = [segment for segment in path.split("/") if segment]
-    kept = [segment for segment in segments if not _is_locale_segment(segment)]
-    path = "/" + "/".join(kept)
+    last = len(segments) - 1
+    kept = [
+        segment
+        for index, segment in enumerate(segments)
+        if index == last or not _is_locale_segment(segment)
+    ]
+    path = _workday_posting(kept) if caseless else "/" + "/".join(kept)
     return urlunsplit(("https", host, path.rstrip("/") or "/", _identity_query(parts.query), ""))
+
+
+def _workday_posting(segments: list[str]) -> str:
+    if segments and segments[-1] == "apply":
+        segments = segments[:-1]
+    if len(segments) >= 3 and segments[-3] == "job":
+        match = _WORKDAY_REQUISITION.search(segments[-1])
+        if match is not None:
+            return f"/job/{segments[-2]}/{match.group(1)}"
+    return "/" + "/".join(segments)

@@ -1,4 +1,6 @@
+import re
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 from stage.classify.role import classify_role
 from stage.classify.scope import Rejection
@@ -7,6 +9,10 @@ from stage.lexicon import eligibility_lexicon, fold
 
 _ORDER = ("phd", "masters", "bachelors")
 _CLAUSE = 60
+_NOT_A_DEGREE = re.compile(
+    r",\s*MS\s*(?=$|\)|\d{5})"
+    r"|\bMS[\s-]+(?:Access|Office|Excel|SQL|Dynamics|Teams|Word|Project|Fabric|Azure)\b"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,7 +88,7 @@ def screen_degree_scope(job: Job) -> Rejection | None:
     if graduate_only:
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=graduate_only)
 
-    title = fold(job.title_raw)
+    title = fold(_NOT_A_DEGREE.sub(" ", job.title_raw))
     token = _hit(title, lexicon.phd_title_tokens)
     if token and not _hit(title, lexicon.degree_list_tokens):
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=token)
@@ -90,7 +96,32 @@ def screen_degree_scope(job: Job) -> Rejection | None:
     graduate = _hit(title, lexicon.graduate_title_tokens) or token
     if graduate and not _hit(title, lexicon.undergraduate_tokens):
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=graduate)
+
+    convention = _hit(title, lexicon.graduate_by_convention)
+    if convention and not (
+        _hit(title, lexicon.undergraduate_tokens)
+        or _hit(fold(job.description), lexicon.degree_required.get("bachelors", frozenset()))
+    ):
+        return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=convention)
+    if _hit(title, lexicon.undergraduate_tokens) or _hit(title, lexicon.degree_list_tokens):
+        return None
+    linked = _linked_degree(job.apply_url_raw)
+    if linked:
+        return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=linked)
     return None
+
+
+def _linked_degree(url: str) -> str:
+    lexicon = eligibility_lexicon()
+    try:
+        path = urlsplit(url or "").path
+    except ValueError:
+        return ""
+    slug = fold(path.rstrip("/").rpartition("/")[2])
+    if len(slug.split()) < 3 or _hit(slug, lexicon.undergraduate_tokens):
+        return ""
+    graduate = frozenset(phrase for phrase in lexicon.graduate_title_tokens if len(phrase) > 3)
+    return _hit(slug, lexicon.phd_title_tokens) or _hit(slug, graduate)
 
 
 def screen_is_cs_role(job: Job) -> Rejection | None:
@@ -104,7 +135,7 @@ def screen_is_cs_role(job: Job) -> Rejection | None:
         return Rejection(reason=RejectionReason.NOT_A_CS_ROLE, matched_phrase=phrase)
 
     phrase = _hit(title, lexicon.non_cs)
-    if phrase:
+    if phrase and not _hit(title, lexicon.non_cs_exceptions):
         return Rejection(reason=RejectionReason.NOT_A_CS_ROLE, matched_phrase=phrase)
 
     if title_verdict.matched:

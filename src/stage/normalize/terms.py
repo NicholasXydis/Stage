@@ -8,6 +8,7 @@ from stage.lexicon import fold, term_lexicon
 _YEAR = re.compile(r"^(20[2-3]\d)$")
 _SHORT_YEAR = re.compile(r"^(\d{2})$")
 _PROXIMITY = 2
+_GRADUATION_REACH = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +38,13 @@ def _blocked(tokens: Sequence[str], index: int, blocked: frozenset[str]) -> bool
     return index > 0 and f"{tokens[index - 1]} {tokens[index]}" in blocked
 
 
-def scan(text: str, pivot_year: int | None = None) -> list[tuple[str, int | None, str]]:
+def _names_a_graduation(tokens: Sequence[str], index: int, words: frozenset[str]) -> bool:
+    return any(token in words for token in tokens[max(0, index - _GRADUATION_REACH) : index])
+
+
+def scan(
+    text: str, pivot_year: int | None = None, *, body: bool = False
+) -> list[tuple[str, int | None, str]]:
     lexicon = term_lexicon()
     tokens = fold(text).split()
     if not tokens:
@@ -52,6 +59,8 @@ def scan(text: str, pivot_year: int | None = None) -> list[tuple[str, int | None
     for index, token in enumerate(tokens):
         matched = surface.get(token)
         if matched is None or _blocked(tokens, index, lexicon.blocked_bigrams):
+            continue
+        if body and _names_a_graduation(tokens, index, lexicon.graduation_words):
             continue
         season = matched
         year: int | None = None
@@ -76,11 +85,13 @@ def scan(text: str, pivot_year: int | None = None) -> list[tuple[str, int | None
     return found
 
 
-def _terms_in(text: str, pivot_year: int | None) -> tuple[set[str], set[str], list[str]]:
+def _terms_in(
+    text: str, pivot_year: int | None, *, body: bool = False
+) -> tuple[set[str], set[str], list[str]]:
     terms: set[str] = set()
     seasons: set[str] = set()
     evidence: list[str] = []
-    for season, year, phrase in scan(text, pivot_year):
+    for season, year, phrase in scan(text, pivot_year, body=body):
         seasons.add(season)
         evidence.append(phrase)
         if year is not None:
@@ -126,7 +137,7 @@ def resolve_term(
             speaking.append(terms)
 
     if not speaking:
-        body_terms, body_seasons, body_phrases = _terms_in(description, pivot_year)
+        body_terms, body_seasons, body_phrases = _terms_in(description, pivot_year, body=True)
         evidence.extend(body_phrases)
         seasons |= body_seasons
         if body_terms:

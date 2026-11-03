@@ -1,6 +1,11 @@
+import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
+
+_SEASON_ENDS = {"spring": (6, 30), "summer": (8, 31)}
+_YEAR = re.compile(r"\b20[0-9]{2}\b")
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,12 +18,31 @@ def screen_is_internship(job: Job) -> Rejection | None:
     from stage.classify.internship import screen_internship
 
     verdict = screen_internship(job.title_raw, job.signals.employment_type, job.signals.category)
-    if verdict.is_internship:
-        return None
-    return Rejection(
-        reason=RejectionReason.NOT_AN_INTERNSHIP,
-        matched_phrase=verdict.disqualified_by or "no internship marker in title",
-    )
+    if not verdict.is_internship:
+        return Rejection(
+            reason=RejectionReason.NOT_AN_INTERNSHIP,
+            matched_phrase=verdict.disqualified_by or "no internship marker in title",
+        )
+    ended = _term_ended(job)
+    return Rejection(RejectionReason.NOT_AN_INTERNSHIP, ended) if ended else None
+
+
+def _term_ended(job: Job) -> str:
+    from stage.normalize import resolve_term
+
+    named = resolve_term(title=job.title_raw)
+    end = _SEASON_ENDS.get(named.season)
+    if end is None or named.year is None or len(set(_YEAR.findall(job.title_raw))) > 1:
+        return ""
+    finished = datetime(named.year, *end, 23, 59, tzinfo=UTC)
+    posted = job.source_posted_at
+    if _aware(job.last_seen) <= finished or (posted is not None and _aware(posted) > finished):
+        return ""
+    return f"{named.season} {named.year} has ended"
+
+
+def _aware(moment: datetime) -> datetime:
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
 
 
 def screen_location(job: Job) -> Rejection | None:
