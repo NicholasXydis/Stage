@@ -9,7 +9,7 @@ from stage.lexicon import fold
 
 SAFE_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 SAFE_PATH_SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,61}[a-z0-9])?$")
-SAFE_CASED_SLUG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,62}$")
+SAFE_CASED_SLUG = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]|\.(?!\.|$)){0,62}$")
 _LOCALE = r"[a-z]{2}(?:-[A-Za-z]{2})?"
 _WORKDAY_HOST = re.compile(r"^(?P<tenant>[a-z0-9][a-z0-9-]*)\.(?P<dc>wd\d+)\.myworkdayjobs\.com$")
 
@@ -22,8 +22,8 @@ def safe_slug(slug: str) -> str:
     lowered = slug.strip().lower()
     if not SAFE_SLUG.match(lowered):
         raise SlugRejectedError(
-            f"{slug!r} is not a usable board token; it interpolates into a "
-            "hostname, so lowercase letters, digits and hyphens only"
+            f'"{slug}" is not a usable board name. It goes into a web address, so use only '
+            "lowercase letters, digits and hyphens."
         )
     return lowered
 
@@ -32,8 +32,8 @@ def safe_cased_slug(slug: str) -> str:
     stripped = slug.strip()
     if not SAFE_CASED_SLUG.match(stripped):
         raise SlugRejectedError(
-            f"{slug!r} is not a usable board token; it interpolates into a "
-            "request path, so letters, digits and hyphens only"
+            f'"{slug}" is not a usable board name. It goes into a web address, so use only '
+            "letters, digits, hyphens and single dots between them."
         )
     return stripped
 
@@ -42,7 +42,8 @@ def safe_path_slug(slug: str) -> str:
     lowered = slug.strip().lower()
     if not SAFE_PATH_SLUG.match(lowered):
         raise SlugRejectedError(
-            f"{slug!r} is not a usable path token; lowercase letters, digits, dots and hyphens only"
+            f'"{slug}" is not a usable board name. Use only lowercase letters, digits, dots '
+            "and hyphens."
         )
     return lowered
 
@@ -65,22 +66,22 @@ def workday_target(tenant: str, site: str, dc: str) -> tuple[str, str]:
     ]
     if missing:
         raise SlugRejectedError(
-            f"registry row is missing {', '.join(missing)}; a Workday tenant, site "
-            "and datacenter cannot be guessed. Use `stage discover --url`"
+            f"The registry row is missing {', '.join(missing)}, and Stage cannot guess a "
+            "Workday tenant, site and datacenter. Run stage discover --url with the board's "
+            "address."
         )
 
     safe_tenant = safe_slug(tenant)
     stripped_dc = dc.strip().lower()
     if not SAFE_WORKDAY_DC.match(stripped_dc):
         raise SlugRejectedError(
-            f"{dc!r} is not a Workday datacenter; expected wd followed by digits "
-            "(it interpolates into the hostname)"
+            f'"{dc}" is not a Workday datacenter. Use wd followed by digits, such as wd5.'
         )
     stripped_site = site.strip()
     if not SAFE_WORKDAY_SITE.match(stripped_site):
         raise SlugRejectedError(
-            f"{site!r} is not a usable Workday site; it interpolates into the "
-            "request path, so letters, digits, underscores and hyphens only"
+            f'"{site}" is not a usable Workday site. Use only letters, digits, underscores '
+            "and hyphens."
         )
     host = f"{safe_tenant}.{stripped_dc}.myworkdayjobs.com"
     return host, f"/wday/cxs/{safe_tenant}/{stripped_site}/jobs"
@@ -94,20 +95,20 @@ def oracle_target(host: str, site: str) -> tuple[str, str]:
     ]
     if missing:
         raise SlugRejectedError(
-            f"registry row is missing {', '.join(missing)}; an Oracle candidate site "
-            "cannot be guessed. Use `stage discover --url`"
+            f"The registry row is missing {', '.join(missing)}, and Stage cannot guess an "
+            "Oracle candidate site. Run stage discover --url with the board's address."
         )
     safe_host = host.strip().lower()
     if not SAFE_ORACLE_HOST.match(safe_host):
         raise SlugRejectedError(
-            f"{host!r} is not a usable Oracle Cloud host; it interpolates into the request "
-            "URL, so it must be a dotted public hostname"
+            f'"{host}" is not a usable Oracle Cloud host. Use a public host name such as '
+            "abcd.fa.us2.oraclecloud.com."
         )
     safe_site = site.strip()
     if not SAFE_ORACLE_SITE.match(safe_site):
         raise SlugRejectedError(
-            f"{site!r} is not a usable Oracle candidate site; it interpolates into the "
-            "request path, so letters, digits, underscores and hyphens only"
+            f'"{site}" is not a usable Oracle candidate site. Use only letters, digits, '
+            "underscores and hyphens."
         )
     return safe_host, safe_site
 
@@ -156,6 +157,7 @@ PROBES: tuple[PlatformProbe, ...] = (
         rate_profile="standard",
         jobs_paths=("",),
         params=MappingProxyType({"mode": "json"}),
+        slug_validator=safe_cased_slug,
     ),
     PlatformProbe(
         platform=Platform.ASHBY,
@@ -231,6 +233,35 @@ URL_ONLY_PLATFORMS: frozenset[Platform] = frozenset(
     }
 )
 
+BOARD_PROBES: MappingProxyType[Platform, PlatformProbe] = MappingProxyType(
+    {
+        Platform.WORKDAY: PlatformProbe(
+            platform=Platform.WORKDAY,
+            host="",
+            probe_url="",
+            rate_profile="workday",
+            jobs_paths=("jobPostings",),
+            count_paths=("total",),
+        ),
+        Platform.ORACLE_CLOUD: PlatformProbe(
+            platform=Platform.ORACLE_CLOUD,
+            host="",
+            probe_url="",
+            rate_profile="paginated",
+            jobs_paths=("items.0.requisitionList",),
+            count_paths=("items.0.TotalJobsCount",),
+        ),
+        Platform.JOBVITE: PlatformProbe(
+            platform=Platform.JOBVITE,
+            host="jobs.jobvite.com",
+            probe_url="https://jobs.jobvite.com/{slug}/jobs",
+            rate_profile="moderate",
+            jobs_paths=(),
+            count_paths=("total",),
+        ),
+    }
+)
+
 
 @dataclass(frozen=True, slots=True)
 class UrlPattern:
@@ -282,7 +313,7 @@ URL_PATTERNS: tuple[UrlPattern, ...] = (
     UrlPattern(
         platform=Platform.WORKABLE,
         hosts=("apply.workable.com",),
-        path_pattern=_path(r"^/(?P<slug>[^/?#]+)"),
+        path_pattern=_path(r"^/(?!j(?:[/?#]|$))(?P<slug>[^/?#]+)"),
     ),
     UrlPattern(
         platform=Platform.JOBVITE,
@@ -317,7 +348,9 @@ URL_PATTERNS: tuple[UrlPattern, ...] = (
     ),
     UrlPattern(
         platform=Platform.WORKABLE,
-        host_pattern=re.compile(r"^(?P<slug>[a-z0-9][a-z0-9-]*)\.workable\.com$"),
+        host_pattern=re.compile(
+            r"^(?!(?:apply|www)\.)(?P<slug>[a-z0-9][a-z0-9-]*)\.workable\.com$"
+        ),
     ),
     UrlPattern(
         platform=Platform.PERSONIO,
@@ -372,7 +405,7 @@ def _workday(host: str, path: str) -> PlatformCandidate | None:
     trimmed = re.sub(rf"^/{_LOCALE}/", "/", trimmed)
     segments = [segment for segment in trimmed.split("/") if segment]
     site = segments[0] if segments else None
-    if site is not None and site.lower() in {"jobs", "job"}:
+    if site is not None and site.lower() == "job":
         site = None
     return PlatformCandidate(
         platform=Platform.WORKDAY,

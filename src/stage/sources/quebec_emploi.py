@@ -10,9 +10,9 @@ from stage.sources._text import collapse_whitespace
 from stage.sources.base import (
     FetchResult,
     NonEmptyStr,
-    PayloadValidationError,
-    capture_payload,
     malformed_note,
+    parsed,
+    sentences,
     validate_rows,
 )
 
@@ -49,6 +49,10 @@ class QuebecEmploiFeed:
     rate_profile: ClassVar[str] = "paginated"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = "quebec-emploi"
+    paused: ClassVar[str] = (
+        "Québec emploi's new platform answers only its own pages, so a sync skips it "
+        "unless --source names it."
+    )
 
     def season_year(self, now: datetime) -> int:
         return now.year
@@ -72,26 +76,21 @@ class QuebecEmploiFeed:
             truncated = True
 
         jobs = tuple(self._to_job(listing, now) for listing in listings)
-        notes = []
-        if truncated:
-            notes.append(f"stopped at Québec Emploi's {PAGE_CAP}-page public-search cap")
-        if malformed:
-            notes.append(malformed_note(malformed))
         return FetchResult(
             jobs=jobs,
             authoritative=not (truncated or malformed),
-            degraded="; ".join(notes),
+            degraded=sentences(
+                f"Stage stopped at Québec Emploi's {PAGE_CAP}-page public-search cap"
+                if truncated
+                else "",
+                malformed_note(malformed),
+            ),
         )
 
     def _validate(self, payload: Any) -> tuple[list[QuebecEmploiListing], int, int]:
-        try:
-            page = QuebecEmploiPage.model_validate(payload)
-        except Exception as exc:
-            captured = capture_payload(self.name, "stages-students", payload)
-            raise PayloadValidationError(
-                f"{self.name}: public search response failed validation; raw payload captured at "
-                f"{captured}"
-            ) from exc
+        page = parsed(
+            QuebecEmploiPage, payload, source=self.name, slug="stages-students", board=self.name
+        )
         rows, dropped = validate_rows(
             QuebecEmploiListing, page.items, source=self.name, slug="stages-students"
         )

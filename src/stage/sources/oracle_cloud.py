@@ -11,9 +11,9 @@ from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
     FetchResult,
     NullableStr,
-    PayloadValidationError,
-    capture_payload,
     malformed_note,
+    payload_error,
+    sentences,
     validate_rows,
 )
 from stage.sources.platforms import oracle_target
@@ -104,7 +104,7 @@ class OracleCloudAdapter:
                 return FetchResult(
                     jobs=tuple(self._to_job(company, row, now) for row in postings),
                     authoritative=False,
-                    degraded="a later page answered 304, so the walk ended early",
+                    degraded="A later page answered 304, so the walk ended early.",
                 )
             rows, dropped, total = self._validate(company, response.payload)
             malformed += dropped
@@ -117,17 +117,14 @@ class OracleCloudAdapter:
         else:
             truncated = True
 
-        notes = []
-        if truncated:
-            notes.append(f"stopped at the {MAX_PAGES}-page cap")
-        if premature_end:
-            notes.append("received an empty page before the reported total")
-        if malformed:
-            notes.append(malformed_note(malformed))
         return FetchResult(
             jobs=tuple(self._to_job(company, row, now) for row in postings),
             authoritative=not (truncated or premature_end or malformed),
-            degraded="; ".join(notes),
+            degraded=sentences(
+                f"Stage stopped at the {MAX_PAGES}-page cap" if truncated else "",
+                "The board sent an empty page before its stated total" if premature_end else "",
+                malformed_note(malformed),
+            ),
         )
 
     def _validate(self, company: Company, payload: Any) -> tuple[list[OraclePosting], int, int]:
@@ -137,10 +134,11 @@ class OracleCloudAdapter:
                 raise ValueError("items must contain exactly one search result")
             page = OraclePage.model_validate(parents[0])
         except (KeyError, TypeError, ValidationError, ValueError) as exc:
-            captured = capture_payload(self.name, company.slug, payload)
-            raise PayloadValidationError(
-                f"oracle_cloud/{company.slug}: invalid recruiting search response; raw payload "
-                f"captured at {captured}"
+            raise payload_error(
+                self.name,
+                company.slug,
+                payload,
+                f"{self.name}/{company.slug} sent an invalid recruiting search response",
             ) from exc
         rows, dropped = validate_rows(
             OraclePosting, page.requisitionList, source=self.name, slug=company.slug

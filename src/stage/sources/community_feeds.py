@@ -4,16 +4,14 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from stage.domain import Job, SourceSignals, job_id
-from stage.domain.text import counted
-from stage.http import HttpClient
+from stage.http import HttpClient, JsonResponse
 from stage.sources._text import collapse_whitespace
 from stage.sources.base import (
     FetchResult,
     NonEmptyStr,
-    PayloadValidationError,
-    capture_payload,
     convert_rows,
-    malformed_note,
+    payload_error,
+    read_files,
     validate_rows,
 )
 from stage.sources.feed import register_feed, upcoming_season_year
@@ -55,21 +53,7 @@ class _CommunityFeed:
         return tuple(template.format(year=year) for template in self.templates)
 
     async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
-        jobs: list[Job] = []
-        modified = False
-        failures: list[str] = []
-        stale: list[str] = []
-        malformed = 0
-        for url in self.plan(now):
-            try:
-                response = await client.get_json(url)
-            except Exception as exc:
-                failures.append(f"{url}: {type(exc).__name__}")
-                stale.append(url)
-                continue
-            if response.not_modified:
-                continue
-            modified = True
+        def parse(url: str, response: JsonResponse) -> tuple[list[Job], int]:
             listings, dropped = self._validate(response.payload, url, now)
             converted, unconvertible = convert_rows(
                 lambda listing: self._to_job(listing, now),
@@ -77,33 +61,20 @@ class _CommunityFeed:
                 source=self.name,
                 slug=str(self.season_year(now)),
             )
-            malformed += dropped + unconvertible
-            jobs.extend(converted)
-        if failures and not jobs:
-            raise PayloadValidationError(f"{self.name}: every file failed: {'; '.join(failures)}")
-        if not modified and not failures:
-            return FetchResult(not_modified=True)
-        notes = []
-        if failures:
-            notes.append(f"{len(failures)} of {counted(len(self.plan(now)), 'file')} unavailable")
-        if malformed:
-            notes.append(malformed_note(malformed))
-        return FetchResult(
-            jobs=tuple(jobs),
-            degraded="; ".join(notes),
-            authoritative=not (failures or malformed),
-            stale_urls=tuple(stale),
-        )
+            return converted, dropped + unconvertible
+
+        return await read_files(self.name, self.plan(now), client.get_json, parse)
 
     def _validate(
         self, payload: Any, url: str, now: datetime
     ) -> tuple[list[CommunityListing], int]:
         rows = payload.get("listings") if isinstance(payload, dict) else payload
         if not isinstance(rows, list):
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: payload failed validation (expected a JSON list of "
-                f"listings); raw payload captured at {captured}"
+            raise payload_error(
+                self.name,
+                str(self.season_year(now)),
+                payload,
+                f"{self.name} answered with something other than a JSON list of listings at {url}",
             )
         return validate_rows(
             CommunityListing, rows, source=self.name, slug=str(self.season_year(now))

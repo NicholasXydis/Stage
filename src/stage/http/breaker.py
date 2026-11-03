@@ -34,6 +34,10 @@ class CircuitBreaker:
             return True
         return False
 
+    @property
+    def probing(self) -> bool:
+        return self._probing
+
     def is_open(self, now: float | None = None) -> bool:
         return self.state(now) is BreakerState.OPEN
 

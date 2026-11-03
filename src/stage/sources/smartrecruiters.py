@@ -3,7 +3,8 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+import httpx
+from pydantic import BaseModel, ConfigDict
 
 from stage.domain import Company, DetailFetch, Job, Platform, board_key, job_id
 from stage.http import HttpClient, HttpError
@@ -11,9 +12,9 @@ from stage.sources import register
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
     FetchResult,
-    PayloadValidationError,
-    capture_payload,
     malformed_note,
+    parsed,
+    sentences,
     validate_rows,
 )
 from stage.sources.platforms import safe_slug
@@ -23,6 +24,7 @@ DETAIL_URL = "https://api.smartrecruiters.com/v1/companies/{slug}/postings/{post
 HOST = "api.smartrecruiters.com"
 PAGE_SIZE = 100
 MAX_PAGES = 30
+DOMESTIC_COUNTRIES = ("us", "ca")
 
 
 class SmartRecruitersLocation(BaseModel):
@@ -90,41 +92,49 @@ class SmartRecruitersAdapter:
         postings: list[SmartRecruitersPosting] = []
         truncated = False
         stale_page = False
+        scoped = False
         malformed = 0
 
         wanted = {job for job in details if job.startswith(f"{self.board_key(company)}:")}
 
-        for page in range(MAX_PAGES):
-            response = await client.get_json(
-                url,
-                params={"limit": str(PAGE_SIZE), "offset": str(page * PAGE_SIZE)},
-                revalidate=bool(wanted),
-            )
-            if response.not_modified:
-                if page == 0:
-                    return FetchResult(not_modified=True)
-                stale_page = True
-                break
-            rows, dropped, total = self._validate(company, response.payload)
-            malformed += dropped
-            if not rows and not dropped:
-                break
-            postings.extend(rows)
-            if len(postings) + malformed >= total:
-                break
-        else:
-            truncated = True
+        scopes: list[dict[str, str]] = [{}]
+        while scopes:
+            scope = scopes.pop(0)
+            gathered = 0
+            for page in range(MAX_PAGES):
+                response = await client.get_json(
+                    url,
+                    params={"limit": str(PAGE_SIZE), "offset": str(page * PAGE_SIZE), **scope},
+                    revalidate=bool(wanted) or bool(scope),
+                )
+                if response.not_modified:
+                    if page == 0 and not scope:
+                        return FetchResult(not_modified=True)
+                    stale_page = True
+                    break
+                rows, dropped, total = self._validate(company, response.payload)
+                if not scope and page == 0 and total > MAX_PAGES * PAGE_SIZE:
+                    scopes = [{"country": country} for country in DOMESTIC_COUNTRIES]
+                    scoped = True
+                    break
+                malformed += dropped
+                if not rows and not dropped:
+                    break
+                postings.extend(rows)
+                gathered += len(rows) + dropped
+                if gathered >= total:
+                    break
+            else:
+                truncated = True
 
-        notes = []
-        if truncated:
-            notes.append(f"stopped at the {MAX_PAGES}-page cap")
-        if stale_page:
-            notes.append(
-                "a later page answered 304, so the walk ended early on an unchanged page "
-                "rather than on the end of the list"
-            )
-        if malformed:
-            notes.append(malformed_note(malformed))
+        notes = (
+            f"Stage stopped at the {MAX_PAGES}-page cap" if truncated else "",
+            "A later page answered 304, so the walk ended early on an unchanged page "
+            "rather than at the end of the list"
+            if stale_page
+            else "",
+            malformed_note(malformed),
+        )
         paired = [(posting, self._to_job(company, posting, now)) for posting in postings]
         fetched: list[DetailFetch] = []
         if wanted:
@@ -133,8 +143,8 @@ class SmartRecruitersAdapter:
 
         return FetchResult(
             jobs=tuple(jobs),
-            degraded="; ".join(notes),
-            authoritative=not (truncated or stale_page or malformed),
+            degraded=sentences(*notes),
+            authoritative=not (truncated or stale_page or malformed or scoped),
             detail_fetches=tuple(fetched),
         )
 
@@ -154,7 +164,7 @@ class SmartRecruitersAdapter:
             url = DETAIL_URL.format(slug=safe_slug(company.slug), posting=posting.id)
             try:
                 response = await client.get_json(url)
-            except HttpError:
+            except (HttpError, httpx.HTTPError):
                 outcomes.append(DetailFetch(id=job.id, resolved=False, failed=True))
                 merged.append((posting, job))
                 continue
@@ -166,23 +176,17 @@ class SmartRecruitersAdapter:
     def _validate(
         self, company: Company, payload: Any
     ) -> tuple[list[SmartRecruitersPosting], int, int]:
-        page = self._validate_page(company, payload)
+        page = parsed(
+            SmartRecruitersPage,
+            payload,
+            source=self.name,
+            slug=company.slug,
+            board=f"{self.name}/{company.slug}",
+        )
         rows, dropped = validate_rows(
             SmartRecruitersPosting, page.content, source=self.name, slug=company.slug
         )
         return rows, dropped, page.totalFound
-
-    def _validate_page(self, company: Company, payload: Any) -> SmartRecruitersPage:
-        try:
-            return SmartRecruitersPage.model_validate(payload)
-        except ValidationError as exc:
-            captured = capture_payload(self.name, company.slug, payload)
-            first = exc.errors()[0]
-            field = ".".join(str(part) for part in first["loc"]) or "<root>"
-            raise PayloadValidationError(
-                f"smartrecruiters/{company.slug}: field {field!r} failed validation "
-                f"({first['msg']}); raw payload captured at {captured}"
-            ) from exc
 
     def _to_job(self, company: Company, posting: SmartRecruitersPosting, now: datetime) -> Job:
         return Job(

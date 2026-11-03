@@ -1,29 +1,26 @@
-import base64
-import binascii
 import re
 from datetime import datetime, timedelta
-from typing import Any, ClassVar
+from typing import ClassVar
 from urllib.parse import unquote
 
 from pydantic import BaseModel, ConfigDict
 
 from stage.domain import Job, SourceSignals, job_id
-from stage.domain.text import counted
-from stage.http import HttpClient
+from stage.http import HttpClient, TextResponse
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
     FetchResult,
     NonEmptyStr,
-    PayloadValidationError,
     capture_payload,
     convert_rows,
-    malformed_note,
+    payload_error,
+    read_files,
     validate_rows,
 )
 from stage.sources.feed import register_feed, upcoming_season_year
 
-HOST = "api.github.com"
-CONTENT_URL = "https://api.github.com/repos/speedyapply/{repository}/contents/{path}?ref=main"
+HOST = "raw.githubusercontent.com"
+CONTENT_URL = "https://raw.githubusercontent.com/speedyapply/{repository}/main/{path}"
 HREF = re.compile(r'<a\s+href="(?P<url>[^"]+)"', re.IGNORECASE)
 STRONG = re.compile(r"<strong>(?P<text>.*?)</strong>", re.IGNORECASE)
 AGE = re.compile(r"(?P<days>\d+)d")
@@ -32,13 +29,6 @@ WORKDAY_PLACE = re.compile(
     r"/job/(?P<place>[^/?#]+)/[^/?#]+",
     re.IGNORECASE,
 )
-
-
-class GitHubContent(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    encoding: NonEmptyStr
-    content: NonEmptyStr
 
 
 class SpeedyApplyListing(BaseModel):
@@ -78,75 +68,26 @@ class SpeedyApplyFeed:
         )
 
     async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
-        jobs: list[Job] = []
-        modified = False
-        failures: list[str] = []
-        stale: list[str] = []
-        malformed = 0
-        for url in self.plan(now):
-            try:
-                response = await client.get_json(url)
-            except Exception as exc:
-                failures.append(f"{url}: {type(exc).__name__}")
-                stale.append(url)
-                continue
-            if response.not_modified:
-                continue
-            modified = True
-            listings, dropped = self._validate(response.payload, url, now)
+        def parse(url: str, response: TextResponse) -> tuple[list[Job], int]:
+            listings, dropped = self._validate(response.text, url, now)
             converted, unconvertible = convert_rows(
                 lambda listing: self._to_job(listing, now),
                 listings,
                 source=self.name,
                 slug=str(self.season_year(now)),
             )
-            malformed += dropped + unconvertible
-            jobs.extend(converted)
-        if failures and not jobs:
-            raise PayloadValidationError(f"{self.name}: every file failed: {'; '.join(failures)}")
-        if not modified and not failures:
-            return FetchResult(not_modified=True)
-        unique = {job.id: job for job in jobs}
-        notes = []
-        if failures:
-            notes.append(f"{len(failures)} of {counted(len(self.plan(now)), 'file')} unavailable")
-        if malformed:
-            notes.append(malformed_note(malformed))
-        return FetchResult(
-            jobs=tuple(unique.values()),
-            degraded="; ".join(notes),
-            authoritative=not (failures or malformed),
-            stale_urls=tuple(stale),
-        )
+            return converted, dropped + unconvertible
 
-    def _validate(
-        self, payload: Any, url: str, now: datetime
-    ) -> tuple[list[SpeedyApplyListing], int]:
-        try:
-            content = GitHubContent.model_validate(payload)
-        except Exception as exc:
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: content envelope failed validation (captured {captured})"
-            ) from exc
-        if content.encoding != "base64":
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: unsupported content encoding {content.encoding!r} "
-                f"(captured {captured})"
-            )
-        try:
-            text = base64.b64decode("".join(content.content.split()), validate=True).decode("utf-8")
-        except (UnicodeDecodeError, binascii.Error, ValueError) as exc:
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: content is not valid base64 UTF-8 (captured {captured})"
-            ) from exc
+        return await read_files(self.name, self.plan(now), client.get_text, parse, unique=True)
+
+    def _validate(self, text: str, url: str, now: datetime) -> tuple[list[SpeedyApplyListing], int]:
         rows, malformed = self._rows(text, str(self.season_year(now)))
         if not rows:
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: no internship table rows were found (captured {captured})"
+            raise payload_error(
+                self.name,
+                str(self.season_year(now)),
+                {"text": text},
+                f"{self.name} has no internship table rows at {url}",
             )
         listings, dropped = validate_rows(
             SpeedyApplyListing, rows, source=self.name, slug=str(self.season_year(now))

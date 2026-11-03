@@ -1,11 +1,15 @@
-from collections.abc import Mapping, Sequence
+import re
+from collections.abc import Collection, Iterator, Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+import httpx
+from pydantic import BaseModel, ConfigDict, Field
 
 from stage.domain import (
+    FULL_READ_PREFIX,
+    SEARCH_PREFIX,
     Company,
     DetailFetch,
     Job,
@@ -18,7 +22,13 @@ from stage.domain import (
     job_id,
 )
 from stage.domain.text import counted
-from stage.http import HttpClient, HttpError
+from stage.http import (
+    CEILING_BACKSTOP,
+    CaptivePortalError,
+    HttpClient,
+    HttpError,
+    failure_text,
+)
 from stage.lexicon import fold, internship_lexicon, workday_facet_lexicon
 from stage.sources import register
 from stage.sources._text import collapse_whitespace, strip_html
@@ -27,6 +37,8 @@ from stage.sources.base import (
     PayloadValidationError,
     capture_payload,
     malformed_note,
+    parsed,
+    sentences,
     validate_rows,
 )
 from stage.sources.platforms import SlugRejectedError, workday_target
@@ -37,6 +49,68 @@ MAX_CRAWL_PAGES = 100
 RESULT_CAP = 10_000
 CRAWL_PAGE_CAP = 6
 RETRY_RESERVE = 40
+CHECK_RESERVE = 30
+DETAIL_BUDGET = 60
+HUGE_BOARD = CRAWL_PAGE_CAP * PAGE_SIZE
+FULL_READ_MAX = MAX_CRAWL_PAGES * PAGE_SIZE
+NARROW_TERMS = (
+    "internship",
+    "stagiaire",
+    "alternance",
+    "etudiant",
+    '"summer associate"',
+    '"summer analyst"',
+    '"summer scholar"',
+    '"industrial year"',
+    '"year in industry"',
+    "professionnalisation",
+)
+BROAD_TERMS = (
+    "intern",
+    '"co-op"',
+    "coop",
+    "stage",
+    "student",
+    "placement",
+    "alternant",
+    "undergraduate",
+    '"work term"',
+    "intership",
+)
+SEARCH_TERMS = NARROW_TERMS + BROAD_TERMS
+SINGLE_TERMS = ("internship", "intern", "student", "stage", "stagiaire", "alternance")
+WHOLE_READ_BOARDS: frozenset[str] = frozenset(
+    {
+        "workday:amcor-amcor_external_career_site",
+        "workday:broadcom-external_career",
+        "workday:cai-computer_aid",
+        "workday:clio-cliocareersite",
+        "workday:comcast-comcast_careers",
+        "workday:coreandmain-coreandmain",
+        "workday:danaher-danaherjobs",
+        "workday:fis-searchjobs",
+        "workday:jabil-jabil_careers",
+        "workday:lowes-lws_external_cs",
+        "workday:lseg-careers",
+        "workday:maersk-maersk_careers",
+        "workday:myhrabc-global",
+        "workday:nationwidechildrens-nchcareers",
+        "workday:pru-careers",
+        "workday:qualys-careers",
+        "workday:redhat-jobs",
+        "workday:southstatebank-external",
+        "workday:unisys-external",
+        "workday:usnh-careers",
+    }
+)
+NARROW_TEXT = " OR ".join(NARROW_TERMS)
+BROAD_TEXT = " OR ".join(BROAD_TERMS)
+SEARCH_PAGES = 12
+QUIET_PAGES = 2
+_NARROW_WORDS = tuple(fold(term) for term in NARROW_TERMS)
+_BROAD_WORDS = tuple(fold(term) for term in BROAD_TERMS)
+_REQUISITION = re.compile(r"\S*\d\S*")
+_DAYS = re.compile(r"(\d+)\s*\+?\s*(?:days?|jours?)")
 
 
 class WorkdayPosting(BaseModel):
@@ -52,7 +126,9 @@ class WorkdayPosting(BaseModel):
         for field in self.bulletFields:
             cleaned = field.strip()
             if cleaned:
-                return cleaned
+                if _REQUISITION.fullmatch(cleaned):
+                    return cleaned
+                break
         tail = self.externalPath.rstrip("/").rsplit("_", 1)
         return tail[-1] if len(tail) == 2 and tail[-1] else self.externalPath.rstrip("/")
 
@@ -63,6 +139,8 @@ class WorkdayFacetValue(BaseModel):
     id: str = ""
     descriptor: str = ""
     count: int = 0
+    facetParameter: str = ""
+    values: list["WorkdayFacetValue"] = Field(default_factory=list)
 
 
 class WorkdayFacetGroup(BaseModel):
@@ -79,6 +157,7 @@ class WorkdayPage(BaseModel):
     total: int = 0
     jobPostings: list[WorkdayPosting]
     facets: list[WorkdayFacetGroup] | None = None
+    hidden: int = 0
 
 
 class WorkdayRawPage(BaseModel):
@@ -120,15 +199,25 @@ def resolve_facet(page: WorkdayPage, tenant: str, site: str, now: datetime) -> W
     return None
 
 
+def _facet_groups(
+    parameter: str, values: Sequence[WorkdayFacetValue]
+) -> Iterator[tuple[str, Sequence[WorkdayFacetValue]]]:
+    yield parameter, values
+    for value in values:
+        if value.facetParameter:
+            yield from _facet_groups(value.facetParameter, value.values)
+
+
 def facet_still_offered(page: WorkdayPage, facet: WorkdayFacet) -> bool:
     if not page.facets:
         return True
     for group in page.facets:
-        if group.facetParameter != facet.parameter:
-            continue
-        offered = {value.id for value in group.values}
-        if all(facet_id in offered for facet_id in facet.facet_ids):
-            return True
+        for parameter, values in _facet_groups(group.facetParameter, group.values):
+            if parameter != facet.parameter:
+                continue
+            offered = {value.id for value in values}
+            if all(facet_id in offered for facet_id in facet.facet_ids):
+                return True
     return False
 
 
@@ -140,14 +229,15 @@ class WorkdayAdapter:
     hosts: ClassVar[frozenset[str]] = frozenset()
     bucket_key: ClassVar[str] = "workday"
 
-    detail_budget: ClassVar[int] = 60
+    detail_budget: ClassVar[int] = DETAIL_BUDGET
 
-    rotation_slice: ClassVar[int] = 300
+    rotation_slice: ClassVar[int] = CEILING_BACKSTOP - RETRY_RESERVE - DETAIL_BUDGET
 
     max_requests_per_company: ClassVar[int] = MAX_PAGES
 
     crawl_page_cap: ClassVar[int] = CRAWL_PAGE_CAP
     retry_reserve: ClassVar[int] = RETRY_RESERVE
+    check_reserve: ClassVar[int] = CHECK_RESERVE
 
     @classmethod
     def crawl_budgets(
@@ -156,6 +246,8 @@ class WorkdayAdapter:
         crawls: Mapping[str, WorkdayCrawl],
         facets: Mapping[tuple[str, str], WorkdayFacet],
         ceiling: int,
+        full_reads: Sequence[str] = (),
+        glances: Collection[str] = (),
     ) -> tuple[dict[str, int], int]:
         if not companies:
             raise ValueError("a Workday crawl needs at least one board")
@@ -168,7 +260,7 @@ class WorkdayAdapter:
             facet = _pinned_facet(company) or facets.get(
                 (company.workday_tenant or "", company.workday_site or "")
             )
-            if crawl is None or crawl.total is None:
+            if crawl is None or crawl.total is None or _unfiltered_and_huge(crawl):
                 continue
             if crawl.facet_parameter != (facet.parameter if facet is not None else ""):
                 continue
@@ -181,12 +273,25 @@ class WorkdayAdapter:
             extra = max(0, min(remaining, pages - budgets[key]))
             budgets[key] += extra
             remaining -= extra
-        for company in companies:
+        for company in sorted(companies, key=lambda row: _faceted(row, facets)):
             key = company.registry_key
             extra = max(0, min(remaining, cls.crawl_page_cap - budgets[key]))
             budgets[key] += extra
             remaining -= extra
+        for key in glances:
+            if key not in budgets:
+                continue
+            extra = max(0, min(remaining, cls.crawl_page_cap + SEARCH_PAGES - budgets[key]))
+            budgets[key] += extra
+            remaining -= extra
         details = min(cls.detail_budget, max(0, remaining))
+        remaining = max(0, remaining - details - cls.check_reserve)
+        for key in full_reads:
+            if key not in budgets:
+                continue
+            extra = max(0, min(remaining, MAX_CRAWL_PAGES - budgets[key]))
+            budgets[key] += extra
+            remaining -= extra
         return budgets, details
 
     def hosts_for(self, companies: Sequence[Company]) -> frozenset[str]:
@@ -223,6 +328,9 @@ class WorkdayAdapter:
         details: Sequence[str] = (),
         crawl: WorkdayCrawl | None = None,
         page_budget: int = MAX_PAGES,
+        full_read: bool = False,
+        size_known: bool = False,
+        search: bool = True,
     ) -> FetchResult:
         if page_budget < 1:
             raise ValueError("Workday page budget must be positive")
@@ -238,6 +346,9 @@ class WorkdayAdapter:
             or crawl.facet_ids != (facet.facet_ids if facet is not None else ())
         )
         persisted = None if crawl_reset else crawl
+        if persisted is not None and _unfiltered_and_huge(persisted):
+            persisted = None
+            crawl_reset = True
         degraded = ""
 
         discovered: WorkdayFacet | None = None
@@ -257,8 +368,12 @@ class WorkdayAdapter:
         pages = 0
         total = persisted.total if persisted is not None else None
         total_changed = False
+        listed_facets = True
+        huge = False
+        whole = False
+        limit = page_budget
 
-        while pages < page_budget:
+        while pages < limit:
             body: dict[str, Any] = {
                 "appliedFacets": applied,
                 "limit": PAGE_SIZE,
@@ -275,17 +390,17 @@ class WorkdayAdapter:
                     drifted = True
                     captured = capture_payload("workday-nofacets", company.slug, response.payload)
                     degraded = (
-                        f"no facet list at all while facet {facet.facet_ids!r} applied, "
-                        f"so staleness is undecided; facet kept, nothing closed. "
-                        f"Payload captured at {captured}"
+                        f"The board sent no facet list at all while Stage applied facet "
+                        f"{_ids(facet)}, so Stage kept the facet and this read closes nothing. "
+                        f"Stage saved the answer to {captured}"
                     )
             elif facet is not None and not facet_still_offered(page, facet):
                 if facet.pinned:
                     stale_facet = True
                     degraded = (
-                        f"pinned facet {facet.facet_ids!r} is no longer offered under "
-                        f"{facet.parameter!r}; honoured anyway. Re-pin with "
-                        "`stage discover --url` or clear `workday_facet`"
+                        f"The pinned facet {_ids(facet)} is no longer offered under "
+                        f'"{facet.parameter}", but Stage used it anyway. Re-pin it with '
+                        "stage discover --url or clear workday_facet"
                     )
                 else:
                     probe_body: dict[str, Any] = {
@@ -301,8 +416,9 @@ class WorkdayAdapter:
                     if not facet_still_offered(probe, facet):
                         stale_facet = True
                         degraded = (
-                            f"cached facet {facet.facet_ids!r} is no longer offered under "
-                            f"{facet.parameter!r}; re-resolving from this tenant's own facet list"
+                            f"The saved facet {_ids(facet)} is no longer offered under "
+                            f'"{facet.parameter}", so Stage looked for a new one in the '
+                            "board's facet list"
                         )
                         forgotten = facet
                         facet = None
@@ -322,6 +438,7 @@ class WorkdayAdapter:
                     forgotten = None
                 else:
                     fell_back = True
+                    listed_facets = listed_facets and page.facets is not None
                     degraded = _fallback_reason(page, company, response.payload)
 
             if discovered is not None and not applied and not restarted:
@@ -341,36 +458,74 @@ class WorkdayAdapter:
                     total_changed = True
                     total = page.total
 
-            returned = len(page.jobPostings) + dropped
+            returned = len(page.jobPostings) + page.hidden + dropped
             if returned < PAGE_SIZE:
                 reached_end = True
                 break
+            if fell_back and not huge and total is not None and total > HUGE_BOARD:
+                huge = True
+                whole = full_read and total < FULL_READ_MAX and _pages(total) <= page_budget
+                if not whole:
+                    limit = 1 if _newest_first(postings) else min(page_budget, CRAWL_PAGE_CAP)
             offset += PAGE_SIZE
-            if offset >= (RESULT_CAP if total is None else min(total, RESULT_CAP)):
+            if offset >= _last(total):
                 reached_end = True
                 break
 
-        capped = not reached_end
+        glance = huge and not whole
+        capped = not reached_end and not glance
+        searched: list[DetailFetch] = []
+        if glance and search:
+            found, spent, lost, stopped = await _search(
+                client,
+                url,
+                company,
+                page_budget - pages,
+                exhaustive=self.board_key(company) in WHOLE_READ_BOARDS,
+            )
+            pages += spent
+            malformed += lost
+            known = {posting.requisition() for posting in postings}
+            for posting in found:
+                if posting.requisition() not in known:
+                    known.add(posting.requisition())
+                    postings.append(posting)
+            degraded = sentences(
+                f"Stage read the newest postings of this {total or 0:,}-posting board and "
+                "searched it for internships, since it has no internship filter, so it closes "
+                "postings only on its weekly full read",
+                stopped,
+            )
+            if not stopped or stopped == IGNORED_OR:
+                searched.append(DetailFetch(id=f"{SEARCH_PREFIX}{self.board_key(company)}"))
+        elif glance:
+            degraded = (
+                f"Stage read only the newest postings of this {total or 0:,}-posting board, "
+                "which has no internship filter and was searched for internships within "
+                "5.5 hours, so it closes postings only on its weekly full read"
+            )
         if capped:
             if page_budget != MAX_PAGES and page_budget < MAX_CRAWL_PAGES:
                 degraded = (
-                    f"resumable crawl paused after {counted(pages, 'page')}; resumes from "
-                    f"offset {offset} on the next sync and closes nothing yet"
+                    f"Stage paused the crawl after {counted(pages, 'page')} and resumes from "
+                    f"posting {offset} next sync, so this read closes nothing yet"
                 )
             else:
-                degraded = f"stopped at the {page_budget}-page cap; the board may be truncated"
+                degraded = (
+                    f"Stage stopped at the {page_budget}-page cap, so the listing may be incomplete"
+                )
         if total_changed:
             degraded = (
-                "reported total changed before the board ended; progress was retained and "
-                f"resumes from offset {offset} on the next sync"
+                "The board's total changed during the crawl, so Stage kept its progress and "
+                f"resumes from posting {offset} next sync"
                 if not reached_end
-                else "reported total changed during the completed crawl; jobs were refreshed, "
-                "but nothing closed and the next sync starts a fresh pass"
+                else "The board's total changed during the crawl, so Stage refreshed its "
+                "postings but closed nothing, and the next sync starts a fresh pass"
             )
-        if malformed:
-            degraded = malformed_note(malformed) + (f" ({degraded})" if degraded else "")
+        degraded = sentences(malformed_note(malformed), degraded)
 
-        faceted = "internship" if applied else ""
+        internship_facets = workday_facet_lexicon()[0]
+        faceted = "internship" if set(applied) & set(internship_facets) else ""
         paired = [(posting, _to_job(company, posting, now, faceted)) for posting in postings]
         wanted = set(details)
         fetched: list[DetailFetch] = []
@@ -378,8 +533,16 @@ class WorkdayAdapter:
             paired, fetched = await _attach_descriptions(company, client, paired, wanted)
 
         crawl_step = None
-        crawling = page_budget < MAX_PAGES or crawl is not None
-        safe = not (malformed or fell_back or stale_facet or drifted or total_changed)
+        crawling = (page_budget < MAX_PAGES or crawl is not None) and not glance and not whole
+        unfiltered = fell_back and not (listed_facets and (whole or not huge))
+        safe = not (malformed or unfiltered or stale_facet or drifted or total_changed)
+        if crawl is not None and (glance or whole):
+            crawl_step = WorkdayCrawlStep(
+                board=self.board_key(company),
+                next_offset=0,
+                total=total,
+                discard=True,
+            )
         if crawling:
             crawl_step = WorkdayCrawlStep(
                 board=self.board_key(company),
@@ -393,10 +556,24 @@ class WorkdayAdapter:
                 discard=bool(malformed) or (reached_end and not safe),
             )
 
+        fetched.extend(searched)
+        if huge and (full_read or not size_known):
+            attempt = whole and reached_end and safe
+            fetched.append(
+                DetailFetch(
+                    id=f"{FULL_READ_PREFIX}{self.board_key(company)}",
+                    resolved=attempt,
+                    failed=full_read
+                    and not attempt
+                    and total is not None
+                    and total < FULL_READ_MAX,
+                )
+            )
+
         return FetchResult(
             jobs=tuple(job for _, job in paired),
             degraded=degraded,
-            authoritative=reached_end and safe,
+            authoritative=reached_end and safe and not glance,
             facets=(discovered,) if discovered is not None else (),
             forgotten_facets=(forgotten,) if forgotten is not None else (),
             detail_fetches=tuple(fetched),
@@ -404,21 +581,137 @@ class WorkdayAdapter:
         )
 
 
+async def _search(
+    client: HttpClient, url: str, company: Company, budget: int, exhaustive: bool = False
+) -> tuple[list[WorkdayPosting], int, int, str]:
+    found: list[WorkdayPosting] = []
+    pages = lost = 0
+    limit = budget if exhaustive else min(budget, SEARCH_PAGES)
+    queue = [(NARROW_TEXT, _NARROW_WORDS, exhaustive), (BROAD_TEXT, _BROAD_WORDS, exhaustive)]
+    ignored = False
+    while queue:
+        text, words, whole = queue.pop(0)
+        offset = total = quiet = 0
+        while True:
+            if pages >= limit:
+                return found, pages, lost, _search_note(f"stopped after {counted(pages, 'page')}")
+            body: dict[str, Any] = {
+                "appliedFacets": {},
+                "limit": PAGE_SIZE,
+                "offset": offset,
+                "searchText": text,
+            }
+            try:
+                response = await client.post_json(url, body=body)
+                page, dropped = _validate(response.payload, company)
+            except CaptivePortalError:
+                raise
+            except (HttpError, httpx.HTTPError, PayloadValidationError) as exc:
+                return found, pages, lost, _search_note(f"failed ({failure_text(exc)})")
+            pages += 1
+            lost += dropped
+            found.extend(page.jobPostings)
+            offset += PAGE_SIZE
+            total = total or page.total
+            named = any(_named(posting.title, words) for posting in page.jobPostings)
+            quiet = 0 if named or whole else quiet + 1
+            returned = len(page.jobPostings) + page.hidden + dropped
+            if returned < PAGE_SIZE or offset >= _last(total or None):
+                break
+            if quiet == QUIET_PAGES:
+                break
+        if words is _BROAD_WORDS and not total:
+            ignored = True
+            queue.extend((term, (fold(term),), False) for term in SINGLE_TERMS if exhaustive)
+    return found, pages, lost, IGNORED_OR if ignored and not exhaustive else ""
+
+
+IGNORED_OR = (
+    "The board's search found nothing for any internship word, which means it ignores OR, "
+    "so internships past the newest postings wait for the weekly full read"
+)
+
+
+def _search_note(outcome: str) -> str:
+    return (
+        f"The internship search {outcome}, so internships past the newest postings wait "
+        "for the next sync"
+    )
+
+
+def _named(title: str, words: tuple[str, ...]) -> bool:
+    padded = f" {fold(title)}"
+    return any(f" {word}" in padded for word in words)
+
+
 def _fallback_reason(page: WorkdayPage, company: Company, payload: Any) -> str:
     if page.facets:
         names = {group.facetParameter for group in page.facets if group.facetParameter}
         advertised = ", ".join(sorted(names))
         return (
-            f"no internship facet among the values this tenant advertises ({advertised}); "
-            "walking the whole board instead, which the bilingual classifier then filters"
+            f"The board offers no internship facet among its filters ({advertised}), so Stage "
+            "read the whole board and screened every posting"
         )
     if page.facets == []:
         return (
-            "this tenant advertises an empty facet list, so there is no internship facet "
-            "to resolve; walking the whole board instead"
+            "The board offers an empty facet list, so Stage read the whole board and "
+            "screened every posting"
         )
     captured = capture_payload("workday-nofacets", company.slug, payload)
-    return f"no facet list at all, so resolution could not run; payload captured at {captured}"
+    return (
+        "The board sent no facet list at all, so Stage read the whole board. "
+        f"Stage saved the answer to {captured}"
+    )
+
+
+def _faceted(company: Company, facets: Mapping[tuple[str, str], WorkdayFacet]) -> bool:
+    site = (company.workday_tenant or "", company.workday_site or "")
+    return _pinned_facet(company) is not None or site in facets
+
+
+def _ids(facet: WorkdayFacet) -> str:
+    return ", ".join(facet.facet_ids)
+
+
+def _unfiltered_and_huge(crawl: WorkdayCrawl) -> bool:
+    return not crawl.facet_parameter and (crawl.total or 0) > HUGE_BOARD
+
+
+def _last(total: int | None) -> int:
+    return RESULT_CAP if total is None else min(total, RESULT_CAP)
+
+
+def _pages(total: int) -> int:
+    return max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+
+
+def _age_in_days(label: str) -> int | None:
+    text = fold(label)
+    if "today" in text or "aujourd" in text:
+        return 0
+    if "yesterday" in text or "hier" in text:
+        return 1
+    match = _DAYS.search(text)
+    if match is None:
+        return None
+    older = "+" in label or "plus de" in text or "more than" in text
+    return int(match.group(1)) + int(older)
+
+
+def _newest_first(postings: Sequence[WorkdayPosting]) -> bool:
+    ages = [_age_in_days(posting.postedOn) for posting in postings]
+    if not ages or any(age is None for age in ages):
+        return False
+    known = [age for age in ages if age is not None]
+    if len(set(known)) < 2 and min(known) > 1:
+        return False
+    return all(left <= right for left, right in zip(known, known[1:], strict=False))
+
+
+def full_read_day(board: str) -> int:
+    from zlib import crc32
+
+    return crc32(board.encode()) % 7
 
 
 def _pinned_facet(company: Company) -> WorkdayFacet | None:
@@ -443,18 +736,25 @@ def _pinned_facet(company: Company) -> WorkdayFacet | None:
 
 
 def _validate(payload: Any, company: Company) -> tuple[WorkdayPage, int]:
-    try:
-        raw = WorkdayRawPage.model_validate(payload)
-    except ValidationError as exc:
-        captured = capture_payload("workday", company.slug, payload)
-        raise PayloadValidationError(
-            f"workday payload for {company.name} failed validation: {exc} (captured {captured})"
-        ) from exc
-
-    kept, dropped = validate_rows(
-        WorkdayPosting, raw.jobPostings, source="workday", slug=company.slug
+    raw = parsed(
+        WorkdayRawPage,
+        payload,
+        source="workday",
+        slug=company.slug,
+        board=f"workday/{company.slug}",
     )
-    return WorkdayPage(total=raw.total, jobPostings=kept, facets=raw.facets), dropped
+
+    shown = [row for row in raw.jobPostings if not _hidden(row)]
+    hidden = len(raw.jobPostings) - len(shown)
+    kept, dropped = validate_rows(WorkdayPosting, shown, source="workday", slug=company.slug)
+    if hidden and not kept:
+        dropped, hidden = dropped + hidden, 0
+    page = WorkdayPage(total=raw.total, jobPostings=kept, facets=raw.facets, hidden=hidden)
+    return page, dropped
+
+
+def _hidden(row: Any) -> bool:
+    return isinstance(row, dict) and not row.get("title") and not row.get("externalPath")
 
 
 async def _attach_descriptions(
@@ -476,7 +776,7 @@ async def _attach_descriptions(
         url = f"https://{host}/wday/cxs/{company.workday_tenant}/{company.workday_site}{path}"
         try:
             response = await client.get_json(url)
-        except HttpError:
+        except (HttpError, httpx.HTTPError):
             outcomes.append(DetailFetch(id=job.id, resolved=False, failed=True))
             merged.append((posting, job))
             continue

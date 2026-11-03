@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from stage.domain import Company, Job, Platform, job_id
 from stage.sources import register
@@ -25,7 +25,7 @@ class CollagePosition(BaseModel):
 class CollageBoard(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    positions: list[Any] = Field(default_factory=list)
+    positions: list[Any]
 
 
 @register

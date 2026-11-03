@@ -39,6 +39,17 @@ class ValidatorCache:
         self._entries[url] = entry
         self._dirty[url] = entry
 
+    def remember_missing(self, url: str, fetched_at: datetime) -> None:
+        if self.missing(url):
+            return
+        entry = HttpValidator(url=url, fetched_at=fetched_at)
+        self._entries[url] = entry
+        self._dirty[url] = entry
+
+    def missing(self, url: str) -> bool:
+        entry = self._entries.get(url)
+        return entry is not None and not entry.usable
+
     @property
     def pending(self) -> Mapping[str, HttpValidator]:
         return dict(self._dirty)

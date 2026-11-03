@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import replace
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -8,10 +9,13 @@ from stage.domain import Company, Job, Platform, job_id
 from stage.http import HttpClient, ResponseTooLargeError
 from stage.sources import register
 from stage.sources._text import collapse_whitespace, strip_html
-from stage.sources.base import BoardAdapter, FetchResult, malformed_note
+from stage.sources.base import BoardAdapter, FetchResult, sentences
 
 BASE_URL = "https://boards-api.greenhouse.io/v1/boards/{slug}/jobs"
 HOST = "boards-api.greenhouse.io"
+TOO_LARGE = (
+    "The board is too large to read with descriptions, so Stage read it without descriptions"
+)
 
 
 class GreenhouseLocation(BaseModel):
@@ -67,7 +71,7 @@ class GreenhouseAdapter(BoardAdapter):
             return await self._without_descriptions(company, client, now, url)
         if response.not_modified:
             return FetchResult(not_modified=True)
-        return self.result(company, response.payload, now)
+        return await self.built(company, response, now)
 
     async def _without_descriptions(
         self, company: Company, client: HttpClient, now: datetime, url: str
@@ -75,14 +79,10 @@ class GreenhouseAdapter(BoardAdapter):
         response = await client.get_json(url, params={"content": "false"})
         if response.not_modified:
             return FetchResult(not_modified=True)
-        postings, dropped = self.validate(company, response.payload)
-        notes = ["board exceeds the response cap with content=true; fetched without descriptions"]
-        if dropped:
-            notes.append(malformed_note(dropped))
-        return FetchResult(
-            jobs=tuple(self.to_job(company, posting, now) for posting in postings),
-            degraded="; ".join(notes),
-            authoritative=not dropped,
+        result = await self.built(company, response, now)
+        return replace(
+            result,
+            degraded=sentences(TOO_LARGE, result.degraded),
             stale_urls=(f"{url}?content=false",),
         )
 

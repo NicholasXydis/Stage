@@ -1,5 +1,6 @@
 import importlib
 import pkgutil
+import re
 from types import MappingProxyType
 
 from stage.domain import Platform
@@ -10,6 +11,8 @@ from stage.sources.base import (
     PayloadValidationError,
     capture_payload,
     convert_rows,
+    payload_error,
+    sentences,
 )
 from stage.sources.feed import (
     FeedAdapter,
@@ -20,6 +23,27 @@ from stage.sources.feed import (
 
 _ADAPTERS: dict[str, Adapter] = {}
 _LOADED = False
+PLATFORM_DOMAINS: tuple[tuple[str, Platform], ...] = (
+    ("myworkdayjobs.com", Platform.WORKDAY),
+    ("myworkdaysite.com", Platform.WORKDAY),
+    ("jobvite.com", Platform.JOBVITE),
+    ("greenhouse.io", Platform.GREENHOUSE),
+    ("lever.co", Platform.LEVER),
+    ("ashbyhq.com", Platform.ASHBY),
+    ("smartrecruiters.com", Platform.SMARTRECRUITERS),
+    ("workable.com", Platform.WORKABLE),
+    ("bamboohr.com", Platform.BAMBOOHR),
+    ("breezy.hr", Platform.BREEZY),
+    ("recruitee.com", Platform.RECRUITEE),
+    ("oraclecloud.com", Platform.ORACLE_CLOUD),
+)
+PLATFORM_FRONTS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"[a-z0-9-]+\.(wd\d+\.myworkdayjobs\.com)"),
+    re.compile(r"[a-z0-9-]+\.(fa\.[a-z0-9-]+\.oraclecloud\.com)"),
+    re.compile(r"[a-z0-9-]+\.(bamboohr\.com)"),
+    re.compile(r"[a-z0-9-]+\.(breezy\.hr)"),
+    re.compile(r"[a-z0-9-]+\.(recruitee\.com)"),
+)
 
 
 def register[A: Adapter](cls: type[A]) -> type[A]:
@@ -53,7 +77,7 @@ def get_adapter(name: str) -> Adapter:
         return adapters[name]
     except KeyError as exc:
         known = ", ".join(sorted(adapters)) or "none"
-        raise AdapterError(f"no adapter named {name!r} (known: {known})") from exc
+        raise AdapterError(f'Stage has no adapter named "{name}". Choose from: {known}.') from exc
 
 
 def adapter_for_platform(platform: Platform) -> Adapter | None:
@@ -63,7 +87,27 @@ def adapter_for_platform(platform: Platform) -> Adapter | None:
     return None
 
 
+def platform_bucket(host: str) -> str:
+    for domain, platform in PLATFORM_DOMAINS:
+        if host != domain and not host.endswith(f".{domain}"):
+            continue
+        adapter = adapter_for_platform(platform)
+        if adapter is not None:
+            return adapter.bucket_key or min(adapter.hosts, default=host)
+    return host
+
+
+def platform_front(host: str) -> str:
+    for pattern in PLATFORM_FRONTS:
+        found = pattern.fullmatch(host)
+        if found is not None:
+            return found.group(1)
+    return host
+
+
 __all__ = [
+    "PLATFORM_DOMAINS",
+    "PLATFORM_FRONTS",
     "Adapter",
     "AdapterError",
     "FeedAdapter",
@@ -72,10 +116,14 @@ __all__ = [
     "adapter_for_platform",
     "capture_payload",
     "convert_rows",
+    "payload_error",
+    "sentences",
     "get_feeds",
     "get_adapter",
     "get_adapters",
     "load_builtins",
+    "platform_bucket",
+    "platform_front",
     "register",
     "register_feed",
     "upcoming_season_year",

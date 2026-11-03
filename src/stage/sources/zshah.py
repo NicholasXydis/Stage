@@ -10,8 +10,8 @@ from stage.sources._text import collapse_whitespace
 from stage.sources.base import (
     FetchResult,
     NonEmptyStr,
-    PayloadValidationError,
-    capture_payload,
+    parsed,
+    payload_error,
     validate_rows,
 )
 from stage.sources.feed import register_feed, upcoming_season_year
@@ -55,13 +55,13 @@ class ZshahFeed:
         response = await client.get_json(url)
         if response.not_modified:
             return FetchResult(not_modified=True)
-        try:
-            envelope = ZshahEnvelope.model_validate(response.payload)
-        except Exception as exc:
-            captured = capture_payload(self.name, str(self.season_year(now)), response.payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: payload envelope failed validation (captured {captured})"
-            ) from exc
+        envelope = parsed(
+            ZshahEnvelope,
+            response.payload,
+            source=self.name,
+            slug=str(self.season_year(now)),
+            board=self.name,
+        )
         listings, malformed = validate_rows(
             ZshahListing, envelope.jobs, source=self.name, slug=str(self.season_year(now))
         )
@@ -69,9 +69,11 @@ class ZshahFeed:
             listing for listing in listings if listing.program.casefold() == "internship"
         ]
         if not internships:
-            captured = capture_payload(self.name, str(self.season_year(now)), response.payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: no internship records were found (captured {captured})"
+            raise payload_error(
+                self.name,
+                str(self.season_year(now)),
+                response.payload,
+                f"{self.name} has no internship records at {url}",
             )
         jobs = tuple(
             Job(
@@ -92,7 +94,8 @@ class ZshahFeed:
         return FetchResult(
             jobs=jobs,
             degraded=(
-                f"dropped {counted(malformed, 'malformed posting')}; the feed closes nothing"
+                f"Stage dropped {counted(malformed, 'malformed posting')}, so this read closes "
+                "nothing."
                 if malformed
                 else ""
             ),

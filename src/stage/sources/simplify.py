@@ -9,10 +9,9 @@ from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
     FetchResult,
     NonEmptyStr,
-    PayloadValidationError,
-    capture_payload,
     convert_rows,
     malformed_note,
+    payload_error,
     validate_rows,
 )
 from stage.sources.feed import register_feed, upcoming_season_year
@@ -74,10 +73,11 @@ class SimplifyFeed:
 
     def _validate(self, payload: Any, now: datetime) -> tuple[list[SimplifyListing], int]:
         if not isinstance(payload, list):
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"simplify/{self.season_year(now)}: field '<root>' failed validation "
-                f"(expected a JSON list of listings); raw payload captured at {captured}"
+            raise payload_error(
+                self.name,
+                str(self.season_year(now)),
+                payload,
+                f"{self.name} answered with something other than a JSON list of listings",
             )
         return validate_rows(
             SimplifyListing, payload, source=self.name, slug=str(self.season_year(now))

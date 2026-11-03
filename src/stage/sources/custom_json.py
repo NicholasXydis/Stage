@@ -1,10 +1,12 @@
+import asyncio
 import json
 import re
+import time
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from html import unescape
 from typing import Any, ClassVar
-from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlsplit, urlunsplit
 
 from bs4 import BeautifulSoup
 from bs4.element import Tag
@@ -17,15 +19,20 @@ from stage.lexicon import fold, location_lexicon
 from stage.sources import register
 from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
+    BUILD_SLICE_ROWS,
+    BUILD_SLICE_S,
     FetchResult,
     NonEmptyStr,
     PayloadValidationError,
-    capture_payload,
     convert_rows,
     malformed_note,
+    off_loop,
+    parse_page,
+    payload_error,
+    sentences,
     validate_rows,
 )
-from stage.sources.platforms import dig
+from stage.sources.platforms import dig, first_int
 
 MAX_ROWS = 5000
 MAX_EXTRACT_BYTES = 8 * 1024 * 1024
@@ -38,7 +45,20 @@ MAX_PAGES = 20
 PAGE_CEILING = 200
 _JSON_PARSE = 'JSON.parse("'
 _UNCHANGED = object()
+_NUMBER = re.compile(r"\d+")
 _DECLARED_EMPTY = object()
+_TOTAL_KEYS = (
+    "total",
+    "totalCount",
+    "total_count",
+    "totalResults",
+    "totalHits",
+    "totalJobs",
+    "totalRecords",
+    "totalElements",
+    "recordsTotal",
+)
+_TOTAL_PARENTS = ("", "meta", "meta.pagination", "pagination", "paging")
 
 
 class CustomListing(BaseModel):
@@ -63,6 +83,13 @@ def _host(url: str) -> str:
 
 def _rows(payload: Any, board: CustomBoard) -> Any:
     return dig(payload, board.jobs_path) if board.jobs_path else payload
+
+
+def _stated_total(payload: Any, board: CustomBoard) -> int | None:
+    parents = dict.fromkeys((*_TOTAL_PARENTS, board.jobs_path.rpartition(".")[0]))
+    paths = tuple(f"{parent}.{key}" if parent else key for parent in parents for key in _TOTAL_KEYS)
+    total = first_int(payload, paths)
+    return total if total is not None and total >= 0 else None
 
 
 def _page_body(board: CustomBoard, index: int) -> dict[str, Any]:
@@ -307,7 +334,12 @@ def _html_value(block: Tag, selector: str, *, base: str = "") -> str:
     mode = "text"
     attr = ""
     css = selector
-    for token, kind in (("::attr(", "attr"), ("::slug(", "slug"), ("::slugid(", "slugid")):
+    for token, kind in (
+        ("::attr(", "attr"),
+        ("::slug(", "slug"),
+        ("::slugid(", "slugid"),
+        ("::number(", "number"),
+    ):
         if token in selector:
             css, _, rest = selector.partition(token)
             attr = rest.rstrip(")")
@@ -327,6 +359,9 @@ def _html_value(block: Tag, selector: str, *, base: str = "") -> str:
         return ""
     if mode == "attr":
         return urljoin(base, value) if base else value
+    if mode == "number":
+        found = _NUMBER.search(value)
+        return found.group(0) if found else ""
     slug, ident = _slug_parts(value)
     return ident if mode == "slugid" else slug.replace("-", " ").strip().title()
 
@@ -334,6 +369,13 @@ def _html_value(block: Tag, selector: str, *, base: str = "") -> str:
 def html_rows(text: str, selector: str) -> list[Tag]:
     soup = BeautifulSoup(text, "html.parser")
     return soup.select(selector)[:MAX_HTML_ROWS]
+
+
+def html_listings(
+    text: str, selector: str, fields: dict[str, str], url: str
+) -> list[dict[str, str]]:
+    board = CustomBoard(url=url, fmt="html", row_selector=selector, fields=fields)
+    return [_project(block, board) for block in html_rows(text, selector)]
 
 
 def _scalar(value: Any) -> str:
@@ -344,6 +386,8 @@ def _scalar(value: Any) -> str:
 
 
 def _project(entry: Any, board: CustomBoard) -> dict[str, str]:
+    if board.html and isinstance(entry, dict):
+        return entry
     projected: dict[str, str] = {}
     for name in (
         "title",
@@ -366,9 +410,16 @@ def _project(entry: Any, board: CustomBoard) -> dict[str, str]:
         if isinstance(value, list):
             value = " / ".join(_scalar(item) for item in value if item)
         projected[name] = "" if value is None else _scalar(value)
+    if board.html and not projected.get("title") and projected.get("url"):
+        projected["title"] = _title_from_link(projected["url"])
     if not projected.get("id"):
         projected["id"] = projected.get("url") or projected.get("title", "")
     return projected
+
+
+def _title_from_link(url: str) -> str:
+    words = [part for part in urlsplit(url).path.split("/") if part and not part.isdigit()]
+    return " ".join(unquote(words[-1]).replace("-", " ").replace("_", " ").split()) if words else ""
 
 
 @register
@@ -403,8 +454,8 @@ class CustomJsonAdapter:
     def _board(company: Company) -> CustomBoard:
         if company.custom is None:
             raise PayloadValidationError(
-                f"{company.name}: platform custom_json needs a 'custom' block; "
-                "add url and a title field mapping to the registry row"
+                f"The registry row for {company.name} uses platform custom_json but has no "
+                "custom block. Add one with a url and a title field mapping."
             )
         return company.custom
 
@@ -422,6 +473,8 @@ class CustomJsonAdapter:
         truncated = False
         stale_page = False
         ignored_param = False
+        unconfirmed_end = False
+        stated: int | None = None
         seen: set[str] = set()
         pages = board.page_budget(MAX_PAGES, PAGE_CEILING)
         for index in range(pages):
@@ -439,7 +492,7 @@ class CustomJsonAdapter:
                 break
             if payload is _DECLARED_EMPTY:
                 return FetchResult(
-                    degraded=f"{company.slug} lists no vacancies right now; nothing closes",
+                    degraded="The board lists no vacancies right now, so this read closes nothing.",
                     authoritative=False,
                     declared_empty=True,
                 )
@@ -447,14 +500,21 @@ class CustomJsonAdapter:
             if not isinstance(page, list):
                 if index:
                     break
-                captured = capture_payload(self.name, company.slug, payload)
-                raise PayloadValidationError(
-                    f"{self.name}/{company.slug}: jobs_path "
-                    f"{board.jobs_path or '<root>'!r} is not a list; captured at {captured}"
+                where = (
+                    f'at jobs_path "{board.jobs_path}"' if board.jobs_path else "at its top level"
                 )
+                raise payload_error(
+                    self.name,
+                    company.slug,
+                    payload,
+                    f"{self.name}/{company.slug} answered with no list of jobs {where}",
+                )
+            total = _stated_total(payload, board)
+            stated = stated if total is None else total
             fingerprint = _fingerprint(page, board)
             if index and fingerprint and fingerprint <= seen:
-                ignored_param = True
+                ignored_param = index == 1
+                unconfirmed_end = not ignored_param and (stated is None or len(seen) < stated)
                 break
             seen |= fingerprint
             entries.extend(page)
@@ -466,9 +526,42 @@ class CustomJsonAdapter:
         else:
             truncated = board.paginated
         truncated = truncated or len(entries) > MAX_ROWS
+        kept = entries[:MAX_ROWS]
+        jobs, dropped = await self._sliced_jobs(company, board, kept, now)
+        where = (
+            f"at {len(seen):,} of the {stated:,} postings the board states"
+            if stated is not None
+            else "and the board states no total"
+        )
+        return FetchResult(
+            jobs=tuple(jobs),
+            degraded=sentences(
+                malformed_note(dropped),
+                f"Stage stopped at the {pages}-page or {MAX_ROWS:,}-row cap, so the listing "
+                "is incomplete"
+                if truncated
+                else "",
+                "A later page answered 304, so the walk ended on an unchanged page"
+                if stale_page
+                else "",
+                f'The board ignores the "{board.page_param}" page setting (page 2 repeated '
+                "page 1), so Stage stopped rather than loop"
+                if ignored_param
+                else "",
+                f"A later page repeated an earlier one {where}, so this read closes nothing"
+                if unconfirmed_end
+                else "",
+            ),
+            authoritative=board.authoritative
+            and not (dropped or truncated or stale_page or ignored_param or unconfirmed_end),
+        )
+
+    def _jobs(
+        self, company: Company, board: CustomBoard, entries: Sequence[Any], now: datetime
+    ) -> tuple[list[Job], int]:
         listings, dropped = validate_rows(
             CustomListing,
-            [_project(entry, board) for entry in entries[:MAX_ROWS]],
+            [_project(entry, board) for entry in entries],
             source=self.name,
             slug=company.slug,
         )
@@ -478,23 +571,22 @@ class CustomJsonAdapter:
             source=self.name,
             slug=company.slug,
         )
-        dropped += unconvertible
-        notes = [malformed_note(dropped)] if dropped else []
-        if truncated:
-            notes.append(f"stopped at the {pages}-page or {MAX_ROWS}-row cap; incomplete")
-        if stale_page:
-            notes.append("a later page answered 304, so the walk ended on an unchanged page")
-        if ignored_param:
-            notes.append(
-                f"page {board.page_param!r} repeated the previous page, so the server ignores it; "
-                "the walk stopped rather than looping"
-            )
-        return FetchResult(
-            jobs=tuple(jobs),
-            degraded="; ".join(note for note in notes if note),
-            authoritative=board.authoritative
-            and not (dropped or truncated or stale_page or ignored_param),
-        )
+        return jobs, dropped + unconvertible
+
+    async def _sliced_jobs(
+        self, company: Company, board: CustomBoard, entries: Sequence[Any], now: datetime
+    ) -> tuple[list[Job], int]:
+        jobs: list[Job] = []
+        dropped = 0
+        since = time.perf_counter()
+        for number, entry in enumerate(entries):
+            if number % BUILD_SLICE_ROWS == 0 or time.perf_counter() - since > BUILD_SLICE_S:
+                await asyncio.sleep(0)
+                since = time.perf_counter()
+            built, lost = self._jobs(company, board, [entry], now)
+            jobs.extend(built)
+            dropped += lost
+        return jobs, dropped
 
     async def _page(
         self,
@@ -508,65 +600,51 @@ class CustomJsonAdapter:
             text = await client.get_text(_page_url(board, index), revalidate=index > 0)
             if text.not_modified:
                 return _UNCHANGED
-            rows = rss_items(text.text, board.item_tag)
+            rows = await off_loop(rss_items, text.text, board.item_tag)
             if not rows:
-                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
-                raise PayloadValidationError(
-                    f"{self.name}/{company.slug}: no <item> elements in the feed; "
-                    f"captured at {captured}"
-                )
+                raise self._drifted(company, text.text, "has no <item> elements in its feed")
             return rows
         if board.embedded:
             text = await client.get_text(_page_url(board, index), revalidate=index > 0)
             if text.not_modified:
                 return _UNCHANGED
-            payload = extract_object(text.text, board.extract)
+            payload = await off_loop(extract_object, text.text, board.extract)
             if payload is None:
-                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
-                raise PayloadValidationError(
-                    f"{self.name}/{company.slug}: no {board.extract!r} object in the page; "
-                    f"captured at {captured}"
+                raise self._drifted(
+                    company, text.text, f'has no "{board.extract}" object in the page'
                 )
             return payload
         if board.jsonld:
             text = await client.get_text(_page_url(board, index), revalidate=index > 0)
             if text.not_modified:
                 return _UNCHANGED
-            rows = jsonld_rows(text.text)
+            rows = await off_loop(jsonld_rows, text.text)
             if not rows and index == 0:
-                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
-                raise PayloadValidationError(
-                    f"{self.name}/{company.slug}: no JobPosting in any ld+json block; "
-                    f"captured at {captured}"
-                )
+                raise self._drifted(company, text.text, "has no JobPosting in any ld+json block")
             return rows
         if board.sitemap:
             text = await client.get_text(_page_url(board, index), revalidate=index > 0)
             if text.not_modified:
                 return _UNCHANGED
-            rows = sitemap_rows(text.text)
+            rows = await off_loop(sitemap_rows, text.text)
             if board.row_filter:
                 keep = re.compile(board.row_filter)
                 rows = [row for row in rows if keep.search(row.get("loc", ""))]
             if not rows:
-                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
-                raise PayloadValidationError(
-                    f"{self.name}/{company.slug}: no <url> entries in the sitemap; "
-                    f"captured at {captured}"
-                )
+                raise self._drifted(company, text.text, "has no <url> entries in its sitemap")
             return rows
         if board.html:
             text = await client.get_text(_page_url(board, index), revalidate=index > 0)
             if text.not_modified:
                 return _UNCHANGED
-            blocks = html_rows(text.text, board.row_selector)
+            blocks = await parse_page(
+                html_listings, text.text, board.row_selector, dict(board.fields), board.url
+            )
             if not blocks and index == 0:
                 if board.empty_marker and re.search(board.empty_marker, text.text):
                     return _DECLARED_EMPTY
-                captured = capture_payload(self.name, company.slug, {"head": text.text[:4000]})
-                raise PayloadValidationError(
-                    f"{self.name}/{company.slug}: selector {board.row_selector!r} matched no "
-                    f"rows; captured at {captured}"
+                raise self._drifted(
+                    company, text.text, f'matched no rows with the selector "{board.row_selector}"'
                 )
             return blocks
         response = (
@@ -576,6 +654,11 @@ class CustomJsonAdapter:
         )
         return _UNCHANGED if response.not_modified else response.payload
 
+    def _drifted(self, company: Company, page: str, problem: str) -> PayloadValidationError:
+        return payload_error(
+            self.name, company.slug, {"head": page[:4000]}, f"{self.name}/{company.slug} {problem}"
+        )
+
     @staticmethod
     async def _handshake(board: CustomBoard, client: HttpClient) -> dict[str, str]:
         if not board.handshakes:
@@ -584,7 +667,8 @@ class CustomJsonAdapter:
         found = re.search(board.token_pattern, page.text)
         if found is None or not found.groups():
             raise PayloadValidationError(
-                f"custom_json: no token matched {board.token_pattern!r} at {board.handshake_url}"
+                f'Stage found no token matching "{board.token_pattern}" at '
+                f"{board.handshake_url}, so it could not read the board"
             )
         token = found.group(1)[:MAX_TOKEN_LEN]
         parts = urlsplit(board.handshake_url)

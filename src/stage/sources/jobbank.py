@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import ClassVar
+from typing import ClassVar, NamedTuple
 from urllib.parse import parse_qsl, urlencode
 
 from bs4 import BeautifulSoup
@@ -11,7 +11,7 @@ from stage.domain.text import counted
 from stage.http import HttpClient
 from stage.sources import register_feed
 from stage.sources._text import collapse_whitespace
-from stage.sources.base import FetchResult, PayloadValidationError, capture_payload, malformed_note
+from stage.sources.base import FetchResult, malformed_note, parse_page, payload_error, sentences
 
 HOST = "www.jobbank.gc.ca"
 SEARCH = f"https://{HOST}/jobsearch/jobsearch"
@@ -66,6 +66,35 @@ def field(article: Tag, selector: str) -> str:
     return collapse_whitespace(found.get_text(" ", strip=True))
 
 
+class ResultsPage(NamedTuple):
+    rows: list[dict[str, str]]
+    counts: dict[str, int] | None
+    queries: dict[str, str]
+
+
+def _row(article: Tag) -> dict[str, str]:
+    return {
+        "id": posting_id(article),
+        "title": field(article, ".noctitle"),
+        "term": declared_term(article),
+        "company": field(article, ".business"),
+        "city": field(article, ".location"),
+    }
+
+
+def read_page(text: str) -> ResultsPage:
+    page = BeautifulSoup(text, "html.parser")
+    queries: dict[str, str] = {}
+    for target in COUNTED_TYPES:
+        control = page.select_one(f"input#{target}")
+        query = str(control.get("data-url") or "") if control is not None else ""
+        if query:
+            queries[target] = query
+    return ResultsPage(
+        [_row(article) for article in page.select("article")], type_counts(page), queries
+    )
+
+
 @register_feed
 class JobBankFeed:
     name: ClassVar[str] = "jobbank"
@@ -98,14 +127,14 @@ class JobBankFeed:
                 text = await client.get_text(f"{search}&page=1")
                 if text.not_modified:
                     continue
-                page = BeautifulSoup(text.text, "html.parser")
-                rows = page.select("article")
+                page = await parse_page(read_page, text.text)
+                rows = page.rows
                 if not rows:
                     empty.append(f"{province}/{term}")
                     last_empty = text.text
                     continue
                 searched = True
-                counts = type_counts(page)
+                counts = page.counts
                 if counts is None:
                     counted_none = False
                     for number in range(2, PAGE_CAP + 1):
@@ -118,11 +147,11 @@ class JobBankFeed:
                         if not count:
                             continue
                         counted_none = False
-                        found = await self._filtered(client, page, target, count)
-                        unread += max(0, count - sum(1 for row in found if declared_term(row)))
+                        found = await self._filtered(client, page.queries.get(target, ""), count)
+                        unread += max(0, count - sum(1 for row in found if row["term"]))
                         rows.extend(found)
-                for article in rows:
-                    job, dropped = self._to_job(article, now)
+                for row in rows:
+                    job, dropped = self._to_job(row, now)
                     malformed += dropped
                     if job is not None:
                         seen.setdefault(job.id, job)
@@ -133,39 +162,37 @@ class JobBankFeed:
                 break
 
         if not searched:
-            captured = capture_payload(self.name, "search", {"head": last_empty[:4000]})
-            raise PayloadValidationError(
-                f"{self.name}: no query returned an <article> row, so the results page changed "
-                f"shape rather than matching nothing; captured at {captured}"
+            raise payload_error(
+                self.name,
+                "search",
+                {"head": last_empty[:4000]},
+                f"No {self.name} search returned an <article> row, so the results page "
+                "changed shape",
             )
 
-        notes = []
-        if empty:
-            notes.append(f"{len(empty)} of {len(PROVINCES) * len(TERMS)} searches matched nothing")
-        if truncated:
-            notes.append(f"stopped at the {MAX_ROWS}-posting cap for one run")
-        if malformed:
-            notes.append(malformed_note(malformed))
-        if unread:
-            notes.append(f"could not read {counted(unread, 'counted student or internship job')}")
+        searches = len(PROVINCES) * len(TERMS)
         declared_empty = counted_none and not seen and not malformed
-        if declared_empty:
-            notes.append("Job Bank lists no student jobs or internships for these searches")
         return FetchResult(
             jobs=tuple(seen.values()),
             authoritative=False,
-            degraded="; ".join(notes),
+            degraded=sentences(
+                f"{len(empty)} of {searches} searches matched nothing" if empty else "",
+                f"Stage stopped at the {MAX_ROWS:,}-posting cap for one run" if truncated else "",
+                malformed_note(malformed),
+                f"Stage could not read {counted(unread, 'counted student or internship job')}"
+                if unread
+                else "",
+                "Job Bank lists no student jobs or internships for these searches"
+                if declared_empty
+                else "",
+            ),
             declared_empty=declared_empty,
         )
 
-    async def _filtered(
-        self, client: HttpClient, page: BeautifulSoup, target: str, count: int
-    ) -> list[Tag]:
-        control = page.select_one(f"input#{target}")
-        query = str(control.get("data-url") or "") if control is not None else ""
+    async def _filtered(self, client: HttpClient, query: str, count: int) -> list[dict[str, str]]:
         if not query:
             return []
-        rows: list[Tag] = []
+        rows: list[dict[str, str]] = []
         for number in range(1, FILTER_PAGE_CAP + 1):
             found = await self._rows(client, filtered_url(query, number))
             if not found:
@@ -176,22 +203,22 @@ class JobBankFeed:
         return rows
 
     @staticmethod
-    async def _rows(client: HttpClient, url: str, *, revalidate: bool = False) -> list[Tag]:
+    async def _rows(
+        client: HttpClient, url: str, *, revalidate: bool = False
+    ) -> list[dict[str, str]]:
         text = await client.get_text(url, revalidate=revalidate)
         if text.not_modified:
             return []
-        return BeautifulSoup(text.text, "html.parser").select("article")
+        return (await parse_page(read_page, text.text)).rows
 
-    def _to_job(self, article: Tag, now: datetime) -> tuple[Job | None, int]:
-        identifier = posting_id(article)
-        title = field(article, ".noctitle")
-        term = declared_term(article)
+    def _to_job(self, row: dict[str, str], now: datetime) -> tuple[Job | None, int]:
+        identifier, title, term = row["id"], row["title"], row["term"]
         if not identifier or not title:
             return None, 1
         if not term:
             return None, 0
-        company = field(article, ".business") or "Job Bank"
-        city = field(article, ".location")
+        company = row["company"] or "Job Bank"
+        city = row["city"]
         return (
             Job(
                 id=job_id(self.name, "search", identifier),

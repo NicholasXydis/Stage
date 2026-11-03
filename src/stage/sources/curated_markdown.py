@@ -1,35 +1,25 @@
 from __future__ import annotations
 
-import base64
-import binascii
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, ClassVar
-
-from pydantic import BaseModel, ConfigDict
+from typing import ClassVar
+from urllib.parse import urlsplit
 
 from stage.domain import Job, SourceSignals, job_id
 from stage.domain.text import counted
-from stage.http import HttpClient, HttpStatusError, JsonResponse
+from stage.http import HttpClient, HttpStatusError, TextResponse
 from stage.sources._text import collapse_whitespace, strip_html
-from stage.sources.base import FetchResult, NonEmptyStr, PayloadValidationError, capture_payload
+from stage.sources.base import FetchResult, PayloadValidationError, payload_error
 from stage.sources.feed import register_feed, upcoming_season_year
 
-HOST = "api.github.com"
-CONTENT_URL = "https://api.github.com/repos/{repository}/contents/{path}?ref=main"
+HOST = "raw.githubusercontent.com"
+CONTENT_URL = "https://raw.githubusercontent.com/{repository}/main/{path}"
 LINK = re.compile(r"\[([^\]]*)\]\(\s*<?(?P<url>https?://[^)\s<>]+)>?\s*\)")
 URL = re.compile(r"\]\(\s*<?(?P<url>https?://[^)\s<>]+)>?\s*\)")
 COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 INTERN = re.compile(r"\b(?:intern(?:ship)?s?|co-?op|stagiaire|stage|alternance|student)\b", re.I)
 DECLARED_EMPTY = re.compile(r"_\s*no\s+(?:roles|positions|openings|jobs)[^_\n]{0,40}_", re.I)
-
-
-class GitHubContent(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    encoding: NonEmptyStr
-    content: NonEmptyStr
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +61,7 @@ class _GitHubMarkdownFeed:
     rate_profile: ClassVar[str] = "feeds"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = ""
+    employment_type: ClassVar[str] = "internship"
 
     def season_year(self, now: datetime) -> int:
         return upcoming_season_year(now)
@@ -79,35 +70,42 @@ class _GitHubMarkdownFeed:
         raise NotImplementedError
 
     async def _available(
-        self, client: HttpClient, urls: tuple[str, ...]
-    ) -> tuple[str, JsonResponse]:
-        missing: HttpStatusError | None = None
-        for url in urls:
+        self, client: HttpClient, urls: tuple[str, ...], now: datetime
+    ) -> tuple[str, TextResponse]:
+        known = [url for url in urls if not client.cache.missing(url)]
+        missing: dict[str, HttpStatusError] = {}
+        for url in [*known, *(url for url in urls if url not in known)]:
             try:
-                return url, await client.get_json(url)
+                response = await client.get_text(url)
             except HttpStatusError as exc:
                 if exc.status != 404:
                     raise
-                missing = exc
-        if missing is None:
-            raise PayloadValidationError(f"{self.name}: no feed url was planned")
-        raise missing
+                missing[url] = exc
+                continue
+            for gone in urls[: urls.index(url)]:
+                if gone in missing:
+                    client.cache.remember_missing(gone, now)
+            return url, response
+        if not missing:
+            raise PayloadValidationError(f"{self.name} has no list address to read")
+        raise missing[urls[-1]]
 
     async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
-        url, response = await self._available(client, self.plan(now))
+        url, response = await self._available(client, self.plan(now), now)
         if response.not_modified:
             return FetchResult(not_modified=True)
-        text = self._decode(response.payload, url, now)
+        text = response.text
         listings, malformed = self.rows(text)
         if not listings:
             if not DECLARED_EMPTY.search(text):
-                captured = capture_payload(self.name, str(self.season_year(now)), {"text": text})
-                raise PayloadValidationError(
-                    f"{self.name}/{url}: no current internship rows were found "
-                    f"(captured {captured})"
+                raise payload_error(
+                    self.name,
+                    str(self.season_year(now)),
+                    {"text": text},
+                    f"{self.name} has no current internship rows at {url}",
                 )
             return FetchResult(
-                degraded=f"{self.name} publishes no roles right now; the feed closes nothing",
+                degraded=f"{self.name} lists no roles right now, so this read closes nothing.",
                 authoritative=False,
                 declared_empty=True,
             )
@@ -115,35 +113,13 @@ class _GitHubMarkdownFeed:
         return FetchResult(
             jobs=jobs,
             degraded=(
-                f"skipped {counted(malformed, 'malformed Markdown row')}; the feed closes nothing"
+                f"Stage skipped {counted(malformed, 'malformed Markdown row')}, so this read "
+                "closes nothing."
                 if malformed
                 else ""
             ),
             authoritative=not malformed,
         )
-
-    def _decode(self, payload: Any, url: str, now: datetime) -> str:
-        try:
-            content = GitHubContent.model_validate(payload)
-        except Exception as exc:
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: GitHub content envelope failed validation "
-                f"(captured {captured})"
-            ) from exc
-        if content.encoding != "base64":
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: unsupported content encoding {content.encoding!r} "
-                f"(captured {captured})"
-            )
-        try:
-            return base64.b64decode("".join(content.content.split()), validate=True).decode("utf-8")
-        except (UnicodeDecodeError, binascii.Error, ValueError) as exc:
-            captured = capture_payload(self.name, str(self.season_year(now)), payload)
-            raise PayloadValidationError(
-                f"{self.name}/{url}: content is not valid base64 UTF-8 (captured {captured})"
-            ) from exc
 
     def rows(self, text: str) -> tuple[list[Listing], int]:
         raise NotImplementedError
@@ -162,7 +138,7 @@ class _GitHubMarkdownFeed:
             location_raw=listing.location,
             first_seen=now,
             last_seen=now,
-            signals=SourceSignals(employment_type="internship"),
+            signals=SourceSignals(employment_type=self.employment_type),
         )
 
 
@@ -289,3 +265,65 @@ class NorthwesternQuantFeed(_GitHubMarkdownFeed):
                 title = f"{base} — {qualifier}" if qualifier else base
                 rows.append(Listing(company=company, title=title, location=location, url=url))
         return rows, malformed
+
+
+_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+_ZAPPLY_DIRECT = (
+    (re.compile(r"greenhouse-([a-z0-9]+)-(\d+)"), "https://job-boards.greenhouse.io/{}/jobs/{}"),
+    (re.compile(rf"lever-([\w.-]+)-({_UUID})"), "https://jobs.lever.co/{}/{}"),
+    (re.compile(rf"ashby-([\w.%-]+)-({_UUID})"), "https://jobs.ashbyhq.com/{}/{}"),
+)
+
+
+def _zapply_direct(url: str) -> str:
+    parts = urlsplit(url)
+    if parts.hostname != "zapply.jobs" or not parts.path.startswith("/l/d/"):
+        return url
+    key = parts.path.removeprefix("/l/d/").strip("/")
+    for pattern, template in _ZAPPLY_DIRECT:
+        match = pattern.fullmatch(key)
+        if match:
+            return template.format(*match.groups())
+    return url
+
+
+class _ZapplyFeed(_GitHubMarkdownFeed):
+    repository: ClassVar[str] = ""
+
+    def plan(self, now: datetime) -> tuple[str, ...]:
+        repository = self.repository.format(year=self.season_year(now))
+        return (CONTENT_URL.format(repository=repository, path="README.md"),)
+
+    def rows(self, text: str) -> tuple[list[Listing], int]:
+        rows: list[Listing] = []
+        malformed = 0
+        for line in text.splitlines():
+            cells = _cells(line)
+            if cells is None or len(cells) != 6 or _plain(cells[0]).casefold() == "company":
+                continue
+            company, urls = _plain(cells[0]), _urls(cells[5])
+            if not company or not urls:
+                malformed += 1
+                continue
+            rows.append(
+                Listing(
+                    company=company,
+                    title=_plain(cells[1]),
+                    location=_plain(cells[2]),
+                    url=_zapply_direct(urls[0]),
+                )
+            )
+        return rows, malformed
+
+
+@register_feed
+class ZapplyFeed(_ZapplyFeed):
+    name: ClassVar[str] = "zapply"
+    repository: ClassVar[str] = "zapplyjobs/Internships-{year}"
+
+
+@register_feed
+class ZapplyCanadaFeed(_ZapplyFeed):
+    name: ClassVar[str] = "zapply-canada"
+    repository: ClassVar[str] = "zapplyjobs/Canada-Internships-{year}"
+    employment_type: ClassVar[str] = ""

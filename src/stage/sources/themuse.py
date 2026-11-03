@@ -11,9 +11,9 @@ from stage.sources._text import collapse_whitespace, strip_html
 from stage.sources.base import (
     FetchResult,
     NonEmptyStr,
-    PayloadValidationError,
-    capture_payload,
     malformed_note,
+    parsed,
+    sentences,
     validate_rows,
 )
 
@@ -76,7 +76,7 @@ class MusePage(BaseModel):
 @register_feed
 class TheMuseFeed:
     name: ClassVar[str] = "themuse"
-    rate_profile: ClassVar[str] = "feeds"
+    rate_profile: ClassVar[str] = "searches"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = "themuse"
 
@@ -103,15 +103,15 @@ class TheMuseFeed:
         else:
             truncated = pages > PAGE_CAP
 
-        notes = []
-        if truncated:
-            notes.append(f"stopped at the {PAGE_CAP}-page cap with {pages} pages reported")
-        if malformed:
-            notes.append(malformed_note(malformed))
         return FetchResult(
             jobs=tuple(seen.values()),
             authoritative=False,
-            degraded="; ".join(notes),
+            degraded=sentences(
+                f"Stage stopped at the {PAGE_CAP}-page cap with {pages} pages reported"
+                if truncated
+                else "",
+                malformed_note(malformed),
+            ),
         )
 
     def _url(self, page: int) -> str:
@@ -121,18 +121,11 @@ class TheMuseFeed:
     def _validate(self, payload: Any, page: int) -> tuple[list[MuseListing], int, int]:
         if payload is None:
             return [], 0, page - 1
-        try:
-            parsed = MusePage.model_validate(payload)
-        except Exception as exc:
-            captured = capture_payload(self.name, f"page-{page}", payload)
-            raise PayloadValidationError(
-                f"{self.name}: search response failed validation; raw payload captured "
-                f"at {captured}"
-            ) from exc
+        found = parsed(MusePage, payload, source=self.name, slug=f"page-{page}", board=self.name)
         rows, dropped = validate_rows(
-            MuseListing, parsed.results, source=self.name, slug=f"page-{page}"
+            MuseListing, found.results, source=self.name, slug=f"page-{page}"
         )
-        return rows, dropped, parsed.page_count
+        return rows, dropped, found.page_count
 
     def _to_job(self, listing: MuseListing, now: datetime) -> Job:
         title = collapse_whitespace(listing.name)

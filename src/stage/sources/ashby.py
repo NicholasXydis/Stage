@@ -61,7 +61,7 @@ class AshbyBoard(BaseModel):
 class AshbyAdapter(BoardAdapter):
     name: ClassVar[str] = "ashby"
     platform: ClassVar[Platform] = Platform.ASHBY
-    rate_profile: ClassVar[str] = "standard"
+    rate_profile: ClassVar[str] = "broad"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     detail_budget: ClassVar[int] = 0
     max_requests_per_company: ClassVar[int] = 1

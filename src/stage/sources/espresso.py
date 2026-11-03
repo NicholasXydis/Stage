@@ -6,9 +6,10 @@ from bs4.element import Tag
 
 from stage.domain import Job, SourceSignals, job_id
 from stage.http import HttpClient, HttpStatusError
+from stage.http.client import HostBudgetExceededError
 from stage.sources import register_feed
 from stage.sources._text import collapse_whitespace
-from stage.sources.base import FetchResult, PayloadValidationError, capture_payload, malformed_note
+from stage.sources.base import FetchResult, malformed_note, parse_page, payload_error, sentences
 
 HOST = "www.espresso-jobs.com"
 SEARCH = f"https://{HOST}/emploi"
@@ -45,6 +46,20 @@ def where(row: Tag) -> str:
     return ", ".join(parts)
 
 
+def listed(text: str) -> list[dict[str, str]]:
+    return [
+        {
+            "id": collapse_whitespace(str(row.get("id") or "")),
+            "slug": collapse_whitespace(str(row.get("data-slug") or "")),
+            "title": field(row, "h2.job_index-content_list_item-title"),
+            "badge": badge(row),
+            "company": field(row, "p.job_index-content_list_item-company"),
+            "where": where(row),
+        }
+        for row in BeautifulSoup(text, "html.parser").select(ROW_SELECTOR)
+    ]
+
+
 @register_feed
 class EspressoJobsFeed:
     name: ClassVar[str] = "espresso-jobs"
@@ -62,6 +77,7 @@ class EspressoJobsFeed:
         seen: dict[str, Job] = {}
         malformed = 0
         truncated = False
+        capped = False
         searched = False
         empty: list[str] = []
         last_empty = ""
@@ -73,6 +89,11 @@ class EspressoJobsFeed:
                 url = f"{SEARCH}?keyword={term}&distance=all&page_no={page}"
                 try:
                     text = await client.get_text(url, revalidate=page > 1)
+                except HostBudgetExceededError:
+                    if not searched:
+                        raise
+                    capped = True
+                    break
                 except HttpStatusError as exc:
                     if page > 1 and exc.status == 404:
                         exhausted.append(term)
@@ -80,7 +101,7 @@ class EspressoJobsFeed:
                     raise
                 if text.not_modified:
                     break
-                rows = self._rows(text.text)
+                rows = await parse_page(listed, text.text)
                 if not rows:
                     if page == 1:
                         empty.append(term)
@@ -97,48 +118,43 @@ class EspressoJobsFeed:
                     break
                 if len(rows) < PAGE_SIZE:
                     break
-            if truncated:
+            if truncated or capped:
                 break
 
         if not searched:
-            captured = capture_payload(self.name, "search", {"head": last_empty[:4000]})
-            raise PayloadValidationError(
-                f"{self.name}: no query returned a listing row, so the results page changed "
-                f"shape rather than matching nothing; captured at {captured}"
+            raise payload_error(
+                self.name,
+                "search",
+                {"head": last_empty[:4000]},
+                f"No {self.name} search returned a listing row, so the results page changed shape",
             )
 
-        notes = []
-        if empty:
-            notes.append(f"{len(empty)} of {len(TERMS)} searches matched nothing")
-        if exhausted:
-            notes.append(
-                f"{len(exhausted)} of {len(TERMS)} searches ran past their last page, "
-                "which answers 404"
-            )
-        if truncated:
-            notes.append(f"stopped at the {MAX_ROWS}-posting cap for one run")
-        if malformed:
-            notes.append(malformed_note(malformed))
         return FetchResult(
             jobs=tuple(seen.values()),
             authoritative=False,
-            degraded="; ".join(notes),
+            degraded=sentences(
+                f"{len(empty)} of {len(TERMS)} searches matched nothing" if empty else "",
+                f"{len(exhausted)} of {len(TERMS)} searches ran past their last page, "
+                "which answers 404"
+                if exhausted
+                else "",
+                f"Stage stopped at the {MAX_ROWS:,}-posting cap for one run" if truncated else "",
+                "Stage reached its request ceiling for this run, so the last searches wait for "
+                "the next sync"
+                if capped
+                else "",
+                malformed_note(malformed),
+            ),
         )
 
-    @staticmethod
-    def _rows(text: str) -> list[Tag]:
-        return BeautifulSoup(text, "html.parser").select(ROW_SELECTOR)
-
-    def _to_job(self, row: Tag, now: datetime) -> tuple[Job | None, int]:
-        identifier = collapse_whitespace(str(row.get("id") or ""))
-        slug = collapse_whitespace(str(row.get("data-slug") or ""))
-        title = field(row, "h2.job_index-content_list_item-title")
+    def _to_job(self, row: dict[str, str], now: datetime) -> tuple[Job | None, int]:
+        identifier, slug, title = row["id"], row["slug"], row["title"]
         if not identifier or not slug or not title:
             return None, 1
-        declared = badge(row)
+        declared = row["badge"]
         if declared.lower() != INTERNSHIP_BADGE:
             return None, 0
-        company = field(row, "p.job_index-content_list_item-company") or "Espresso-Jobs"
+        company = row["company"] or "Espresso-Jobs"
         return (
             Job(
                 id=job_id(self.name, "search", identifier),
@@ -148,7 +164,7 @@ class EspressoJobsFeed:
                 title_normalized=title.lower(),
                 apply_url_raw=POSTING.format(id=identifier, slug=slug),
                 description="",
-                location_raw=where(row),
+                location_raw=row["where"],
                 first_seen=now,
                 last_seen=now,
                 signals=SourceSignals(employment_type=declared.lower()),
