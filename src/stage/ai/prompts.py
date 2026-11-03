@@ -1,3 +1,4 @@
+import inspect
 import re
 import sqlite3
 from collections.abc import Callable, Iterable
@@ -94,8 +95,9 @@ def _words(name: str, value: str | None, limit: int) -> str:
     if value is None or not value.strip():
         return ""
     if len(value) > limit:
-        raise MCPError(INVALID_PARAMS, f"The {name} is too long; keep it under {limit} characters.")
-    return _quoted(value, limit)
+        raise MCPError(INVALID_PARAMS, f"The {name} is too long. Keep it under {limit} characters.")
+    quoted = _quoted(value, limit)
+    return "" if quoted == '""' else quoted
 
 
 def whats_new() -> str:
@@ -117,7 +119,7 @@ def weekly_digest() -> str:
         [
             "Give me my weekly internship digest from Stage.",
             (
-                "1. Call search_postings with days=7 and mine=true; if I saved no preferences, "
+                "1. Call search_postings with days=7 and mine=true. If I saved no preferences, "
                 "search without mine and say so."
             ),
             "2. Call get_tracker to see what I applied to and which ones heard back.",
@@ -160,7 +162,7 @@ def find_matches(
 
 def prepare_application(
     company: Annotated[
-        str | None, Field(description="The employer, such as Shopify; leave it out to be asked")
+        str | None, Field(description="The employer, such as Shopify, or leave it out to be asked")
     ] = None,
     title: Annotated[str | None, Field(description="Words from the posting's title")] = None,
 ) -> str:
@@ -199,7 +201,7 @@ def prepare_application(
                 "employer, and a short cover note."
             ),
             (
-                "Do not mark the posting as applied unless I tell you I applied; offer to save it "
+                "Do not mark the posting as applied unless I tell you I applied. Offer to save it "
                 "instead."
             ),
             DATA,
@@ -253,6 +255,12 @@ CATALOGUE: tuple[tuple[Callable[..., str], str, str], ...] = (
 )
 
 
+TAKES: dict[str, frozenset[str]] = {
+    function.__name__: frozenset(inspect.signature(function).parameters)
+    for function, _, _ in CATALOGUE
+}
+
+
 def prompts() -> list[Prompt]:
     return [
         Prompt.from_function(function, name=function.__name__, title=title, description=about)
@@ -270,7 +278,7 @@ class Suggestions:
         argument: CompletionArgument,
         context: CompletionContext | None,
     ) -> Completion | None:
-        if not isinstance(ref, PromptReference):
+        if not isinstance(ref, PromptReference) or argument.name not in TAKES.get(ref.name, ()):
             return None
         typed = argument.value.strip()
         if argument.name == "role":
@@ -281,7 +289,7 @@ class Suggestions:
             return _matching(await self._read(_terms), typed)
         if argument.name == "company":
             return _matching(await self._read(_companies), typed)
-        if argument.name == "title" and ref.name == "prepare_application":
+        if argument.name == "title":
             chosen = (context.arguments or {}).get("company", "") if context else ""
             if not chosen.strip():
                 return _matching((), typed)

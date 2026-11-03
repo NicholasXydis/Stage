@@ -4,12 +4,13 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any, cast
 
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent
 
 from stage.ai.references import short
 from stage.domain import Job, QuarantinedJob, json_safe, web_url
 from stage.domain.preferences import clean_text
-from stage.domain.text import json_default
+from stage.domain.text import counted, json_default, plain_error
 from stage.domain.tracker import ApplicationStatus, TrackedPosting
 from stage.services.query import PostingDetail
 from stage.services.tracker import TrackerRow
@@ -20,6 +21,8 @@ CAUTION = (
 )
 COMPACT_COLUMNS = ("id", "company", "title", "location", "first_seen", "tracked")
 DESCRIPTION_LIMIT = 4_000
+TITLE_LIMIT = 300
+COMPANY_LIMIT = 150
 PLACE_LIMIT = 200
 MAX_OFFSET = 100_000
 UNKNOWN_CURSOR = (
@@ -29,13 +32,14 @@ OTHER_SEARCH = (
     "That cursor belongs to a different request. Send it with the same arguments as before, "
     "or leave cursor out to start again."
 )
+NEVER_SYNCED = "never, so the user can run stage sync in a terminal to collect postings"
 DATA_CHANGED = (
     "Stage's data changed after that page was read, so the pages no longer line up. "
     "Leave cursor out to start from the first page."
 )
 
 
-class CursorError(ValueError):
+class CursorError(ToolError):
     pass
 
 
@@ -56,12 +60,13 @@ def text(value: str, limit: int = 0) -> str:
     return clean[:limit] if limit else clean
 
 
+def error_text(value: str, limit: int) -> str:
+    clean = text(value)
+    return plain_error(clean)[:limit] if clean.strip() else ""
+
+
 def day(moment: datetime | None) -> str | None:
     return moment.astimezone().date().isoformat() if moment is not None else None
-
-
-def plural(count: int, noun: str) -> str:
-    return f"{count:,} {noun}{'' if count == 1 else 's'}"
 
 
 def ago(moment: datetime, now: datetime) -> str:
@@ -69,16 +74,16 @@ def ago(moment: datetime, now: datetime) -> str:
     if minutes < 1:
         return "just now"
     if minutes < 60:
-        return f"{plural(minutes, 'minute')} ago"
+        return f"{counted(minutes, 'minute')} ago"
     hours = minutes // 60
     if hours < 48:
-        return f"{plural(hours, 'hour')} ago"
-    return f"{plural(hours // 24, 'day')} ago"
+        return f"{counted(hours, 'hour')} ago"
+    return f"{counted(hours // 24, 'day')} ago"
 
 
 def freshness(last_sync: datetime | None, now: datetime) -> dict[str, object]:
     if last_sync is None:
-        return {"last_sync_at": None, "last_sync": "never; the user can run stage sync"}
+        return {"last_sync_at": None, "last_sync": NEVER_SYNCED}
     return {"last_sync_at": last_sync.astimezone(UTC).isoformat(), "last_sync": ago(last_sync, now)}
 
 
@@ -96,8 +101,8 @@ def full_place(raw: str, fallback: str) -> str:
 def posting_row(job: Job, status: ApplicationStatus | None) -> dict[str, object]:
     row: dict[str, object] = {
         "id": short(job.id),
-        "company": text(job.company),
-        "title": text(job.title_raw),
+        "company": text(job.company, COMPANY_LIMIT),
+        "title": text(job.title_raw, TITLE_LIMIT),
         "location": full_place(job.location_raw, job.location.value),
         "region": job.location.value,
         "role": job.role.value,
@@ -115,8 +120,8 @@ def posting_row(job: Job, status: ApplicationStatus | None) -> dict[str, object]
 def compact_row(job: Job, status: ApplicationStatus | None) -> list[object]:
     return [
         short(job.id),
-        text(job.company),
-        text(job.title_raw),
+        text(job.company, COMPANY_LIMIT),
+        text(job.title_raw, TITLE_LIMIT),
         place(job.location_raw, job.location.value),
         day(job.first_seen),
         status.value if status is not None else None,
@@ -164,8 +169,8 @@ def kept_copy(entry: TrackedPosting) -> dict[str, object]:
     snapshot = entry.snapshot
     return {
         "id": short(entry.posting_id),
-        "company": text(snapshot.company),
-        "title": text(snapshot.title),
+        "company": text(snapshot.company, COMPANY_LIMIT),
+        "title": text(snapshot.title, TITLE_LIMIT),
         "location": full_place(snapshot.location, "unknown"),
         "term": snapshot.term,
         "url": web_url(snapshot.apply_url),
@@ -178,8 +183,8 @@ def tracker_row(row: TrackerRow) -> dict[str, object]:
     snapshot = row.entry.snapshot
     return {
         "id": short(row.entry.posting_id),
-        "company": text(snapshot.company),
-        "title": text(snapshot.title),
+        "company": text(snapshot.company, COMPANY_LIMIT),
+        "title": text(snapshot.title, TITLE_LIMIT),
         "location": full_place(snapshot.location, "unknown"),
         "term": snapshot.term,
         "url": web_url(snapshot.apply_url),
@@ -191,8 +196,8 @@ def tracker_row(row: TrackerRow) -> dict[str, object]:
 def change_row(entry: TrackedPosting) -> dict[str, object]:
     return {
         "id": short(entry.posting_id),
-        "company": text(entry.snapshot.company),
-        "title": text(entry.snapshot.title),
+        "company": text(entry.snapshot.company, COMPANY_LIMIT),
+        "title": text(entry.snapshot.title, TITLE_LIMIT),
         "status": entry.status.value,
         "on": entry.on.isoformat(),
     }
@@ -201,8 +206,8 @@ def change_row(entry: TrackedPosting) -> dict[str, object]:
 def rejected_row(entry: QuarantinedJob) -> dict[str, object]:
     return {
         "id": short(entry.id),
-        "company": text(entry.company),
-        "title": text(entry.title_raw),
+        "company": text(entry.company, COMPANY_LIMIT),
+        "title": text(entry.title_raw, TITLE_LIMIT),
         "location": full_place(entry.location_raw, entry.location.value),
         "reason": entry.reason.value,
         "matched": text(entry.matched_phrase),
@@ -232,7 +237,7 @@ def past_the_last_page(following: int, total: int) -> list[str]:
     if following >= total or following <= MAX_OFFSET:
         return []
     return [
-        f"Stage pages through the first {MAX_OFFSET:,} only; narrow the request to see the rest."
+        f"Stage pages through the first {MAX_OFFSET:,} only. Narrow the request to see the rest."
     ]
 
 
@@ -261,12 +266,12 @@ __all__ = [
     "change_row",
     "compact_row",
     "day",
+    "error_text",
     "freshness",
     "kept_copy",
     "make_cursor",
     "next_cursor",
     "past_the_last_page",
-    "plural",
     "posting_detail",
     "posting_row",
     "read_cursor",

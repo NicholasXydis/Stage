@@ -1,12 +1,13 @@
 import asyncio
 import sqlite3
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Collection
+from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal, override
 
+import anyio
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from pydantic import BeforeValidator, Field
@@ -15,16 +16,15 @@ from stage.ai.references import MARK, expand, short
 from stage.ai.shape import (
     CAUTION,
     COMPACT_COLUMNS,
-    CursorError,
     answer,
     change_row,
     compact_row,
     day,
+    error_text,
     freshness,
     kept_copy,
     next_cursor,
     past_the_last_page,
-    plural,
     posting_detail,
     posting_row,
     read_cursor,
@@ -32,12 +32,13 @@ from stage.ai.shape import (
     text,
     tracker_row,
 )
-from stage.domain import DEFAULT_WINDOW_DAYS, MAX_OPEN_AT_ONCE, JobFilters
+from stage.domain import DEFAULT_WINDOW_DAYS, MAX_OPEN_AT_ONCE, Job, JobFilters, JobStatus
 from stage.domain.preferences import Preferences
-from stage.domain.text import dropped_punctuation
-from stage.storage import AsyncRepository, open_repository
+from stage.domain.text import counted, did_you_mean, first_line, plain_error
+from stage.storage import AsyncRepository, DatabaseWriter, open_repository
 
 if TYPE_CHECKING:
+    from stage.domain import Company as Board
     from stage.domain.tracker import TrackedPosting
     from stage.services.tracker import Change
 
@@ -74,19 +75,22 @@ NO_DATABASE = (
     "Stage has no postings on this computer yet. The user can run stage sync in a terminal "
     "to collect them."
 )
-NO_IDS = "Ids look like greenhouse:acme:1234; search_postings returns them."
+NO_IDS = (
+    "Stage has no posting with the ids in not_found. Ids look like greenhouse:acme:1234 and come "
+    "from search_postings or get_tracker."
+)
 GONE = (
-    "A posting marked gone is no longer stored by Stage; its fields are the copy saved when "
-    "the user tracked it."
+    "A posting marked gone is no longer stored by Stage. Its fields are the copy saved when the "
+    "user tracked it."
 )
 SOURCES_NOTE = (
     "A blocked host or a failing board means Stage already backed off and will try again on a "
-    "later sync. Do not suggest disabling boards; stage doctor in a terminal explains each "
-    "warning."
+    "later sync. Do not suggest disabling boards. The user can run stage doctor in a terminal "
+    "to see what each warning means."
 )
 QUARANTINE_NOTE = (
-    "These postings were rejected by Stage's screens and never appear in search_postings. "
-    "A rejection that looks wrong is worth telling the user about."
+    "Stage rejected these postings, so they never appear in search_postings. A rejection that "
+    "looks wrong is worth telling the user about."
 )
 NO_BROWSER = (
     "No web browser could be opened on this computer, so the links in not_opened were not "
@@ -94,6 +98,10 @@ NO_BROWSER = (
 )
 REFUSED_LINKS = (
     "Postings in refused have no plain http or https apply link, so Stage did not open them."
+)
+NO_LONGER_LISTED = (
+    "The employers' own boards no longer list the postings in no_longer_listed, so the pages "
+    "that opened for them may say the job is closed."
 )
 NO_UNDO = (
     "Stage has no change with that undo token. A token works once, and only until Stage "
@@ -103,9 +111,24 @@ CHANGED_AGAIN = (
     "Postings in left_alone changed again after that change, so Stage left them as they are."
 )
 SYNC_NOTE = (
-    "A sync takes several minutes and runs on its own. database_status shows its progress; "
-    "search again once it has finished."
+    "A sync takes several minutes and runs on its own. database_status shows its progress. "
+    "Search again once it has finished."
 )
+READ_ALONE = (
+    "Stage read the tracker without its database, so posting is null: whether each posting is "
+    "still open is unknown."
+)
+CHANGED_ALONE = "Stage changed the tracker without its database."
+KEPT_COPIES = "Each posting keeps the copy saved when it was first tracked."
+TRACKED_ONLY = (
+    "Without its database Stage can find only postings in the tracker, which holds no posting "
+    "with id {ids}. Nothing was changed."
+)
+UNCOUNTED = (
+    "Without its database Stage cannot count open postings, so open_postings is null for each "
+    "employer."
+)
+UNKNOWN_SYNC = "unknown, because Stage could not read its database"
 ExportType = Literal["csv", "md", "json", "pdf"]
 
 
@@ -126,11 +149,12 @@ def _blank(value: object) -> bool:
 
 
 PostingId = Annotated[str, Field(min_length=1, max_length=2_000), BeforeValidator(_stripped)]
+Employer = Annotated[str, Field(min_length=1, max_length=120), BeforeValidator(_stripped)]
 Cursor = Annotated[
     str | None,
     Field(
         max_length=100,
-        description="next_cursor from the previous page; send the same other arguments with it",
+        description="next_cursor from the previous page, sent with the same other arguments",
     ),
     _default(None),
 ]
@@ -188,8 +212,8 @@ Days = Annotated[
         ge=0,
         le=3650,
         description=(
-            "Only postings first seen in the last N days; 0 means any age. Without "
-            f"words the default is {DEFAULT_WINDOW_DAYS}; with words it is any age."
+            "Only postings first seen in the last N days, where 0 means any age. Without "
+            f"words the default is {DEFAULT_WINDOW_DAYS}, and with words it is any age."
         ),
     ),
     _default(None),
@@ -201,6 +225,7 @@ class Tools:
         self.database = database
         self._undo: dict[str, tuple[Change, ...]] = {}
         self._tracking = asyncio.Lock()
+        self._registry: tuple[tuple[object, ...], tuple[Board, ...], str] | None = None
 
     @asynccontextmanager
     async def _repository(self) -> AsyncIterator[AsyncRepository]:
@@ -212,9 +237,31 @@ class Tools:
             async with open_repository(self.database, read_only=True) as repository:
                 yield repository
         except SchemaVersionError as exc:
-            raise ToolError(f"Stage could not open its database. {exc}.") from exc
+            said = str(exc).rstrip(".")
+            raise ToolError(f"Stage could not open its database. {said}.") from exc
         except sqlite3.Error as exc:
             raise ToolError(_unreadable(self.database, exc)) from exc
+
+    @asynccontextmanager
+    async def _tracker_repository(self) -> AsyncIterator[tuple[AsyncRepository, str]]:
+        from stage.services.tracker import TrackerProblemError
+
+        async with AsyncExitStack() as stack:
+            problem = ""
+            try:
+                repository = await stack.enter_async_context(self._repository())
+            except ToolError as exc:
+                repository, problem = _NoPostings(self.database), str(exc)
+            try:
+                yield repository, problem
+            except TrackerProblemError as exc:
+                raise ToolError(str(exc)) from exc
+
+    async def _boards(self) -> "tuple[tuple[Board, ...], str]":
+        stamp = _registry_stamp()
+        if self._registry is None or self._registry[0] != stamp:
+            self._registry = (stamp, *await anyio.to_thread.run_sync(_load_boards))
+        return self._registry[1], self._registry[2]
 
     async def search_postings(
         self,
@@ -238,15 +285,13 @@ class Tools:
             Field(
                 description=(
                     f"Return up to {COMPACT_PAGE} matches per page as compact rows instead of "
-                    "full ones; limit is ignored"
+                    "full ones, ignoring limit"
                 )
             ),
             _default(False),
         ] = False,
         cursor: Cursor = None,
     ) -> CallToolResult:
-        from stage.domain import Language as Written
-        from stage.domain import LocationBucket, RoleCategory
         from stage.services.query import company_match, count_hidden, list_jobs, search_jobs
         from stage.services.tracker import tracker_view
 
@@ -264,28 +309,16 @@ class Tools:
             "all_matches": all_matches,
         }
         page = COMPACT_PAGE if all_matches else limit
-        filters = JobFilters(
-            location=LocationBucket(location) if location else None,
-            term=term,
-            role=RoleCategory(role) if role else None,
-            language=Written(language) if language else None,
-            company=company,
-            limit=None,
-        )
-        notes: list[str] = []
-        described = ""
-        if mine:
-            filters, preferences, problems = _mine(filters)
-            described = preferences.describe(filters)
-            notes.extend(problems)
+        filters, described, notes = _chosen(location, role, term, language, company, mine)
         query = words if words.strip() else ""
+        window = _window(query, days)
         now = datetime.now(UTC)
         async with self._repository() as repository:
             last_sync = await repository.last_sync_at()
             view = await tracker_view(repository)
             excluded = view.tracked if untracked else view.hidden
             version = [last_sync, sorted(excluded), described]
-            offset = _offset(cursor, arguments, version)
+            offset = read_cursor(cursor, arguments, version)
             scoped = replace(filters, excluded_ids=excluded, limit=offset + page)
             if new:
                 since = await repository.previous_sync_at()
@@ -294,10 +327,8 @@ class Tools:
                 elif last_sync is not None:
                     notes.append("Only one sync so far, so every posting counts as new.")
             if query:
-                window = days or None
                 listing = await search_jobs(repository, query, scoped, window_days=window)
             else:
-                window = DEFAULT_WINDOW_DAYS if days is None else days or None
                 listing = await list_jobs(repository, scoped, window_days=window)
             hidden = await count_hidden(
                 repository, scoped, view.hidden, window_days=window, query=query
@@ -310,7 +341,6 @@ class Tools:
         shown = listing.jobs[offset : offset + page]
         statuses = view.statuses
         following = offset + len(shown)
-        more = following < listing.total_matching
         payload: dict[str, object] = {
             "total": listing.total_matching,
             "offset": offset,
@@ -325,34 +355,20 @@ class Tools:
             payload["rows"] = [compact_row(job, statuses.get(job.id)) for job in shown]
         else:
             payload["postings"] = [posting_row(job, statuses.get(job.id)) for job in shown]
-        if query and not listing.terms:
-            notes.append(
-                "Stage searches Latin letters and digits, so those words cannot be searched."
-                if any(character.isalpha() for character in query)
-                else "Nothing in those words can be searched; punctuation is dropped."
-            )
-        elif dropped_punctuation(query):
-            notes.append(
-                f"Punctuation is dropped, so {text(query, 60)!r} was searched as "
-                f"{' '.join(listing.terms)!r}."
-            )
+        notes.extend(_searched_as(query, listing.terms))
         if not known:
-            asked = text(company or "", 60)
-            notes.append(
-                f"Stage stores no posting from an employer named {asked!r}."
-                + (f" Did you mean {text(near, 60)!r}?" if near else "")
-            )
+            notes.append(_unknown_employer(company or "", near))
         if listing.no_location:
             notes.append(
-                f"Left out {plural(listing.no_location, 'more posting')} with no location "
-                "given; send location='unknown' with mine=true for those."
+                f"Left out {counted(listing.no_location, 'more posting')} with no location "
+                "given. Send location='unknown' with mine=true for those."
             )
         if hidden:
             notes.append(
-                f"Left out {plural(hidden, 'posting')} the user hid; get_tracker with "
-                "status='hidden' shows hidden postings."
+                f"Left out {counted(hidden, 'posting')} the user hid. get_tracker with "
+                "status='hidden' shows them."
             )
-        if all_matches and more:
+        if all_matches and following < listing.total_matching:
             notes.append(f"The user can get every match with: {_command(arguments)}")
         if view.problem:
             payload["warning"] = view.problem
@@ -470,7 +486,7 @@ class Tools:
         now = datetime.now(UTC)
         async with self._repository() as repository:
             last_sync = await repository.last_sync_at()
-            offset = _offset(cursor, arguments, last_sync)
+            offset = read_cursor(cursor, arguments, last_sync)
             listing = await list_quarantined(
                 repository,
                 QuarantineFilters(
@@ -507,8 +523,9 @@ class Tools:
         from stage.services.health import doctor
 
         now = datetime.now(UTC)
+        registered, unread = await self._boards()
         async with self._repository() as repository:
-            report = await doctor(repository, now=now)
+            report = await doctor(repository, now=now, companies=registered)
         sources = [
             {
                 "source": source.source,
@@ -539,7 +556,7 @@ class Tools:
                     "until": state.blocked_until.astimezone(UTC).isoformat()
                     if state.blocked_until
                     else None,
-                    "reason": text(state.reason, 200),
+                    "reason": error_text(state.reason, 200),
                 }
                 for state in report.blocks
             ],
@@ -558,12 +575,12 @@ class Tools:
                     "state": board.state.value,
                     "failures": board.consecutive_failures,
                     "last_success": day(board.last_success_at),
-                    "last_error": text(board.last_error, 200),
+                    "last_error": error_text(board.last_error, 200),
                 }
                 for board in boards[:MAX_BOARDS]
             ]
             payload["boards_not_shown"] = max(0, len(boards) - MAX_BOARDS)
-        payload["notes"] = [SOURCES_NOTE]
+        payload["notes"] = [SOURCES_NOTE, unread] if unread else [SOURCES_NOTE]
         payload["caution"] = CAUTION
         return answer({**payload, **freshness(report.last_sync_at, now)})
 
@@ -578,19 +595,19 @@ class Tools:
             Field(
                 description=(
                     "The new status. saved and applied never move a posting back, so an applied "
-                    "posting stays applied; set override to move it back on purpose."
+                    "posting stays applied. Set override to move it back on purpose."
                 )
             ),
         ] = None,
         note: Annotated[
             str | None,
-            Field(max_length=1_000, description="A short note; an empty string clears it"),
+            Field(max_length=1_000, description="A short note, or an empty string to clear it"),
         ] = None,
         on: Annotated[
             str | None,
             Field(
                 pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-                description="The day it happened, like 2026-10-20; today by default",
+                description="The day it happened, like 2026-10-20 (today by default)",
             ),
             _default(None),
         ] = None,
@@ -601,7 +618,7 @@ class Tools:
         ] = False,
     ) -> CallToolResult:
         from stage.domain.tracker import ApplicationStatus, TrackerError, parse_day, parse_note
-        from stage.services.tracker import TrackerProblemError, record_status
+        from stage.services.tracker import record_status
 
         if status is None and note is None and on is None:
             raise ToolError("Send a status, a note or a date. Nothing was changed.")
@@ -615,23 +632,22 @@ class Tools:
             chosen in (ApplicationStatus.SAVED, ApplicationStatus.APPLIED) and not override
         )
         now = datetime.now(UTC)
-        async with self._tracking, self._repository() as repository:
+        async with self._tracking, self._tracker_repository() as (repository, problem):
             wanted = await _resolved(repository, ids)
-            try:
-                report = await record_status(
-                    repository, wanted, chosen, on=when, note=written, forward_only=forward_only
-                )
-            except TrackerProblemError as exc:
-                raise ToolError(str(exc)) from exc
+            report = await record_status(
+                repository, wanted, chosen, on=when, note=written, forward_only=forward_only
+            )
             last_sync = await repository.last_sync_at()
         if report.missing:
-            raise ToolError(f"No posting with id {_listed(report.missing)}. Nothing was changed.")
+            raise ToolError(_not_found(report.missing, problem))
         if report.untracked:
+            one = len(report.untracked) == 1
             raise ToolError(
-                f"{_listed(report.untracked)} is not tracked yet, so there is no status to keep. "
-                "Send status='saved' to start tracking it. Nothing was changed."
+                f"{_listed(report.untracked)} {'is' if one else 'are'} not tracked yet, so there "
+                f"is no status to keep. Send status='saved' to start tracking "
+                f"{'it' if one else 'them'}. Nothing was changed."
             )
-        notes: list[str] = []
+        notes = [f"{problem} {CHANGED_ALONE} {KEPT_COPIES}"] if problem else []
         if forward_only and report.unchanged:
             notes.append(
                 "saved and applied never move a posting back. Send override=true to set the "
@@ -650,7 +666,7 @@ class Tools:
         if report.changed:
             payload["undo"] = self._remember(report.changed)
         payload["notes"] = notes
-        return answer({**payload, **freshness(last_sync, now)})
+        return answer({**payload, **_synced(last_sync, now, problem)})
 
     def _remember(self, changes: "tuple[Change, ...]") -> str:
         import secrets
@@ -672,30 +688,33 @@ class Tools:
             ),
         ],
     ) -> CallToolResult:
-        from stage.services.tracker import TrackerProblemError, restore_unless_changed
+        from stage.services.tracker import restore_unless_changed
 
         token = undo.strip()
-        changes = self._undo.pop(token, None)
-        if changes is None:
-            raise ToolError(NO_UNDO)
-        try:
-            async with self._tracking:
-                async with self._repository() as repository:
+        async with self._tracking:
+            changes = self._undo.pop(token, None)
+            if changes is None:
+                raise ToolError(NO_UNDO)
+            undone = False
+            try:
+                async with self._tracker_repository() as (repository, problem):
                     last_sync = await repository.last_sync_at()
-                restored, kept = restore_unless_changed(changes)
-        except TrackerProblemError as exc:
-            self._undo[token] = changes
-            raise ToolError(str(exc)) from exc
-        except ToolError:
-            self._undo[token] = changes
-            raise
+                    with anyio.CancelScope(shield=True):
+                        restored, kept = await anyio.to_thread.run_sync(
+                            restore_unless_changed, changes
+                        )
+                        undone = True
+            finally:
+                if not undone:
+                    self._undo[token] = changes
         now = datetime.now(UTC)
+        notes = [f"{problem} {CHANGED_ALONE}"] if problem else []
         return answer(
             {
-                "restored": [_restored(change) for change in restored],
-                "left_alone": [_left_alone(change, now) for change, now in kept],
-                "notes": [CHANGED_AGAIN] if kept else [],
-                **freshness(last_sync, now),
+                "restored": [_as_now(change.previous, change) for change in restored],
+                "left_alone": [_as_now(current, change) for change, current in kept],
+                "notes": [*notes, CHANGED_AGAIN] if kept else notes,
+                **_synced(last_sync, now, problem),
             }
         )
 
@@ -706,27 +725,25 @@ class Tools:
             Field(
                 min_length=1,
                 max_length=MAX_CHANGE,
-                description="Posting ids to stop tracking; hidden ones show again",
+                description="Posting ids to stop tracking. Hidden ones show in searches again",
             ),
         ],
     ) -> CallToolResult:
-        from stage.services.tracker import TrackerProblemError, remove_tracked
+        from stage.services.tracker import remove_tracked
 
         now = datetime.now(UTC)
-        async with self._tracking, self._repository() as repository:
+        async with self._tracking, self._tracker_repository() as (repository, problem):
             wanted = await _resolved(repository, ids)
-            try:
-                report = await remove_tracked(repository, wanted)
-            except TrackerProblemError as exc:
-                raise ToolError(str(exc)) from exc
+            report = await remove_tracked(repository, wanted)
             last_sync = await repository.last_sync_at()
         if report.missing:
-            raise ToolError(f"No posting with id {_listed(report.missing)}. Nothing was changed.")
+            raise ToolError(_not_found(report.missing, problem))
         return answer(
             {
                 "removed": [change_row(entry) for entry in report.removed],
                 "not_tracked": [short(ident) for ident in report.not_tracked],
-                **freshness(last_sync, now),
+                "notes": [f"{problem} {CHANGED_ALONE}"] if problem else [],
+                **_synced(last_sync, now, problem),
             }
         )
 
@@ -734,33 +751,30 @@ class Tools:
         self,
         status: Annotated[
             Status | None,
-            Field(description="Only this status; hidden postings show only when asked for"),
+            Field(description="Only this status. Hidden postings show only when asked for"),
             _default(None),
         ] = None,
         limit: Limit = PAGE,
         cursor: Cursor = None,
     ) -> CallToolResult:
         from stage.domain.tracker import ApplicationStatus
-        from stage.services.tracker import TrackerProblemError, stats_payload, tracker_listing
+        from stage.services.tracker import stats_payload, tracker_listing
 
         arguments: dict[str, object] = {"status": status}
         now = datetime.now(UTC)
-        async with self._repository() as repository:
-            try:
-                listing = await tracker_listing(
-                    repository, ApplicationStatus(status) if status else None
-                )
-            except TrackerProblemError as exc:
-                raise ToolError(str(exc)) from exc
+        async with self._tracker_repository() as (repository, problem):
+            listing = await tracker_listing(
+                repository, ApplicationStatus(status) if status else None
+            )
         version = [
             listing.last_sync_at,
             [(row.entry.posting_id, row.entry.changed_at) for row in listing.rows],
         ]
-        try:
-            offset = read_cursor(cursor, arguments, version)
-        except CursorError as exc:
-            raise ToolError(str(exc)) from exc
+        offset = read_cursor(cursor, arguments, version)
         shown = [tracker_row(row) for row in listing.rows[offset : offset + limit]]
+        if problem:
+            shown = [{**row, "posting": None} for row in shown]
+        notes = [GONE] if any(row["posting"] == "gone" for row in shown) else []
         following = offset + len(shown)
         return answer(
             {
@@ -771,9 +785,9 @@ class Tools:
                 "hidden": listing.hidden,
                 "summary": stats_payload(listing.stats),
                 "postings": shown,
-                "notes": [GONE] if any(row["posting"] == "gone" for row in shown) else [],
+                "notes": [*notes, f"{problem} {READ_ALONE}"] if problem else notes,
                 "caution": CAUTION,
-                **freshness(listing.last_sync_at, now),
+                **_synced(listing.last_sync_at, now, problem),
             }
         )
 
@@ -781,11 +795,11 @@ class Tools:
         from stage.services.preferences import load_preferences
 
         loaded = load_preferences()
-        counts, synced = await self._counts(loaded.preferences)
+        counts, synced, problem = await self._counts(loaded.preferences)
         return answer(
             {
                 **_preferences(loaded.preferences, counts),
-                "notes": list(loaded.problems),
+                "notes": [*loaded.problems, *_uncounted(loaded.preferences, problem)],
                 **synced,
             }
         )
@@ -794,7 +808,7 @@ class Tools:
         self,
         locations: Annotated[
             list[ChosenPlace] | None,
-            Field(max_length=3, description="Places to keep; canada includes montreal"),
+            Field(max_length=3, description="Places to keep (canada includes montreal)"),
         ] = None,
         roles: Annotated[
             list[ChosenRole] | None, Field(max_length=8, description="Kinds of work to keep")
@@ -804,11 +818,11 @@ class Tools:
             Field(max_length=12, description="Terms such as summer-2027"),
         ] = None,
         follow: Annotated[
-            list[Annotated[str, Field(min_length=1, max_length=120)]] | None,
+            list[Employer] | None,
             Field(max_length=50, description="Employers to include from any place"),
         ] = None,
         avoid: Annotated[
-            list[Annotated[str, Field(min_length=1, max_length=120)]] | None,
+            list[Employer] | None,
             Field(max_length=50, description="Employers to leave out"),
         ] = None,
         about: Annotated[
@@ -820,12 +834,13 @@ class Tools:
         ] = None,
         clear: Annotated[
             bool,
-            Field(description="Delete every saved preference; send it alone"),
+            Field(description="Delete every saved preference. Send it alone"),
             _default(False),
         ] = False,
     ) -> CallToolResult:
         from stage.domain.preferences import PreferenceError
         from stage.services.preferences import (
+            LoadedPreferences,
             clear_preferences,
             load_preferences,
             preferences_lock,
@@ -842,13 +857,20 @@ class Tools:
             raise ToolError("clear deletes every saved preference, so send it alone.")
         if clear:
             try:
-                removed = clear_preferences()
+                removed = await anyio.to_thread.run_sync(clear_preferences)
             except OSError as exc:
                 raise ToolError(_could_not("delete", preferences_path(), exc)) from exc
-            _, synced = await self._counts(Preferences())
-            return answer({**_preferences(Preferences(), {}), "cleared": removed, **synced})
+            _, synced, problem = await self._counts(Preferences())
+            return answer(
+                {
+                    **_preferences(Preferences(), {}),
+                    "cleared": removed,
+                    "notes": _uncounted(Preferences(), problem),
+                    **synced,
+                }
+            )
         if not changing:
-            raise ToolError("Send at least one field to change; get_preferences shows them.")
+            raise ToolError("Send at least one field to change. get_preferences shows them.")
         known: dict[str, str] = {}
         if follow is not None or avoid is not None:
             try:
@@ -856,7 +878,8 @@ class Tools:
                     known = await stored_companies(repository)
             except ToolError:
                 known = {}
-        try:
+
+        def save() -> tuple[LoadedPreferences, Preferences]:
             with preferences_lock():
                 loaded = load_preferences()
                 revised = revise_preferences(
@@ -870,11 +893,15 @@ class Tools:
                     about=about,
                 )
                 save_preferences(revised)
+            return loaded, revised
+
+        try:
+            loaded, revised = await anyio.to_thread.run_sync(save)
         except PreferenceError as exc:
             raise ToolError(f"{exc} Nothing was saved.") from exc
         except OSError as exc:
             raise ToolError(_could_not("save", preferences_path(), exc)) from exc
-        counts, synced = await self._counts(revised)
+        counts, synced, problem = await self._counts(revised)
         replaced = (
             ["The old preferences file could not be read, so these choices replaced it."]
             if loaded.damaged
@@ -883,7 +910,11 @@ class Tools:
         return answer(
             {
                 **_preferences(revised, counts),
-                "notes": [*replaced, *unseen_companies(revised, known)],
+                "notes": [
+                    *replaced,
+                    *unseen_companies(revised, known),
+                    *_uncounted(revised, problem),
+                ],
                 **synced,
             }
         )
@@ -899,8 +930,6 @@ class Tools:
             ),
         ],
     ) -> CallToolResult:
-        import anyio
-
         from stage.domain import web_url
         from stage.services.query import get_posting
         from stage.services.tracker import tracked_for
@@ -912,6 +941,7 @@ class Tools:
             tracked, _ = await tracked_for(repository, wanted)
             last_sync = await repository.last_sync_at()
         links: list[tuple[dict[str, object], str]] = []
+        sent: list[str] = []
         refused: list[dict[str, object]] = []
         missing: list[str] = []
         for ident, detail in zip(wanted, details, strict=True):
@@ -938,10 +968,14 @@ class Tools:
                 refused.append(row)
             else:
                 links.append((row, url))
+                sent.append(ident)
         launched = await anyio.to_thread.run_sync(_launch_all, [url for _, url in links])
         results = list(zip(links, launched, strict=True))
         opened = [{**row, "url": url} for (row, url), done in results if done]
         stranded = [{**row, "url": url} for (row, url), done in results if not done]
+        unlisted = await _no_longer_listed(
+            self.database, [ident for ident, done in zip(sent, launched, strict=True) if done]
+        )
         notes: list[str] = []
         if missing:
             notes.append(NO_IDS)
@@ -949,12 +983,15 @@ class Tools:
             notes.append(REFUSED_LINKS)
         if stranded:
             notes.append(NO_BROWSER)
+        if unlisted:
+            notes.append(NO_LONGER_LISTED)
         return answer(
             {
                 "opened": opened,
                 "not_opened": stranded,
                 "refused": refused,
                 "not_found": missing,
+                "no_longer_listed": unlisted,
                 "notes": notes,
                 "caution": CAUTION,
                 **freshness(last_sync, now),
@@ -980,8 +1017,7 @@ class Tools:
         untracked: Untracked = False,
         days: Days = None,
     ) -> CallToolResult:
-        from stage.domain import ExportFormat, LocationBucket, RoleCategory
-        from stage.domain import Language as Written
+        from stage.domain import ExportFormat
         from stage.services.export import (
             ExportError,
             downloads_root,
@@ -992,25 +1028,10 @@ class Tools:
 
         fmt = ExportFormat(file_type)
         root = downloads_root()
-        if not root.is_dir():
-            raise ToolError(
-                f"Stage saves exports in {root}, which does not exist. The user can create it "
-                "or set STAGE_EXPORT_DIR to another folder. Nothing was exported."
-            )
-        filters = JobFilters(
-            location=LocationBucket(location) if location else None,
-            term=term,
-            role=RoleCategory(role) if role else None,
-            language=Written(language) if language else None,
-            company=company,
-            limit=None,
-        )
-        notes: list[str] = []
-        described = ""
-        if mine:
-            filters, preferences, problems = _mine(filters)
-            described = preferences.describe(filters)
-            notes.extend(problems)
+        unusable = _no_folder(root)
+        if unusable:
+            raise ToolError(unusable)
+        filters, described, notes = _chosen(location, role, term, language, company, mine)
         query = words if words.strip() else ""
         window = _window(query, days)
         now = datetime.now(UTC)
@@ -1059,8 +1080,6 @@ class Tools:
         return answer({**payload, **freshness(last_sync, now)})
 
     async def start_sync(self) -> CallToolResult:
-        import anyio
-
         from stage.services.background import RUNNING, start_sync
 
         launched = await anyio.to_thread.run_sync(start_sync, self.database)
@@ -1068,7 +1087,7 @@ class Tools:
         state = progress["state"] if progress is not None else None
         if not launched.started and state not in (*RUNNING, "blocked"):
             raise ToolError(f"{text(launched.detail, 400)} No sync is running.")
-        _, synced = await self._counts(Preferences())
+        _, synced, _ = await self._counts(Preferences())
         return answer(
             {
                 "started": launched.started,
@@ -1079,15 +1098,69 @@ class Tools:
             }
         )
 
-    async def _counts(self, preferences: Preferences) -> tuple[dict[str, int], dict[str, object]]:
+    async def _counts(
+        self, preferences: Preferences
+    ) -> tuple[dict[str, int] | None, dict[str, object], str]:
         wanted = {company.folded for company in (*preferences.follow, *preferences.avoid)}
+        now = datetime.now(UTC)
         try:
             async with self._repository() as repository:
                 counts = await repository.open_counts_by_company(wanted)
                 last_sync = await repository.last_sync_at()
-        except ToolError:
-            return {}, {}
-        return counts, freshness(last_sync, datetime.now(UTC))
+        except ToolError as exc:
+            return None, _synced(None, now, str(exc)), str(exc)
+        return counts, freshness(last_sync, now), ""
+
+
+class _NoPostings(AsyncRepository):
+    def __init__(self, database: Path) -> None:
+        super().__init__(DatabaseWriter(database, read_only=True))
+
+    @override
+    async def ids_with_prefix(self, prefix: str) -> list[str]:
+        return []
+
+    @override
+    async def canonical_ids(self, job_ids: Collection[str]) -> dict[str, str]:
+        return {}
+
+    @override
+    async def posting_states(self, job_ids: Collection[str]) -> dict[str, JobStatus]:
+        return {}
+
+    @override
+    async def get_job(self, job_id: str) -> Job | None:
+        return None
+
+    @override
+    async def last_sync_at(self) -> datetime | None:
+        return None
+
+
+def _synced(last_sync: datetime | None, now: datetime, problem: str) -> dict[str, object]:
+    if problem and problem != NO_DATABASE:
+        return {"last_sync_at": None, "last_sync": UNKNOWN_SYNC}
+    return freshness(last_sync, now)
+
+
+def _not_found(missing: tuple[str, ...], problem: str) -> str:
+    if problem:
+        return f"{problem} {TRACKED_ONLY.format(ids=_listed(missing))}"
+    return f"No posting with id {_listed(missing)}. Nothing was changed."
+
+
+def _uncounted(preferences: Preferences, problem: str) -> list[str]:
+    if not problem:
+        return []
+    counted = preferences.follow or preferences.avoid
+    return [f"{problem} {UNCOUNTED}" if counted else problem]
+
+
+def _searched_as(query: str, terms: tuple[str, ...]) -> list[str]:
+    from stage.services.query import searched_as
+
+    note = searched_as(query, terms)
+    return [note] if note else []
 
 
 async def _resolved(repository: AsyncRepository, ids: list[str]) -> list[str]:
@@ -1100,9 +1173,28 @@ async def _resolved(repository: AsyncRepository, ids: list[str]) -> list[str]:
     return list(dict.fromkeys(await expand(repository, wanted, view.statuses.keys())))
 
 
-def _mine(filters: JobFilters) -> tuple[JobFilters, Preferences, list[str]]:
+def _chosen(
+    location: str | None,
+    role: str | None,
+    term: str | None,
+    language: str | None,
+    company: str | None,
+    mine: bool,
+) -> tuple[JobFilters, str, list[str]]:
+    from stage.domain import Language as Written
+    from stage.domain import LocationBucket, RoleCategory
     from stage.services.preferences import load_preferences
 
+    filters = JobFilters(
+        location=LocationBucket(location) if location else None,
+        term=term,
+        role=RoleCategory(role) if role else None,
+        language=Written(language) if language else None,
+        company=company,
+        limit=None,
+    )
+    if not mine:
+        return filters, "", []
     loaded = load_preferences()
     if loaded.damaged:
         raise ToolError(
@@ -1121,29 +1213,62 @@ def _mine(filters: JobFilters) -> tuple[JobFilters, Preferences, list[str]]:
             f"The saved preferences only hold {held}, so mine would match everything. Ask "
             "which places, roles or terms they want and save them with set_preferences."
         )
-    return preferences.apply(filters), preferences, list(loaded.problems)
+    narrowed = preferences.apply(filters)
+    return narrowed, preferences.describe(narrowed), list(loaded.problems)
 
 
-def _left_alone(change: "Change", now: "TrackedPosting | None") -> dict[str, object]:
-    if now is not None:
-        return change_row(now)
+def _as_now(entry: "TrackedPosting | None", change: "Change") -> dict[str, object]:
+    if entry is not None:
+        return change_row(entry)
     return {**change_row(change.entry), "status": None, "on": None}
 
 
-def _restored(change: "Change") -> dict[str, object]:
-    if change.previous is not None:
-        return change_row(change.previous)
-    return {**change_row(change.entry), "status": None, "on": None}
+def _unknown_employer(company: str, near: str | None) -> str:
+    said = f'Stage stores no posting from an employer named "{text(company, 60)}".'
+    return f"{said} {did_you_mean(text(near, 60))}" if near else said
 
 
-def _offset(cursor: str | None, arguments: dict[str, object], version: object) -> int:
+def _registry_stamp() -> tuple[object, ...]:
+    from stage.paths import boards_path, registry_path
+
+    source = registry_path()
+    files = sorted(source.glob("*.yaml")) if source.is_dir() else [source]
+    return (datetime.now(UTC).date(), *(_stamp(path) for path in (*files, boards_path())))
+
+
+def _stamp(path: Path) -> tuple[object, ...]:
     try:
-        return read_cursor(cursor, arguments, version)
-    except CursorError as exc:
-        raise ToolError(str(exc)) from exc
+        found = path.stat()
+    except OSError:
+        return (str(path),)
+    return str(path), found.st_mtime_ns, found.st_size, found.st_ino
 
 
-def _preferences(preferences: Preferences, counts: dict[str, int]) -> dict[str, object]:
+def _load_boards() -> "tuple[tuple[Board, ...], str]":
+    from stage.companies import RegistryError, load_boards
+
+    try:
+        boards, personal = load_boards(None)
+    except RegistryError as exc:
+        return (), (
+            f"Stage could not read its list of boards ({_first(exc)}), so boards it no longer "
+            "reads may be listed."
+        )
+    problem = getattr(personal, "problem", None)
+    if not problem:
+        return boards, ""
+    return boards, f"The user's own board list is ignored until it can be read: {_first(problem)}."
+
+
+def _first(problem: object) -> str:
+    return text(first_line(str(problem)), 200).rstrip(".:")
+
+
+def _count(counts: dict[str, int] | None, key: str) -> int | None:
+    return None if counts is None else counts.get(key, 0)
+
+
+def _preferences(preferences: Preferences, counts: dict[str, int] | None) -> dict[str, object]:
     from stage.domain.preferences import CHOOSABLE_LOCATIONS, CHOOSABLE_ROLES
 
     return {
@@ -1152,11 +1277,11 @@ def _preferences(preferences: Preferences, counts: dict[str, int]) -> dict[str, 
         "roles": [role.value for role in preferences.roles],
         "terms": list(preferences.terms),
         "follow": [
-            {"name": company.name, "open_postings": counts.get(company.folded, 0)}
+            {"name": company.name, "open_postings": _count(counts, company.folded)}
             for company in preferences.follow
         ],
         "avoid": [
-            {"name": company.name, "open_postings": counts.get(company.folded, 0)}
+            {"name": company.name, "open_postings": _count(counts, company.folded)}
             for company in preferences.avoid
         ],
         "about": preferences.about,
@@ -1172,6 +1297,16 @@ def _window(query: str, days: int | None) -> int | None:
     if query:
         return days or None
     return DEFAULT_WINDOW_DAYS if days is None else days or None
+
+
+async def _no_longer_listed(database: Path, job_ids: list[str]) -> list[dict[str, object]]:
+    from stage.services.liveness import check_opened
+
+    checked = await check_opened(database, job_ids, record=False)
+    return [
+        {"id": short(job.id), "company": text(job.company, 120), "title": text(job.title_raw, 200)}
+        for job in checked.gone
+    ]
 
 
 def _launch_all(urls: list[str]) -> list[bool]:
@@ -1194,12 +1329,29 @@ def _background(found: dict[str, object] | None) -> dict[str, object] | None:
 
 
 def _unreadable(database: Path, exc: sqlite3.Error) -> str:
-    reason = str(exc) or type(exc).__name__
-    if "locked" in reason or "busy" in reason:
-        return "Stage's database is busy, most likely with a sync. Try again in a minute."
+    from stage.storage.problems import database_problem
+
+    return database_problem(exc, database)
+
+
+def _no_folder(root: Path) -> str:
+    try:
+        if root.is_dir():
+            return ""
+        found = root.exists()
+    except OSError as exc:
+        return (
+            f"Stage cannot reach {root} ({exc.strerror or plain_error(str(exc))}). The user can "
+            "set STAGE_EXPORT_DIR to another folder. Nothing was exported."
+        )
+    if found:
+        return (
+            f"Stage saves exports in {root}, which is not a folder. The user can set "
+            "STAGE_EXPORT_DIR to a folder. Nothing was exported."
+        )
     return (
-        f"Stage could not read its database at {database} ({reason}). The user can run "
-        "stage doctor in a terminal for details."
+        f"Stage saves exports in {root}, which does not exist. The user can create it or set "
+        "STAGE_EXPORT_DIR to another folder. Nothing was exported."
     )
 
 
@@ -1209,7 +1361,11 @@ def _listed(ids: tuple[str, ...]) -> str:
 
 
 def _could_not(verb: str, path: Path, exc: OSError) -> str:
-    return f"Could not {verb} {path}: {exc.strerror or type(exc).__name__}."
+    reason = exc.strerror or plain_error(str(exc))
+    return (
+        f"Stage could not {verb} {path} ({reason}). The user can check that the file and its "
+        "folder are theirs and writable."
+    )
 
 
 def _command(arguments: dict[str, object]) -> str:
