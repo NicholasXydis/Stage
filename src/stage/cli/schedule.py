@@ -1,20 +1,26 @@
 import argparse
+import getpass
 import os
 import platform
 import plistlib
 import random
 import re
+import signal
 import subprocess
 import sys
+import threading
 import time
 import xml.etree.ElementTree as ElementTree
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass, replace
 from datetime import datetime
+from functools import cache
 from html import unescape
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TextIO, cast
+from types import FrameType
+from typing import TYPE_CHECKING, TextIO, cast
 
 from stage.cli.logfile import rotate
 from stage.cli.schedule_state import (
@@ -26,13 +32,26 @@ from stage.cli.schedule_state import (
 )
 from stage.paths import data_dir
 
+if TYPE_CHECKING:
+    import ctypes
+
 SYNC_TIME = "00:00"
 DISCOVER_TIME = "10:30"
 VERIFY_TIME = "11:30"
-SYNC_EVERY_HOURS = 6
+SYNC_EVERY_MINUTES = 30
+EVERY_CHOICES = (30, 60, 120, 180, 240, 360, 480, 720)
 MAX_JITTER_S = 1800
+JITTER_SHARE = 0.2
+START_MINUTE_NAME = "start-minute"
 _SUBSYSTEM_GUI = 2
 _CREATE_NO_WINDOW = 0x08000000
+STOP_WAIT_SECONDS = 10.0
+_STOP_SIGNALS = ("SIGTERM", "SIGHUP", "SIGBREAK")
+_JOBS: list[int] = []
+_KILL_ON_JOB_CLOSE = 0x2000
+_EXTENDED_LIMITS = 9
+_PROCESS_SET_QUOTA = 0x0100
+_PROCESS_TERMINATE = 0x0001
 
 
 class ScheduleError(Exception):
@@ -50,14 +69,61 @@ class ScheduledAction:
     windows_day: str | None = None
     launchd_weekday: int | None = None
     systemd_day: str | None = None
-    repeat_hours: int | None = None
+    repeat_minutes: int | None = None
 
     @property
     def start_hours(self) -> tuple[int, ...]:
         first = int(self.time[:2])
-        if self.repeat_hours is None:
+        if self.repeat_minutes is None:
             return (first,)
-        return tuple(range(first, 24, self.repeat_hours))
+        return tuple(range(first, 24, max(1, self.repeat_minutes // 60)))
+
+    @property
+    def start_minutes(self) -> tuple[int, ...]:
+        first = int(self.time[3:])
+        if self.repeat_minutes is None or self.repeat_minutes >= 60:
+            return (first,)
+        return tuple(range(first, 60, self.repeat_minutes))
+
+    @property
+    def when(self) -> str:
+        if self.repeat_minutes is not None and self.repeat_minutes < 60:
+            return "at " + " and ".join(f":{minute:02d}" for minute in self.start_minutes)
+        if self.repeat_minutes is not None:
+            return f"from {self.time}"
+        return f"at {self.time}"
+
+    def every(self, minutes: int | None) -> "ScheduledAction":
+        if self.repeat_minutes is None or minutes is None:
+            return self
+        return replace(self, repeat_minutes=minutes, cadence=every_text(minutes))
+
+    def placed(self, minute: int) -> "ScheduledAction":
+        offset = minute % SYNC_EVERY_MINUTES if self.repeat_minutes is not None else minute % 60
+        return replace(self, time=f"{self.time[:3]}{offset:02d}")
+
+
+def _short(minutes: int) -> str:
+    return f"{minutes}m" if minutes < 60 else f"{minutes // 60}h"
+
+
+def every_text(minutes: int) -> str:
+    if minutes < 60:
+        return f"every {minutes} minutes"
+    hours = minutes // 60
+    return "every hour" if hours == 1 else f"every {hours} hours"
+
+
+def parse_every(text: str) -> int:
+    match = re.fullmatch(r"\s*(\d+)\s*(m|min|mins|minutes?|h|hr|hrs|hours?)\s*", text.lower())
+    minutes = 0
+    if match:
+        minutes = int(match.group(1)) * (1 if match.group(2).startswith("m") else 60)
+    if minutes not in EVERY_CHOICES:
+        choices = ", ".join(_short(choice) for choice in EVERY_CHOICES)
+        asked = f'Unknown interval "{text.strip()[:20]}"' if text.strip() else "No interval given"
+        raise ScheduleError(f"{asked} for --every. Choose from: {choices}.")
+    return minutes
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,17 +134,18 @@ class ScheduleStatus:
     states: tuple[dict[str, object] | None, ...] = ()
     needs_update: tuple[bool, ...] = ()
     stale_interpreter: tuple[str, ...] = ()
+    lingering: bool | None = None
 
 
 _ACTIONS = (
     ScheduledAction(
         key="sync",
         label="Stage Sync",
-        cadence=f"every {SYNC_EVERY_HOURS} hours",
+        cadence=every_text(SYNC_EVERY_MINUTES),
         time=SYNC_TIME,
         windows_schedule="DAILY",
         cli_arguments=("sync",),
-        repeat_hours=SYNC_EVERY_HOURS,
+        repeat_minutes=SYNC_EVERY_MINUTES,
     ),
     ScheduledAction(
         key="discover",
@@ -86,7 +153,15 @@ _ACTIONS = (
         cadence="weekly on Monday",
         time=DISCOVER_TIME,
         windows_schedule="WEEKLY",
-        cli_arguments=("discover", "--unregistered", "--direct-only", "--limit", "40"),
+        cli_arguments=(
+            "discover",
+            "--unregistered",
+            "--direct-only",
+            "--adopt-unnamed",
+            "--limit",
+            "40",
+            "--apply",
+        ),
         windows_day="MON",
         launchd_weekday=1,
         systemd_day="Mon",
@@ -97,7 +172,7 @@ _ACTIONS = (
         cadence="weekly on Wednesday",
         time=VERIFY_TIME,
         windows_schedule="WEEKLY",
-        cli_arguments=("discover", "--verify"),
+        cli_arguments=("discover", "--verify", "--apply"),
         windows_day="WED",
         launchd_weekday=3,
         systemd_day="Wed",
@@ -109,22 +184,58 @@ def action_keys() -> tuple[str, ...]:
     return tuple(action.key for action in _ACTIONS)
 
 
-def _chosen(keys: Sequence[str] | None) -> tuple[ScheduledAction, ...]:
+def _chosen(keys: Sequence[str] | None, every: int | None = None) -> tuple[ScheduledAction, ...]:
+    if every is not None:
+        return tuple(action.every(every) for action in _chosen(keys))
     if not keys:
         return _ACTIONS
     unknown = sorted(set(keys) - set(action_keys()))
     if unknown:
-        raise ScheduleError(
-            f"unknown scheduled {'action' if len(unknown) == 1 else 'actions'}: "
-            f"{', '.join(unknown)} (known: {', '.join(action_keys())})"
-        )
+        from stage.cli.options import _unknown
+
+        raise ScheduleError(_unknown("action", unknown[0], action_keys()))
     wanted = set(keys)
     return tuple(action for action in _ACTIONS if action.key in wanted)
 
 
-def enable(actions: Sequence[str] | None = None) -> ScheduleStatus:
+def _saved_minute() -> int | None:
+    path = data_dir() / "schedule" / START_MINUTE_NAME
+    try:
+        minute = int(path.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    return minute if 0 <= minute < 60 else None
+
+
+def start_minute(create: bool = False) -> int:
+    path = data_dir() / "schedule" / START_MINUTE_NAME
+    minute = _saved_minute()
+    if minute is not None:
+        return minute
+    if not create:
+        return 0
+    minute = random.SystemRandom().randrange(60)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    staging = path.with_name(f".{path.name}.tmp")
+    staging.write_text(f"{minute}\n", encoding="utf-8")
+    staging.replace(path)
+    return minute
+
+
+def lingers() -> bool | None:
+    try:
+        user = getpass.getuser()
+    except (KeyError, OSError):
+        return None
+    result = _query(("loginctl", "show-user", user, "--property=Linger", "--value"))
+    answer = result.stdout.strip().lower() if result.returncode == 0 else ""
+    return {"yes": True, "no": False}.get(answer)
+
+
+def enable(actions: Sequence[str] | None = None, every: int | None = None) -> ScheduleStatus:
     backend = _backend()
-    chosen = _chosen(actions)
+    minute = start_minute(create=True)
+    chosen = tuple(action.placed(minute) for action in _chosen(actions, every))
     if backend == "windows":
         _enable_windows(chosen)
     elif backend == "macos":
@@ -152,8 +263,18 @@ def status() -> ScheduleStatus:
         "windows": (_windows_exists, "Windows Task Scheduler"),
         "macos": (_macos_exists, "macOS launchd"),
     }.get(backend, (_linux_exists, "Linux systemd user timers"))
+    minute = start_minute()
+    saved = _saved_minute() is not None
+    expected = tuple(
+        action.placed(minute).every(_installed_minutes(action, backend)) for action in _ACTIONS
+    )
+    found = tuple(_installed_minute(action, backend) for action in _ACTIONS)
+    shown = tuple(
+        action if at is None else action.placed(at)
+        for action, at in zip(expected, found, strict=True)
+    )
     actions = tuple(
-        (action, exists(action), _installed_cadence(action, backend)) for action in _ACTIONS
+        (action, exists(action), _installed_cadence(action, backend)) for action in shown
     )
     return ScheduleStatus(
         label,
@@ -161,33 +282,88 @@ def status() -> ScheduleStatus:
         _log_dir(),
         tuple(state_for_status(read_state(action.key)) for action in _ACTIONS),
         tuple(
-            enabled and not _definition_matches(action, backend) for action, enabled, _ in actions
+            enabled
+            and (not _definition_matches(wanted, backend) or (saved and action.time != wanted.time))
+            for (action, enabled, _), wanted in zip(actions, expected, strict=True)
         ),
         tuple(
             _stale_interpreter(action, backend) if enabled else "" for action, enabled, _ in actions
         ),
+        lingers() if backend == "linux" else None,
     )
+
+
+def advice() -> tuple[str, ...]:
+    try:
+        backend = _backend()
+    except ScheduleError:
+        return ()
+    installed = [action for action in _ACTIONS if _installed_file(action, backend)]
+    if not installed:
+        return ()
+    minute = start_minute()
+    hints: list[str] = []
+    if any(
+        not _definition_matches(
+            action.placed(minute).every(_installed_minutes(action, backend)), backend
+        )
+        for action in installed
+    ):
+        hints.append(
+            "The schedule was set up by an older Stage. Run stage schedule enable to update it."
+        )
+    if backend == "linux" and lingers() is False:
+        hints.append(
+            "Linux stops the schedule when you log out. To keep it running, run: "
+            f"sudo loginctl enable-linger {getpass.getuser()}"
+        )
+    return tuple(hints)
+
+
+def _task_xml(action: ScheduledAction) -> str | None:
+    result = _query(("schtasks", "/Query", "/TN", action.label, "/XML"))
+    return result.stdout if result.returncode == 0 else None
+
+
+def _plist(action: ScheduledAction) -> dict[str, object] | None:
+    try:
+        payload = plistlib.loads(_launch_path(action).read_bytes())
+    except (OSError, plistlib.InvalidFileException):
+        return None
+    return payload if isinstance(payload, dict) else {}
+
+
+def _unit(action: ScheduledAction, suffix: str) -> str | None:
+    try:
+        return (_systemd_dir() / f"{_systemd_name(action)}.{suffix}").read_text(encoding="utf-8")
+    except OSError:
+        return None
+
+
+def _calendar(payload: dict[str, object]) -> list[dict[str, object]]:
+    schedule = payload.get("StartCalendarInterval")
+    listed = schedule if isinstance(schedule, list) else [schedule]
+    return [entry for entry in listed if isinstance(entry, dict)]
+
+
+def _installed_file(action: ScheduledAction, backend: str) -> bool:
+    if backend == "windows":
+        return _windows_exists(action)
+    if backend == "macos":
+        return _launch_path(action).is_file()
+    return (_systemd_dir() / f"{_systemd_name(action)}.timer").is_file()
 
 
 def _installed_interpreter(action: ScheduledAction, backend: str) -> str:
     if backend == "windows":
-        result = _query(("schtasks", "/Query", "/TN", action.label, "/XML"))
-        if result.returncode != 0:
-            return ""
-        command = re.search(r"<Command>([^<]*)</Command>", result.stdout)
+        command = re.search(r"<Command>([^<]*)</Command>", _task_xml(action) or "")
         return unescape(command.group(1)) if command else ""
     if backend == "macos":
-        try:
-            payload = plistlib.loads(_launch_path(action).read_bytes())
-        except (OSError, plistlib.InvalidFileException):
-            return ""
-        arguments = payload.get("ProgramArguments") if isinstance(payload, dict) else None
+        arguments = (_plist(action) or {}).get("ProgramArguments")
         return str(arguments[0]) if isinstance(arguments, list) and arguments else ""
-    try:
-        service = (_systemd_dir() / f"{_systemd_name(action)}.service").read_text(encoding="utf-8")
-    except OSError:
-        return ""
-    match = re.search(r"^ExecStart=\"([^\"]*)\"", service, flags=re.MULTILINE)
+    match = re.search(
+        r"^ExecStart=\"([^\"]*)\"", _unit(action, "service") or "", flags=re.MULTILINE
+    )
     return match.group(1).replace('\\"', '"').replace("\\\\", "\\") if match else ""
 
 
@@ -198,60 +374,102 @@ def _stale_interpreter(action: ScheduledAction, backend: str) -> str:
     return executable
 
 
+def _installed_repeat(action: ScheduledAction, backend: str) -> int | None:
+    return {"windows": _windows_installed, "macos": _macos_installed}.get(
+        backend, _linux_installed
+    )(action)
+
+
 def _installed_cadence(action: ScheduledAction, backend: str) -> str:
+    found = _installed_repeat(action, backend)
+    if found is None:
+        return ""
+    if found:
+        return every_text(found)
+    weekly = action.windows_day or action.launchd_weekday is not None or action.systemd_day
+    return "weekly" if weekly else "daily"
+
+
+def _installed_minutes(action: ScheduledAction, backend: str) -> int | None:
+    return _installed_repeat(action, backend) or None
+
+
+def _installed_minute(action: ScheduledAction, backend: str) -> int | None:
+    minutes: list[int] = []
     if backend == "windows":
-        return _windows_installed(action)
-    if backend == "macos":
-        return _macos_installed(action)
-    return _linux_installed(action)
+        found = re.search(r"<StartBoundary>[^<T]*T\d{2}:(\d{2})", _task_xml(action) or "")
+        minutes = [int(found.group(1))] if found else []
+    elif backend == "macos":
+        payload = _plist(action)
+        if payload is None:
+            return None
+        minutes = [
+            minute for entry in _calendar(payload) if isinstance(minute := entry.get("Minute"), int)
+        ]
+    else:
+        body = _unit(action, "timer")
+        if body is None:
+            return None
+        calendar = re.search(r"OnCalendar=(?:\w+ )?\*-\*-\* [\d,*]+:(\d{2}(?:,\d{2})*):00", body)
+        minutes = [int(value) for value in calendar.group(1).split(",")] if calendar else []
+    return min(minutes) if minutes and all(0 <= minute < 60 for minute in minutes) else None
 
 
-def _windows_installed(action: ScheduledAction) -> str:
-    result = _query(("schtasks", "/Query", "/TN", action.label, "/XML"))
-    if result.returncode != 0:
-        return ""
-    body = result.stdout
-    match = re.search(r"<Interval>PT(\d+)H</Interval>", body)
-    if match:
-        return f"every {int(match.group(1))} hours"
-    return "daily" if "<ScheduleByDay>" in body else "weekly"
+def _windows_installed(action: ScheduledAction) -> int | None:
+    xml = _task_xml(action)
+    if xml is None:
+        return None
+    match = re.search(r"<Interval>PT(\d+)([HM])</Interval>", xml)
+    if not match:
+        return 0
+    return int(match.group(1)) * (60 if match.group(2) == "H" else 1)
 
 
-def _macos_installed(action: ScheduledAction) -> str:
-    path = _launch_path(action)
-    if not path.is_file():
-        return ""
+def _macos_installed(action: ScheduledAction) -> int | None:
+    payload = _plist(action)
+    if payload is None:
+        return None
+    entries = _calendar(payload)
+    if not entries:
+        return 0
+    if all("Hour" not in entry and "Weekday" not in entry for entry in entries):
+        return 60 // len(entries)
+    return 1440 // len(entries) if len(entries) > 1 else 0
+
+
+def _linux_installed(action: ScheduledAction) -> int | None:
+    body = _unit(action, "timer")
+    if body is None:
+        return None
+    match = re.search(r"OnCalendar=\*-\*-\* (\*|\d{2}(?:,\d{2})*):(\d{2}(?:,\d{2})*):00", body)
+    if not match:
+        return 0
+    hours, minutes = match.group(1), match.group(2).split(",")
+    if hours == "*":
+        return 60 // len(minutes)
+    slots = len(hours.split(","))
+    return 1440 // slots if slots > 1 else 0
+
+
+def _same_interpreter(installed: str, current: str) -> bool:
+    if installed == current:
+        return True
+    there, here = Path(installed), Path(current)
     try:
-        payload = plistlib.loads(path.read_bytes())
-    except (OSError, plistlib.InvalidFileException):
-        return ""
-    schedule = payload.get("StartCalendarInterval")
-    if isinstance(schedule, list) and len(schedule) > 1:
-        return f"every {24 // len(schedule)} hours"
-    return "weekly" if action.launchd_weekday is not None else "daily"
-
-
-def _linux_installed(action: ScheduledAction) -> str:
-    path = _systemd_dir() / f"{_systemd_name(action)}.timer"
-    try:
-        body = path.read_text(encoding="utf-8")
+        return there.samefile(here) and there.parent.samefile(here.parent)
     except OSError:
-        return ""
-    match = re.search(r"OnCalendar=.*?\s(\d{2}(?:,\d{2})*):", body)
-    if match:
-        slots = len(match.group(1).split(","))
-        return f"every {24 // slots} hours" if slots > 1 else "daily"
-    return "weekly" if action.systemd_day is not None else "daily"
+        return False
 
 
 def _definition_matches(action: ScheduledAction, backend: str) -> bool:
+    installed = _installed_interpreter(action, backend)
+    current = _command(action)[0]
+    executable = installed if installed and _same_interpreter(installed, current) else current
+    expected = _command(action, executable)
     if backend == "windows":
-        result = _query(("schtasks", "/Query", "/TN", action.label, "/XML"))
-        if result.returncode != 0:
-            return False
-        command = re.search(r"<Command>([^<]*)</Command>", result.stdout)
-        arguments = re.search(r"<Arguments>([^<]*)</Arguments>", result.stdout)
-        expected = _command(action)
+        xml = _task_xml(action) or ""
+        command = re.search(r"<Command>([^<]*)</Command>", xml)
+        arguments = re.search(r"<Arguments>([^<]*)</Arguments>", xml)
         return bool(
             command
             and arguments
@@ -259,82 +477,123 @@ def _definition_matches(action: ScheduledAction, backend: str) -> bool:
             and unescape(arguments.group(1)) == subprocess.list2cmdline(expected[1:])
         )
     if backend == "macos":
-        try:
-            payload = plistlib.loads(_launch_path(action).read_bytes())
-        except (OSError, plistlib.InvalidFileException):
-            return False
-        if not isinstance(payload, dict):
-            return False
+        payload = _plist(action) or {}
         log = str(_log_dir() / f"scheduled-{action.key}.log")
         return (
-            payload.get("ProgramArguments") == list(_command(action))
+            payload.get("ProgramArguments") == list(expected)
             and payload.get("StandardOutPath") == log
             and payload.get("StandardErrorPath") == log
             and payload.get("ProcessType") == "Background"
         )
-    try:
-        service = (_systemd_dir() / f"{_systemd_name(action)}.service").read_text(encoding="utf-8")
-        timer = (_systemd_dir() / f"{_systemd_name(action)}.timer").read_text(encoding="utf-8")
-    except OSError:
-        return False
-    return (service, timer) == _systemd_units(action)
+    return (_unit(action, "service"), _unit(action, "timer")) == _systemd_units(action, executable)
 
 
 def run_scheduled(
     key: str,
     *,
+    every: int | None = None,
     jitter_seconds: float | None = None,
     sleeper: Callable[[float], None] = time.sleep,
 ) -> int:
     action = next((candidate for candidate in _ACTIONS if candidate.key == key), None)
     if action is None:
-        raise ScheduleError(f"unknown scheduled action: {key}")
+        raise ScheduleError(f'Unknown scheduled action "{key}".')
+    action = action.every(every)
     path = _log_dir() / f"scheduled-{action.key}.log"
     rotate(path)
     state = ScheduleStateWriter.start(action.key, path, destination=state_path(action.key))
     delay = _jitter_seconds(action) if jitter_seconds is None else jitter_seconds
-    with path.open("a", encoding="utf-8", buffering=1) as stream:
-        stream.write(f"\n{action.label}\nTriggered: {_timestamp()}\n")
-        state.waiting(delay)
-        if delay:
-            stream.write(f"Waiting {round(delay)}s before work starts.\n")
-            _wait_for_start(delay, sleeper, state.heartbeat)
-        phase = "syncing" if action.key == "sync" else "discovering"
-        state.started(phase)
-        stream.write(f"Work started: {_timestamp()}\n")
-        sync_exit = _invoke_cli(
-            action.cli_arguments,
-            stream,
-            progress_path=state.path,
-            heartbeat=state.heartbeat,
-        )
-        doctor_exit: int | None = None
-        exit_code = sync_exit
-        if action.key == "sync" and not state.path_is_blocked:
-            state.checking()
-            stream.write("Running health check.\n")
-            doctor_exit = _invoke_cli(("doctor",), stream, heartbeat=state.heartbeat)
-            if doctor_exit:
-                exit_code = doctor_exit
-        state.complete(
-            sync_exit_code=sync_exit,
-            doctor_exit_code=doctor_exit,
-            exit_code=exit_code,
-        )
-        stream.write(f"Finished: {_timestamp()}\n")
-        stream.write(f"exit code: {exit_code}\n")
+    with path.open("a", encoding="utf-8", buffering=1) as stream, _stoppable():
+        try:
+            exit_code = _run_action(action, state, stream, delay, sleeper)
+        except (_StoppedError, KeyboardInterrupt) as stop:
+            number = stop.signum if isinstance(stop, _StoppedError) else signal.SIGINT
+            name = signal.Signals(number).name
+            exit_code = 128 + number
+            state.failed(
+                f"The scheduled {action.key} was stopped by {name} before it finished.",
+                exit_code=exit_code,
+            )
+            stream.write(f"Stopped by {name}: {_timestamp()}\n")
+            stream.write(f"exit code: {exit_code}\n")
     return exit_code
 
 
-def _spread_load(action: ScheduledAction, sleeper: Callable[[float], None] = time.sleep) -> None:
-    if action.repeat_hours is not None:
-        sleeper(_jitter_seconds(action))
+def _run_action(
+    action: ScheduledAction,
+    state: ScheduleStateWriter,
+    stream: TextIO,
+    delay: float,
+    sleeper: Callable[[float], None],
+) -> int:
+    stream.write(f"\n{action.label}\nTriggered: {_timestamp()}\n")
+    state.waiting(delay)
+    if delay:
+        stream.write(f"Waiting {round(delay)}s before work starts.\n")
+        _wait_for_start(delay, sleeper, state.heartbeat)
+    phase = "syncing" if action.key == "sync" else "discovering"
+    state.started(phase)
+    stream.write(f"Work started: {_timestamp()}\n")
+    sync_exit = _invoke_cli(
+        action.cli_arguments,
+        stream,
+        progress_path=state.path,
+        heartbeat=state.heartbeat,
+    )
+    doctor_exit: int | None = None
+    exit_code = sync_exit
+    if action.key == "sync" and not state.path_is_blocked:
+        state.checking()
+        stream.write("Running health check.\n")
+        doctor_exit = _invoke_cli(
+            ("doctor", "--skip-file-check"), stream, heartbeat=state.heartbeat
+        )
+        if doctor_exit:
+            exit_code = doctor_exit
+    state.complete(
+        sync_exit_code=sync_exit,
+        doctor_exit_code=doctor_exit,
+        exit_code=exit_code,
+    )
+    stream.write(f"Finished: {_timestamp()}\n")
+    stream.write(f"exit code: {exit_code}\n")
+    return exit_code
+
+
+class _StoppedError(Exception):
+    def __init__(self, signum: int) -> None:
+        super().__init__(signum)
+        self.signum = signum
+
+
+def _stop_signals() -> list[int]:
+    return [number for name in _STOP_SIGNALS if (number := getattr(signal, name, None))]
+
+
+def _raise_stop(signum: int, _frame: FrameType | None) -> None:
+    for number in _stop_signals():
+        signal.signal(number, signal.SIG_IGN)
+    raise _StoppedError(signum)
+
+
+@contextmanager
+def _stoppable() -> Iterator[None]:
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    previous = {number: signal.signal(number, _raise_stop) for number in _stop_signals()}
+    try:
+        yield
+    finally:
+        for number, handler in previous.items():
+            signal.signal(number, handler)
 
 
 def _jitter_seconds(action: ScheduledAction) -> float:
-    if action.repeat_hours is None:
+    if action.repeat_minutes is None:
         return 0.0
-    return random.SystemRandom().uniform(0.0, float(MAX_JITTER_S))
+    longest = min(float(MAX_JITTER_S), action.repeat_minutes * 60 * JITTER_SHARE)
+    return random.SystemRandom().uniform(0.0, longest)
 
 
 def _wait_for_start(
@@ -359,8 +618,9 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser("run", help="run one configured action")
     run.add_argument("action", choices=[action.key for action in _ACTIONS])
+    run.add_argument("--every", type=int, choices=EVERY_CHOICES, default=None)
     arguments = parser.parse_args()
-    raise SystemExit(run_scheduled(arguments.action))
+    raise SystemExit(run_scheduled(arguments.action, every=arguments.every))
 
 
 def _backend() -> str:
@@ -371,7 +631,10 @@ def _backend() -> str:
         return "macos"
     if name == "Linux":
         return "linux"
-    raise ScheduleError(f"automatic scheduling is not supported on {name}")
+    raise ScheduleError(
+        f"Stage cannot schedule syncs on {name}. Run stage sync yourself, or from a scheduler "
+        "of your own."
+    )
 
 
 def _is_windowless(candidate: Path) -> bool:
@@ -399,11 +662,13 @@ def _windowless_python() -> str | None:
     return None
 
 
-def _command(action: ScheduledAction) -> tuple[str, ...]:
-    executable = sys.executable
-    if _backend() == "windows":
+def _command(action: ScheduledAction, interpreter: str | None = None) -> tuple[str, ...]:
+    executable = interpreter or sys.executable
+    if interpreter is None and _backend() == "windows":
         executable = _windowless_python() or executable
-    return (executable, "-m", "stage.cli.schedule", "run", action.key)
+    custom = action.repeat_minutes not in (None, SYNC_EVERY_MINUTES)
+    every = ("--every", str(action.repeat_minutes)) if custom else ()
+    return (executable, "-m", "stage.cli.schedule", "run", action.key, *every)
 
 
 def _log_dir() -> Path:
@@ -431,20 +696,113 @@ def _invoke_cli(
             creationflags=_CREATE_NO_WINDOW if _backend() == "windows" else 0,
         )
     except OSError as error:
-        raise ScheduleError(f"unable to start scheduled command: {command[0]}") from error
-    while True:
-        try:
-            return int(process.wait(timeout=HEARTBEAT_INTERVAL_SECONDS))
-        except subprocess.TimeoutExpired:
-            if heartbeat is not None:
-                heartbeat()
+        raise ScheduleError(f"Stage could not start {command[0]} for the scheduled run.") from error
+    if sys.platform == "win32":
+        _contain(process.pid)
+    try:
+        while True:
+            try:
+                return int(process.wait(timeout=HEARTBEAT_INTERVAL_SECONDS))
+            except subprocess.TimeoutExpired:
+                if heartbeat is not None:
+                    heartbeat()
+    except BaseException:
+        _stop(process)
+        raise
+
+
+def _stop(process: "subprocess.Popen[bytes]") -> None:
+    with suppress(OSError):
+        process.terminate()
+    try:
+        process.wait(timeout=STOP_WAIT_SECONDS)
+    except subprocess.TimeoutExpired:
+        with suppress(OSError):
+            process.kill()
+        process.wait()
+
+
+@cache
+def _job_limits() -> type["ctypes.Structure"]:
+    import ctypes
+
+    class BasicLimits(ctypes.Structure):
+        _fields_ = [
+            ("PerProcessUserTimeLimit", ctypes.c_int64),
+            ("PerJobUserTimeLimit", ctypes.c_int64),
+            ("LimitFlags", ctypes.c_uint32),
+            ("MinimumWorkingSetSize", ctypes.c_size_t),
+            ("MaximumWorkingSetSize", ctypes.c_size_t),
+            ("ActiveProcessLimit", ctypes.c_uint32),
+            ("Affinity", ctypes.c_size_t),
+            ("PriorityClass", ctypes.c_uint32),
+            ("SchedulingClass", ctypes.c_uint32),
+        ]
+
+    class ExtendedLimits(ctypes.Structure):
+        _fields_ = [
+            ("BasicLimitInformation", BasicLimits),
+            ("IoInfo", ctypes.c_uint64 * 6),
+            ("ProcessMemoryLimit", ctypes.c_size_t),
+            ("JobMemoryLimit", ctypes.c_size_t),
+            ("PeakProcessMemoryUsed", ctypes.c_size_t),
+            ("PeakJobMemoryUsed", ctypes.c_size_t),
+        ]
+
+    return ExtendedLimits
+
+
+def _contain(pid: int) -> None:
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)
+        kernel32.CreateJobObjectW.restype = wintypes.HANDLE
+        kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.SetInformationJobObject.argtypes = (
+            wintypes.HANDLE,
+            ctypes.c_int,
+            ctypes.c_void_p,
+            wintypes.DWORD,
+        )
+        kernel32.SetInformationJobObject.restype = wintypes.BOOL
+        kernel32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+        kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        job = kernel32.CreateJobObjectW(None, None)
+        if not job:
+            return
+        limits = _job_limits()()
+        limits.BasicLimitInformation.LimitFlags = _KILL_ON_JOB_CLOSE
+        child = kernel32.OpenProcess(_PROCESS_SET_QUOTA | _PROCESS_TERMINATE, False, pid)
+        held = bool(
+            child
+            and kernel32.SetInformationJobObject(
+                job, _EXTENDED_LIMITS, ctypes.addressof(limits), ctypes.sizeof(limits)
+            )
+            and kernel32.AssignProcessToJobObject(job, child)
+        )
+        if child:
+            kernel32.CloseHandle(child)
+        if held:
+            _JOBS.append(job)
+        else:
+            kernel32.CloseHandle(job)
 
 
 def _execute(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
     try:
-        return subprocess.run(command, check=False, capture_output=True, text=True)
+        return subprocess.run(
+            command, check=False, capture_output=True, text=True, errors="replace"
+        )
     except FileNotFoundError as error:
-        raise ScheduleError(f"required scheduler command is unavailable: {command[0]}") from error
+        raise ScheduleError(
+            f"Stage needs {command[0]} to set up the schedule, and it is not installed here."
+        ) from error
 
 
 def _query(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -459,8 +817,9 @@ def _run(command: Sequence[str]) -> None:
     if completed.returncode == 0:
         return
     detail = (completed.stderr or completed.stdout).strip()
+    said = f": {detail}" if detail else ""
     raise ScheduleError(
-        f"scheduler command failed: {' '.join(command)}{': ' + detail if detail else ''}"
+        f"{command[0]} refused the change{said}. Run stage schedule status to see what is set up."
     )
 
 
@@ -504,9 +863,9 @@ def _windows_task_xml(action: ScheduledAction) -> bytes:
     if action.windows_day is None:
         schedule = ElementTree.SubElement(trigger, "ScheduleByDay")
         ElementTree.SubElement(schedule, "DaysInterval").text = "1"
-        if action.repeat_hours is not None:
+        if action.repeat_minutes is not None:
             repetition = ElementTree.SubElement(trigger, "Repetition")
-            ElementTree.SubElement(repetition, "Interval").text = f"PT{action.repeat_hours}H"
+            ElementTree.SubElement(repetition, "Interval").text = _windows_interval(action)
             ElementTree.SubElement(repetition, "Duration").text = "P1D"
             ElementTree.SubElement(repetition, "StopAtDurationEnd").text = "false"
     else:
@@ -543,6 +902,11 @@ def _windows_task_xml(action: ScheduledAction) -> bytes:
     return cast(bytes, ElementTree.tostring(root, encoding="utf-16", xml_declaration=True))
 
 
+def _windows_interval(action: ScheduledAction) -> str:
+    minutes = action.repeat_minutes or 1440
+    return f"PT{minutes // 60}H" if minutes % 60 == 0 else f"PT{minutes}M"
+
+
 def _windows_start_boundary(action: ScheduledAction) -> str:
     local = datetime.now().astimezone()
     return f"{local.date().isoformat()}T{action.time}:00"
@@ -566,10 +930,14 @@ def _launch_path(action: ScheduledAction) -> Path:
 
 
 def _write_launch_agent(action: ScheduledAction) -> Path:
-    minute = int(action.time[3:])
-    schedule: list[dict[str, int]] = [
-        {"Hour": hour, "Minute": minute} for hour in action.start_hours
-    ]
+    if action.repeat_minutes is not None and action.repeat_minutes < 60:
+        schedule: list[dict[str, int]] = [{"Minute": minute} for minute in action.start_minutes]
+    else:
+        schedule = [
+            {"Hour": hour, "Minute": minute}
+            for hour in action.start_hours
+            for minute in action.start_minutes
+        ]
     if action.launchd_weekday is not None:
         for entry in schedule:
             entry["Weekday"] = action.launchd_weekday
@@ -591,7 +959,7 @@ def _write_launch_agent(action: ScheduledAction) -> Path:
 def _launch_domain() -> str:
     getuid = getattr(os, "getuid", None)
     if not callable(getuid):
-        raise ScheduleError("launchd scheduling is unavailable without a macOS user ID")
+        raise ScheduleError("Stage could not find this user's macOS ID, so launchd cannot run it.")
     return f"gui/{getuid()}"
 
 
@@ -637,14 +1005,17 @@ def _systemd_argument(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _systemd_units(action: ScheduledAction) -> tuple[str, str]:
+def _systemd_units(action: ScheduledAction, interpreter: str | None = None) -> tuple[str, str]:
     name = _systemd_name(action)
-    command = " ".join(_systemd_argument(value) for value in _command(action))
+    command = " ".join(_systemd_argument(value) for value in _command(action, interpreter))
     service = (
         f"[Unit]\nDescription={action.label}\n\n[Service]\nType=oneshot\nExecStart={command}\n"
     )
     hours = ",".join(f"{hour:02d}" for hour in action.start_hours)
-    calendar = f"*-*-* {hours}:{action.time[3:]}:00"
+    if action.repeat_minutes is not None and action.repeat_minutes < 60:
+        hours = "*"
+    minutes = ",".join(f"{minute:02d}" for minute in action.start_minutes)
+    calendar = f"*-*-* {hours}:{minutes}:00"
     if action.systemd_day is not None:
         calendar = f"{action.systemd_day} {calendar}"
     timer = (

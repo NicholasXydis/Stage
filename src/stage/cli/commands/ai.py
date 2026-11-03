@@ -11,6 +11,7 @@ from stage.cli.options import (
     _print_error,
     _refuse,
     app,
+    ask,
     run_async,
 )
 
@@ -34,7 +35,7 @@ AppsArgument = Annotated[
     typer.Argument(
         metavar="APP...",
         click_type=WORD,
-        help="Apps to change, such as claude-code, cursor or cline; leave out to choose",
+        help="Apps to change, such as claude-code, cursor or cline. Leave out to choose",
         show_default=False,
     ),
 ]
@@ -46,7 +47,7 @@ DryRunOption = Annotated[
 ]
 ACTIONS_ON = (
     "Actions are on: {apps} can open postings in your browser, export them and start a sync. "
-    "Claude Code asks you before each one; other apps follow their own approval settings."
+    "Claude Code asks you before each one, and other apps follow their own approval settings."
 )
 ACTIONS_OFF = "Actions are off: {apps} can search and keep your tracker, and nothing more."
 
@@ -68,10 +69,22 @@ def mcp(
 
     if sys.stdin.isatty():
         typer.echo(STARTED_BY_HAND, err=True)
+        _stop_on_ctrl_c()
     try:
         run_async(serve(_database(db), actions=actions))
     except KeyboardInterrupt:
         raise typer.Exit(code=130) from None
+
+
+def _stop_on_ctrl_c() -> None:
+    import os
+    import signal
+
+    def stop(*_: object) -> None:
+        typer.echo("Stage stopped.", err=True)
+        os._exit(130)
+
+    signal.signal(signal.SIGINT, stop)
 
 
 @app.command(help="Connect Stage to the AI apps on this computer", rich_help_panel=PANEL)
@@ -84,18 +97,19 @@ def connect(
     known: Annotated[
         bool, typer.Option("--every", help="With --status, list every app Stage knows")
     ] = False,
-    actions: Annotated[
-        bool | None,
+    allow: Annotated[
+        bool,
         typer.Option(
-            "--allow-actions/--no-actions",
+            "--allow-actions",
             help=(
                 "Let the apps also open postings, export them and start a sync, which Claude "
-                "Code asks about each time; --no-actions turns that off. Left out, each app "
-                "keeps its setting"
+                "Code asks about each time. Leaving it out keeps each app's setting"
             ),
-            show_default=False,
         ),
-    ] = None,
+    ] = False,
+    deny: Annotated[
+        bool, typer.Option("--no-actions", help="Turn actions off again for these apps")
+    ] = False,
     dry_run: DryRunOption = False,
     db: DatabaseOption = None,
 ) -> None:
@@ -103,8 +117,17 @@ def connect(
     from stage.services.connect import Machine, entry_for, server_entry, targets, with_actions
 
     console = terminal()
+    if allow and deny:
+        _refuse(plain("Choose --allow-actions or --no-actions, not both.", "red"))
+    actions = True if allow else (False if deny else None)
     if known and not status:
-        _refuse(plain("--every lists apps with --status; it does not connect anything.", "red"))
+        _refuse(
+            plain(
+                "--every goes with --status and connects nothing. Run stage connect --status "
+                "--every to list every app Stage knows.",
+                "red",
+            )
+        )
     if status and actions is not None:
         _refuse(
             plain(
@@ -124,14 +147,16 @@ def connect(
     _report(console, outcomes)
     if actions is not None and not dry_run:
         reached = [
-            outcome.target.label for outcome in outcomes if outcome.status.value != "unreadable"
+            outcome.target.label
+            for outcome in outcomes
+            if outcome.status.value != "unreadable" and not outcome.failed
         ]
         if reached:
             told = ACTIONS_ON if actions else ACTIONS_OFF
             console.print(plain(told.format(apps=", ".join(reached)), "dim"))
     if not dry_run and any(outcome.changed for outcome in outcomes):
         _self_test(console, with_actions(entry, bool(actions)))
-    if any(outcome.status.value == "unreadable" for outcome in outcomes):
+    if any(outcome.status.value == "unreadable" or outcome.failed for outcome in outcomes):
         raise typer.Exit(code=1)
 
 
@@ -151,8 +176,8 @@ def disconnect(
     found = targets(Machine.here())
     chosen = _choose(console, found, apps, every, entry, verb="disconnect")
     outcomes = [remove(target, entry, dry_run=dry_run) for target in chosen]
-    _report(console, outcomes)
-    if any(outcome.status.value == "unreadable" for outcome in outcomes):
+    _report(console, outcomes, notes=False)
+    if any(outcome.status.value == "unreadable" or outcome.failed for outcome in outcomes):
         raise typer.Exit(code=1)
 
 
@@ -178,7 +203,9 @@ def _choose(
 ) -> "list[Target]":
     from stage.cli.render import plain
 
-    if apps and not every:
+    if apps and every:
+        _refuse(plain(f"Name the apps to {verb} or use --all, not both.", "red"))
+    if apps:
         return _named(found, apps)
     if not found:
         _print_error(plain(NOTHING_FOUND, "yellow"))
@@ -192,10 +219,11 @@ def _choose(
                 f"Name the apps to {verb}, such as stage {verb} {found[0].app.key}, or use --all.",
             )
         )
-    answer = typer.prompt(
+    answer = ask(
         f"\nWhich apps should Stage {verb}? Numbers like 1 3, all, or Enter to cancel",
         default="",
         show_default=False,
+        stopped="Stopped, so no app was changed.",
     )
     return _picked(found, answer)
 
@@ -206,12 +234,18 @@ def _picked(found: "tuple[Target, ...]", answer: str) -> "list[Target]":
     words = answer.replace(",", " ").split()
     if not words:
         raise typer.Exit(code=0)
-    if [word.lower() for word in words] == ["all"]:
+    if "all" in {word.lower() for word in words}:
         return list(found)
     chosen: list[Target] = []
     for word in words:
         if not word.isdecimal() or not 1 <= int(word) <= len(found):
-            _refuse(plain(f"{word} is not one of the numbers above.", "red"))
+            _refuse(
+                plain(
+                    f'"{word}" is not one of the numbers above. Type numbers from 1 to '
+                    f"{len(found)}, or all.",
+                    "red",
+                )
+            )
         target = found[int(word) - 1]
         if target not in chosen:
             chosen.append(target)
@@ -222,6 +256,7 @@ def _named(found: "tuple[Target, ...]", apps: list[str]) -> "list[Target]":
     from difflib import get_close_matches
 
     from stage.cli.render import plain
+    from stage.domain.text import did_you_mean
     from stage.services.ai_catalogue import APPS
 
     chosen: list[Target] = []
@@ -233,10 +268,20 @@ def _named(found: "tuple[Target, ...]", apps: list[str]) -> "list[Target]":
         if not matches:
             everything = {key for app in APPS for key in (app.key, _folded(app.name), *app.also)}
             if name in everything:
-                _refuse(plain(f"Stage did not find {wanted} on this computer.", "red"))
+                _refuse(
+                    plain(
+                        f'Stage did not find "{wanted}" on this computer. Run stage connect '
+                        "--status to see the apps it found.",
+                        "red",
+                    )
+                )
             near = get_close_matches(name, sorted(everything), n=1)
-            hint = f" Did you mean {near[0]}?" if near else ""
-            _refuse(plain(f"Stage does not know an app called {wanted}.{hint}", "red"))
+            hint = (
+                did_you_mean(near[0])
+                if near
+                else "Run stage connect --status --every to see every app Stage knows."
+            )
+            _refuse(plain(f'Stage does not know an app called "{wanted}". {hint}', "red"))
         chosen.extend(target for target in matches if target not in chosen)
     return chosen
 
@@ -298,8 +343,8 @@ def _colour(status: str) -> str:
 
 def _how(target: "Target") -> str:
     reach = target.reach.value
-    if reach == "command" and target.program:
-        return f"runs {Path(target.program).name} mcp"
+    if reach == "command" and target.program and target.app.command is not None:
+        return f"runs {target.app.command.program} mcp"
     if reach == "file" and target.settings is not None:
         return f"edits {_home(target.settings)}"
     if reach == "link":
@@ -318,7 +363,7 @@ def _tilde(text: str) -> str:
     return text.replace(home + "/", "~/").replace(home + "\\", "~\\")
 
 
-def _report(console: "Console", outcomes: "list[Outcome]") -> None:
+def _report(console: "Console", outcomes: "list[Outcome]", *, notes: bool = True) -> None:
     from stage.cli.render import plain
 
     for outcome in outcomes:
@@ -332,7 +377,7 @@ def _report(console: "Console", outcomes: "list[Outcome]") -> None:
         console.print(plain(f"{outcome.target.label}: {message}", style))
         if outcome.backup is not None:
             console.print(plain(f"  The file as it was is kept at {_home(outcome.backup)}", "dim"))
-        if outcome.changed and app.note:
+        if outcome.changed and app.note and notes:
             console.print(plain(f"  {app.note}", "dim"))
         if outcome.link:
             console.print(plain(f"  {outcome.link}", "dim"), soft_wrap=True)

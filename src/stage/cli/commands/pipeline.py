@@ -1,10 +1,14 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 
 from stage.cli.options import (
+    STOPPED,
     DatabaseOption,
+    InvalidOptionError,
     JsonOption,
     RegistryOption,
     _count,
@@ -12,9 +16,23 @@ from stage.cli.options import (
     _lock_path,
     _print_error,
     _print_failure,
+    _refusing,
+    _validated_source,
+    _warn_unread_boards,
+    _with_db,
     app,
     run_async,
 )
+
+if TYPE_CHECKING:
+    from stage.domain import PurgeResult
+
+MAINTENANCE_WAIT_SECONDS = 900.0
+OFFLINE_PATIENCE_SECONDS = 120.0
+OFFLINE_MESSAGE = (
+    "No internet connection, so nothing was synced and no board was marked as failing."
+)
+SYNC_STOPPED = "Sync stopped. What it saved is kept, and stage sync picks up the rest."
 
 
 @app.command(
@@ -24,12 +42,12 @@ def sync(
     source: Annotated[
         list[str] | None,
         typer.Option(
-            "--source", metavar="SOURCE", help="Sync only these source adapters; repeatable"
+            "--source", metavar="SOURCE", help="Sync only these source adapters (repeatable)"
         ),
     ] = None,
     exclude: Annotated[
         list[str] | None,
-        typer.Option("--exclude", metavar="NAME", help="Skip these source adapters; repeatable"),
+        typer.Option("--exclude", metavar="NAME", help="Skip these source adapters (repeatable)"),
     ] = None,
     dry_run: Annotated[
         bool,
@@ -67,11 +85,15 @@ def sync(
     from contextlib import ExitStack
 
     from stage.cli.logfile import open_request_log
-    from stage.cli.render import render_sync, terminal
-    from stage.cli.runlock import AnotherRunInProgressError, single_run
+    from stage.cli.render import plain, terminal
+    from stage.cli.render.progress import render_sync
     from stage.cli.schedule_state import ScheduleStateWriter
-    from stage.companies import RegistryError, load_companies
+    from stage.companies import RegistryError, load_boards
     from stage.domain import SyncOutcome
+    from stage.domain.text import plain_error
+    from stage.paths import registry_override
+    from stage.runlock import AnotherRunInProgressError, single_run
+    from stage.services.maintenance import rescreen_after_upgrade, upgrade_note
     from stage.services.sync import NoSourcesSelectedError
     from stage.services.sync import sync as sync_service
     from stage.storage import open_repository
@@ -91,19 +113,40 @@ def sync(
     if tracked is not None:
         progress = tracked.sync_event
 
-    if source and exclude:
-        _print_error("[red]Pass either --source or --exclude, not both.[/red]")
+    refusal = "Pass either --source or --exclude, not both." if source and exclude else ""
+    try:
+        for name in (*(source or ()), *(exclude or ())):
+            _validated_source(name)
+    except InvalidOptionError as exc:
+        refusal = refusal or str(exc)
+    if refusal:
+        _print_error(plain(refusal, "red"))
         if tracked is not None:
-            tracked.failed("Pass either --source or --exclude, not both.")
+            tracked.failed(refusal)
         raise typer.Exit(code=2)
 
     try:
-        companies = load_companies(registry)
+        companies, personal = load_boards(registry)
     except RegistryError as exc:
         _print_failure(exc)
         if tracked is not None:
             tracked.failed(str(exc))
         raise typer.Exit(code=2) from exc
+    _warn_unread_boards(personal)
+
+    if not dry_run:
+        from stage.http import wait_until_online
+
+        patience = OFFLINE_PATIENCE_SECONDS if scheduled_state is not None else 0.0
+        if not wait_until_online(patience):
+            if scheduled_state is not None:
+                scheduled_state.offline(OFFLINE_MESSAGE)
+                console.print(OFFLINE_MESSAGE)
+                raise typer.Exit(code=0)
+            if tracked is not None:
+                tracked.offline(OFFLINE_MESSAGE)
+            _print_error(f"[yellow]{OFFLINE_MESSAGE}[/yellow]")
+            raise typer.Exit(code=1)
 
     async def run() -> SyncOutcome:
         with ExitStack() as stack:
@@ -113,6 +156,10 @@ def sync(
                 else None
             )
             async with open_repository(_database(db)) as repository:
+                if not dry_run:
+                    checked = await rescreen_after_upgrade(repository)
+                    if checked is not None:
+                        console.print(plain(upgrade_note(checked)), soft_wrap=True)
                 events = sync_service(
                     repository,
                     companies,
@@ -120,6 +167,7 @@ def sync(
                     excluded=exclude or None,
                     dry_run=dry_run,
                     force_refresh=force_refresh,
+                    close_orphans=not personal.problem and registry_override(registry) is None,
                 )
                 outcome = await render_sync(console, events, request_log=stream, progress=progress)
                 if scheduled_progress is not None and not dry_run:
@@ -133,22 +181,26 @@ def sync(
             with single_run("sync", _lock_path(db)):
                 if tracked is not None:
                     tracked.started("syncing")
-                outcome = run_async(run())
+                outcome = run_async(run(), stopped=SYNC_STOPPED)
     except AnotherRunInProgressError as exc:
         if scheduled_state is not None:
             scheduled_state.blocked(str(exc))
         if tracked is not None:
             tracked.blocked(str(exc))
-        _print_failure(exc)
+        _print_failure(exc, soft_wrap=True)
         raise typer.Exit(code=2) from exc
     except (RegistryError, NoSourcesSelectedError) as exc:
         if tracked is not None:
             tracked.failed(str(exc))
         _print_failure(exc)
         raise typer.Exit(code=2) from exc
+    except typer.Exit as stop:
+        if tracked is not None:
+            tracked.failed("The sync was stopped before it finished.", exit_code=stop.exit_code)
+        raise
     except Exception as exc:
         if tracked is not None:
-            tracked.failed(f"{type(exc).__name__}: {exc}")
+            tracked.failed(f"The sync stopped on an unexpected error ({plain_error(str(exc))}).")
         raise
 
     code = 0 if outcome is SyncOutcome.SUCCESS else 1
@@ -157,8 +209,34 @@ def sync(
     raise typer.Exit(code=code)
 
 
+@contextmanager
+def _maintenance_lock(command: str, db: Path | None, console: Any) -> Iterator[None]:
+    from stage.cli.render import plain
+    from stage.runlock import AnotherRunInProgressError, single_run
+
+    def waiting(holder: str) -> None:
+        console.print(plain(f"Waiting for {holder} to finish before the {command} starts."))
+
+    try:
+        with (
+            _refusing(AnotherRunInProgressError, soft_wrap=True),
+            single_run(
+                command,
+                _lock_path(db),
+                wait_s=MAINTENANCE_WAIT_SECONDS,
+                busy=f"run stage {command} again when it finishes",
+                waiting=waiting,
+            ),
+        ):
+            yield
+    except KeyboardInterrupt:
+        _print_error(f"[yellow]{STOPPED}[/yellow]")
+        raise typer.Exit(code=130) from None
+
+
 async def _announce_new_postings(repository: Any, console: Any) -> None:
     from dataclasses import replace
+    from datetime import UTC, datetime, timedelta
 
     from stage.cli import notify
     from stage.cli.render import plain
@@ -169,14 +247,35 @@ async def _announce_new_postings(repository: Any, console: Any) -> None:
     webhook = notify.read()
     if not webhook:
         return
-    since = await repository.previous_sync_at()
+    since = notify.announced_until() or await repository.previous_sync_at()
     if since is None:
         return
+    now = datetime.now(UTC)
+    if since > now:
+        runs = await repository.run_history(1)
+        if runs:
+            since = min(since, runs[0].started_at)
     filters = replace(JobFilters(limit=None), first_seen_after=since)
     listing = await list_jobs(repository, filters, window_days=None)
-    if not listing.jobs:
+    current = [job for job in listing.jobs if job.first_seen <= now]
+    if not current:
         return
-    chosen = sorted(listing.jobs, key=notify.rank)[: notify.MAX_LISTED]
+    first_reads = {
+        board: read for board, read in (await repository.first_reads()).items() if read <= now
+    }
+    copies = await repository.earliest_copies([job.id for job in current])
+    fresh = [
+        job
+        for job in current
+        if not notify.is_backlog(job, first_reads)
+        and not (job.id in copies and copies[job.id] < since)
+    ]
+    newest = max(job.first_seen for job in current) + timedelta(microseconds=1)
+    if not fresh:
+        notify.mark_announced(newest)
+        return
+    hidden = listing.total_matching - len(listing.jobs)
+    chosen = sorted(fresh, key=notify.rank)
     postings = [
         notify.Posting(
             company=job.company,
@@ -187,9 +286,14 @@ async def _announce_new_postings(repository: Any, console: Any) -> None:
         for job in chosen
     ]
     try:
-        notify.post(webhook, notify.compose(postings, listing.total_matching))
+        for payload in notify.messages(postings, len(fresh) + hidden):
+            notify.post(webhook, payload)
     except notify.NotifyError as exc:
-        console.print(plain(f"Could not post to Discord: {exc}", style="yellow"))
+        console.print(
+            plain(f"New postings did not reach Discord. {exc} The next sync tries again.", "yellow")
+        )
+        return
+    notify.mark_announced(newest)
 
 
 @app.command(
@@ -206,7 +310,7 @@ def purge(
     from datetime import UTC, datetime
 
     from stage.cli.render import terminal
-    from stage.domain import QUARANTINE_RETENTION_DAYS, PurgeResult
+    from stage.domain import PurgeResult
     from stage.domain.text import counted
     from stage.services.maintenance import preview_purge, purge_expired
     from stage.storage import open_repository
@@ -220,11 +324,15 @@ def purge(
                 return await preview_purge(repository, now=now)
             return await purge_expired(repository, now=now)
 
-    result = run_async(run())
-
     from stage.cli.housekeeping import tidy
 
-    swept = tidy(dry_run=dry_run)
+    if dry_run:
+        result = run_async(run())
+        swept = tidy(dry_run=dry_run)
+    else:
+        with _maintenance_lock("purge", db, console):
+            result = run_async(run())
+            swept = tidy(dry_run=dry_run)
     if swept.captures_removed or swept.journal_rotated:
         parts = []
         if swept.captures_removed:
@@ -234,47 +342,44 @@ def purge(
             parts.append("rotated the probe journal" if not dry_run else "would rotate the journal")
         console.print(f"[dim]{', '.join(parts)}.[/dim]")
 
-    forgotten = (
-        f" {counted(result.forgotten, 'rejected posting')} no board has listed for "
-        f"{QUARANTINE_RETENTION_DAYS} days {'would go' if dry_run else 'went'} too."
-        if result.forgotten
-        else ""
-    )
-    if dry_run:
-        if result.purged:
-            console.print(
-                f"Would purge {counted(result.purged, 'posting')} and create or refresh "
-                f"{counted(result.tombstoned, 'tombstone')}. Nothing was removed.{forgotten}"
-            )
-        else:
-            console.print(
-                "[dim]Nothing is outside the retention window, so purge would remove "
-                f"nothing.{forgotten}[/dim]"
-            )
-        return
     if result.tracker_busy:
         console.print(
             "[yellow]Your tracker was busy, so postings you track may not have moved to the "
             "copy that stays. Run stage tracker to check them.[/yellow]"
         )
-    if not result.purged:
-        if result.promoted:
-            console.print(
-                f"Nothing outside the retention window. Promoted "
-                f"{counted(result.promoted, 'orphaned duplicate')} back into view."
-            )
-            return
-        console.print(f"[dim]Nothing outside the retention window.{forgotten}[/dim]")
-        return
-    promoted = f", {counted(result.promoted, 'duplicate')} promoted" if result.promoted else ""
-    console.print(
-        f"Purged {counted(result.purged, 'posting')}, "
-        f"{counted(result.tombstoned, 'tombstone')} kept{promoted}.{forgotten}"
-    )
-    console.print(
-        "[dim]Tombstones keep the original first_seen so a still-open posting is not "
-        "re-ingested as new.[/dim]"
-    )
+    for line in _purge_lines(result, dry_run):
+        console.print(line)
+    if result.purged and not dry_run:
+        console.print(
+            "[dim]Stage remembers when each purged posting was first seen, so one that is "
+            "still open does not come back as new.[/dim]"
+        )
+
+
+def _purge_lines(result: "PurgeResult", dry_run: bool) -> list[str]:
+    from stage.domain import QUARANTINE_RETENTION_DAYS
+    from stage.domain.text import counted
+
+    lines: list[str] = []
+    if result.purged:
+        verb = "Would purge" if dry_run else "Purged"
+        lines.append(f"{verb} {counted(result.purged, 'posting')} past the retention window.")
+    if result.promoted:
+        lines.append(f"Promoted {counted(result.promoted, 'orphaned duplicate')} back into view.")
+    if result.forgotten:
+        verb = "Would forget" if dry_run else "Forgot"
+        lines.append(
+            f"{verb} {counted(result.forgotten, 'rejected posting')} that no board has listed "
+            f"for {QUARANTINE_RETENTION_DAYS} days."
+        )
+    if not lines:
+        lines.append(
+            "[dim]No posting is past the retention window, and every rejected posting was "
+            f"listed in the last {QUARANTINE_RETENTION_DAYS} days.[/dim]"
+        )
+    if dry_run:
+        lines.append("[dim]This was a dry run, so nothing was removed.[/dim]")
+    return lines
 
 
 @app.command(
@@ -286,49 +391,47 @@ def rescreen(db: DatabaseOption = None) -> None:
 
     from stage.cli.render import terminal
     from stage.domain.text import counted
-    from stage.services.maintenance import RESCREEN_LIMIT, RescreenResult
+    from stage.services.maintenance import RESCREEN_LIMIT
     from stage.services.maintenance import rescreen as rescreen_service
-    from stage.storage import open_repository
 
     console = terminal()
-    console.print("[dim]Rescreening stored and rejected postings; this takes a few seconds.[/dim]")
+    console.print("[dim]Rescreening stored and rejected postings. This takes a few seconds.[/dim]")
 
-    async def run() -> RescreenResult:
-        async with open_repository(_database(db)) as repository:
-            return await rescreen_service(repository, now=datetime.now(UTC))
-
-    result = run_async(run())
+    with _maintenance_lock("rescreen", db, console):
+        result = _with_db(
+            db, lambda repository: rescreen_service(repository, now=datetime.now(UTC))
+        )
     if not result.examined and not result.released:
         console.print("[dim]Nothing stored yet. Run stage sync.[/dim]")
         return
     if result.skipped:
         console.print(
             f"[yellow]{counted(result.skipped, 'posting')} not examined.[/yellow] This pass reads "
-            f"at most {RESCREEN_LIMIT} rows. Run stage purge, then rescreen again."
+            f"at most {RESCREEN_LIMIT:,} rows. Run stage purge, then stage rescreen again."
         )
     if not result.changed:
-        console.print(
-            f"Re-screened {counted(result.examined, 'posting')}; the lexicon agrees with every one."
-        )
+        console.print(f"Re-screened {counted(result.examined, 'posting')}. None changed.")
         return
     changes: list[str] = []
     if result.updated:
         changes.append(f"[yellow]{counted(result.updated, 'classification')} updated[/yellow]")
     if result.quarantined:
-        changes.append(f"[yellow]{result.quarantined} moved to quarantine[/yellow]")
+        changes.append(f"[yellow]{result.quarantined:,} newly rejected[/yellow]")
     if result.released:
-        changes.append(f"[green]{result.released} restored from quarantine[/green]")
+        changes.append(f"[green]{result.released:,} no longer rejected[/green]")
     if result.relabelled:
         changes.append(
             f"[dim]{counted(result.relabelled, 'rejection')} given a sharper reason[/dim]"
         )
     if result.relocated:
-        changes.append(f"[dim]{counted(result.relocated, 'quarantine location')} re-read[/dim]")
+        changes.append(f"[dim]{counted(result.relocated, 'rejected location')} re-read[/dim]")
+    if result.relinked:
+        changes.append(f"[dim]{counted(result.relinked, 'duplicate link')} corrected[/dim]")
     console.print(f"Re-screened {counted(result.examined, 'posting')}: {', '.join(changes)}.")
     if result.released:
         console.print(
-            "[dim]Restored postings keep their original title, link, and location. A later source "
-            "refresh may fill metadata that quarantine does not retain.[/dim]"
+            "[dim]Postings no longer rejected keep their title, link and location. Their next "
+            "sync fills in the details Stage does not keep for rejected postings.[/dim]"
         )
 
 
@@ -344,44 +447,35 @@ def canary(
             "--timeout",
             metavar="SECONDS",
             click_type=_count(1, 3600),
-            help="Give up after this long; every probe is a live network request",
+            help="Give up after this long, since every probe is a live network request",
         ),
     ] = 300,
     as_json: JsonOption = False,
     registry: RegistryOption = None,
     db: DatabaseOption = None,
 ) -> None:
-    from stage.cli.render import render_canary, terminal
+    from stage.cli.render import terminal
+    from stage.cli.render.health import render_canary
     from stage.cli.serialize import canary_to_json, emit
     from stage.companies import RegistryError, load_companies
-    from stage.services.canary import CanaryReport
+    from stage.domain.text import counted
     from stage.services.canary import canary as run_canary
-    from stage.storage import open_repository
 
     console = terminal()
 
-    async def run() -> CanaryReport:
-        import asyncio
-
+    with _refusing(RegistryError):
         companies = load_companies(registry)
-        async with open_repository(_database(db)) as repository:
-            return await asyncio.wait_for(run_canary(repository, companies), timeout)
-
-    try:
-        report = run_async(run())
-    except RegistryError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
-    except TimeoutError:
-        _print_error(
-            f"[red]Gave up after {timeout}s.[/red] Boards can be slow or unreachable; "
-            "raise the ceiling with [bold]--timeout[/bold]."
-        )
-        raise typer.Exit(code=1) from None
+    report = _with_db(db, lambda repository: run_canary(repository, companies, timeout=timeout))
 
     if as_json:
         emit(canary_to_json(report))
     else:
         render_canary(console, report, verbose=verbose)
+    if report.timed_out:
+        _print_error(
+            f"[red]Gave up after {timeout}s[/red] with {counted(len(report.probes), 'board')} "
+            "checked. Boards can be slow or unreachable, so raise the limit with "
+            "[bold]--timeout[/bold]."
+        )
     if not report.passed:
         raise typer.Exit(code=1)

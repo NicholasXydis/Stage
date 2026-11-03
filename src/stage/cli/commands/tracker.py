@@ -1,6 +1,7 @@
+from collections.abc import Coroutine
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, NoReturn
+from typing import TYPE_CHECKING, Annotated, Any, NoReturn
 
 import typer
 
@@ -12,9 +13,10 @@ from stage.cli.options import (
     _needs_a_row,
     _no_such_posting,
     _print_error,
-    _print_failure,
     _refuse,
+    _refusing,
     _resolve_posting,
+    _with_db,
     app,
     output_path,
     run_async,
@@ -37,13 +39,13 @@ RowsArgument = Annotated[
 OnOption = Annotated[
     str | None,
     typer.Option(
-        "--on", metavar="DATE", help="The day it happened, like 2026-10-20; today by default"
+        "--on", metavar="DATE", help="The day it happened, like 2026-10-20, today by default"
     ),
 ]
 NoteOption = Annotated[
     str | None,
     typer.Option(
-        "--note", metavar="TEXT", help="A short note kept on this machine; empty clears it"
+        "--note", metavar="TEXT", help="A short note kept on this machine (empty clears it)"
     ),
 ]
 
@@ -67,9 +69,7 @@ def applied(
     _change("applied", postings, ApplicationStatus.APPLIED, on, note, db, forward_only=True)
 
 
-@app.command(
-    help="Hide postings from every list; stage untrack shows them again", rich_help_panel=PANEL
-)
+@app.command(help="Hide postings from every list until stage untrack", rich_help_panel=PANEL)
 def hide(postings: RowsArgument = None, db: DatabaseOption = None) -> None:
     from stage.domain.tracker import ApplicationStatus
 
@@ -93,11 +93,8 @@ def track(
 ) -> None:
     from stage.domain.tracker import TrackerError, parse_status
 
-    try:
+    with _refusing(TrackerError):
         chosen = parse_status(status) if status is not None else None
-    except TrackerError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
     if chosen is None and on is None and note is None:
         _refuse(
             "[red]stage track needs --status, --on or --note.[/red] For example "
@@ -106,11 +103,11 @@ def track(
     _change("track", postings, chosen, on, note, db)
 
 
-@app.command(help="Stop tracking postings; hidden ones show again", rich_help_panel=PANEL)
+@app.command(help="Stop tracking postings, which also unhides them", rich_help_panel=PANEL)
 def untrack(postings: RowsArgument = None, db: DatabaseOption = None) -> None:
-    from stage.cli.render import render_removed, terminal
-    from stage.cli.selection import StaleSelectionError
-    from stage.services.tracker import RemoveReport, TrackerProblemError, remove_tracked
+    from stage.cli.render import terminal
+    from stage.cli.render.tracker import render_removed
+    from stage.services.tracker import RemoveReport, remove_tracked
     from stage.storage import open_repository
 
     references = _references("untrack", postings)
@@ -120,14 +117,7 @@ def untrack(postings: RowsArgument = None, db: DatabaseOption = None) -> None:
             ids = [await _resolve_posting(reference, repository) for reference in references]
             return ids, await remove_tracked(repository, ids)
 
-    try:
-        ids, report = run_async(run())
-    except StaleSelectionError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
-    except TrackerProblemError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=1) from exc
+    ids, report = _run_tracked(run())
     if report.missing:
         _refuse_missing(report.missing)
     labels = _labels(references, ids)
@@ -138,7 +128,7 @@ def untrack(postings: RowsArgument = None, db: DatabaseOption = None) -> None:
 @app.command(help="Your tracked postings, latest change first", rich_help_panel=PANEL)
 def tracker(
     status: Annotated[
-        str | None,
+        list[str] | None,
         typer.Option("--status", metavar="STATUS", help="Only postings with this status"),
     ] = None,
     stats: Annotated[
@@ -156,11 +146,11 @@ def tracker(
     as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
-    from stage.cli.options import InvalidOptionError, _require_enum
+    from stage.cli.options import InvalidOptionError, _one
+    from stage.cli.render import plain
     from stage.domain import ExportFormat
     from stage.domain.tracker import TrackerError, parse_status
     from stage.services.tracker import FORMATS, TrackerProblemError, tracker_listing
-    from stage.storage import open_repository
 
     if stats and (export or status):
         _refuse(
@@ -171,27 +161,16 @@ def tracker(
         _refuse("[red]--export writes a file, so use it without --json.[/red]")
     if (out or force) and not export:
         _refuse("[red]--out and --force only apply with --export.[/red]")
-    export = export.strip().lower() if export else export
-    if export and export not in {item.value for item in FORMATS}:
-        _refuse("[red]The tracker exports as csv, json or md.[/red]")
-    try:
-        chosen = parse_status(status) if status is not None else None
-        fmt = _require_enum(export, ExportFormat, "--export") if export else None
-    except (TrackerError, InvalidOptionError) as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
-    if fmt is not None and fmt not in FORMATS:
-        _refuse("[red]The tracker exports as csv, json or md.[/red]")
+    names = [choice.value for choice in FORMATS]
+    if export is not None and export.strip().lower() not in names:
+        _refuse(plain(f'The tracker exports csv, json or md, not "{export[:20]}".', "red"))
+    with _refusing(TrackerError, InvalidOptionError):
+        wanted = _one(status, "--status", mine=False)
+        chosen = parse_status(wanted) if wanted is not None else None
+    fmt = None if export is None else ExportFormat(export.strip().lower())
 
-    async def run() -> "TrackerListing":
-        async with open_repository(_database(db)) as repository:
-            return await tracker_listing(repository, chosen)
-
-    try:
-        listing = run_async(run())
-    except TrackerProblemError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=1) from exc
+    with _refusing(TrackerProblemError, code=1, soft_wrap=True):
+        listing = _with_db(db, lambda repository: tracker_listing(repository, chosen))
 
     if stats:
         _stats(listing, as_json)
@@ -209,7 +188,8 @@ def tracker(
         emit(tracker_json(listing.rows))
         return
     numbered = remember(tuple(row.entry.posting_id for row in listing.rows), listing.last_sync_at)
-    from stage.cli.render import render_tracker, terminal
+    from stage.cli.render import terminal
+    from stage.cli.render.tracker import render_tracker
 
     render_tracker(terminal(), listing, status=chosen, numbered=numbered)
 
@@ -222,26 +202,32 @@ def _stats(listing: "TrackerListing", as_json: bool) -> None:
 
         emit(dump(stats_payload(listing.stats)))
         return
-    from stage.cli.render import render_tracker_stats, terminal
+    from stage.cli.render import terminal
+    from stage.cli.render.tracker import render_tracker_stats
 
     render_tracker_stats(terminal(), listing.stats)
 
 
 def _export(listing: "TrackerListing", fmt: "ExportFormat", out: Path | None, force: bool) -> None:
     from stage.cli.render import plain, terminal
+    from stage.domain.text import counted
     from stage.services.export import ExportError
     from stage.services.tracker import export_tracker
 
-    try:
+    with _refusing(ExportError, soft_wrap=True):
         written = export_tracker(listing.rows, fmt, destination=out, force=force)
-    except ExportError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
-    count = len(listing.rows)
     terminal().print(
-        plain(f"Wrote {count:,} tracked posting{'' if count == 1 else 's'} to {written}"),
+        plain(f"Wrote {counted(len(listing.rows), 'tracked posting')} to {written}"),
         soft_wrap=True,
     )
+
+
+def _run_tracked[T](coroutine: Coroutine[Any, Any, T]) -> T:
+    from stage.cli.selection import StaleSelectionError
+    from stage.services.tracker import TrackerProblemError
+
+    with _refusing(StaleSelectionError), _refusing(TrackerProblemError, code=1, soft_wrap=True):
+        return run_async(coroutine)
 
 
 def _references(command: str, postings: list[str] | None) -> list[str]:
@@ -249,11 +235,8 @@ def _references(command: str, postings: list[str] | None) -> list[str]:
 
     if not postings:
         _refuse(_needs_a_row(command))
-    try:
+    with _refusing(BadRangeError):
         return expand(postings)
-    except BadRangeError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
 
 
 def _refuse_missing(missing: tuple[str, ...]) -> NoReturn:
@@ -276,20 +259,17 @@ def _change(
 ) -> None:
     from datetime import datetime
 
-    from stage.cli.render import render_changes, terminal
-    from stage.cli.selection import StaleSelectionError
+    from stage.cli.render import terminal
+    from stage.cli.render.tracker import render_changes
     from stage.domain.tracker import ApplicationStatus, TrackerError, parse_day, parse_note
-    from stage.services.tracker import ChangeReport, TrackerProblemError, record_status
+    from stage.services.tracker import ChangeReport, record_status
     from stage.storage import open_repository
 
     references = _references(command, postings)
     chosen = ApplicationStatus(status) if status is not None else None
-    try:
+    with _refusing(TrackerError):
         on = parse_day(on_text, datetime.now().astimezone().date()) if on_text is not None else None
         note = parse_note(note_text) if note_text is not None else None
-    except TrackerError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
 
     async def run() -> tuple[list[str], ChangeReport]:
         async with open_repository(_database(db)) as repository:
@@ -299,14 +279,7 @@ def _change(
             )
             return ids, report
 
-    try:
-        ids, report = run_async(run())
-    except StaleSelectionError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
-    except TrackerProblemError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=1) from exc
+    ids, report = _run_tracked(run())
     if report.missing:
         _refuse_missing(report.missing)
     if report.untracked:
@@ -316,7 +289,7 @@ def _change(
     render_changes(console, _headline(command, report, postings or []), report)
     if forward_only and report.unchanged and chosen is not None:
         console.print(
-            "[dim]Quick commands never move a status back; "
+            "[dim]Quick commands never move a status back, but "
             f"[bold]stage track ROW --status {chosen.value}[/bold] does.[/dim]"
         )
 

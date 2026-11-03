@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -23,13 +24,12 @@ from stage.cli.options import (
     _count,
     _database,
     _filters,
-    _mine,
     _needs_a_row,
-    _no_such_posting,
-    _print_failure,
+    _print_error,
     _print_missing,
     _print_warning,
     _refuse,
+    _refusing,
     _require_enum,
     _resolve_posting,
     app,
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from stage.domain import JobFilters
     from stage.services.tracker import TrackerView
 
-FIRST_SYNC_NOTE = "Only one sync so far, so every posting is new; newest posted first."
+FIRST_SYNC_NOTE = "Only one sync so far, so every posting is new. Newest posted first."
 
 
 async def _tracked(
@@ -52,8 +52,25 @@ async def _tracked(
     from stage.services.tracker import tracker_view
 
     view = await tracker_view(repository)
+    if untracked and view.problem:
+        _refuse(
+            "[red]--untracked needs your tracker, which could not be read, so nothing was "
+            "listed.[/red] Run [bold]stage tracker[/bold] to see why."
+        )
     excluded = view.tracked if untracked else view.hidden
     return replace(filters, excluded_ids=filters.excluded_ids | excluded), view
+
+
+async def _scoped(
+    repository: Any, filters: "JobFilters", untracked: bool, only_new: bool
+) -> tuple["JobFilters", "TrackerView", bool]:
+    from dataclasses import replace
+
+    scoped, view = await _tracked(repository, filters, untracked)
+    since = await repository.previous_sync_at() if only_new else None
+    if since is not None:
+        scoped = replace(scoped, first_seen_after=since)
+    return scoped, view, only_new and since is None
 
 
 def _hidden_hint(count: int) -> str:
@@ -97,17 +114,14 @@ async def _closed_since_you_looked(repository: Any) -> str:
 async def _company_hint(company: str | None, repository: Any) -> str:
     if not company:
         return ""
-    from stage.domain.text import escape_markup
+    from stage.domain.text import did_you_mean, escape_markup
     from stage.services.query import company_match
 
     stored, near = await company_match(repository, company)
     if stored:
         return ""
-    asked = f"'{escape_markup(company)[:60]}'"
-    if near is None:
-        return f"Stage stores no posting from an employer named {asked}."
-    suggestion = f"'{escape_markup(near)[:60]}'"
-    return f"Stage stores no posting from an employer named {asked}. Did you mean {suggestion}?"
+    said = f'Stage stores no posting from an employer named "{escape_markup(company)[:60]}".'
+    return said if near is None else f"{said} {did_you_mean(escape_markup(near)[:60])}"
 
 
 def _window(last: int | None) -> int | None:
@@ -128,7 +142,13 @@ def tui(
     from stage.tui.app import launch, summarize
 
     target = _database(db)
-    launch(target, run_async(summarize(target)))
+    summary = run_async(summarize(target))
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        _refuse(
+            "[red]stage tui needs a terminal.[/red] Run it in a terminal window, or use "
+            "[bold]stage list[/bold] for plain output."
+        )
+    launch(target, summary)
 
 
 @app.command("list", help="Browse recent open postings, newest first", rich_help_panel="Everyday")
@@ -150,22 +170,20 @@ def list_postings(
             "--limit",
             metavar="N",
             click_type=_count(1),
-            help="Maximum number of postings to show; --all shows every match",
+            help="Maximum number of postings to show (--all shows every match)",
         ),
     ] = 50,
     as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
-    from dataclasses import replace as _replace
-
     from stage.cli.selection import remember
     from stage.cli.serialize import emit, jobs_to_json
     from stage.services.query import JobListing, count_hidden, list_jobs
     from stage.services.tracker import TrackerView
     from stage.storage import open_repository
 
-    try:
-        filters = _filters(
+    with _refusing(InvalidOptionError):
+        filters, preferences = _filters(
             location=location,
             term=term,
             role=role,
@@ -173,23 +191,13 @@ def list_postings(
             source=source,
             company=company,
             limit=None if show_all else limit,
+            mine=mine,
+            as_json=as_json,
         )
-        preferences = None
-        if mine:
-            filters, preferences = _mine(filters, as_json)
-    except InvalidOptionError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
 
     async def run() -> tuple[JobListing, str, str, str, TrackerView, int]:
         async with open_repository(_database(db)) as repository:
-            scoped, view = await _tracked(repository, filters, untracked)
-            first_sync = False
-            if only_new:
-                since = await repository.previous_sync_at()
-                first_sync = since is None
-                if since is not None:
-                    scoped = _replace(scoped, first_seen_after=since)
+            scoped, view, first_sync = await _scoped(repository, filters, untracked, only_new)
             found = await list_jobs(repository, scoped, window_days=_window(last))
             hidden = await count_hidden(repository, scoped, view.hidden, window_days=_window(last))
             hint = "" if found.jobs else await _company_hint(filters.company, repository)
@@ -206,7 +214,8 @@ def list_postings(
         return
     numbered = remember(tuple(job.id for job in listing.jobs), listing.last_sync_at)
 
-    from stage.cli.render import plain, render_jobs, terminal
+    from stage.cli.render import plain, terminal
+    from stage.cli.render.postings import render_jobs
 
     console = terminal()
     if closed:
@@ -242,7 +251,7 @@ def search(
         typer.Argument(
             metavar="WORDS",
             click_type=WORD,
-            help="Words to find, all of them, each as the start of a word; accents optional",
+            help="Words to find, all of them, each as the start of a word. Accents are optional",
         ),
     ],
     location: LocationOption = None,
@@ -260,7 +269,7 @@ def search(
             "--last",
             metavar="DAYS",
             click_type=_count(0, 3650),
-            help="Only postings first seen in the last DAYS days; every stored posting by default",
+            help="Only postings first seen in the last DAYS days, every stored posting by default",
         ),
     ] = None,
     only_new: NewOption = False,
@@ -270,14 +279,12 @@ def search(
             "--limit",
             metavar="N",
             click_type=_count(1),
-            help="Maximum number of postings to show; --all shows every match",
+            help="Maximum number of postings to show (--all shows every match)",
         ),
     ] = 50,
     as_json: JsonOption = False,
     db: DatabaseOption = None,
 ) -> None:
-    from dataclasses import replace as _replace
-
     from stage.cli.selection import remember
     from stage.cli.serialize import emit, jobs_to_json
     from stage.services.query import JobListing, count_hidden
@@ -291,8 +298,8 @@ def search(
             "[red]stage search needs words to find.[/red] For example "
             "[bold]stage search software intern[/bold]."
         )
-    try:
-        filters = _filters(
+    with _refusing(InvalidOptionError):
+        filters, preferences = _filters(
             location=location,
             term=term,
             role=role,
@@ -300,23 +307,13 @@ def search(
             source=source,
             company=company,
             limit=None if show_all else limit,
+            mine=mine,
+            as_json=as_json,
         )
-        preferences = None
-        if mine:
-            filters, preferences = _mine(filters, as_json)
-    except InvalidOptionError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
 
     async def run() -> tuple[JobListing, str, str, TrackerView, int]:
         async with open_repository(_database(db)) as repository:
-            scoped, view = await _tracked(repository, filters, untracked)
-            first_sync = False
-            if only_new:
-                since = await repository.previous_sync_at()
-                first_sync = since is None
-                if since is not None:
-                    scoped = _replace(scoped, first_seen_after=since)
+            scoped, view, first_sync = await _scoped(repository, filters, untracked, only_new)
             found = await search_service(repository, query, scoped, window_days=last or None)
             hidden = await count_hidden(
                 repository, scoped, view.hidden, window_days=last or None, query=query
@@ -334,7 +331,8 @@ def search(
         return
     numbered = remember(tuple(job.id for job in listing.jobs), listing.last_sync_at)
 
-    from stage.cli.render import plain, render_search, terminal
+    from stage.cli.render import plain, terminal
+    from stage.cli.render.postings import render_search
 
     console = terminal()
     if note:
@@ -343,7 +341,8 @@ def search(
         console.print(plain(preferences.describe(filters), "dim"))
     render_search(console, listing, numbered=numbered, hint=hint, marks=view.marks(listing.jobs))
     if listing.no_location:
-        again = f'stage search "{query}"' + (f" --last {last}" if last else "")
+        again = f'stage search "{" ".join(listing.terms)}"' + (f" --last {last}" if last else "")
+        again += " --new" if only_new else ""
         console.print(
             plain(_no_location_hint(listing.no_location, again, filters, untracked), "dim")
         )
@@ -369,11 +368,8 @@ def show(
 
     if not postings:
         _refuse(_needs_a_row("show"))
-    try:
+    with _refusing(BadRangeError):
         postings = expand(postings)
-    except BadRangeError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
     from stage.cli.serialize import _posting_payload, emit, tracked_only_payload
     from stage.domain import dump
     from stage.domain.tracker import TrackedPosting
@@ -392,11 +388,8 @@ def show(
             tracked, problem = await tracked_for(repository, targets)
             return targets, found, tracked, problem
 
-    try:
+    with _refusing(StaleSelectionError):
         targets, details, tracked, problem = run_async(run())
-    except StaleSelectionError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
     if problem:
         _print_warning(problem, as_json)
     absent = [
@@ -419,11 +412,12 @@ def show(
 
             for reference, missing in zip(postings, absent, strict=True):
                 if missing:
-                    fail(f"No posting with id {reference[:80]!r}.")
+                    fail(f'No posting has the id "{reference[:80]}".')
             raise typer.Exit(code=1)
         return
 
-    from stage.cli.render import render_posting, render_snapshot, rule
+    from stage.cli.render import rule
+    from stage.cli.render.postings import render_posting, render_snapshot
 
     console = terminal()
     shown = 0
@@ -445,7 +439,7 @@ def show(
 
 @app.command(
     "open",
-    help="Open postings' apply pages in the browser, up to 50 at once",
+    help="Open apply pages, up to 50, and check each is still up",
     rich_help_panel="Everyday",
 )
 def open_posting(
@@ -473,11 +467,8 @@ def open_posting(
 
     if not postings:
         _refuse(_needs_a_row("open"))
-    try:
+    with _refusing(BadRangeError):
         postings = expand(postings)
-    except BadRangeError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
 
     if not print_only and len(postings) > MAX_OPEN_AT_ONCE:
         first = postings[0]
@@ -487,50 +478,47 @@ def open_posting(
             else f"Open {MAX_OPEN_AT_ONCE} or fewer"
         )
         _refuse(
-            f"[red]That would open {len(postings)} tabs; Stage opens at most "
+            f"[red]That would open {len(postings):,} tabs, and Stage opens at most "
             f"{MAX_OPEN_AT_ONCE} at once.[/red] {fewer}, "
-            f"or add [bold]--print[/bold] to list all {len(postings)} links."
+            f"or add [bold]--print[/bold] to list all {len(postings):,} links."
         )
 
-    async def run() -> list[tuple[str, str, bool] | None]:
+    async def run() -> list[tuple[str, str, str, bool] | None]:
         async with open_repository(_database(db)) as repository:
             targets = [await _resolve_posting(reference, repository) for reference in postings]
             tracked, _ = await tracked_for(repository, targets)
-            found: list[tuple[str, str, bool] | None] = []
+            found: list[tuple[str, str, str, bool] | None] = []
             for target in targets:
                 detail = await get_posting(repository, target)
                 entry = tracked.get(target)
                 if detail is not None:
-                    found.append((detail.job.company, detail.job.apply_url_raw, False))
+                    found.append((target, detail.job.company, detail.job.apply_url_raw, False))
                 elif entry is not None:
-                    found.append((entry.snapshot.company, entry.snapshot.apply_url, True))
+                    found.append((target, entry.snapshot.company, entry.snapshot.apply_url, True))
                 else:
                     found.append(None)
             return found
 
-    try:
+    with _refusing(StaleSelectionError):
         links = run_async(run())
-    except StaleSelectionError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
 
     import webbrowser
 
     missing = False
     refused = False
+    launched: list[str] = []
     for reference, link in zip(postings, links, strict=True):
         if link is None:
-            console.print(_no_such_posting(reference))
+            _print_missing(reference)
             missing = True
             continue
-        company, raw, kept = link
+        target, company, raw, kept = link
 
         url = web_url(raw)
         if url is None:
-            console.print(
-                f"[red]Refusing to open {quoted(raw, 60)}[/red]. A posting's "
-                "apply URL is untrusted input, and only a plain http or https address is "
-                "launched."
+            _print_error(
+                f"[red]Stage did not open {quoted(raw, 60)}.[/red] It opens only plain http "
+                "and https links, and a posting's link comes from its board."
             )
             refused = True
             continue
@@ -540,14 +528,25 @@ def open_posting(
             continue
 
         if not webbrowser.open(url):
-            console.print(
-                plain(f"No browser available. The apply URL is {url}"),
-                style="yellow",
+            _print_error(
+                plain(
+                    f"No browser is available, so {url} did not open. Add --print to list "
+                    "links instead.",
+                    "yellow",
+                ),
                 soft_wrap=True,
             )
             raise typer.Exit(code=1)
         source = " from your tracker" if kept else ""
         console.print(plain(f"Opened {company}{source}: {url}"), soft_wrap=True)
+        launched.append(target)
+
+    if launched:
+        from stage.services.liveness import check_opened, gone_line
+
+        checked = run_async(check_opened(_database(db), launched))
+        for job in checked.gone:
+            console.print(plain(gone_line(job), style="yellow"), soft_wrap=True)
 
     if refused:
         raise typer.Exit(code=2)
@@ -584,12 +583,13 @@ def export(
             "--limit",
             metavar="N",
             click_type=_count(1),
-            help="Maximum number of postings to export; every match by default",
+            help="Maximum number of postings to export, every match by default",
         ),
     ] = None,
     db: DatabaseOption = None,
 ) -> None:
-    from stage.cli.render import plain, render_export, terminal
+    from stage.cli.render import plain, terminal
+    from stage.cli.render.postings import render_export
     from stage.domain import DEFAULT_WINDOW_DAYS, ExportFormat
     from stage.services.export import ExportError, ExportResult, export_jobs
     from stage.services.query import count_hidden, count_without_location
@@ -598,9 +598,9 @@ def export(
 
     console = terminal()
 
-    try:
+    with _refusing(InvalidOptionError):
         export_format = _require_enum(fmt, ExportFormat, "--format")
-        filters = _filters(
+        filters, preferences = _filters(
             location=location,
             term=term,
             role=role,
@@ -608,13 +608,8 @@ def export(
             source=source,
             company=company,
             limit=None if show_all else limit,
+            mine=mine,
         )
-        preferences = None
-        if mine:
-            filters, preferences = _mine(filters)
-    except InvalidOptionError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
 
     async def run() -> tuple[ExportResult, int | None, TrackerView, int]:
         async with open_repository(_database(db)) as repository:
@@ -631,11 +626,8 @@ def export(
             hidden = await count_hidden(repository, scoped, view.hidden, window_days=_window(last))
             return result, left_out, view, hidden
 
-    try:
+    with _refusing(ExportError, soft_wrap=True):
         result, left_out, view, hidden = run_async(run())
-    except ExportError as exc:
-        _print_failure(exc)
-        raise typer.Exit(code=2) from exc
     if view.problem:
         _print_warning(view.problem, False)
 

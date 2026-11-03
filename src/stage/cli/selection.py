@@ -73,8 +73,12 @@ def resolve(row: int, synced_at: datetime | None, path: Path | None = None) -> s
             "The database has changed since that listing. Run stage list again."
         )
     if row < 1 or row > len(selection.ids):
-        rows = "1 row" if len(selection.ids) == 1 else f"{len(selection.ids):,} rows"
-        raise StaleSelectionError(f"That listing had {rows}, so {row} is out of range.")
+        count = len(selection.ids)
+        rows = "1 row" if count == 1 else f"{count:,} rows"
+        pick = "Use 1" if count == 1 else f"Use a number from 1 to {count:,}"
+        raise StaleSelectionError(
+            f"That listing had {rows}, so {row} is out of range. {pick}, or run stage list again."
+        )
     return selection.ids[row - 1]
 
 
@@ -94,12 +98,12 @@ def expand(references: Sequence[str]) -> list[str]:
         found = _RANGE.match(reference)
         if found is None:
             if _looks_like_a_range(reference):
-                raise BadRangeError(f"{reference!r} is not a range; write one like 1-5.")
+                raise BadRangeError(f'"{reference}" is not a range. Write one like 1-5.')
             expanded.setdefault(str(_row(reference)) if reference.isdecimal() else reference)
             continue
         start, end = _row(found.group(1)), _row(found.group(2))
         if start > end:
-            raise BadRangeError(f"{reference} counts backwards; write {end}-{start}.")
+            raise BadRangeError(f"{reference} counts backwards. Write {end}-{start}.")
         if end > MAX_REMEMBERED:
             raise BadRangeError(f"A listing holds at most {MAX_REMEMBERED:,} rows.")
         for row in range(start, end + 1):

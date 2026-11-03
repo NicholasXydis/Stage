@@ -4,20 +4,21 @@ import tempfile
 import time
 import uuid
 from collections.abc import Mapping
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from stage.domain import SyncOutcome
 from stage.domain.text import dump, summary
-from stage.paths import data_dir
+from stage.paths import data_dir, exclusive
 
 if TYPE_CHECKING:
     from stage.domain import DiscoveryEvent, SyncEvent
 
 HEARTBEAT_INTERVAL_SECONDS = 1.0
 _HEARTBEAT_MISSES_BEFORE_UNRESPONSIVE = 3
+MAX_HEARTBEAT_SECONDS = 86_400.0
 _STATE_RETRY_DELAYS_SECONDS = (0.0, 0.02, 0.1)
 _ACTIVE_PHASES = frozenset({"waiting", "syncing", "discovering", "checking"})
 _OUTCOMES = frozenset(outcome.value for outcome in SyncOutcome)
@@ -75,6 +76,7 @@ class ScheduleStateWriter:
     def __init__(self, path: Path, payload: dict[str, object]) -> None:
         self.path = path
         self._payload = payload
+        self._dirty: dict[str, object] = {}
         self._last_write = 0.0
 
     @classmethod
@@ -132,7 +134,6 @@ class ScheduleStateWriter:
         self._set(values, force=True)
 
     def heartbeat(self) -> None:
-        self._reload()
         self._set(force=True, heartbeat_at=_stamp(datetime.now(UTC)))
 
     def checking(self) -> None:
@@ -153,7 +154,7 @@ class ScheduleStateWriter:
             "doctor_exit_code": doctor_exit_code,
             "exit_code": exit_code,
         }
-        if self._payload.get("phase") != "blocked":
+        if self._payload.get("phase") not in ("blocked", "offline"):
             values["phase"] = "finished"
             values["outcome"] = _outcome(
                 self._payload.get("sync_outcome"), sync_exit_code, doctor_exit_code
@@ -168,6 +169,16 @@ class ScheduleStateWriter:
             outcome=SyncOutcome.FAILURE.value,
             finished_at=_stamp(datetime.now(UTC)),
             exit_code=exit_code,
+            error=summary(detail, 240),
+        )
+
+    def offline(self, detail: str) -> None:
+        self._reload()
+        self._set(
+            force=True,
+            phase="offline",
+            finished_at=_stamp(datetime.now(UTC)),
+            exit_code=0,
             error=summary(detail, 240),
         )
 
@@ -247,16 +258,18 @@ class ScheduleStateWriter:
     def _reload(self) -> None:
         payload = read_state_path(self.path)
         if payload is not None and payload.get("run_id") == self._payload.get("run_id"):
-            self._payload = payload
+            self._payload = {**payload, **self._dirty}
 
-    def _merge_heartbeat(self) -> None:
+    def _merge_stored(self) -> None:
         stored = read_state_path(self.path)
         if stored is None or stored.get("run_id") != self._payload.get("run_id"):
             return
+        merged = {**stored, **self._dirty}
         theirs = _time(stored.get("heartbeat_at"))
-        mine = _time(self._payload.get("heartbeat_at"))
+        mine = _time(merged.get("heartbeat_at"))
         if theirs is not None and (mine is None or theirs > mine):
-            self._payload["heartbeat_at"] = stored["heartbeat_at"]
+            merged["heartbeat_at"] = stored["heartbeat_at"]
+        self._payload = merged
 
     def _set(
         self,
@@ -265,19 +278,23 @@ class ScheduleStateWriter:
         force: bool = False,
         **extra: object,
     ) -> None:
-        if values is not None:
-            self._payload.update(values)
-        self._payload.update(extra)
-        self._payload["updated_at"] = _stamp(datetime.now(UTC))
+        changes = {**(values or {}), **extra, "updated_at": _stamp(datetime.now(UTC))}
+        self._payload.update(changes)
+        self._dirty.update(changes)
         now = time.monotonic()
         if not force and now - self._last_write < 0.5:
             return
-        self._merge_heartbeat()
-        self._write()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with ExitStack() as stack:
+            with suppress(OSError):
+                stack.enter_context(exclusive(_lock_path(self.path)))
+            self._merge_stored()
+            written = self._write()
+        if written:
+            self._dirty = {}
         self._last_write = now
 
-    def _write(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+    def _write(self) -> bool:
         staged: Path | None = None
         try:
             with suppress(OSError):
@@ -299,11 +316,16 @@ class ScheduleStateWriter:
                         time.sleep(delay)
                     with suppress(OSError):
                         staged.replace(self.path)
-                        return
+                        return True
         finally:
             if staged is not None:
                 with suppress(OSError):
                     staged.unlink(missing_ok=True)
+        return False
+
+
+def _lock_path(path: Path) -> Path:
+    return path.with_name(f".{path.name.lstrip('.')}.lock")
 
 
 def _outcome(sync_outcome: object, sync_exit_code: int | None, doctor_exit_code: int | None) -> str:
@@ -352,7 +374,13 @@ def _number(payload: dict[str, object], key: str) -> int:
 
 def _positive_number(payload: dict[str, object], key: str) -> float:
     value = payload.get(key)
-    return float(value) if isinstance(value, int | float) and value > 0 else 0.0
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return 0.0
+    try:
+        number = float(value)
+    except OverflowError:
+        return 0.0
+    return number if 0 < number < MAX_HEARTBEAT_SECONDS else 0.0
 
 
 def _time(value: object) -> datetime | None:

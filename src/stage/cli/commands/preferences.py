@@ -9,12 +9,14 @@ from stage.cli.options import (
     InvalidOptionError,
     JsonOption,
     _database,
+    _print_error,
     _print_failure,
     _print_warning,
     _refuse,
     _validated_term,
+    _with_db,
     app,
-    run_async,
+    ask,
 )
 
 if TYPE_CHECKING:
@@ -38,7 +40,7 @@ def prefs(
         typer.Option(
             "--location",
             metavar="PLACE",
-            help="montreal, canada or usa; repeat the flag or separate with commas",
+            help='montreal, canada or usa. Repeat the flag or separate with commas, "" clears',
         ),
     ] = None,
     role: Annotated[
@@ -47,27 +49,27 @@ def prefs(
             "--role",
             metavar="ROLE",
             help=(
-                "swe, security, data, ml-ai, quant, infra, embedded, general-cs; repeat the "
-                "flag or separate with commas"
+                "swe, security, data, ml-ai, quant, infra, embedded, general-cs. Repeat the "
+                'flag or separate with commas, "" clears'
             ),
         ),
     ] = None,
     term: Annotated[
         list[str] | None,
-        typer.Option("--term", metavar="TERM", help="Terms such as summer-2027"),
+        typer.Option("--term", metavar="TERM", help='Terms such as summer-2027, "" clears'),
     ] = None,
     follow: Annotated[
         list[str] | None,
         typer.Option(
             "--follow",
             metavar="NAME",
-            help="Employers to include from any place; repeat the flag for more",
+            help='Employers to include from any place, one per flag, "" clears the list',
         ),
     ] = None,
     avoid: Annotated[
         list[str] | None,
         typer.Option(
-            "--avoid", metavar="NAME", help="Employers to leave out; repeat the flag for more"
+            "--avoid", metavar="NAME", help='Employers to leave out, one per flag, "" clears'
         ),
     ] = None,
     about: Annotated[
@@ -112,13 +114,22 @@ def prefs(
         _print_warning(problem, as_json)
     current = loaded.preferences
 
+    for flag, values in (
+        ("--location", location),
+        ("--role", role),
+        ("--term", term),
+        ("--follow", follow),
+        ("--avoid", avoid),
+    ):
+        if values and len(values) > 1 and any(not value.strip() for value in values):
+            _refuse(f'[red]{flag} "" clears the list, so give it on its own.[/red]')
     if changing:
         known = _stored_companies(db) if follow or avoid else {}
         try:
             with preferences_lock():
                 current = load_preferences().preferences
                 updated = _updated(current, known, location, role, term, follow, avoid, about)
-                _finish(updated, known, db, as_json)
+                _finish(updated, known, db, as_json, before=current)
         except (PreferenceError, InvalidOptionError) as exc:
             _print_failure(exc)
             raise typer.Exit(code=2) from exc
@@ -129,13 +140,14 @@ def prefs(
     if not (show or as_json) and _interactive():
         known = _stored_companies(db)
         _say(KEEP_OR_CLEAR, "dim")
-        _finish(_guided(current, known, _ask, _warn), known, db, as_json)
+        _finish(_guided(current, known, _ask, _warn), known, db, as_json, before=current)
         return
 
     if as_json:
         emit(preferences_to_json(current))
         return
-    from stage.cli.render import render_preferences, terminal
+    from stage.cli.render import terminal
+    from stage.cli.render.postings import render_preferences
 
     render_preferences(terminal(), current, saved=False, counts=_open_counts(current, db))
 
@@ -161,6 +173,7 @@ def _updated(
         follow=follow or None,
         avoid=avoid or None,
         about=about,
+        commas=False,
     )
 
 
@@ -247,7 +260,12 @@ def _guided(
 
 
 def _finish(
-    preferences: "Preferences", known: "Mapping[str, str]", db: "Path | None", as_json: bool
+    preferences: "Preferences",
+    known: "Mapping[str, str]",
+    db: "Path | None",
+    as_json: bool,
+    *,
+    before: "Preferences | None" = None,
 ) -> None:
     from stage.cli.serialize import emit, preferences_to_json
     from stage.services.preferences import save_preferences, unseen_companies
@@ -256,12 +274,13 @@ def _finish(
         path = save_preferences(preferences)
     except OSError as exc:
         _could_not(exc, "save")
-    for warning in unseen_companies(preferences, known):
+    for warning in unseen_companies(preferences, known, before):
         _print_warning(warning, as_json)
     if as_json:
         emit(preferences_to_json(preferences))
         return
-    from stage.cli.render import plain, render_preferences, terminal
+    from stage.cli.render import plain, terminal
+    from stage.cli.render.postings import render_preferences
 
     console = terminal()
     render_preferences(console, preferences, saved=True, counts=_open_counts(preferences, db))
@@ -269,41 +288,63 @@ def _finish(
 
 
 def _could_not(exc: OSError, verb: str) -> NoReturn:
+    from stage.cli.render import plain
+    from stage.domain.text import plain_error
     from stage.services.preferences import preferences_path
 
-    reason = exc.strerror or str(exc) or type(exc).__name__
-    _print_failure(OSError(f"Could not {verb} {preferences_path()}: {reason}"))
+    reason = exc.strerror or plain_error(str(exc))
+    _print_error(
+        plain(
+            f"Stage could not {verb} {preferences_path()} ({reason}). Check that the folder "
+            "is yours and writable.",
+            "red",
+        ),
+        soft_wrap=True,
+    )
     raise typer.Exit(code=1) from exc
 
 
 def _stored_companies(db: "Path | None") -> dict[str, str]:
     from stage.services.preferences import stored_companies
-    from stage.storage import open_repository
 
     database = _database(db)
     if not database.exists():
         return {}
-
-    async def names() -> dict[str, str]:
-        async with open_repository(database) as repository:
-            return await stored_companies(repository)
-
-    return run_async(names())
+    return _unless_unreadable(database, lambda: _with_db(database, stored_companies), {}, warn=True)
 
 
 def _open_counts(preferences: "Preferences", db: "Path | None") -> dict[str, int] | None:
-    from stage.storage import open_repository
 
     wanted = {company.folded for company in (*preferences.follow, *preferences.avoid)}
     database = _database(db)
     if not wanted or not database.exists():
         return None
+    return _unless_unreadable(
+        database,
+        lambda: _with_db(database, lambda repository: repository.open_counts_by_company(wanted)),
+        None,
+        warn=False,
+    )
 
-    async def counts() -> dict[str, int]:
-        async with open_repository(database) as repository:
-            return await repository.open_counts_by_company(wanted)
 
-    return run_async(counts())
+def _unless_unreadable[T](database: "Path", read: Callable[[], T], fallback: T, *, warn: bool) -> T:
+    import sqlite3
+
+    from stage.storage.migrations import SchemaVersionError
+
+    try:
+        return read()
+    except (sqlite3.Error, SchemaVersionError) as exc:
+        if warn:
+            from stage.cli.options import database_problem
+            from stage.cli.render import plain
+
+            problem = (
+                str(exc) if isinstance(exc, SchemaVersionError) else database_problem(exc, database)
+            )
+            said = f"{problem} Stage saves your preferences without checking employer names."
+            _print_error(plain(said, "yellow"), soft_wrap=True)
+        return fallback
 
 
 def _interactive() -> bool:
@@ -313,7 +354,12 @@ def _interactive() -> bool:
 def _ask(question: str, shown: str) -> str:
     if len(shown) > SHOWN_IN_FULL:
         question = f"{question} (Enter keeps the saved one)"
-    return str(typer.prompt(question, default=shown, show_default=0 < len(shown) <= SHOWN_IN_FULL))
+    return ask(
+        question,
+        default=shown,
+        show_default=0 < len(shown) <= SHOWN_IN_FULL,
+        stopped="Stopped, so your preferences were not changed.",
+    )
 
 
 def _warn(message: str) -> None:

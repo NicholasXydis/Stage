@@ -1,7 +1,7 @@
 import os
 import sys
-from collections.abc import Callable, Coroutine, Iterable
-from datetime import date
+from collections.abc import Awaitable, Callable, Coroutine, Iterable, Iterator
+from contextlib import contextmanager
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, NoReturn
@@ -11,19 +11,34 @@ from typer._click.types import IntRange, StringParamType
 from typer.core import TyperGroup
 
 if TYPE_CHECKING:
-    from rich.console import Console
     from rich.text import Text
 
-    from stage.domain import DiscoveryEvent, JobFilters
+    from stage.companies import PersonalBoards
+    from stage.domain import JobFilters
     from stage.domain.preferences import Preferences
+    from stage.storage import AsyncRepository
 
-    ProgressCallback = Callable[[DiscoveryEvent], None]
+STOPPED = "Stopped before it finished."
 
 
-def run_async[T](coroutine: Coroutine[Any, Any, T]) -> T:
+def run_async[T](coroutine: Coroutine[Any, Any, T], *, stopped: str = STOPPED) -> T:
     import asyncio
 
-    return asyncio.run(coroutine)
+    try:
+        return asyncio.run(coroutine)
+    except KeyboardInterrupt:
+        _print_error(f"[yellow]{stopped}[/yellow]")
+        raise typer.Exit(code=130) from None
+
+
+def ask(question: str, *, default: str, show_default: bool, stopped: str) -> str:
+    try:
+        return str(typer.prompt(question, default=default, show_default=show_default))
+    except typer.Abort as exc:
+        interrupted = isinstance(exc.__context__, KeyboardInterrupt)
+        typer.echo(err=True)
+        _print_error(f"[yellow]{stopped}[/yellow]")
+        raise typer.Exit(code=130 if interrupted else 1) from None
 
 
 class InvalidOptionError(Exception):
@@ -53,13 +68,11 @@ class _Count(IntRange):
             except (TypeError, ValueError):
                 self.fail(f"{value} is not a whole number.", param, ctx)
             bounds = (
-                f"{self.min} or more"
-                if self.max is None
-                else f"at most {self.max}"
-                if self.min is None
-                else f"between {self.min} and {self.max}"
+                f"{self.min:,} or more"
+                if self.max is None or self.max >= MAX_COUNT
+                else f"between {self.min:,} and {self.max:,}"
             )
-            self.fail(f"{value} is out of range; expected a number {bounds}.", param, ctx)
+            self.fail(f"{value} is out of range. Give a number {bounds}.", param, ctx)
 
 
 WORD = _Word()
@@ -69,18 +82,18 @@ MAX_COUNT = 1_000_000_000
 def output_path(raw: str) -> Path:
     path = Path(raw).expanduser()
     if raw.strip() in ("", "-"):
-        raise typer.BadParameter("name a file or a folder; Stage does not write exports to stdout")
+        raise typer.BadParameter("name a file or a folder. Stage does not write exports to stdout.")
     if raw.endswith(("/", os.sep)) and not path.is_dir():
-        raise typer.BadParameter(f"the folder {path} does not exist; create it first")
+        raise typer.BadParameter(f"the folder {path} does not exist. Create it first.")
     return path
 
 
 def database_file(raw: str) -> Path:
     path = Path(raw).expanduser()
     if not raw.strip() or path.is_dir():
-        raise typer.BadParameter("name a database file, not a folder")
+        raise typer.BadParameter("name a database file, not a folder.")
     if not path.parent.is_dir():
-        raise typer.BadParameter(f"the folder {path.parent} does not exist; create it first")
+        raise typer.BadParameter(f"the folder {path.parent} does not exist. Create it first.")
     return path
 
 
@@ -88,7 +101,7 @@ def _count(minimum: int, maximum: int | None = MAX_COUNT) -> _Count:
     return _Count(min=minimum, max=maximum)
 
 
-def _parse_enum[E: StrEnum](value: str | None, enum: type[E], flag: str) -> E | None:
+def _parse_enum[E: StrEnum](value: str | None, enum: Iterable[E], flag: str) -> E | None:
     if value is None:
         return None
     return _require_enum(value, enum, flag)
@@ -98,15 +111,30 @@ UNMATCHABLE_VALUES = {
     "--role": frozenset({"hardware"}),
     "--location": frozenset({"international"}),
 }
+_NOUNS = {
+    "--lang": "language",
+    "--exclude": "platform",
+    "--expect-size": "size",
+    "--export": "format",
+}
 
 
-def _require_enum[E: StrEnum](value: str, enum: type[E], flag: str) -> E:
-    try:
-        return enum(value.strip().lower())
-    except ValueError as exc:
-        hidden = UNMATCHABLE_VALUES.get(flag, frozenset())
-        options = ", ".join(v for v in enum.__members__.values() if v not in hidden)
-        raise InvalidOptionError(f"{flag} must be one of: {options}") from exc
+def _require_enum[E: StrEnum](value: str, enum: Iterable[E], flag: str) -> E:
+    choices = list(enum)
+    for choice in choices:
+        if choice.value == value.strip().lower():
+            return choice
+    hidden = UNMATCHABLE_VALUES.get(flag, frozenset())
+    shown = [choice.value for choice in choices if choice.value not in hidden]
+    if not value.strip():
+        raise InvalidOptionError(f"{flag} needs a value. Choose from: {', '.join(shown)}.")
+    raise InvalidOptionError(_unknown(_NOUNS.get(flag, flag.lstrip("-")), value, shown))
+
+
+def _unknown(noun: str, value: str, choices: Iterable[str]) -> str:
+    from stage.domain.text import unknown_choice
+
+    return unknown_choice(noun, value, list(choices))
 
 
 class _Banner(TyperGroup):
@@ -189,6 +217,7 @@ def _root(
         ),
     ] = False,
 ) -> None:
+    _INVOKED[:] = [context.invoked_subcommand or ""]
     if context.invoked_subcommand is None:
         typer.echo(context.get_help())
         raise typer.Exit
@@ -277,7 +306,7 @@ LastDaysOption = Annotated[
         "--last",
         metavar="DAYS",
         click_type=_count(0, 3650),
-        help="Only postings first seen in the last DAYS days; Stage keeps 14, the default",
+        help="Only postings first seen in the last DAYS days (Stage keeps 14, the default)",
     ),
 ]
 StaleDaysOption = Annotated[
@@ -291,27 +320,80 @@ StaleDaysOption = Annotated[
 ]
 
 
+_OPENED: list[Path] = []
+_INVOKED: list[str] = []
+
+
+READS_ONLY = frozenset(
+    {
+        "list",
+        "search",
+        "show",
+        "open",
+        "export",
+        "quarantine",
+        "stats",
+        "sources",
+        "coverage",
+        "doctor",
+        "tui",
+    }
+)
+
+
 def _database(explicit: Path | None) -> Path:
     from stage.paths import database_path
 
-    return explicit.expanduser() if explicit else database_path()
+    path = explicit.expanduser() if explicit else database_path()
+    if explicit is not None and not path.exists() and _command_name() in READS_ONLY:
+        from stage.storage.problems import no_database
+
+        _print_error(no_database(path), soft_wrap=True)
+        raise typer.Exit(code=2)
+    _OPENED[:] = [path]
+    return path
+
+
+def _command_name() -> str:
+    return _INVOKED[0] if _INVOKED else ""
+
+
+def _with_db[T](db: Path | None, use: "Callable[[AsyncRepository], Awaitable[T]]") -> T:
+    from stage.storage import open_repository
+
+    async def run() -> T:
+        async with open_repository(_database(db)) as repository:
+            return await use(repository)
+
+    return run_async(run())
 
 
 def _lock_path(explicit: Path | None) -> Path:
-    target = _database(explicit)
-    return target.with_name(f".{target.name}.lock")
+    from stage.runlock import run_lock_path
+
+    return run_lock_path(_database(explicit))
 
 
-def _print_error(message: "str | Text") -> None:
+def _print_error(message: "str | Text", *, soft_wrap: bool = False) -> None:
     from stage.cli.render import terminal
 
-    terminal(stderr=True).print(message)
+    terminal(stderr=True).print(message, soft_wrap=soft_wrap)
 
 
-def _print_failure(exc: BaseException) -> None:
+def _print_failure(exc: BaseException, *, soft_wrap: bool = False) -> None:
     from stage.cli.render import failure
 
-    _print_error(failure(exc))
+    _print_error(failure(exc), soft_wrap=soft_wrap)
+
+
+def _warn_unread_boards(personal: "PersonalBoards") -> None:
+    if not personal.problem:
+        return
+    from stage.cli.render import plain
+
+    _print_error(
+        plain(f"Your board list is ignored until it can be read: {personal.problem}", "yellow")
+    )
 
 
 def _print_missing(posting: str) -> None:
@@ -327,10 +409,15 @@ def _validated_term(value: str | None, *, offer_unknown: bool = True) -> str | N
     head, _, year = value.lower().partition("-")
     if value.lower() == UNKNOWN_TERM or (head in SEASONS and year.isdigit() and len(year) == 4):
         return value.lower()
+    from stage.domain.text import truncate
+
     examples = [f"{season}-2027" for season in SEASONS]
     if offer_unknown:
         examples.append(UNKNOWN_TERM)
-    raise InvalidOptionError(f"--term must look like {', '.join(examples[:-1])}, or {examples[-1]}")
+    raise InvalidOptionError(
+        f'Unknown term "{truncate(value, 60)}". Terms look like {", ".join(examples[:-1])} '
+        f"or {examples[-1]}."
+    )
 
 
 def _validated_source(value: str | None) -> str | None:
@@ -341,7 +428,7 @@ def _validated_source(value: str | None) -> str | None:
     names = sorted({*get_adapters(), *get_feeds()})
     if value.strip().lower() in names:
         return value.strip().lower()
-    raise InvalidOptionError(_did_you_mean(value, names, "source"))
+    raise InvalidOptionError(_unknown("source", value, names))
 
 
 def _filters(
@@ -353,15 +440,12 @@ def _filters(
     source: list[str] | None,
     company: list[str] | None,
     limit: int | None,
-) -> "JobFilters":
-    from stage.domain import (
-        JobFilters,
-        Language,
-        LocationBucket,
-        RoleCategory,
-    )
+    mine: bool = False,
+    as_json: bool = False,
+) -> "tuple[JobFilters, Preferences | None]":
+    from stage.domain import JobFilters, Language, LocationBucket, RoleCategory
 
-    return JobFilters(
+    filters = JobFilters(
         location=_parse_enum(_one(location, "--location"), LocationBucket, "--location"),
         term=_validated_term(_one(term, "--term")),
         role=_parse_enum(_one(role, "--role"), RoleCategory, "--role"),
@@ -370,22 +454,28 @@ def _filters(
         company=_one(company, "--company"),
         limit=limit,
     )
+    return _mine(filters, as_json) if mine else (filters, None)
 
 
-def _one(values: list[str] | None, flag: str) -> str | None:
+def _one(values: list[str] | None, flag: str, *, mine: bool = True) -> str | None:
     if not values:
         return None
-    if len(set(values)) > 1:
-        several = (
-            "follow several with stage prefs --follow"
+    if any(not value.strip() for value in values):
+        raise InvalidOptionError(f"{flag} needs a value. Leave the flag out to match everything.")
+    several = len({" ".join(value.casefold().split()) for value in values}) > 1
+    if several and not mine:
+        raise InvalidOptionError(f"{flag} takes one value. Run the command once for each.")
+    if several:
+        advice = (
+            "Follow several with stage prefs --follow"
             if flag == "--company"
-            else "save several with stage prefs"
+            else "Save several with stage prefs"
         )
-        raise InvalidOptionError(f"{flag} takes one value; {several} and add --mine.")
+        raise InvalidOptionError(f"{flag} takes one value. {advice}, then add --mine.")
     return values[0]
 
 
-def _mine(filters: "JobFilters", as_json: bool = False) -> "tuple[JobFilters, Preferences]":
+def _mine(filters: "JobFilters", as_json: bool) -> "tuple[JobFilters, Preferences]":
     from stage.services.preferences import load_preferences
 
     loaded = load_preferences()
@@ -416,15 +506,24 @@ def _refuse(message: "str | Text") -> NoReturn:
     raise typer.Exit(code=2)
 
 
+@contextmanager
+def _refusing(*errors: type[Exception], code: int = 2, soft_wrap: bool = False) -> Iterator[None]:
+    try:
+        yield
+    except errors as exc:
+        _print_failure(exc, soft_wrap=soft_wrap)
+        raise typer.Exit(code=code) from exc
+
+
 def _print_warning(message: str, as_json: bool) -> None:
+    from stage.cli.render import error_text, plain, terminal
+
     if as_json:
         from stage.cli.serialize import fail
 
-        fail(message)
+        fail(error_text(message))
         return
-    from stage.cli.render import plain, terminal
-
-    terminal().print(plain(message, "yellow"))
+    terminal().print(plain(error_text(message), "yellow"))
 
 
 async def _resolve_posting(reference: str, repository: Any) -> str:
@@ -433,17 +532,6 @@ async def _resolve_posting(reference: str, repository: Any) -> str:
     if not reference.isdecimal():
         return reference
     return resolve(int(reference), await repository.last_sync_at())
-
-
-def _did_you_mean(value: str, choices: "Iterable[str]", label: str = "command") -> str:
-    from difflib import get_close_matches
-
-    options = list(choices)
-    near = get_close_matches(value.lower(), options, n=1, cutoff=0.6)
-    shown = value if len(value) <= 60 else f"{value[:57]}..."
-    if near:
-        return f"Unknown {label} {shown!r}. Did you mean {near[0]!r}?"
-    return f"Unknown {label} {shown!r}. Choose from: {', '.join(options)}"
 
 
 def _needs_a_row(command: str) -> str:
@@ -460,155 +548,13 @@ def _no_such_posting(posting: str) -> str:
     if posting.isdecimal():
         return (
             f"[red]Row {posting} of the last listing is no longer stored.[/red] Its posting "
-            "was purged or rejected since; run [bold]stage list[/bold] again."
+            "was purged or rejected since. Run [bold]stage list[/bold] again."
         )
     return (
-        f"[red]No posting with id {quoted(posting, 80)}.[/red] Ids look like "
-        "[bold]greenhouse:acme:1234[/bold]; find one with [bold]stage list --json[/bold] "
+        f"[red]No posting has the id {quoted(posting, 80)}.[/red] Ids look like "
+        "[bold]greenhouse:acme:1234[/bold]. Find one with [bold]stage list --json[/bold] "
         "or [bold]stage search[/bold]."
     )
-
-
-async def _adopt_unregistered(
-    console: "Console",
-    *,
-    registry: Path | None,
-    db: Path | None,
-    platforms: list[Any] | None,
-    excluded: list[Any] | None,
-    size: Any,
-    limit: int,
-    direct_only: bool,
-    adopt_unnamed: bool,
-    apply_rows: bool,
-    today: date,
-    stream: Any,
-    progress: "ProgressCallback | None",
-    show_all: bool = False,
-) -> bool:
-    from stage.cli.logfile import open_probe_journal, probe_journal_path
-    from stage.cli.render import plain
-    from stage.companies import load_companies, update_registry
-    from stage.domain import PlatformProbed
-    from stage.domain.text import counted
-    from stage.services.coverage import coverage
-    from stage.services.discover import (
-        adopt_unregistered,
-        probe_companies,
-        select_unregistered,
-        verify_registry,
-    )
-    from stage.storage import open_repository
-
-    rows = load_companies(registry)
-    async with open_repository(_database(db)) as repository:
-        report = await coverage(repository, rows, unregistered=True)
-        ranked = [entry.company for entry in report.unregistered]
-        apply_urls = await repository.company_apply_urls(ranked)
-    direct_rows, name_rows = select_unregistered(
-        ranked,
-        apply_urls,
-        limit=limit,
-        direct_only=direct_only,
-        platforms=platforms,
-        excluded=excluded,
-    )
-    direct = list(direct_rows)
-    names = list(name_rows)
-    if not names and not direct:
-        console.print(plain("No unregistered employers to probe. Run stage sync first."))
-        return False
-
-    total = len(names) + len(direct)
-    console.print(
-        plain(
-            f"Probing {counted(total, 'unregistered employer')}; "
-            f"{len(direct)} from direct feed links..."
-        )
-    )
-    results: list[tuple[str, Any]] = []
-    streams = []
-    if direct:
-        streams.append(verify_registry(direct, platforms=platforms, excluded=excluded))
-    if names:
-        streams.append(probe_companies(names, platforms=platforms, excluded=excluded, size=size))
-    with open_probe_journal() as journal:
-        for events in streams:
-            async for event in events:
-                if progress is not None:
-                    progress(event)
-                if stream is not None:
-                    stream(event)
-                if isinstance(event, PlatformProbed):
-                    results.append((event.result.company, event.result))
-                    journal(
-                        {
-                            "company": event.result.company,
-                            "platform": event.result.candidate.platform.value,
-                            "slug": event.result.candidate.slug,
-                            "verdict": event.result.verdict.value,
-                            "job_count": event.result.job_count,
-                            "board_name": event.result.board_name,
-                            "detail": event.result.detail,
-                        }
-                    )
-
-    outcome = adopt_unregistered(rows, results, today=today, adopt_unnamed=adopt_unnamed)
-    console.print(
-        plain(
-            f"{outcome.probed} probed: {len(outcome.adopted)} adoptable "
-            f"({counted(outcome.postings, 'posting')}), {len(outcome.review)} needing review, "
-            f"{len(outcome.refused)} refused, {outcome.already_known} already known"
-        )
-    )
-    adopted = outcome.adopted if show_all else outcome.adopted[:20]
-    for row in adopted:
-        console.print(plain(f"  + {row.company.name}: {counted(row.job_count, 'job')}"))
-    if len(outcome.adopted) > len(adopted):
-        console.print(
-            plain(f"  ... and {len(outcome.adopted) - len(adopted)} more; --all lists every row")
-        )
-    if outcome.review:
-        console.print(
-            plain("Boards with postings whose platform publishes no name. Decide these by hand:")
-        )
-        review = outcome.review if show_all else outcome.review[:40]
-        for candidate in review:
-            mark = "slug is distinctive" if candidate.distinctive else "slug is generic, check it"
-            console.print(
-                plain(
-                    f"  ? {candidate.company} ({candidate.label}): "
-                    f"{counted(candidate.job_count, 'job')}, {mark}"
-                )
-            )
-        if len(outcome.review) > len(review):
-            console.print(
-                plain(f"  ... and {len(outcome.review) - len(review)} more; --all lists every row")
-            )
-    refused = outcome.refused if show_all else outcome.refused[:10]
-    for company, board, reason in refused:
-        console.print(plain(f"  - {company} ({board}): {reason}"))
-    if len(outcome.refused) > len(refused):
-        console.print(
-            plain(f"  ... and {len(outcome.refused) - len(refused)} more; --all lists every row")
-        )
-    console.print(plain(f"Every probe result was journalled to {probe_journal_path()}"))
-
-    if not outcome.adopted:
-        return False
-    if not apply_rows:
-        console.print(plain("Nothing written. Re-run with --apply to add these rows."))
-        return True
-
-    def update(existing: tuple[Any, ...]) -> tuple[list[Any], Any]:
-        latest = adopt_unregistered(existing, results, today=today, adopt_unnamed=adopt_unnamed)
-        return [*existing, *(row.company for row in latest.adopted)], latest
-
-    target, applied = update_registry(update, registry)
-    console.print(
-        plain(f"applied: {counted(len(applied.adopted), 'row')} added, written to {target}")
-    )
-    return True
 
 
 _HELP_GUIDE = (
@@ -659,97 +605,6 @@ _HELP_GUIDE = (
 )
 
 
-def _render_schedule(console: Any, report: Any) -> None:
-    console.print(f"Scheduler: {report.backend} (per user)")
-    for index, (action, enabled, installed) in enumerate(report.actions):
-        state = "enabled" if enabled else "disabled"
-        console.print(f"  {action.label}: {state}, {action.cadence} at {action.time} local time")
-        needs_update = index < len(report.needs_update) and report.needs_update[index]
-        if enabled and not needs_update and not action.cadence.startswith(installed):
-            needs_update = True
-        if enabled and needs_update:
-            console.print(
-                "    [yellow]needs a scheduler update; run stage schedule enable[/yellow]"
-            )
-        stale = report.stale_interpreter[index] if index < len(report.stale_interpreter) else ""
-        if enabled and stale:
-            console.print(
-                f"    [red]interpreter is missing: {stale}[/red]. This run will fail; "
-                "re-run stage schedule enable"
-            )
-        run = report.states[index] if index < len(report.states) else None
-        _render_scheduled_run(console, run)
-    console.print(f"Logs: {report.log_dir}")
-
-
-def _render_scheduled_run(console: Any, run: dict[str, object] | None) -> None:
-    if run is None:
-        return
-    phase = run.get("phase")
-    if phase == "finished":
-        outcome = run.get("outcome")
-        outcome_name = outcome if isinstance(outcome, str) else ""
-        message, colour = {
-            "success": ("completed successfully", "green"),
-            "partial": ("completed with attention", "yellow"),
-            "failure": ("failed", "red"),
-        }.get(outcome_name, ("finished", "default"))
-        console.print(
-            f"    [{colour}]{message}[/{colour}] {_schedule_time(run.get('finished_at'))}"
-        )
-    elif phase == "blocked":
-        from stage.cli.render import summary
-
-        error = summary(str(run.get("error", "")), 200)
-        console.print(f"    [yellow]another run holds the lock[/yellow]: {error}")
-    elif phase == "unresponsive":
-        console.print(
-            "    [yellow]run is unresponsive[/yellow], "
-            f"last heartbeat {_schedule_time(run.get('heartbeat_at'))}"
-        )
-    elif phase == "waiting":
-        expected = _schedule_time(run.get("starts_after"))
-        console.print(f"    [cyan]waiting to start[/cyan], expected {expected}")
-    elif isinstance(phase, str) and phase in {"syncing", "discovering", "checking"}:
-        label = {
-            "syncing": "syncing",
-            "discovering": "discovering",
-            "checking": "checking health",
-        }[phase]
-        console.print(f"    [cyan]{label}[/cyan], started {_schedule_time(run.get('started_at'))}")
-    else:
-        return
-    progress = run.get("progress")
-    if isinstance(progress, dict) and phase not in {"blocked", "unresponsive"}:
-        complete = progress.get("complete", 0)
-        total = progress.get("total", 0)
-        if complete or total:
-            source = progress.get("source")
-            company = progress.get("company")
-            from stage.cli.render import summary
-
-            detail = " / ".join(summary(str(value), 80) for value in (source, company) if value)
-            suffix = f": {detail}" if detail else ""
-            console.print(
-                f"      progress: {summary(str(complete), 12)}/{summary(str(total), 12)}{suffix}"
-            )
-    if phase == "finished" and isinstance(run.get("exit_code"), int):
-        console.print(f"      exit code: {run['exit_code']}")
-
-
-def _schedule_time(value: object) -> str:
-    if not isinstance(value, str):
-        return "unknown time"
-    try:
-        from datetime import datetime
-
-        return datetime.fromisoformat(value).astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
-    except ValueError:
-        from stage.cli.render import summary
-
-        return summary(value, 40)
-
-
 @app.command(
     "help",
     help="A guided tour, or everything one command can do",
@@ -758,23 +613,36 @@ def _schedule_time(value: object) -> str:
 def show_help(
     context: typer.Context,
     topic: Annotated[
-        str | None,
-        typer.Argument(metavar="COMMAND", click_type=WORD, help="Command name to explain"),
+        list[str] | None,
+        typer.Argument(
+            metavar="COMMAND",
+            click_type=WORD,
+            help="Command to explain, such as sync or schedule status",
+        ),
     ] = None,
 ) -> None:
     root = context.parent or context
-    if topic is not None:
+    if topic:
+        from typer._click import Context
         from typer.core import TyperGroup
 
-        group = root.command
-        if not isinstance(group, TyperGroup):
-            raise typer.BadParameter(f"Unknown command {topic!r}", param_hint="topic")
-        command = group.commands.get(topic)
-        if command is None:
-            raise typer.BadParameter(_did_you_mean(topic, group.commands), param_hint="topic")
-        from typer._click import Context
-
-        typer.echo(command.get_help(Context(command, info_name=topic, parent=root)))
+        group: Any = root.command
+        shown = root
+        for depth, name in enumerate(topic):
+            if not isinstance(group, TyperGroup):
+                above = " ".join(topic[:depth])
+                raise typer.BadParameter(
+                    f"stage {above} has no subcommands. Run stage help {above}.",
+                    param_hint="COMMAND",
+                )
+            command = group.commands.get(name)
+            if command is None:
+                raise typer.BadParameter(
+                    _unknown("command", name, group.commands), param_hint="COMMAND"
+                )
+            shown = Context(command, info_name=name, parent=shown)
+            group = command
+        typer.echo(shown.command.get_help(shown))
         return
     _print_guide()
 
@@ -788,51 +656,52 @@ def _print_guide() -> None:
     typer.echo(_HELP_GUIDE)
 
 
-def database_problem(exc: Exception) -> str:
-    said = str(exc)
-    if "locked" in said:
-        return (
-            "Another Stage process is using the database right now, such as a scheduled sync. "
-            "Try again when it finishes."
-        )
-    if "readonly" in said or "unable to open" in said:
-        return (
-            f"Stage cannot use that database ({said}). Check that the file and its folder "
-            "are yours and writable."
-        )
-    return (
-        f"That database cannot be read ({said}). Point --db at a Stage database, or move the "
-        "file aside to start a new one."
-    )
+def database_problem(exc: Exception, path: Path | None = None) -> str:
+    from stage.storage.problems import database_problem as worded
+
+    return worded(exc, path or (_OPENED[-1] if _OPENED else _database(None)))
 
 
-def main() -> None:
+def _cannot_run(exc: Exception) -> str | None:
     import sqlite3
 
-    from stage.cli.serialize import configure_terminal_output
     from stage.lexicon import LexiconError
     from stage.storage.migrations import SchemaVersionError
 
-    configure_terminal_output(sys.stdout, sys.platform)
-    configure_terminal_output(sys.stderr, sys.platform)
-    try:
-        app()
-    except SchemaVersionError as exc:
-        typer.echo(str(exc), err=True)
-        raise SystemExit(2) from None
-    except LexiconError as exc:
+    if isinstance(exc, SchemaVersionError):
+        from stage.cli.render import error_text
+
+        return error_text(str(exc))
+    if isinstance(exc, LexiconError):
         hint = (
             " Unset STAGE_LEXICON to use the built-in lists."
             if "STAGE_LEXICON" in os.environ
             else ""
         )
-        typer.echo(f"Stage could not read its word lists: {exc}.{hint}", err=True)
-        raise SystemExit(2) from None
-    except sqlite3.DatabaseError as exc:
-        typer.echo(database_problem(exc), err=True)
-        raise SystemExit(2) from None
-    except OSError as exc:
+        return f"Stage could not read its word lists: {exc}.{hint}"
+    if isinstance(exc, sqlite3.DatabaseError):
+        return database_problem(exc)
+    if isinstance(exc, OSError):
         target = getattr(exc, "filename", None)
-        location = f" at {target}" if target else ""
-        typer.echo(f"Cannot use that location{location}: {exc.strerror or exc}", err=True)
+        where = f"use {target}" if target else "reach a file it needs"
+        return (
+            f"Stage could not {where} ({exc.strerror or exc}). Check that the path exists and "
+            "that you can write there."
+        )
+    return None
+
+
+def main() -> None:
+    if sys.platform == "win32":
+        from stage.cli.serialize import configure_terminal_output
+
+        configure_terminal_output(sys.stdout, sys.platform)
+        configure_terminal_output(sys.stderr, sys.platform)
+    try:
+        app()
+    except Exception as exc:
+        said = _cannot_run(exc)
+        if said is None:
+            raise
+        typer.echo(said, err=True)
         raise SystemExit(2) from None

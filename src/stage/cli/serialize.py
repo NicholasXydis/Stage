@@ -1,11 +1,12 @@
 import sys
-from collections.abc import Sequence
-from dataclasses import asdict
+from collections.abc import Callable, Sequence
+from dataclasses import asdict, fields
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 if TYPE_CHECKING:
     from stage.cli.schedule import ScheduleStatus
     from stage.domain.preferences import Preferences
+    from stage.services.boards import BoardListSummary
     from stage.services.canary import CanaryReport
     from stage.services.connect import AppHealth
     from stage.services.coverage import CoverageReport
@@ -14,6 +15,8 @@ if TYPE_CHECKING:
 
 from stage.domain import Job, QuarantinedJob, RateState, VisitState
 from stage.domain.text import dump
+
+ERROR_FIELDS = frozenset({"error", "last_error", "reason"})
 
 
 class _ReconfigurableOutput(Protocol):
@@ -61,7 +64,8 @@ def tracked_only_payload(tracked: dict[str, Any]) -> dict[str, Any]:
 
 
 def quarantine_to_json(entries: Sequence[QuarantinedJob]) -> str:
-    return dump([asdict(entry) for entry in entries])
+    names = [field.name for field in fields(QuarantinedJob)]
+    return dump([{name: getattr(entry, name) for name in names} for entry in entries])
 
 
 def preferences_to_json(preferences: "Preferences | None", *, cleared: bool = False) -> str:
@@ -92,8 +96,23 @@ def coverage_to_json(report: "CoverageReport") -> str:
     )
 
 
-def health_to_json(report: "DoctorReport", apps: "Sequence[AppHealth]" = ()) -> str:
-    return dump(
+def health_to_json(
+    report: "DoctorReport",
+    apps: "Sequence[AppHealth]" = (),
+    boards: "BoardListSummary | None" = None,
+) -> str:
+    extra: dict[str, object] = {}
+    if boards is not None:
+        extra["your_boards"] = {
+            "path": str(boards.path),
+            "boards": boards.boards,
+            "enabled": boards.enabled,
+            "disabled": boards.disabled,
+            "added_last_7_days": boards.recent,
+            "shipped_with_stage": boards.shipped,
+            "problem": boards.problem or None,
+        }
+    return _dump_plain(
         {
             "schema_version": report.schema_version,
             "last_sync_at": report.last_sync_at,
@@ -122,6 +141,7 @@ def health_to_json(report: "DoctorReport", apps: "Sequence[AppHealth]" = ()) -> 
                 }
                 for app in apps
             ],
+            **extra,
         }
     )
 
@@ -151,7 +171,7 @@ def sources_to_json(
         if include_boards
         else []
     )
-    return dump(
+    return _dump_plain(
         {
             "healthy": report.is_healthy,
             "stale_after_days": report.stale_after_days,
@@ -213,6 +233,7 @@ def canary_to_json(report: "CanaryReport") -> str:
     return dump(
         {
             "passed": report.passed,
+            "timed_out": report.timed_out,
             "skipped_platforms": list(report.skipped_platforms),
             "probes": [
                 {**asdict(probe), "failure": probe.is_failure, "empty": probe.is_empty}
@@ -220,3 +241,22 @@ def canary_to_json(report: "CanaryReport") -> str:
             ],
         }
     )
+
+
+def _plain_errors(value: object, plain: Callable[[str], str]) -> object:
+    if isinstance(value, dict):
+        return {
+            key: plain(item)
+            if key in ERROR_FIELDS and isinstance(item, str) and item
+            else _plain_errors(item, plain)
+            for key, item in value.items()
+        }
+    if isinstance(value, list | tuple):
+        return [_plain_errors(item, plain) for item in value]
+    return value
+
+
+def _dump_plain(payload: object) -> str:
+    from stage.cli.render import error_text
+
+    return dump(_plain_errors(payload, error_text))
