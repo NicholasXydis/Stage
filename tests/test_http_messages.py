@@ -62,7 +62,7 @@ def test_every_transport_failure_names_the_host_in_plain_words(
 ) -> None:
     text = failure_text(error)
     assert said in text
-    assert "boards-api.greenhouse.io" in {word.strip(".,:()") for word in text.split()}
+    assert any(word.strip(".,:()") == "boards-api.greenhouse.io" for word in text.split())
     assert "Error" not in text and "Timeout" not in text and ";" not in text
 
 

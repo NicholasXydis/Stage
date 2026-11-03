@@ -28,7 +28,6 @@ if TYPE_CHECKING:
 
     from stage.companies import PersonalBoards
     from stage.domain import Company, DiscoveryEvent, PlatformCandidate, ProbeResult
-    from stage.services.boards import PruneReport
 
     ProgressCallback = Callable[[DiscoveryEvent], None]
 
@@ -768,8 +767,14 @@ async def _prune_personal(
 ) -> None:
     from stage.cli.render import plain
     from stage.companies import personal_kept, update_personal
+    from stage.domain import Company
     from stage.domain.text import counted
-    from stage.services.boards import BARREN_AFTER_DAYS, productive_boards, prune_personal
+    from stage.services.boards import (
+        BARREN_AFTER_DAYS,
+        PruneReport,
+        productive_boards,
+        prune_personal,
+    )
     from stage.services.discover import is_gone
     from stage.storage import open_repository
 
@@ -793,7 +798,7 @@ async def _prune_personal(
     async with open_repository(_database(db)) as repository:
         productive = await productive_boards(repository, personal.rows)
 
-    def prune(existing: "tuple[Company, ...]") -> "tuple[tuple[Company, ...], PruneReport]":
+    def prune(existing: tuple[Company, ...]) -> tuple[tuple[Company, ...], PruneReport]:
         own = personal_kept(packaged, existing)
         held = tuple(row for row in existing if row not in own)
         kept, report = prune_personal(own, results, today=today, productive=productive)

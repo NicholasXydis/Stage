@@ -216,8 +216,7 @@ def listed_target(url: str) -> Target | None:
             return None if posting is None else _smartrecruiters(candidate.slug, posting.group(1))
         case Platform.WORKDAY:
             return _workday(candidate.workday_tenant or "", candidate.workday_dc or "", path)
-        case _:
-            return None
+    return None
 
 
 def _board_target(job: Job) -> Target | None:
@@ -238,8 +237,7 @@ def _board_target(job: Job) -> Target | None:
         case "workday":
             listed = listed_target(job.apply_url_raw)
             return listed if listed is not None and listed.platform is Platform.WORKDAY else None
-        case _:
-            return None
+    return None
 
 
 def target_for(job: Job, feeds: Collection[str]) -> Target | None:
@@ -315,8 +313,7 @@ def _listed(target: Target, payload: Any) -> bool:
         case Platform.WORKDAY:
             info = payload.get("jobPostingInfo")
             return isinstance(info, dict) and info.get("posted") is not False
-        case _:
-            return False
+    return False
 
 
 def _board_answers(target: Target, payload: Any) -> bool | None:
@@ -328,8 +325,7 @@ def _board_answers(target: Target, payload: Any) -> bool | None:
         case Platform.SMARTRECRUITERS:
             total = payload.get("totalFound") if isinstance(payload, dict) else None
             return True if isinstance(total, int) and total > 0 else None
-        case _:
-            return None
+    return None
 
 
 class _Boards:

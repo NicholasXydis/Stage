@@ -304,9 +304,9 @@ def test_searches_come_due_once_per_quiet_window() -> None:
 async def test_a_listed_board_too_big_to_read_whole_is_searched_to_the_end(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import stage.sources.workday as workday
-
-    monkeypatch.setattr(workday, "WHOLE_READ_BOARDS", frozenset({"workday:big-careers"}))
+    monkeypatch.setattr(
+        "stage.sources.workday.WHOLE_READ_BOARDS", frozenset({"workday:big-careers"})
+    )
     rows = _rows("I", "Data Intern", 5) + _rows("D", "Accountant", 300) + _rows("J", "Intern", 5)
     asked = _serve({BROAD_TEXT: _paged(rows)})
     result = await _fetch(budget=40, full_read=True)
@@ -331,16 +331,16 @@ def test_every_whole_read_board_is_a_shipped_workday_board() -> None:
 async def test_a_listed_board_that_ignores_or_is_searched_one_word_at_a_time(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import stage.sources.workday as workday
-
-    monkeypatch.setattr(workday, "WHOLE_READ_BOARDS", frozenset({"workday:big-careers"}))
+    monkeypatch.setattr(
+        "stage.sources.workday.WHOLE_READ_BOARDS", frozenset({"workday:big-careers"})
+    )
     interns = _rows("I", "Store Operations Internship", 25)
     stage = _rows("S", "Stage Manager", 0) + _rows("D", "Associate", 4660)
     asked = _serve({"internship": _paged(interns), "stage": _paged(stage)})
     result = await _fetch(budget=40, full_read=True)
     searched = [text for text, _ in asked if text]
     assert searched[:2] == [NARROW_TEXT, BROAD_TEXT], "Lowe's answers 0 to every OR"
-    assert set(searched[2:]) == set(workday.SINGLE_TERMS)
+    assert set(searched[2:]) == set(SINGLE_TERMS)
     assert searched.count("stage") == 2, "Lowe's matches stage in 4,660 descriptions"
     assert len(_kept(result)) == 25
     assert "ignores OR" not in result.degraded

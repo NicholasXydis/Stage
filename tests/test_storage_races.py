@@ -113,7 +113,7 @@ def test_a_sync_and_a_rescreen_writing_at_once_both_land(db_path: Path) -> None:
                 repository.apply_source_batch(
                     _batch(_job(f"{source}:acme:{number}"), _job(f"{source}:beta:{number}"))
                 )
-        except BaseException as exc:
+        except Exception as exc:
             failures.append(exc)
         finally:
             repository.close()

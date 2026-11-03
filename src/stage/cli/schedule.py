@@ -1,4 +1,5 @@
 import argparse
+import ctypes
 import getpass
 import os
 import platform
@@ -20,7 +21,7 @@ from html import unescape
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import FrameType
-from typing import TYPE_CHECKING, TextIO, cast
+from typing import TextIO, cast
 
 from stage.cli.logfile import rotate
 from stage.cli.schedule_state import (
@@ -31,9 +32,6 @@ from stage.cli.schedule_state import (
     state_path,
 )
 from stage.paths import data_dir
-
-if TYPE_CHECKING:
-    import ctypes
 
 SYNC_TIME = "00:00"
 DISCOVER_TIME = "10:30"
@@ -723,9 +721,7 @@ def _stop(process: "subprocess.Popen[bytes]") -> None:
 
 
 @cache
-def _job_limits() -> type["ctypes.Structure"]:
-    import ctypes
-
+def _job_limits() -> type[ctypes.Structure]:
     class BasicLimits(ctypes.Structure):
         _fields_ = [
             ("PerProcessUserTimeLimit", ctypes.c_int64),
@@ -754,8 +750,7 @@ def _job_limits() -> type["ctypes.Structure"]:
 
 def _contain(pid: int) -> None:
     if sys.platform == "win32":
-        import ctypes
-        from ctypes import wintypes
+        import ctypes.wintypes as wintypes
 
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)

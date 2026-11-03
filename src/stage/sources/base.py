@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import partial
-from typing import Annotated, Any, ClassVar, Concatenate, Protocol, cast, runtime_checkable
+from typing import Annotated, Any, ClassVar, Concatenate, Protocol, runtime_checkable
 
 from pydantic import BaseModel, BeforeValidator, StringConstraints, ValidationError
 
@@ -27,7 +27,12 @@ PROCESS_PARSE_CHARS = 128 * 1024
 BUILD_SLICE_ROWS = 10
 BUILD_SLICE_S = 0.01
 _BUILDER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stage-build")
-type PageParser = Callable[[Callable[[], Any]], Awaitable[Any]]
+
+
+class PageParser(Protocol):
+    def __call__[R](self, call: Callable[[], R], /) -> Awaitable[R]: ...
+
+
 _PARSER: ContextVar[PageParser | None] = ContextVar("stage_page_parser", default=None)
 
 
@@ -46,7 +51,7 @@ async def parse_page[**P, R](
     parser = _PARSER.get()
     if parser is None or len(text) < PROCESS_PARSE_CHARS:
         return await off_loop(function, text, *args, **kwargs)
-    return cast(R, await parser(partial(function, text, *args, **kwargs)))
+    return await parser(partial(function, text, *args, **kwargs))
 
 
 class AdapterError(Exception):

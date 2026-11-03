@@ -48,7 +48,8 @@ def test_each_database_problem_is_worded_once(said: str, words: str) -> None:
 def test_a_missing_and_a_newer_database_are_worded_with_what_to_do() -> None:
     from stage.storage.problems import newer_database, no_database
 
-    assert "stage sync --db /data/stage.db" in no_database(Path("/data/stage.db"))
+    missing = Path("/data/stage.db")
+    assert f"stage sync --db {missing}" in no_database(missing)
     assert "uv tool upgrade stage-cli" in newer_database(Path("/data/stage.db"))
 
 

@@ -121,7 +121,7 @@ async def test_cancelling_a_sync_mid_board_leaves_no_task_and_writes_nothing(
         await asyncio.sleep(0.05)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
-            await task
+            await asyncio.wait_for(task, 5)
         await asyncio.sleep(0)
         leftover = asyncio.all_tasks() - before
         visits = await repository.all_visits()

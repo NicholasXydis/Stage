@@ -226,7 +226,7 @@ async def test_only_a_large_page_goes_to_the_page_parser() -> None:
 
     sent: list[Callable[[], object]] = []
 
-    async def parser(call: Callable[[], object]) -> object:
+    async def parser[R](call: Callable[[], R]) -> R:
         sent.append(call)
         return call()
 
@@ -507,6 +507,7 @@ async def _round_trips(work: Callable[[], Awaitable[object]]) -> float:
 @pytest.mark.serial
 async def test_connections_keep_flowing_while_a_large_batch_screens() -> None:
     jobs = _jobs(1_200, BODY * 16)
+    normalize_batch(jobs[:20])
     in_thread = await _round_trips(lambda: asyncio.to_thread(normalize_batch, jobs))
     screener = Screener()
     try:

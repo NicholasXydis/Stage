@@ -245,11 +245,9 @@ async def test_full_read_state_round_trips_and_never_disturbs_description_fetche
 def test_a_board_whose_search_cannot_be_trusted_gets_a_whole_read_every_pass(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import stage.services.sync as sync_module
-
     adapter = WorkdayAdapter()
     company = _company()
-    monkeypatch.setattr(sync_module, "WHOLE_READ_BOARDS", frozenset({BOARD}))
+    monkeypatch.setattr("stage.services.sync.WHOLE_READ_BOARDS", frozenset({BOARD}))
     just_read = {BOARD: (NOW - timedelta(hours=1), True, False)}
     assert _full_reads_due(adapter, [company], {}, NOW) == [company.registry_key]
     assert _full_reads_due(adapter, [company], just_read, NOW) == [company.registry_key]

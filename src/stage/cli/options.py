@@ -358,14 +358,15 @@ def _command_name() -> str:
     return _INVOKED[0] if _INVOKED else ""
 
 
-def _with_db[T](db: Path | None, use: "Callable[[AsyncRepository], Awaitable[T]]") -> T:
+async def _opened[T](db: Path | None, use: "Callable[[AsyncRepository], Awaitable[T]]") -> T:
     from stage.storage import open_repository
 
-    async def run() -> T:
-        async with open_repository(_database(db)) as repository:
-            return await use(repository)
+    async with open_repository(_database(db)) as repository:
+        return await use(repository)
 
-    return run_async(run())
+
+def _with_db[T](db: Path | None, use: "Callable[[AsyncRepository], Awaitable[T]]") -> T:
+    return run_async(_opened(db, use))
 
 
 def _lock_path(explicit: Path | None) -> Path:

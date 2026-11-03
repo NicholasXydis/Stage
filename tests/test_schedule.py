@@ -282,13 +282,11 @@ def test_schedule_status_says_when_a_run_was_skipped_offline(
 
 
 def test_the_sync_action_runs_every_half_hour() -> None:
-    from stage.cli.schedule import _ACTIONS, EVERY_CHOICES, SYNC_EVERY_MINUTES
-
-    sync = next(action for action in _ACTIONS if action.key == "sync")
-    assert sync.repeat_minutes == SYNC_EVERY_MINUTES == 30
+    sync = next(action for action in schedule._ACTIONS if action.key == "sync")
+    assert sync.repeat_minutes == schedule.SYNC_EVERY_MINUTES == 30
     assert sync.start_minutes == (0, 30)
     assert sync.cadence == "every 30 minutes"
-    assert all(1440 % choice == 0 for choice in EVERY_CHOICES), "an uneven cadence drifts"
+    assert all(1440 % choice == 0 for choice in schedule.EVERY_CHOICES), "an uneven cadence drifts"
 
 
 def test_every_six_hours_keeps_the_old_calendar_on_each_system(
@@ -348,19 +346,15 @@ def test_an_install_from_before_the_every_flag_needs_an_update(
 
 
 def test_the_weekly_action_is_not_repeated() -> None:
-    from stage.cli.schedule import _ACTIONS
-
-    discover = next(action for action in _ACTIONS if action.key == "discover")
+    discover = next(action for action in schedule._ACTIONS if action.key == "discover")
     assert discover.repeat_minutes is None
     assert discover.every(30) is discover
     assert len(discover.start_hours) == 1
 
 
 def test_the_windows_trigger_repeats_across_the_day() -> None:
-    from stage.cli.schedule import _ACTIONS, _windows_task_xml
-
-    sync = next(action for action in _ACTIONS if action.key == "sync")
-    xml = _windows_task_xml(sync).decode("utf-16")
+    sync = next(action for action in schedule._ACTIONS if action.key == "sync")
+    xml = schedule._windows_task_xml(sync).decode("utf-16")
     assert "<Interval>PT30M</Interval>" in xml
     assert "<Duration>P1D</Duration>" in xml
     assert "<StartWhenAvailable>true</StartWhenAvailable>" in xml, "a missed run must catch up"
@@ -394,19 +388,15 @@ def test_the_launch_agent_lists_every_slot(tmp_path: Path, monkeypatch: pytest.M
 
 
 def test_load_spreading_waits_a_bounded_random_time() -> None:
-    from stage.cli.schedule import _ACTIONS, MAX_JITTER_S, _jitter_seconds
-
-    sync = next(action for action in _ACTIONS if action.key == "sync")
-    slept = [_jitter_seconds(sync) for _ in range(40)]
-    assert all(0.0 <= value <= min(MAX_JITTER_S, 30 * 60 / 5) for value in slept)
+    sync = next(action for action in schedule._ACTIONS if action.key == "sync")
+    slept = [schedule._jitter_seconds(sync) for _ in range(40)]
+    assert all(0.0 <= value <= min(schedule.MAX_JITTER_S, 30 * 60 / 5) for value in slept)
     assert max(slept) > 0.0, "spreading load means an actual offset, not always zero"
 
 
 def test_a_one_off_action_is_never_delayed() -> None:
-    from stage.cli.schedule import _ACTIONS, _jitter_seconds
-
-    discover = next(action for action in _ACTIONS if action.key == "discover")
-    assert _jitter_seconds(discover) == 0.0
+    discover = next(action for action in schedule._ACTIONS if action.key == "discover")
+    assert schedule._jitter_seconds(discover) == 0.0
 
 
 def test_registry_verification_is_scheduled_and_prunes_only_the_users_own_boards() -> None:
@@ -553,12 +543,10 @@ def test_status_survives_a_missing_scheduler_command(monkeypatch: pytest.MonkeyP
 
 
 def test_a_wednesday_task_is_not_scheduled_for_monday() -> None:
-    from stage.cli.schedule import _ACTIONS, _windows_task_xml
-
-    for action in _ACTIONS:
+    for action in schedule._ACTIONS:
         if action.windows_day is None:
             continue
-        xml = _windows_task_xml(action).decode("utf-16")
+        xml = schedule._windows_task_xml(action).decode("utf-16")
         expected = {"MON": "Monday", "WED": "Wednesday"}[action.windows_day]
         assert f"<{expected}" in xml, action.label
 

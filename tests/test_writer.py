@@ -133,7 +133,7 @@ async def test_a_cancelled_open_still_closes_its_connection(
         await asyncio.sleep(0.01)
     release.set()
     with pytest.raises(asyncio.CancelledError):
-        await task
+        await asyncio.wait_for(task, 5)
     for _ in range(100):
         if opened and _closed(opened[0]._conn):
             break

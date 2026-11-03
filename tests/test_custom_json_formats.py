@@ -259,16 +259,15 @@ async def test_a_page_of_markup_is_parsed_off_the_event_loop(
 ) -> None:
     import threading
 
-    import stage.sources.custom_json as module
+    from stage.sources.custom_json import html_rows as parse
 
     parsed_on: list[str] = []
-    parse = module.html_rows
 
     def recorded(text: str, selector: str) -> object:
         parsed_on.append(threading.current_thread().name)
         return parse(text, selector)
 
-    monkeypatch.setattr(module, "html_rows", recorded)
+    monkeypatch.setattr("stage.sources.custom_json.html_rows", recorded)
     result = await _fetch(HTML_BOARD, HTML)
 
     assert len(result.jobs) == 2
