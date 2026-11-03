@@ -1,5 +1,7 @@
+import re
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import lru_cache
 
 from stage.domain import (
     SOURCE_PRIORITY,
@@ -8,8 +10,10 @@ from stage.domain import (
     location_agrees,
     term_agrees,
 )
+from stage.domain.text import is_workday_opening
 from stage.lexicon import (
     division_qualifiers,
+    employer_aliases,
     fold,
     generic_company_tokens,
     name_root_tokens,
@@ -58,8 +62,16 @@ def title_canonical(title: str) -> str:
     return winners[0] if len(winners) == 1 else ""
 
 
+_SAME_WORD = {
+    "engineering": "engineer",
+    "development": "developer",
+    "internship": "intern",
+    "interns": "intern",
+}
+
+
 def _title_tokens(job: Job) -> frozenset[str]:
-    return frozenset(fold(job.title_raw).split())
+    return frozenset(_SAME_WORD.get(word, word) for word in fold(job.title_raw).split())
 
 
 def _qualified_prefix(shorter: tuple[str, ...], longer: tuple[str, ...]) -> bool:
@@ -70,27 +82,47 @@ def _qualified_prefix(shorter: tuple[str, ...], longer: tuple[str, ...]) -> bool
     return bool(set(shorter) - generic_company_tokens())
 
 
+_LABEL = re.compile(r"\s*\([^()]*\)\s*$")
+
+
 def _company_matches(left: Job, right: Job) -> bool:
     if fold(left.company) == fold(right.company):
         return True
-    first, second = name_root_tokens(left.company), name_root_tokens(right.company)
+    first, second = _root(left.company), _root(right.company)
     if first == second:
+        return True
+    core = _core(first)
+    if core == _core(second) and set(core) - generic_company_tokens():
         return True
     shorter, longer = sorted((first, second), key=len)
     return _qualified_prefix(shorter, longer)
 
 
-def would_merge(left: Job, right: Job) -> MatchResult:
-    if left.board_key == right.board_key:
-        return MatchResult()
+def _root(name: str) -> tuple[str, ...]:
+    joined = " ".join(name_root_tokens(_LABEL.sub("", name)))
+    return tuple(employer_aliases().get(joined, joined).split())
 
-    if left.apply_url_canonical and left.apply_url_canonical == right.apply_url_canonical:
-        return MatchResult(MatchKind.URL, left.apply_url_canonical)
+
+def _core(tokens: tuple[str, ...]) -> tuple[str, ...]:
+    qualifiers = division_qualifiers()
+    end = len(tokens)
+    while end > 1 and tokens[end - 1] in qualifiers:
+        end -= 1
+    return tokens[:end]
+
+
+def would_merge(left: Job, right: Job) -> MatchResult:
+    url = left.apply_url_canonical
+    same_board = left.board_key == right.board_key
+    if url and url == right.apply_url_canonical and (not same_board or is_workday_opening(url)):
+        return MatchResult(MatchKind.URL, url)
+    if same_board or _two_openings(url, right.apply_url_canonical):
+        return MatchResult()
 
     if not _company_matches(left, right):
         return MatchResult()
 
-    if not location_agrees(left.location, right.location):
+    if not location_agrees(left.location, right.location) or _different_cities(left, right):
         return MatchResult()
 
     left_tokens, right_tokens = _title_tokens(left), _title_tokens(right)
@@ -111,3 +143,70 @@ def _cross_language(left: Job, right: Job) -> MatchResult:
     if not canonical or canonical != title_canonical(right.title_raw):
         return MatchResult()
     return MatchResult(MatchKind.CROSS_LANGUAGE, canonical)
+
+
+_PLACE_PARTS = re.compile(r"\s*(?:,|/|;|\(|\)|\||\s-\s)\s*")
+_VAGUE_PLACE = frozenset(
+    {
+        "remote",
+        "hybrid",
+        "virtual",
+        "anywhere",
+        "various",
+        "multiple",
+        "location",
+        "locations",
+        "nationwide",
+        "us",
+        "usa",
+        "united",
+        "states",
+        "america",
+        "canada",
+        "north",
+        "onsite",
+        "more",
+    }
+)
+
+
+@lru_cache(maxsize=1)
+def _regions() -> frozenset[str]:
+    from stage.lexicon import location_lexicon
+
+    lexicon = location_lexicon()
+    return frozenset(
+        fold(name)
+        for name in (
+            lexicon.usa_regions | lexicon.usa_codes | lexicon.canada_regions | lexicon.canada_codes
+        )
+    )
+
+
+@lru_cache(maxsize=4096)
+def _cities(place: str) -> frozenset[str]:
+    from stage.normalize.location import display_location
+
+    found = set()
+    for part in _PLACE_PARTS.split(place):
+        folded = fold(part)
+        words = folded.split()
+        if not words or folded in _regions():
+            continue
+        if _VAGUE_PLACE.intersection(words) or any(word.isdigit() for word in words):
+            return frozenset()
+        shown = fold(_PLACE_PARTS.split(display_location(part), maxsplit=1)[0])
+        if shown and shown not in _regions():
+            found.add(shown)
+    return frozenset(found)
+
+
+def _different_cities(left: Job, right: Job) -> bool:
+    one, two = _cities(left.location_raw or ""), _cities(right.location_raw or "")
+    if not one or not two:
+        return False
+    return not any(a in b or b in a for a in one for b in two)
+
+
+def _two_openings(left: str, right: str) -> bool:
+    return left != right and is_workday_opening(left) and is_workday_opening(right)
