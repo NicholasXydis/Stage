@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -818,3 +819,41 @@ def test_a_parsed_page_is_plain_data_a_worker_process_can_send_back(name: str) -
     assert parsed, f"{name} parsed to nothing"
     assert _plain(parsed), f"{name} parsed to objects a worker cannot send back"
     assert pickle.dumps(parsed)
+
+
+def _steps_inside_has(selector: str) -> list[str]:
+    inner = re.findall(r":has\(([^()]*)\)", selector)
+    return [part.strip().lstrip(">+~").strip() for part in inner]
+
+
+def test_no_shipped_html_selector_takes_more_than_one_step_inside_has() -> None:
+    from stage.companies import load_companies
+
+    selectors = [
+        selector
+        for company in load_companies()
+        if company.custom is not None and company.custom.html
+        for selector in (company.custom.row_selector, *company.custom.fields.values())
+    ]
+    too_deep = [
+        selector
+        for selector in selectors
+        if any(re.search(r"[\s>+~]", step) for step in _steps_inside_has(selector))
+    ]
+
+    assert selectors
+    assert too_deep == [], "soupsieve 4 refuses more than one step inside :has()"
+
+
+@pytest.mark.parametrize(
+    ("selector", "deep"),
+    [
+        ("tr:has(> td > div > a.job)", True),
+        ("tr:has(> td a.job)", True),
+        ("li:has(> i.fa-map-marker)", False),
+        ("tr:has(a.job):not(:has(tr))", False),
+    ],
+)
+def test_the_step_check_matches_what_soupsieve_4_refuses(selector: str, deep: bool) -> None:
+    steps = _steps_inside_has(selector)
+    assert any(re.search(r"[\s>+~]", step) for step in steps) is deep

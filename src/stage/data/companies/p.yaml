@@ -29,13 +29,15 @@
   platform: custom_json
   slug: pacific-bluecross
   source_of_record: manual
-  last_verified: 2026-11-01
+  last_verified: 2026-11-03
   notes: 'Brainhunter board embedded in pac.bluecross.ca verified 2026-11-01: 20 postings, and
-    sorting oldest first shows the same 20, so the one page is the whole board. No internship.'
+    sorting oldest first shows the same 20, so the one page is the whole board. No internship.
+    2026-11-03: soupsieve 4 refuses a combinator inside :has(), so rows are any table row
+    holding a job link and no nested row; the same 20 links on soupsieve 2.9 and 4.0.'
   custom:
     url: https://www.brainhunter.com/frontoffice/enterSeekerHomeAction.do?sitecode=pl527
     format: html
-    row_selector: tr:has(> td > div > a.joblisttable_link)
+    row_selector: tr:has(a.joblisttable_link):not(:has(tr))
     fields:
       title: a.joblisttable_link
       url: a.joblisttable_link::attr(href)
