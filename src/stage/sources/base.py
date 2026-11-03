@@ -30,7 +30,8 @@ _BUILDER = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stage-build")
 
 
 class PageParser(Protocol):
-    def __call__[R](self, call: Callable[[], R], /) -> Awaitable[R]: ...
+    def __call__[R](self, call: Callable[[], R], /) -> Awaitable[R]:
+        pass
 
 
 _PARSER: ContextVar[PageParser | None] = ContextVar("stage_page_parser", default=None)

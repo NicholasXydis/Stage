@@ -1624,7 +1624,7 @@ async def test_a_cancelled_undo_keeps_its_token(catalogue: Path) -> None:
         await asyncio.sleep(0.05)
         waiting.cancel()
         with pytest.raises(asyncio.CancelledError):
-            await waiting
+            await asyncio.wait_for(waiting, 5)
     undone = await tools.undo_tracking(token)
     assert undone.structured_content is not None
     assert [row["status"] for row in undone.structured_content["restored"]] == [None]

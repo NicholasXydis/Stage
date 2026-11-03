@@ -539,7 +539,7 @@ async def test_cancelling_a_pdf_export_stops_the_writer_and_leaves_no_file(
         assert await asyncio.to_thread(started.wait, 5)
         writing.cancel()
         with pytest.raises(asyncio.CancelledError):
-            await writing
+            await asyncio.wait_for(writing, 5)
         assert await asyncio.to_thread(finished.wait, 5)
 
     assert list(folder.iterdir()) == []

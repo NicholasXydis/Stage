@@ -504,8 +504,16 @@ async def _round_trips(work: Callable[[], Awaitable[object]]) -> float:
     return done[0] / took
 
 
+def _traced() -> bool:
+    monitoring = getattr(sys, "monitoring", None)
+    hooked = monitoring is not None and monitoring.get_tool(monitoring.COVERAGE_ID) is not None
+    return sys.gettrace() is not None or hooked
+
+
 @pytest.mark.serial
 async def test_connections_keep_flowing_while_a_large_batch_screens() -> None:
+    if _traced():
+        pytest.skip("a coverage tracer slows the loop and the thread unevenly")
     jobs = _jobs(1_200, BODY * 16)
     normalize_batch(jobs[:20])
     in_thread = await _round_trips(lambda: asyncio.to_thread(normalize_batch, jobs))
