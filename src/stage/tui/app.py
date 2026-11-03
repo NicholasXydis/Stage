@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from textual.app import App
 from textual.binding import Binding
+from textual.scrollbar import ScrollBar, ScrollBarRender
 
 if TYPE_CHECKING:
     from stage.storage import AsyncRepository
@@ -12,6 +13,14 @@ from stage.tui.screens.postings import PostingsScreen
 from stage.tui.screens.splash import SplashScreen
 
 THEME_PATH = Path(__file__).parent / "theme.tcss"
+
+
+class AsciiScrollBar(ScrollBarRender):
+    VERTICAL_BARS = [" "] * 8
+    HORIZONTAL_BARS = [" "] * 8
+
+
+ScrollBar.renderer = AsciiScrollBar
 
 
 class StageApp(App[None]):
@@ -61,13 +70,13 @@ class StageApp(App[None]):
 async def summarize(database: Path) -> str:
     import sqlite3
 
-    from stage.companies import RegistryError, load_companies
+    from stage.companies import RegistryError, load_boards
     from stage.domain import JobFilters
     from stage.storage import open_repository
     from stage.tui.safe import counted
 
     try:
-        employers = len(load_companies(None))
+        employers = len(load_boards(None)[0])
     except RegistryError:
         employers = 0
     try:
@@ -77,7 +86,7 @@ async def summarize(database: Path) -> str:
     except (OSError, sqlite3.DatabaseError):
         if database.exists():
             raise
-        return "no database yet; run stage sync"
+        return "no postings yet, so press y to sync"
     when = f"last sync {last.astimezone().strftime('%Y-%m-%d %H:%M')}" if last else "never synced"
     return f"{counted(postings, 'posting')}, {counted(employers, 'employer')}, {when}"
 

@@ -36,7 +36,7 @@ _OPEN_FIELDS: tuple[tuple[str, str], ...] = (("company", "Company"),)
 def filter_rows(
     state: "FilterState", employer: str | None = None, *, saved: bool = False
 ) -> tuple[tuple[str, str, str, bool], ...]:
-    mine = "Only my preferences" if saved else "Only my preferences (none saved; run stage prefs)"
+    mine = "Only my preferences" if saved else "Only my preferences (stage prefs saves them)"
     rows: list[tuple[str, str, str, bool]] = [
         ("mine", "on", mine, state.mine),
         ("untracked", "on", "Only postings I have not acted on", state.untracked),

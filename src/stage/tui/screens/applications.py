@@ -1,22 +1,18 @@
-from typing import TYPE_CHECKING
+import sqlite3
 
+from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.css.query import NoMatches
-from textual.screen import Screen
 from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 
 from stage.domain.tracker import ApplicationStatus, PostingState, TrackerError, parse_note
 from stage.normalize.location import display_location
 from stage.services.tracker import TrackerListing, TrackerRow
-from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay, HelpPanel
-from stage.tui.safe import cell, quoted, told
-
-if TYPE_CHECKING:
-    from stage.storage import AsyncRepository
+from stage.tui.base import BACK, HELP, Columns, HelpPanel, StageScreen, laid_out, picked, refill
+from stage.tui.safe import cell, headline, inline, quoted, told
 
 HELP_TEXT = """[b]Your applications[/b]
   up down  move between postings
@@ -31,17 +27,22 @@ HELP_TEXT = """[b]Your applications[/b]
 
 STATUSES = tuple(ApplicationStatus)
 STATUS_WIDTH, ON_WIDTH, POSTING_WIDTH = 12, 10, 7
-SHORT = 30
+POSTING_STATE = {
+    PostingState.OPEN: "still open",
+    PostingState.CLOSED: "closed",
+    PostingState.GONE: "no longer stored (this is the copy you kept)",
+}
 
 
-class ApplicationsScreen(HelpOverlay, Screen[bool]):
+class ApplicationsScreen(StageScreen[bool]):
     HELP_TEXT = HELP_TEXT
+    OVER_HELP = frozenset({"note", "filter"})
     BINDINGS = [
         Binding("n", "note", "note"),
         Binding("o", "open", "open"),
         Binding("f", "filter", "filter"),
-        Binding("question_mark", "help", "keys"),
-        Binding("escape", "back", "back"),
+        HELP,
+        BACK,
         Binding("x", "untrack", "stop tracking", show=False),
         Binding("r", "reload", "reload", show=False),
     ]
@@ -50,23 +51,18 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         super().__init__()
         self._rows: tuple[TrackerRow, ...] = ()
         self._listing: TrackerListing | None = None
-        self._layout: tuple[int, int, int] = (0, 0, 0)
         self._status: ApplicationStatus | None = None
         self._picking = ""
         self._choices: tuple[ApplicationStatus | None, ...] = ()
         self._arming: str | None = None
         self._changed = False
 
-    @property
-    def repository(self) -> "AsyncRepository | None":
-        return repository_of(self.app)
-
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Static("", id="chips")
+        yield Static("[dim]loading...[/dim]", id="chips")
         yield OptionList(id="picker", classes="hidden")
         yield Horizontal(
-            Input(placeholder="a short note; leave it empty to clear it", id="note"),
+            Input(placeholder="a short note, or nothing to clear it", id="note"),
             id="note-bar",
         )
         yield DataTable(id="results", cursor_type="row")
@@ -75,39 +71,31 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.set_class(self.app.size.height < SHORT, "narrow")
-        table = self.query_one("#results", DataTable)
-        self._add_columns(table)
-        self.query_one("#chips", Static).update("[dim]loading...[/dim]")
+        table = self._table()
+        refill(table, self._columns(0), ())
         table.focus()
         self.load()
 
-    def _add_columns(self, table: DataTable[object], rows: int = 0) -> None:
-        self._layout = self._widths(rows)
-        number, company, title = self._layout
-        table.add_column("#", width=number)
-        table.add_column("Status", width=STATUS_WIDTH)
-        table.add_column("On", width=ON_WIDTH)
-        table.add_column("Company", width=company)
-        table.add_column("Title", width=title)
-        table.add_column("Posting", width=POSTING_WIDTH)
-
-    def on_resize(self) -> None:
-        self.set_class(self.app.size.height < SHORT, "narrow")
-        rows = len(self._rows) if self._listing is not None else 0
-        if not any(self._layout) or self._widths(rows) == self._layout:
+    def relayout(self) -> None:
+        if self._listing is None or laid_out(self._table()) == self._columns(len(self._rows)):
             return
         selected = self._selected()
-        chosen = selected.entry.posting_id if selected is not None else None
-        if self._listing is not None:
-            self._fill(self._listing, chosen)
+        self._fill(self._listing, selected.entry.posting_id if selected is not None else None)
 
-    def _widths(self, rows: int) -> tuple[int, int, int]:
+    def outcome(self) -> bool:
+        return self._changed
+
+    def _columns(self, rows: int) -> Columns:
+        width = self.app.size.width
         number = max(4, len(str(rows)) + 1)
-        fixed = number + STATUS_WIDTH + ON_WIDTH + POSTING_WIDTH + 2 * 6 + 1
-        room = max(30, self.app.size.width - fixed)
+        fixed: Columns = (("Status", STATUS_WIDTH),)
+        if width >= 70:
+            fixed += (("On", ON_WIDTH),)
+        tail: Columns = (("Posting", POSTING_WIDTH),) if width >= 80 else ()
+        used = number + sum(size for _, size in (*fixed, *tail)) + 2 * (len(fixed) + len(tail) + 3)
+        room = max(24, width - used - 1)
         company = min(28, max(10, room // 3))
-        return number, company, room - company
+        return (("#", number), *fixed, ("Company", company), ("Title", room - company), *tail)
 
     @work(exclusive=True)
     async def load(self, keep: str | None = None) -> None:
@@ -121,6 +109,9 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         except TrackerProblemError as exc:
             self._show_problem(str(exc))
             return
+        except sqlite3.Error as exc:
+            self.database_failed(exc)
+            return
         try:
             self._fill(listing, keep)
         except NoMatches:
@@ -128,37 +119,33 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
 
     def _show_problem(self, problem: str) -> None:
         try:
-            self.query_one("#chips", Static).update("[dim]your tracker could not be used[/dim]")
+            self.say("[dim]your tracker could not be used[/dim]")
             self.query_one("#detail", Static).update(f"[red]{quoted(problem)}[/red]")
         except NoMatches:
             return
         told(self, problem, "error")
 
+    def _cells(self, position: int, row: TrackerRow, columns: Columns) -> list[Text]:
+        entry = row.entry
+        values = {
+            "#": str(position),
+            "Status": entry.status.value,
+            "On": entry.on.isoformat(),
+            "Company": entry.snapshot.company,
+            "Title": entry.snapshot.title,
+            "Posting": row.state.value,
+        }
+        return [cell(values[label], width) for label, width in columns]
+
     def _fill(self, listing: TrackerListing, keep: str | None) -> None:
         self._listing = listing
         self._rows = listing.rows
-        table = self.query_one("#results", DataTable)
-        if self._widths(len(self._rows)) == self._layout:
-            table.clear()
-        else:
-            table.clear(columns=True)
-            self._add_columns(table, len(self._rows))
-        _, company, width = self._layout
-        for position, row in enumerate(self._rows, start=1):
-            entry = row.entry
-            table.add_row(
-                cell(str(position)),
-                cell(entry.status.value),
-                cell(entry.on.isoformat()),
-                cell(entry.snapshot.company, company),
-                cell(entry.snapshot.title, width),
-                cell(row.state.value),
-            )
+        columns = self._columns(len(self._rows))
         wanted = next(
             (index for index, row in enumerate(self._rows) if row.entry.posting_id == keep), None
         )
-        if wanted is not None:
-            table.move_cursor(row=wanted)
+        rows = (self._cells(at, row, columns) for at, row in enumerate(self._rows, start=1))
+        refill(self._table(), columns, rows, wanted)
         self._render_chips()
         self._show_detail()
 
@@ -174,69 +161,61 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         ]
         if listing.hidden:
             parts.append(f"{listing.hidden:,} hidden")
-        shown = "   ".join(parts)
         if self._status is not None:
-            shown = f"[reverse] {self._status.value} [/reverse]   {shown}"
-        hint = "   [dim]enter changes the status[/dim]" if self._rows else ""
-        self.query_one("#chips", Static).update(f"{shown}{hint}")
+            parts.insert(0, f"[reverse] {self._status.value} [/reverse]")
+        self.say("   ".join(parts))
 
     def _selected(self) -> TrackerRow | None:
-        table = self.query_one("#results", DataTable)
-        row = table.cursor_row
-        if not self._rows or row < 0 or row >= len(self._rows):
-            return None
-        return self._rows[row]
+        return picked(self._table(), self._rows)
 
     def _show_detail(self) -> None:
         panel = self.query_one("#detail", Static)
         row = self._selected()
         if row is None:
-            panel.update(self._empty_message())
+            panel.update(f"[dim]{self._empty_message()}[/dim]")
             return
         entry = row.entry
         snapshot = entry.snapshot
+        width = max(20, self.app.size.width - 5)
         place = display_location(snapshot.location) or "-"
-        posting = {
-            PostingState.OPEN: "still open",
-            PostingState.CLOSED: "closed",
-            PostingState.GONE: "no longer stored; this is the copy you kept",
-        }[row.state]
         steps = ", ".join(f"{c.status.value} {c.on.isoformat()}" for c in entry.history)
         steps = f"   [dim]{quoted(steps)}[/dim]" if len(entry.history) > 1 else ""
-        note = f"note: {quoted(entry.note)}" if entry.note else "[dim]no note; n adds one[/dim]"
+        note = f"note: {quoted(entry.note)}" if entry.note else "[dim]no note, n adds one[/dim]"
         panel.update(
-            f"[b]{quoted(snapshot.title)}[/b]\n"
-            f"[$primary]{quoted(snapshot.company)}[/$primary]   {quoted(place)}  [dim]|[/dim]  "
-            f"{posting}\n\n"
+            f"[b]{headline(snapshot.title, width)}[/b]\n"
+            f"[$primary]{inline(snapshot.company, width // 2)}[/$primary]   "
+            f"{inline(place, width // 2)}  [dim]|[/dim]  {POSTING_STATE[row.state]}\n\n"
             f"{entry.status.value} on {entry.on.isoformat()}{steps}\n"
-            f"{note}"
+            f"{note}   [dim]enter changes the status[/dim]"
         )
 
     def _empty_message(self) -> str:
         if self._status is not None:
             return (
-                f"[dim]Nothing tracked as {self._status.value}. "
-                "Press [b]f[/b] to show another status.[/dim]"
+                f"Nothing tracked as {self._status.value}. Press [b]f[/b] to show another status."
             )
         return (
-            "[dim]Nothing tracked yet. On the postings screen, [b]s[/b] saves a posting, "
-            "[b]p[/b] marks it applied and [b]h[/b] hides it.[/dim]"
+            "Nothing tracked yet. On the postings screen, [b]s[/b] saves a posting, "
+            "[b]p[/b] marks it applied and [b]h[/b] hides it."
         )
+
+    def nothing_highlighted(self) -> None:
+        if self._status is not None:
+            said = f"Nothing tracked as {self._status.value}. Press f to show another status."
+        else:
+            said = "Nothing tracked yet. Press escape, then s on a posting to save it."
+        told(self, said, "warning")
 
     def on_data_table_row_highlighted(self) -> None:
         self._arming = None
         self._show_detail()
 
     def on_data_table_row_selected(self) -> None:
-        if self._selected() is None:
-            return
         current = self._selected()
-        self._open_picker(
-            "status",
-            STATUSES,
-            [status.value for status in STATUSES],
-            current.entry.status if current else None,
-        )
+        if current is None:
+            return
+        labels = [status.value for status in STATUSES]
+        self._open_picker("status", STATUSES, labels, current.entry.status)
 
     def action_filter(self) -> None:
         choices: tuple[ApplicationStatus | None, ...] = (None, *STATUSES)
@@ -251,13 +230,14 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         current: ApplicationStatus | None,
     ) -> None:
         self.dismiss_overlays()
-        self.close_help()
         self._picking = mode
         self._choices = choices
         panel = self.query_one("#picker", OptionList)
         panel.clear_options()
-        for choice, label in zip(choices, labels, strict=True):
-            panel.add_option(cell(f"{'[x]' if choice == current else '[ ]'} {label}"))
+        panel.add_options(
+            cell(f"{'[x]' if choice == current else '[ ]'} {label}")
+            for choice, label in zip(choices, labels, strict=True)
+        )
         panel.remove_class("hidden")
         panel.highlighted = choices.index(current) if current in choices else 0
         panel.focus()
@@ -268,7 +248,7 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
             return False
         panel.add_class("hidden")
         self._picking = ""
-        self.query_one("#results", DataTable).focus()
+        self._table().focus()
         return True
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
@@ -290,10 +270,9 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
     def action_note(self) -> None:
         row = self._selected()
         if row is None:
-            told(self, "Nothing selected.", "warning")
+            self.nothing_highlighted()
             return
         self.dismiss_overlays()
-        self.close_help()
         field = self.query_one("#note", Input)
         field.value = row.entry.note
         self.query_one("#note-bar").add_class("visible")
@@ -304,22 +283,19 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         if not bar.has_class("visible"):
             return False
         bar.remove_class("visible")
-        self.query_one("#results", DataTable).focus()
+        self._table().focus()
         return True
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         row = self._selected()
-        self._close_note()
-        if row is None:
-            return
         try:
             note = parse_note(event.value)
         except TrackerError as exc:
-            told(self, str(exc), "error")
+            told(self, f"{exc} Shorten it and press enter, or escape to keep the old one.", "error")
             return
-        if note == row.entry.note:
-            return
-        self._change(row, None, note)
+        self._close_note()
+        if row is not None and note != row.entry.note:
+            self._change(row, None, note)
 
     @work(group="tracker")
     async def _change(
@@ -335,50 +311,42 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         except TrackerProblemError as exc:
             told(self, str(exc), "error")
             return
+        except sqlite3.Error as exc:
+            self.database_failed(exc, loading=False)
+            return
         if not report.changed:
             return
         self._changed = True
         entry = report.changed[0].entry
         title = entry.snapshot.title
         if status is not None:
-            told(self, f"Marked {title} {status.value}.")
+            said = f"Marked {title} {status.value}."
         else:
-            told(self, f"Saved the note on {title}." if note else f"Cleared the note on {title}.")
+            said = f"Saved the note on {title}." if note else f"Cleared the note on {title}."
+        told(self, said, subject=entry.posting_id)
         self.load(keep=entry.posting_id)
 
     def action_open(self) -> None:
-        import webbrowser
-
-        from stage.domain import web_url
+        from stage.tui.liveness import open_postings
 
         row = self._selected()
         if row is None:
-            told(self, "Nothing selected.", "warning")
+            self.nothing_highlighted()
             return
-        url = web_url(row.entry.snapshot.apply_url)
-        if url is None:
-            told(
-                self,
-                "This posting's link is not a plain http or https address, so it was not opened.",
-                "error",
-            )
-            return
-        if not webbrowser.open(url):
-            told(self, "No browser available on this machine.", "warning")
-            return
-        told(self, f"Opened {row.entry.snapshot.company}")
+        snapshot = row.entry.snapshot
+        open_postings(self, [(row.entry.posting_id, snapshot.apply_url, snapshot.company)])
 
     def action_untrack(self) -> None:
         row = self._selected()
         if row is None:
-            told(self, "Nothing selected.", "warning")
+            self.nothing_highlighted()
             return
         if self._arming != row.entry.posting_id:
             self._arming = row.entry.posting_id
             told(
                 self,
-                f"Press x again to stop tracking {row.entry.snapshot.title}; "
-                "its status, note and history go with it.",
+                f"Press x again to stop tracking {row.entry.snapshot.title}. "
+                "Its status, note and history go with it.",
                 "warning",
             )
             return
@@ -397,22 +365,20 @@ class ApplicationsScreen(HelpOverlay, Screen[bool]):
         except TrackerProblemError as exc:
             told(self, str(exc), "error")
             return
+        except sqlite3.Error as exc:
+            self.database_failed(exc, loading=False)
+            return
         self._changed = True
-        told(self, f"Stopped tracking {row.entry.snapshot.title}.")
+        told(self, f"Stopped tracking {row.entry.snapshot.title}.", subject=row.entry.posting_id)
         self.load()
 
     def action_reload(self) -> None:
         self._arming = None
         self.load()
 
-    def dismiss_overlays(self) -> None:
-        self._close_picker()
-        self._close_note()
-
-    def action_back(self) -> None:
-        if self.close_help() or self._close_picker() or self._close_note():
-            return
-        self.dismiss(self._changed)
+    def close_overlay(self) -> bool:
+        picker = self._close_picker()
+        return self._close_note() or picker
 
 
 __all__ = ["HELP_TEXT", "ApplicationsScreen"]

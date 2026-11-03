@@ -1,20 +1,21 @@
+import asyncio
 from typing import TYPE_CHECKING
 
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.screen import Screen
-from textual.widgets import DataTable, Footer, Header, ProgressBar, Static
+from textual.widgets import DataTable, Footer, Header, Static
 
-from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay, HelpPanel
-from stage.tui.safe import cell, quoted
+from stage.domain.text import plain_error
+from stage.tui.base import BACK, HELP, HelpPanel, StageScreen
+from stage.tui.context import database_of
+from stage.tui.safe import cell, counted, inline, quoted, sentence, told
 
 if TYPE_CHECKING:
-    from stage.domain import SyncEvent
-    from stage.storage import AsyncRepository
+    from stage.domain import SyncEvent, SyncFinished
 
 MAX_WARNINGS = 40
+SHOWN_WARNINGS = 8
 BAR_WIDTH = 22
 
 
@@ -25,7 +26,12 @@ def source_bar(done: int, total: int, width: int = BAR_WIDTH) -> str:
     return "#" * filled + "-" * (width - filled)
 
 
-class SyncScreen(HelpOverlay, Screen[None]):
+def overall_bar(done: int, total: int, width: int = BAR_WIDTH + 10) -> str:
+    share = round(100 * min(done, total) / total) if total > 0 else 0
+    return f"{source_bar(done, total, width)} {share:>3}%"
+
+
+class SyncScreen(StageScreen[None]):
     HELP_TEXT = """[b]Sync[/b]
   s        start a sync
   x        cancel the run in progress
@@ -34,8 +40,8 @@ class SyncScreen(HelpOverlay, Screen[None]):
     BINDINGS = [
         Binding("s", "start", "start"),
         Binding("x", "cancel", "cancel"),
-        Binding("question_mark", "help", "keys"),
-        Binding("escape", "back", "back"),
+        HELP,
+        BACK,
     ]
 
     def __init__(self, *, dry_run: bool = False) -> None:
@@ -46,17 +52,17 @@ class SyncScreen(HelpOverlay, Screen[None]):
         self._done = 0
         self._fetched = 0
 
-    @property
-    def repository(self) -> "AsyncRepository | None":
-        return repository_of(self.app)
-
     def compose(self) -> ComposeResult:
         yield Header()
-        yield Static("", id="chips")
-        yield ProgressBar(total=100, show_eta=False, id="overall")
+        yield Static("[dim]Press s to start a sync, x to cancel, esc to go back.[/dim]", id="chips")
+        yield Static(overall_bar(0, 0), id="overall")
         yield DataTable(id="sources", cursor_type="row")
         yield Static("", id="warnings")
-        yield Static("", id="detail")
+        yield Static(
+            "[dim]A sync fetches every enabled board, classifies what it finds, and "
+            "stores the postings that qualify.[/dim]",
+            id="detail",
+        )
         yield HelpPanel(id="help")
         yield Footer()
 
@@ -64,26 +70,24 @@ class SyncScreen(HelpOverlay, Screen[None]):
         table = self.query_one("#sources", DataTable)
         table.add_columns("Source", "Progress", "Done")
         table.focus()
-        self.query_one("#chips", Static).update(
-            "[dim]Press s to start a sync, x to cancel, esc to go back.[/dim]"
-        )
-        self.query_one("#detail", Static).update(
-            "[dim]A sync fetches every enabled board, classifies what it finds, and "
-            "stores the postings that qualify.[/dim]"
-        )
+
+    def relayout(self) -> None:
+        self._paint_warnings()
 
     @property
     def running(self) -> bool:
         from textual.worker import WorkerState
 
         return any(
-            worker.name == "run_sync" and worker.state is WorkerState.RUNNING
+            worker.node is self
+            and worker.name == "run_sync"
+            and worker.state is WorkerState.RUNNING
             for worker in self.workers
         )
 
     def action_start(self) -> None:
         if self.running:
-            self.notify("A sync is already running.", severity="warning")
+            told(self, "A sync is already running. Press x to cancel it.", "warning")
             return
         self._sources.clear()
         self._warnings.clear()
@@ -92,32 +96,62 @@ class SyncScreen(HelpOverlay, Screen[None]):
 
     def action_cancel(self) -> None:
         if not self.running:
-            self.notify("Nothing to cancel.", severity="warning")
+            told(self, "Nothing to cancel. Press s to start a sync.", "warning")
             return
-        self.workers.cancel_all()
-        self.query_one("#chips", Static).update("[yellow]Sync cancelled.[/yellow]")
+        self.workers.cancel_node(self)
+        self.say("[yellow]Sync cancelled.[/yellow]")
 
     def action_back(self) -> None:
-        if self.close_help():
-            return
-        self.workers.cancel_all()
-        self.dismiss(None)
+        if not self.close_help():
+            self.workers.cancel_node(self)
+            self.dismiss(None)
 
     @work(exclusive=True)
     async def run_sync(self) -> None:
-        from stage.companies import RegistryError, load_companies
+        import sqlite3
+
+        from stage.companies import RegistryError, load_boards
+        from stage.paths import registry_override
+        from stage.runlock import AnotherRunInProgressError, run_lock_path, single_run
+        from stage.services.maintenance import rescreen_after_upgrade, upgrade_note
         from stage.services.sync import sync
 
         repo = self.repository
-        if repo is None:
+        database = database_of(self.app)
+        if repo is None or database is None:
             return
         try:
-            companies = load_companies(None)
+            companies, personal = await asyncio.to_thread(load_boards, None)
         except RegistryError as exc:
-            self.query_one("#chips", Static).update(f"[red]{quoted(str(exc))}[/red]")
+            self.say(f"[red]{quoted(sentence(str(exc)))}[/red]")
             return
-        async for event in sync(repo, companies, dry_run=self.dry_run):
-            self._absorb(event)
+        if personal.problem:
+            told(self, f"Your own boards were left out. {sentence(personal.problem)}", "warning")
+        if self.dry_run:
+            async for event in sync(repo, companies, dry_run=True):
+                self._absorb(event)
+            return
+        from stage.http import online
+
+        if not await asyncio.to_thread(online):
+            self.say("[yellow]No internet connection, so the sync did not start.[/yellow]")
+            return
+        try:
+            with single_run("sync", run_lock_path(database), busy="press s again when it finishes"):
+                checked = await rescreen_after_upgrade(repo)
+                if checked is not None:
+                    self.say(quoted(upgrade_note(checked)))
+                async for event in sync(
+                    repo,
+                    companies,
+                    dry_run=False,
+                    close_orphans=not personal.problem and registry_override() is None,
+                ):
+                    self._absorb(event)
+        except AnotherRunInProgressError as exc:
+            self.say(f"[yellow]This sync did not start. {quoted(str(exc))}[/yellow]")
+        except sqlite3.Error as exc:
+            self.say(f"[red]{quoted(self.database_trouble(exc))}[/red]")
 
     def _absorb(self, event: "SyncEvent") -> None:
         from stage.domain import (
@@ -134,7 +168,7 @@ class SyncScreen(HelpOverlay, Screen[None]):
         )
 
         if isinstance(event, SyncStarted):
-            self.query_one("#overall", ProgressBar).update(total=1, progress=0)
+            self.query_one("#overall", Static).update(overall_bar(0, 1))
         elif isinstance(event, SourceStarted):
             self._sources[event.source] = (0, event.companies or 1)
         elif isinstance(event, SourceFinished):
@@ -149,9 +183,13 @@ class SyncScreen(HelpOverlay, Screen[None]):
             if isinstance(event, CompanyFinished):
                 self._fetched += event.fetched
             elif isinstance(event, CompanyFailed):
-                self._note(quoted(f"{event.source}/{event.company} - {event.error}"))
-        elif isinstance(event, SourceBlocked | SourceFailed):
-            self._note(quoted(f"{event.source} - {getattr(event, 'reason', 'failed')}"))
+                self._note(f"{event.source}/{event.company}: {plain_error(event.error)}")
+        elif isinstance(event, SourceBlocked):
+            until = event.blocked_until.astimezone().strftime("%H:%M")
+            why = plain_error(event.reason) if event.reason.strip() else "no reason recorded"
+            self._note(f"{event.source} blocked until {until}: {why}")
+        elif isinstance(event, SourceFailed):
+            self._note(f"{event.source}: {plain_error(event.error)}")
         elif isinstance(event, SyncFinished):
             self._finish(event)
             return
@@ -166,35 +204,41 @@ class SyncScreen(HelpOverlay, Screen[None]):
         return sum(total for _, total in self._sources.values())
 
     def _paint(self) -> None:
-        self.query_one("#overall", ProgressBar).update(
-            total=max(self.planned, 1), progress=self._done
-        )
+        self.query_one("#overall", Static).update(overall_bar(self._done, max(self.planned, 1)))
         table = self.query_one("#sources", DataTable)
         table.clear()
         for name, (done, total) in sorted(self._sources.items()):
             mark = " ok" if total and done >= total else ""
             table.add_row(cell(name, 20), source_bar(done, total), f"{done}/{total}{mark}")
-        self.query_one("#chips", Static).update(
+        self.say(
             f"[b]{self._done:,}[/b] of {self.planned:,} boards and feeds, "
-            f"[b]{self._fetched:,}[/b] {'posting' if self._fetched == 1 else 'postings'} fetched"
+            f"[b]{counted(self._fetched, 'posting')}[/b] fetched"
         )
-        if self._warnings:
-            shown = "\n".join(f"  {line}" for line in self._warnings[-8:])
-            self.query_one("#warnings", Static).update(
-                f"\n[yellow]Warnings ({len(self._warnings):,})[/yellow]\n{shown}"
-            )
+        self._paint_warnings()
 
-    def _finish(self, event: object) -> None:
-        added = getattr(event, "added", 0)
-        updated = getattr(event, "updated", 0)
-        quarantined = getattr(event, "quarantined", 0)
-        outcome = getattr(getattr(event, "outcome", None), "value", "finished")
-        tone = {"success": "green", "partial": "yellow"}.get(outcome, "red")
-        self._paint()
-        self.query_one("#chips", Static).update(
-            f"[{tone}]{outcome}[/{tone}]: [b]{added:,}[/b] added, {updated:,} updated, "
-            f"{quarantined:,} quarantined"
+    def _paint_warnings(self) -> None:
+        if not self._warnings:
+            return
+        room = max(2, min(SHOWN_WARNINGS, (self.app.size.height - 20) // 2))
+        width = max(20, self.app.size.width - 4)
+        shown = "\n".join(f"  {inline(line, width)}" for line in self._warnings[-room:])
+        more = len(self._warnings) - room
+        hidden = f" [dim]{more:,} earlier not shown[/dim]" if more > 0 else ""
+        lead = "" if self.has_class("narrow") else "\n"
+        self.query_one("#warnings", Static).update(
+            f"{lead}[yellow]Warnings ({len(self._warnings):,})[/yellow]{hidden}\n{shown}"
         )
+
+    def _finish(self, event: "SyncFinished") -> None:
+        tone = {"success": "green", "partial": "yellow"}.get(event.outcome.value, "red")
+        rejected = f", {event.quarantined:,} rejected" if event.quarantined else ""
+        why = f" [dim]({quoted(event.partial_reason)})[/dim]" if event.partial_reason else ""
+        self._paint()
+        self.say(
+            f"[{tone}]{event.outcome.value}[/{tone}]{why}: [b]{event.added:,}[/b] added, "
+            f"{event.updated:,} updated, {event.closed:,} closed{rejected}"
+        )
+        kept = " Rejected postings are kept, and v there reviews them." if event.quarantined else ""
         self.query_one("#detail", Static).update(
-            "[dim]Press escape to go back to the postings browser, or s to sync again.[/dim]"
+            f"[dim]Press escape to go back to the postings, or s to sync again.{kept}[/dim]"
         )

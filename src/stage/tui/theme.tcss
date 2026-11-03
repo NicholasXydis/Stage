@@ -8,6 +8,7 @@ $bad: $error;
 
 Screen {
     background: $surface;
+    overflow-y: hidden;
 }
 
 Header {
@@ -44,7 +45,7 @@ SplashScreen {
     padding: 0 1;
     background: $panel;
     color: $text-muted;
-    border-bottom: solid $blue-dim;
+    border-bottom: ascii $blue-dim;
 }
 
 #chips .active {
@@ -69,17 +70,23 @@ SplashScreen {
     color: $warn;
 }
 
+.narrow #sources {
+    padding: 0 1;
+}
+
 #filters, #picker {
     height: auto;
     max-height: 12;
     padding: 0 1;
     background: $panel;
-    border-bottom: solid $blue;
     scrollbar-size-vertical: 1;
+    border: none;
+    border-bottom: ascii $blue;
 }
 
 #filters:focus, #picker:focus {
-    border-bottom: solid $blue;
+    border: none;
+    border-bottom: ascii $blue;
 }
 
 #filters > .option-list--option-highlighted,
@@ -117,6 +124,7 @@ SplashScreen {
 
 DataTable {
     height: 1fr;
+    scrollbar-size-vertical: 1;
 }
 
 #tabs, #tabs > ContentSwitcher, #tabs TabPane {
@@ -139,7 +147,7 @@ DataTable > .datatable--header {
     min-height: 3;
     padding: 1 2;
     background: $panel;
-    border-top: solid $blue;
+    border-top: ascii $blue;
 }
 
 #reader {
@@ -147,7 +155,7 @@ DataTable > .datatable--header {
     min-height: 3;
     padding: 1 2;
     background: $panel;
-    border-top: solid $blue;
+    border-top: ascii $blue;
     overflow-y: hidden;
     scrollbar-size-vertical: 1;
 }
@@ -181,11 +189,31 @@ DataTable > .datatable--header {
 }
 
 Input {
-    border: tall $blue-dim;
+    border: ascii $blue-dim;
 }
 
 Input:focus {
-    border: tall $blue;
+    border: ascii $blue;
+}
+
+Toast, Toast.-information, Toast.-warning, Toast.-error {
+    border-left: ascii $blue;
+}
+
+Toast.-warning {
+    border-left: ascii $warn;
+}
+
+Toast.-error {
+    border-left: ascii $bad;
+}
+
+Underline {
+    display: none;
+}
+
+Tab.-active {
+    text-style: bold reverse;
 }
 
 .empty {
@@ -231,6 +259,6 @@ Footer {
     margin: 2 0 0 4;
     padding: 1 2;
     background: $panel;
-    border: round $blue;
+    border: ascii $blue;
     color: $text;
 }

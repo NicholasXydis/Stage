@@ -1,14 +1,18 @@
 import asyncio
-from collections.abc import Mapping
+import sqlite3
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
+from textual.coordinate import Coordinate
 from textual.css.query import NoMatches
+from textual.events import Key
 from textual.screen import Screen
 from textual.timer import Timer
 from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
@@ -18,22 +22,16 @@ from stage.domain.text import paragraphs, sanitize
 from stage.domain.tracker import MARKERS, ApplicationStatus
 from stage.normalize.location import display_location
 from stage.services.tracker import Change, ChangeReport, TrackerView
-from stage.tui.context import repository_of
-from stage.tui.help import HelpOverlay, HelpPanel
-from stage.tui.safe import cell, counted, quoted, told
-from stage.tui.state import (
-    DEBOUNCE_SECONDS,
-    PAGE_SIZE,
-    FilterState,
-    filter_rows,
-)
+from stage.tui.base import HELP, Columns, HelpPanel, StageScreen, laid_out, picked, refill
+from stage.tui.safe import cell, counted, headline, inline, quoted, sentence, told
+from stage.tui.state import DEBOUNCE_SECONDS, PAGE_SIZE, FilterState, filter_rows
 
 if TYPE_CHECKING:
     from stage.domain import Job
     from stage.domain.preferences import Preferences
+    from stage.services.query import JobListing
     from stage.storage import AsyncRepository
 
-COLUMNS = ("#", "Age", "Company", "Title", "Location")
 AGE_WIDTH = 5
 
 HELP_TEXT = """[b]Find[/b]
@@ -63,16 +61,13 @@ HELP_TEXT = """[b]Find[/b]
   q        quit
 
 [dim]? closes this[/dim]"""
-SHORT = 30
 
 
 def _tracked_notice(status: ApplicationStatus, report: ChangeReport) -> str:
     count = len(report.changed)
     if not count:
         kept = report.unchanged[0].status.value if report.unchanged else status.value
-        return (
-            f"Nothing to change; already marked {kept}. The applications screen (l) can change it."
-        )
+        return f"Nothing to change. Already marked {kept}, and l opens your applications."
     noun = counted(count, "posting")
     if status is ApplicationStatus.SAVED:
         line = f"Saved {noun}."
@@ -90,8 +85,8 @@ def _mine_notice(preferences: "Preferences", filters: JobFilters, left_out: int 
     notice = preferences.describe(filters)
     if left_out:
         notice += (
-            f". {left_out:,} with no location given are left out; "
-            "turn off Only my preferences (f) to see them."
+            f". {left_out:,} with no location given are left out. "
+            "Turn off Only my preferences (f) to see them."
         )
     return notice
 
@@ -101,16 +96,31 @@ def age_label(first_seen: datetime, now: datetime) -> str:
     return "new" if days <= 1 else f"{days}d"
 
 
-class PostingsScreen(HelpOverlay, Screen[None]):
+class PostingsScreen(StageScreen[None]):
     HELP_TEXT = HELP_TEXT
+    OVER_HELP = frozenset(
+        {
+            "search",
+            "filters",
+            "export",
+            "expand",
+            "applications",
+            "stats",
+            "review",
+            "boards",
+            "sync",
+            "about",
+        }
+    )
     BINDINGS = [
         Binding("slash", "search", "search"),
         Binding("f", "filters", "filter"),
-        Binding("space", "mark", "mark", show=False),
         Binding("o", "open", "open"),
-        Binding("w", "expand", "read", show=False),
         Binding("e", "export", "export"),
-        Binding("question_mark", "help", "keys"),
+        Binding("l", "applications", "tracked"),
+        HELP,
+        Binding("space", "mark", "mark", show=False),
+        Binding("w", "expand", "read", show=False),
         Binding("c", "clear", "clear", show=False),
         Binding("r", "reload", "reload", show=False),
         Binding("m", "more", "load more", show=False),
@@ -121,7 +131,6 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         Binding("b", "boards", "boards", show=False),
         Binding("y", "sync", "sync", show=False),
         Binding("A", "about", "about", show=False),
-        Binding("l", "applications", "applications"),
         Binding("s", "save", "save", show=False),
         Binding("p", "applied", "applied", show=False),
         Binding("h", "hide", "hide", show=False),
@@ -132,11 +141,11 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         super().__init__()
         self.state = FilterState()
         self._jobs: tuple[Job, ...] = ()
-        self._layout: tuple[int, int, int, int] = (0, 0, 0, 0)
         self._export_format = "csv"
         self._expanded = False
         self._never_synced = False
         self._total = 0
+        self._searched: tuple[str, ...] = ()
         self._pending: Timer | None = None
         self._marked: set[str] = set()
         self._arming_export = False
@@ -148,10 +157,6 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self._hidden = 0
         self._undo: tuple[Change, ...] = ()
         self._keep: tuple[str, int] | None = None
-
-    @property
-    def repository(self) -> "AsyncRepository | None":
-        return repository_of(self.app)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -167,59 +172,53 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.set_class(self.app.size.height < SHORT, "narrow")
-        table = self.query_one("#results", DataTable)
-        self._add_columns(table)
+        table = self._table()
+        refill(table, self._columns(0), ())
         self._load_preferences()
         self._render_filters()
         table.focus()
         self.refresh_results()
 
-    def _add_columns(self, table: DataTable[object], rows: int = 0) -> None:
-        self._layout = self._widths(rows)
-        number, company, title, location = self._layout
-        table.add_column("#", width=number)
-        table.add_column("Age", width=AGE_WIDTH)
-        table.add_column("Company", width=company)
-        table.add_column("Title", width=title)
-        table.add_column("Location", width=location)
-
-    def on_resize(self) -> None:
-        self.set_class(self.app.size.height < SHORT, "narrow")
-        if not any(self._layout) or self._widths(len(self._jobs)) == self._layout:
+    def relayout(self) -> None:
+        table = self._table()
+        if not laid_out(table) or laid_out(table) == self._columns(len(self._jobs)):
             return
-        table = self.query_one("#results", DataTable)
-        selected = self._selected()
-        if selected is not None:
-            self._keep = (selected.id, max(table.cursor_row, 0))
+        self._hold()
         self._fill(self._jobs)
 
-    def _widths(self, rows: int) -> tuple[int, int, int, int]:
+    def _columns(self, rows: int) -> Columns:
         number = max(4, len(str(rows)) + 1)
-        room = max(40, self.app.size.width - number - AGE_WIDTH - 2 * len(COLUMNS) - 1)
+        room = max(40, self.app.size.width - number - AGE_WIDTH - 11)
         company = min(30, max(12, room // 4))
         location = min(26, max(12, room // 4))
-        return number, company, room - company - location, location
+        return (
+            ("#", number),
+            ("Age", AGE_WIDTH),
+            ("Company", company),
+            ("Title", room - company - location),
+            ("Location", location),
+        )
 
     def _set_busy(self, busy: bool) -> None:
         self.query_one("#chips", Static).set_class(busy, "busy")
         if busy:
-            self.query_one("#chips", Static).update("[dim]searching...[/dim]")
+            self.say("[dim]searching...[/dim]")
 
     def _render_chips(self) -> None:
         if self._arming_export:
-            self.query_one("#chips", Static).update(
+            self.say(
                 f"Export every match as [b]{self._export_format}[/b]?   "
                 "[dim]e to confirm, g for another format, escape to cancel[/dim]"
             )
             return
-        parts = [f"[reverse] {quoted(value)} [/reverse]" for _, value in self.state.active]
-        if self.state.query:
-            parts.insert(0, f'[reverse] "{quoted(self.state.query)}" [/reverse]')
+        query = self.state.query.strip()
+        parts = [f"[reverse] {inline(value, 40)} [/reverse]" for _, value in self.state.active]
+        if query:
+            parts.insert(0, f'[reverse] "{inline(query, 40)}" [/reverse]')
         if self.state.only_new:
             parts.append("[reverse] new [/reverse]")
         days = self.state.window_days
-        if days != (None if self.state.query.strip() else DEFAULT_WINDOW_DAYS):
+        if days != (None if query else DEFAULT_WINDOW_DAYS):
             window = "any date" if days is None else f"{days}d"
             parts.append(f"[reverse] {window} [/reverse]")
         if self.state.mine:
@@ -230,18 +229,23 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         count = (
             f"[b]{len(self._jobs):,}[/b] of [b]{self._total:,}[/b]"
             if len(self._jobs) < self._total
-            else f"[b]{self._total:,}[/b] {'posting' if self._total == 1 else 'postings'}"
+            else f"[b]{counted(self._total, 'posting')}[/b]"
         )
         marked = f"   [b]{len(self._marked):,}[/b] marked" if self._marked else ""
         marked += f"   [dim]{self._hidden:,} hidden[/dim]" if self._hidden else ""
-        clear = (
-            "   [dim]c to clear[/dim]"
-            if self.state.active or self.state.query or self._is_narrowed()
-            else ""
-        )
-        self.query_one("#chips", Static).update(f"{shown}   {count}{marked}{clear}")
+        clear = "   [dim]c to clear[/dim]" if self.state.active or query or self._narrowed() else ""
+        note = self._search_note()
+        if note and self._jobs:
+            clear += f"\n[dim]{quoted(note)}[/dim]"
+        self.say(f"{shown}   {count}{marked}{clear}")
 
-    def _is_narrowed(self) -> bool:
+    def _search_note(self) -> str:
+        from stage.services.query import searched_as
+
+        query = self.state.query.strip()
+        return searched_as(query, self._searched, 40) if query else ""
+
+    def _narrowed(self) -> bool:
         return (
             self.state.only_new
             or self.state.mine
@@ -268,8 +272,9 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             self.state, job.company if job else None, saved=self._has_preferences()
         )
         panel.clear_options()
-        for _, _, label, chosen in self._rows:
-            panel.add_option(cell(f"{'[x]' if chosen else '[ ]'} {label}"))
+        panel.add_options(
+            cell(f"{'[x]' if chosen else '[ ]'} {label}") for _, _, label, chosen in self._rows
+        )
         if highlighted is not None and self._rows:
             panel.highlighted = min(highlighted, len(self._rows) - 1)
 
@@ -287,33 +292,26 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         announce = self._announce_mine and self.state.mine
         self._announce_mine = False
         preferences = self._preferences
-        filters = self.state.as_filters(preferences)
+        query = self.state.query.strip()
+        window = self.state.window_days
         try:
-            filters, view = await self._tracked_filters(repo, filters)
-            if self.state.only_new:
-                since = await repo.previous_sync_at()
-                if since is not None:
-                    filters = replace(filters, first_seen_after=since)
-            query = self.state.query.strip()
+            filters, view = await self._scoped(repo, self.state.as_filters(preferences))
+            listing: JobListing
             if query:
-                listing = await search_jobs(
-                    repo, self.state.query, filters, window_days=self.state.window_days
-                )
+                listing = await search_jobs(repo, query, filters, window_days=window)
             else:
-                listing = await list_jobs(repo, filters, window_days=self.state.window_days)
-            hidden = await count_hidden(
-                repo,
-                filters,
-                view.hidden,
-                window_days=self.state.window_days,
-                query=self.state.query if query else "",
-            )
+                listing = await list_jobs(repo, filters, window_days=window)
+            hidden = await count_hidden(repo, filters, view.hidden, window_days=window, query=query)
         except asyncio.CancelledError:
             self._announce_mine = self._announce_mine or announce
             raise
+        except sqlite3.Error as exc:
+            self.database_failed(exc)
+            return
         self._jobs = listing.jobs
         self._total = listing.total_matching
         self._never_synced = listing.last_sync_at is None
+        self._searched = listing.terms
         self._statuses = view.statuses
         self._hidden = hidden
         try:
@@ -324,7 +322,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         if announce and preferences is not None:
             told(self, _mine_notice(preferences, filters, listing.no_location))
 
-    async def _tracked_filters(
+    async def _scoped(
         self, repo: "AsyncRepository", filters: JobFilters
     ) -> tuple[JobFilters, TrackerView]:
         from stage.services.tracker import tracker_view
@@ -334,43 +332,68 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             self._tracker_warned = True
             told(self, view.problem, "warning")
         excluded = view.tracked if self.state.untracked else view.hidden
-        return replace(filters, excluded_ids=filters.excluded_ids | excluded), view
+        filters = replace(filters, excluded_ids=filters.excluded_ids | excluded)
+        if self.state.only_new:
+            since = await repo.previous_sync_at()
+            if since is not None:
+                filters = replace(filters, first_seen_after=since)
+        return filters, view
+
+    def _number(self, position: int, job: "Job") -> Text:
+        return cell(f"{'*' if job.id in self._marked else ' '}{position}")
+
+    def _cells(self, position: int, job: "Job", columns: Columns, now: datetime) -> list[Text]:
+        _, _, (_, company), (_, title), (_, location) = columns
+        status = self._statuses.get(job.id)
+        tag = MARKERS.get(status) if status is not None else None
+        return [
+            self._number(position, job),
+            cell(age_label(job.first_seen, now)),
+            cell(job.company, company),
+            cell(f"{tag} {job.title_raw}" if tag else job.title_raw, title),
+            cell(display_location(job.location_raw) or "-", location),
+        ]
 
     def _fill(self, jobs: "tuple[Job, ...]") -> None:
         self._marked &= {job.id for job in jobs}
-        table = self.query_one("#results", DataTable)
-        if self._widths(len(jobs)) == self._layout:
-            table.clear()
-        else:
-            table.clear(columns=True)
-            self._add_columns(table, len(jobs))
-        _, company, width, location = self._layout
+        columns = self._columns(len(jobs))
         now = datetime.now(UTC)
-        for position, job in enumerate(jobs, start=1):
-            marker = "*" if job.id in self._marked else " "
-            status = self._statuses.get(job.id)
-            tag = MARKERS.get(status) if status is not None else None
-            table.add_row(
-                cell(f"{marker}{position}"),
-                cell(age_label(job.first_seen, now)),
-                cell(job.company, company),
-                cell(f"{tag} {job.title_raw}" if tag else job.title_raw, width),
-                cell(display_location(job.location_raw) or "-", location),
-            )
-        if self._keep is not None and jobs:
-            kept, row = self._keep
-            same = next((index for index, job in enumerate(jobs) if job.id == kept), None)
-            table.move_cursor(row=same if same is not None else min(row, len(jobs) - 1))
-        self._keep = None
+        keep, self._keep = self._keep, None
+        cursor = None
+        if keep is not None:
+            cursor = next((at for at, job in enumerate(jobs) if job.id == keep[0]), keep[1])
+        rows = (self._cells(at, job, columns, now) for at, job in enumerate(jobs, start=1))
+        refill(self._table(), columns, rows, cursor)
         self._render_chips()
         self._show_detail()
 
     def _selected(self) -> "Job | None":
-        table = self.query_one("#results", DataTable)
-        row = table.cursor_row
-        if not self._jobs or row < 0 or row >= len(self._jobs):
-            return None
-        return self._jobs[row]
+        return picked(self._table(), self._jobs)
+
+    def _empty_detail(self) -> str:
+        query = self.state.query.strip()
+        if query and not self._searched:
+            note = self._search_note() or f'Nothing in "{query}" can be searched.'
+            said = f"{quoted(note)} Type letters or digits, or press [b]c[/b] to clear it."
+        elif self._never_synced:
+            said = "No postings yet. Run [b]stage sync[/b] in a terminal, or press [b]y[/b]."
+        elif query:
+            said = (
+                f'No posting matches "{inline(query, 40)}". Every word has to match the '
+                "start of a word, so drop one, change the filters with [b]f[/b], or press "
+                "[b]c[/b] to clear."
+            )
+        elif self.state.active or self._narrowed():
+            said = (
+                "No posting matches these filters. Press [b]f[/b] to change them or "
+                "[b]c[/b] to clear them."
+            )
+        else:
+            said = (
+                f"No posting was first seen in the last {DEFAULT_WINDOW_DAYS} days. Press "
+                "[b]f[/b] for a longer window, or [b]y[/b] to sync."
+            )
+        return f"[dim]{said}[/dim]"
 
     def _show_detail(self) -> None:
         from stage.domain.text import first_line, graphemes
@@ -378,17 +401,12 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         job = self._selected()
         panel = self.query_one("#detail", Static)
         if job is None:
-            panel.update(
-                "[dim]No postings yet. Run [b]stage sync[/b] in a terminal, "
-                "or press [b]y[/b].[/dim]"
-                if self._never_synced
-                else "[dim]Nothing selected. Press [b]/[/b] to search, "
-                "[b]f[/b] for filters, [b]?[/b] for help.[/dim]"
-            )
+            panel.update(self._empty_detail())
             return
         status = self._statuses.get(job.id)
+        width = max(20, self.app.size.width - 5)
         facts = "  [dim]|[/dim]  ".join(
-            quoted(part)
+            inline(part, width // 2)
             for part in (
                 status.value if status is not None else None,
                 display_location(job.location_raw) or None,
@@ -412,9 +430,10 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             facts = f"{facts}  [dim]|  w or escape goes back[/dim]"
         elif shown != whole:
             facts = f"{facts}  [dim]|  w reads it all[/dim]"
+        title = inline(job.title_raw) if self._expanded else headline(job.title_raw, width)
         panel.update(
-            f"[b]{quoted(job.title_raw)}[/b]\n"
-            f"[$primary]{quoted(job.company)}[/$primary]   {facts}\n\n{body}"
+            f"[b]{title}[/b]\n"
+            f"[$primary]{inline(job.company, width // 2)}[/$primary]   {facts}\n\n{body}"
         )
 
     def on_data_table_row_highlighted(self) -> None:
@@ -439,46 +458,24 @@ class PostingsScreen(HelpOverlay, Screen[None]):
     def on_input_submitted(self) -> None:
         self._leave_search()
 
-    def on_key(self, event: object) -> None:
-        if getattr(event, "key", "") != "escape":
-            return
-        if self.close_help():
-            stop = getattr(event, "stop", None)
-            if callable(stop):
-                stop()
-            return
-        if self._arming_export:
-            self._arming_export = False
-            self._render_chips()
-            stop = getattr(event, "stop", None)
-            if callable(stop):
-                stop()
-            return
-        if not self.query_one("#filters", OptionList).has_class("hidden"):
-            self._leave_filters()
-            stop = getattr(event, "stop", None)
-            if callable(stop):
-                stop()
-            return
-        if not self.query_one("#search-bar").has_class("visible"):
-            if self._expanded:
-                self.action_expand()
-                stop = getattr(event, "stop", None)
-                if callable(stop):
-                    stop()
-            return
-        self._leave_search()
-        stop = getattr(event, "stop", None)
-        if callable(stop):
-            stop()
+    def on_key(self, event: Key) -> None:
+        if event.key == "escape" and self._escape():
+            event.stop()
+
+    def _escape(self) -> bool:
+        if self.close_help() or self.close_overlay():
+            return True
+        if not self._expanded:
+            return False
+        self.action_expand()
+        return True
 
     def _leave_search(self) -> None:
         self.query_one("#search-bar").remove_class("visible")
-        self.query_one("#results", DataTable).focus()
+        self._table().focus()
 
     def action_search(self) -> None:
         self.dismiss_overlays()
-        self.close_help()
         self.query_one("#search-bar").add_class("visible")
         self.query_one("#search", Input).focus()
 
@@ -489,14 +486,13 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             return
         if not self._expanded:
             self.dismiss_overlays()
-            self.close_help()
         self._expanded = not self._expanded
         reader = self.query_one("#reader", VerticalScroll)
         reader.set_class(self._expanded, "expanded")
         reader.can_focus = self._expanded
         self._show_detail()
         reader.scroll_home(animate=False)
-        table = self.query_one("#results", DataTable)
+        table = self._table()
         if self._expanded:
             reader.focus()
         else:
@@ -506,20 +502,19 @@ class PostingsScreen(HelpOverlay, Screen[None]):
 
     def action_filters(self) -> None:
         panel = self.query_one("#filters", OptionList)
-        if panel.has_class("hidden"):
-            self.dismiss_overlays()
-            self.close_help()
-            self._render_filters()
-            panel.remove_class("hidden")
-            if panel.option_count and panel.highlighted is None:
-                panel.highlighted = 0
-            panel.focus()
+        if not panel.has_class("hidden"):
+            self._leave_filters()
             return
-        self._leave_filters()
+        self.dismiss_overlays()
+        self._render_filters()
+        panel.remove_class("hidden")
+        if panel.option_count and panel.highlighted is None:
+            panel.highlighted = 0
+        panel.focus()
 
     def _leave_filters(self) -> None:
         self.query_one("#filters", OptionList).add_class("hidden")
-        self.query_one("#results", DataTable).focus()
+        self._table().focus()
 
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         index = event.option_index
@@ -545,6 +540,9 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self.refresh_results()
 
     def action_reload(self) -> None:
+        self._reload()
+
+    def _reload(self, _: object = None) -> None:
         self._hold()
         self.refresh_results()
 
@@ -553,41 +551,43 @@ class PostingsScreen(HelpOverlay, Screen[None]):
             told(self, "Every match is already listed.", "warning")
             return
         self.state.widen()
-        self._hold()
-        self.refresh_results()
+        self._reload()
 
     def action_fewer(self) -> None:
         if self.state.show_all:
             self.state.show_all = False
             self.state.limit = PAGE_SIZE
-            self._hold()
-            self.refresh_results()
+        elif not self.state.narrow():
+            told(self, "Already down to one page. Press m to show more.", "warning")
             return
-        if not self.state.narrow():
-            told(self, "Already down to one page; m shows more.", "warning")
-            return
-        self._hold()
-        self.refresh_results()
+        self._reload()
 
     def _hold(self) -> None:
         selected = self._selected()
         if selected is not None:
-            self._keep = (selected.id, max(self.query_one("#results", DataTable).cursor_row, 0))
+            self._keep = (selected.id, max(self._table().cursor_row, 0))
+
+    def nothing_highlighted(self) -> None:
+        if self._never_synced:
+            said = "No postings yet. Press y to sync."
+        elif self.state.query.strip() or self.state.active or self._narrowed():
+            said = "No posting matches. Press c to clear the search and filters."
+        else:
+            said = (
+                f"No posting from the last {DEFAULT_WINDOW_DAYS} days. Press f for a longer window."
+            )
+        told(self, said, "warning")
 
     def action_mark(self) -> None:
         job = self._selected()
         if job is None:
-            told(self, "Nothing selected.", "warning")
+            self.nothing_highlighted()
             return
-        table = self.query_one("#results", DataTable)
+        self._marked ^= {job.id}
+        table = self._table()
         row = table.cursor_row
-        if job.id in self._marked:
-            self._marked.discard(job.id)
-        else:
-            self._marked.add(job.id)
-        self._fill(self._jobs)
-        if 0 <= row < len(self._jobs):
-            table.move_cursor(row=row)
+        table.update_cell_at(Coordinate(row, 0), self._number(row + 1, job))
+        self._render_chips()
 
     def _open_targets(self) -> "tuple[Job, ...]":
         if self._marked:
@@ -596,52 +596,27 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         return (job,) if job is not None else ()
 
     def action_open(self) -> None:
-        import webbrowser
-
-        from stage.domain import web_url
+        from stage.tui.liveness import open_postings
 
         targets = self._open_targets()
         if not targets:
-            told(self, "Nothing selected.", "warning")
+            self.nothing_highlighted()
             return
         if len(targets) > MAX_OPEN_AT_ONCE:
             told(
                 self,
-                f"{len(targets):,} rows are marked; Stage opens at most {MAX_OPEN_AT_ONCE} "
+                f"{len(targets):,} rows are marked, and Stage opens at most {MAX_OPEN_AT_ONCE} "
                 "tabs at once. Press space on a marked row to unmark it.",
                 "warning",
             )
             return
-        opened = 0
-        refused = 0
-        for job in targets:
-            url = web_url(job.apply_url_raw)
-            if url is None:
-                refused += 1
-                continue
-            if not webbrowser.open(url):
-                told(self, "No browser available on this machine.", "warning")
-                return
-            opened += 1
-        if refused:
-            they = "it was" if refused == 1 else "they were"
-            told(
-                self,
-                f"{counted(refused, 'posting')} had an apply link that is not a plain "
-                f"http or https address, so {they} not opened.",
-                "error",
-            )
-        if not opened:
-            return
-        if opened == 1 and len(targets) == 1:
-            told(self, f"Opened {sanitize(targets[0].company)}")
-            return
-        told(self, f"Opened {counted(opened, 'posting')}")
+        open_postings(
+            self, [(job.id, job.apply_url_raw, job.company) for job in targets], self._reload
+        )
 
     def action_cycle_format(self) -> None:
         order = [item.value for item in ExportFormat]
-        index = (order.index(self._export_format) + 1) % len(order)
-        self._export_format = order[index]
+        self._export_format = order[(order.index(self._export_format) + 1) % len(order)]
         if self._arming_export:
             self._render_chips()
             return
@@ -649,11 +624,10 @@ class PostingsScreen(HelpOverlay, Screen[None]):
 
     def action_export(self) -> None:
         if not self._jobs:
-            told(self, "Nothing to export.", "warning")
+            self.nothing_highlighted()
             return
         if not self._arming_export:
             self.dismiss_overlays()
-            self.close_help()
             self._arming_export = True
             self._render_chips()
             return
@@ -661,26 +635,28 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         self._render_chips()
         self._write_export()
 
-    @work(exclusive=True)
+    @work(exclusive=True, group="export")
     async def _write_export(self) -> None:
-        from datetime import UTC, datetime
-
         from stage.services.export import ExportError, export_jobs, export_root
 
         repo = self.repository
         if repo is None or not self._jobs:
-            told(self, "Nothing to export.", "warning")
+            self.nothing_highlighted()
             return
         fmt = ExportFormat(self._export_format)
         root = export_root()
+        if not root.is_dir():
+            told(
+                self,
+                f"The export folder {sanitize(str(root))} does not exist. Create it, or set "
+                "STAGE_EXPORT_DIR to a folder that does.",
+                "error",
+            )
+            return
         stamp = datetime.now(UTC).astimezone().strftime("%Y%m%d-%H%M%S")
         try:
             every = replace(self.state.as_filters(self._preferences), limit=None)
-            filters, _ = await self._tracked_filters(repo, every)
-            if self.state.only_new:
-                since = await repo.previous_sync_at()
-                if since is not None:
-                    filters = replace(filters, first_seen_after=since)
+            filters, _ = await self._scoped(repo, every)
             result = await export_jobs(
                 repo,
                 filters,
@@ -690,37 +666,50 @@ class PostingsScreen(HelpOverlay, Screen[None]):
                 window_days=self.state.window_days,
                 query=self.state.query,
             )
-        except (ExportError, OSError) as exc:
-            told(self, f"Could not write the export: {sanitize(str(exc))}", "error")
+        except ExportError as exc:
+            told(self, sentence(str(exc)), "error")
+            return
+        except sqlite3.Error as exc:
+            self.database_failed(exc, loading=False)
+            return
+        except OSError as exc:
+            told(
+                self,
+                f"Could not write the export to {sanitize(str(root))} ({exc.strerror or exc}). "
+                "Check the folder is writable and has room.",
+                "error",
+            )
             return
         told(self, f"Exported {counted(result.count, 'posting')} to {sanitize(str(result.path))}")
+
+    def _push[R](self, screen: Screen[R], after: Callable[[R | None], None] | None = None) -> None:
+        self.dismiss_overlays()
+        self.app.push_screen(screen, after)
 
     def action_stats(self) -> None:
         from stage.tui.screens.stats import StatsScreen
 
-        self.app.push_screen(StatsScreen())
+        self._push(StatsScreen())
 
     def action_review(self) -> None:
         from stage.tui.screens.review import ReviewScreen
 
-        self.app.push_screen(ReviewScreen())
+        self._push(ReviewScreen())
 
     def action_boards(self) -> None:
         from stage.tui.screens.boards import BoardsScreen
 
-        self.app.push_screen(BoardsScreen())
+        self._push(BoardsScreen())
 
     def action_sync(self) -> None:
         from stage.tui.screens.sync import SyncScreen
 
-        self.app.push_screen(SyncScreen())
+        self._push(SyncScreen(), self._reload)
 
     def action_applications(self) -> None:
         from stage.tui.screens.applications import ApplicationsScreen
 
-        self.dismiss_overlays()
-        self.close_help()
-        self.app.push_screen(ApplicationsScreen(), self._after_applications)
+        self._push(ApplicationsScreen(), self._after_applications)
 
     def _after_applications(self, changed: bool | None) -> None:
         if changed:
@@ -739,15 +728,10 @@ class PostingsScreen(HelpOverlay, Screen[None]):
     def _track(self, status: ApplicationStatus) -> None:
         targets = self._open_targets()
         if not targets:
-            told(self, "Nothing selected.", "warning")
+            self.nothing_highlighted()
             return
-        self._hold_cursor()
+        self._hold()
         self._record(status, tuple(job.id for job in targets))
-
-    def _hold_cursor(self) -> None:
-        job = self._selected()
-        if job is not None:
-            self._keep = (job.id, self.query_one("#results", DataTable).cursor_row)
 
     @work(group="tracker")
     async def _record(self, status: ApplicationStatus, ids: tuple[str, ...]) -> None:
@@ -763,21 +747,23 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         except TrackerProblemError as exc:
             told(self, str(exc), "error")
             return
+        except sqlite3.Error as exc:
+            self.database_failed(exc, loading=False)
+            return
         if report.missing:
-            told(self, "That posting is no longer stored; press r to reload.", "warning")
+            told(self, "That posting is no longer stored. Press r to reload.", "warning")
             return
         if report.changed:
             self._undo = report.changed
         self._marked.clear()
-        told(self, _tracked_notice(status, report))
+        told(self, _tracked_notice(status, report), subject=ids)
         self.refresh_results()
 
     def action_undo(self) -> None:
         if not self._undo:
             told(self, "Nothing to undo.", "warning")
             return
-        row = self.query_one("#results", DataTable).cursor_row
-        self._keep = (self._undo[0].entry.posting_id, max(row, 0))
+        self._keep = (self._undo[0].entry.posting_id, max(self._table().cursor_row, 0))
         self._revert(self._undo)
 
     @work(group="tracker")
@@ -785,7 +771,7 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         from stage.services.tracker import TrackerProblemError, restore_unless_changed
 
         try:
-            restored, kept = restore_unless_changed(changes)
+            restored, kept = await asyncio.to_thread(restore_unless_changed, changes)
         except TrackerProblemError as exc:
             told(self, str(exc), "error")
             return
@@ -794,21 +780,26 @@ class PostingsScreen(HelpOverlay, Screen[None]):
         if kept:
             left = "it as it is" if len(kept) == 1 else "them as they are"
             said = f"{said} {len(kept):,} changed again since, so Stage left {left}."
-        told(self, said, "warning" if kept else "information")
+        subject = tuple(change.entry.posting_id for change in changes)
+        told(self, said, "warning" if kept else "information", subject=subject)
         self.refresh_results()
 
     def action_about(self) -> None:
         from stage.tui.screens.splash import SplashScreen
 
-        app = self.app
-        summary = getattr(app, "summary", "")
-        app.push_screen(SplashScreen(summary or "Stage", dismiss_after=None))
+        summary = getattr(self.app, "summary", "")
+        self.app.push_screen(SplashScreen(summary or "Stage", dismiss_after=None))
 
-    def dismiss_overlays(self) -> None:
+    def close_overlay(self) -> bool:
+        closed = False
         if not self.query_one("#filters", OptionList).has_class("hidden"):
             self._leave_filters()
+            closed = True
         if self.query_one("#search-bar").has_class("visible"):
             self._leave_search()
+            closed = True
         if self._arming_export:
             self._arming_export = False
             self._render_chips()
+            closed = True
+        return closed
