@@ -1,7 +1,10 @@
+import asyncio
+import re
 import time
-from collections.abc import AsyncIterator, Callable, Mapping, Sequence
-from dataclasses import dataclass, replace
-from datetime import date
+from collections.abc import AsyncIterator, Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field, replace
+from datetime import UTC, date, datetime
+from urllib.parse import urlencode, urlsplit
 
 from stage.domain import (
     CandidateSkipped,
@@ -21,17 +24,20 @@ from stage.domain import (
     UrlUnrecognized,
     first_line,
 )
-from stage.domain.text import counted
+from stage.domain.robots import RobotsRules, robots_rules
+from stage.domain.text import counted, did_you_mean, plain_error
 from stage.http import (
+    USER_AGENT,
     HostBudgetExceededError,
     HttpClient,
     RatePosture,
     ValidatorCache,
+    failure_text,
     resolve,
 )
 from stage.lexicon import company_legal_suffixes, fold, generic_company_tokens, name_root_tokens
 from stage.sources.platforms import (
-    PROBES,
+    BOARD_PROBES,
     PROBES_BY_PLATFORM,
     URL_ONLY_PLATFORMS,
     PlatformProbe,
@@ -39,7 +45,9 @@ from stage.sources.platforms import (
     first_str,
     identify_url,
     job_count,
+    oracle_target,
     safe_slug,
+    workday_target,
 )
 
 
@@ -49,6 +57,11 @@ class NoMatchingCompanyError(Exception):
 
 MAX_CANDIDATES_PER_COMPANY = 3
 DISCOVERY_PROFILE = "discovery"
+ROBOTS_AGENT = USER_AGENT.split("/", 1)[0]
+ROBOTS_TIMEOUT_S = 10.0
+ROBOTS_AT_ONCE = 2
+READ_BY_OWNER_DECISION = ("smartrecruiters.com", "ultipro.com", "ultipro.ca")
+PATIENT_DELAY_S = 2.0
 
 SIZE_BANDS: dict[EmployerSize, tuple[int, int]] = {
     EmployerSize.STARTUP: (1, 300),
@@ -58,8 +71,11 @@ SIZE_BANDS: dict[EmployerSize, tuple[int, int]] = {
 
 GENERIC_TOKENS = generic_company_tokens()
 _LEGAL_SUFFIXES = company_legal_suffixes()
+_EVERY_PROBE = {**PROBES_BY_PLATFORM, **BOARD_PROBES}
 
 MIN_DISTINCTIVE_TOKEN = 4
+
+Board = Company | PlatformCandidate
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,9 +108,11 @@ def slug_candidates(name: str) -> SlugPlan:
         offer("-".join(tokens))
         head = tokens[0]
         if head in GENERIC_TOKENS:
-            offer(head, f"{head!r} is a generic first token, the confirmed false-positive shape")
+            offer(
+                head, f'"{head}" is a common first word, and it matched the wrong employer before'
+            )
         elif len(head) < MIN_DISTINCTIVE_TOKEN:
-            offer(head, f"{head!r} is too short to be distinctive on its own")
+            offer(head, f'"{head}" is too short to name one employer')
         else:
             offer(head)
 
@@ -107,10 +125,6 @@ def name_tokens(value: str) -> frozenset[str]:
 
 def _joined(value: str) -> str:
     return "".join(token for token in fold(value).split() if token not in _LEGAL_SUFFIXES)
-
-
-def _acquisition_named(company: Company) -> bool:
-    return company.name_gate_exempt
 
 
 def name_matches(company: str, board_name: str) -> bool:
@@ -133,13 +147,9 @@ def _count_verdict(count: int | None, size: EmployerSize | None) -> str:
         return ""
     low, high = SIZE_BANDS[size]
     if count < low:
-        return (
-            f"{counted(count, 'posting')} is below the plausible floor for a {size.value} employer"
-        )
+        return f"{counted(count, 'posting')} is too few for a {size.value} employer"
     if count > high:
-        return (
-            f"{counted(count, 'posting')} exceeds the plausible ceiling for a {size.value} employer"
-        )
+        return f"{counted(count, 'posting')} is too many for a {size.value} employer"
     return ""
 
 
@@ -167,25 +177,22 @@ def classify(
         )
 
     if count is None:
-        return result(ProbeVerdict.MISS, "no job collection in the response")
+        return result(ProbeVerdict.MISS, "the answer has no job list")
     if count == 0:
-        return result(
-            ProbeVerdict.EMPTY, "board exists but is empty, so there is nothing to verify against"
-        )
-
+        return result(ProbeVerdict.EMPTY, "the board exists but is empty, so nothing confirms it")
     implausible = _count_verdict(count, size)
     if implausible:
         return result(ProbeVerdict.REJECTED, implausible)
-
     if not board_name:
         return result(
             ProbeVerdict.UNVERIFIED,
-            f"{probe.platform.value} exposes no board name; confirm by hand before adding",
+            f"{probe.platform.value} publishes no board name, so confirm by hand that it is "
+            "the right employer",
         )
     if not name_matches(company, board_name):
         return result(
             ProbeVerdict.REJECTED,
-            f"board is named {board_name!r}, which does not contain {company!r}",
+            f'the board is named "{board_name}", which does not contain "{company}"',
         )
     return result(ProbeVerdict.MATCH)
 
@@ -203,20 +210,17 @@ def resolve_careers_url(url: str) -> DiscoveryEvent:
         return UrlUnrecognized(
             url=url,
             detail=(
-                "no known ATS in this URL's shape. DevTools -> Network, filter "
-                "Fetch/XHR: if a request returns the job list, this is custom_json"
+                "Stage does not recognize a job board in this link, so it may be a "
+                "custom_json board"
             ),
         )
     detail = ""
-    if candidate.platform is Platform.WORKDAY:
-        if candidate.workday_site is None:
-            detail = "tenant and datacenter resolved, but the site segment is missing from the URL"
-        else:
-            detail = "workday_facet resolves on first contact, which lands in build step 6"
+    if candidate.platform is Platform.WORKDAY and candidate.workday_site is None:
+        detail = "the link names the Workday tenant but not its site"
     elif candidate.platform in URL_ONLY_PLATFORMS:
         detail = (
-            f"{candidate.platform.value} has no probeable board endpoint, "
-            "so it was accepted on shape"
+            f"{candidate.platform.value} boards cannot be checked before they are added, "
+            "so this one comes from the link alone"
         )
     return UrlResolved(url=url, candidate=candidate, detail=detail)
 
@@ -227,19 +231,20 @@ def direct_companies_from_apply_urls(
     platforms: Sequence[Platform] | None = None,
     excluded: Sequence[Platform] | None = None,
 ) -> tuple[Company, ...]:
-    allowed = {probe.platform for probe in _selected_probes(platforms, excluded)}
-    rank = {probe.platform: index for index, probe in enumerate(PROBES)}
+    allowed = {probe.platform for probe in _selected_probes(platforms, excluded, boards=True)}
+    rank = {platform: index for index, platform in enumerate(_EVERY_PROBE)}
     direct: list[Company] = []
     for name, urls in apply_urls.items():
         candidates = [
             candidate
             for url in urls
-            if (candidate := identify_url(url)) is not None and candidate.platform in allowed
+            if (candidate := identify_url(url)) is not None
+            and candidate.platform in allowed
+            and _reachable(candidate)
         ]
-        if not candidates:
-            continue
-        candidate = min(candidates, key=lambda value: (rank[value.platform], value.slug))
-        direct.append(to_company(name, candidate))
+        if candidates:
+            best = min(candidates, key=lambda value: (rank[value.platform], value.slug))
+            direct.append(to_company(name, best))
     return tuple(direct)
 
 
@@ -272,14 +277,14 @@ def to_company(
     candidate: PlatformCandidate,
     *,
     verified_on: date | None = None,
+    source: SourceOfRecord = SourceOfRecord.DISCOVER,
 ) -> Company:
-    routable = is_routable(candidate.platform)
     return Company(
         name=name,
         platform=candidate.platform,
         slug=candidate.slug,
-        enabled=routable and verified_on is not None,
-        source_of_record=SourceOfRecord.DISCOVER,
+        enabled=is_routable(candidate.platform) and verified_on is not None,
+        source_of_record=source,
         last_verified=verified_on,
         workday_tenant=candidate.workday_tenant,
         workday_site=candidate.workday_site,
@@ -289,20 +294,102 @@ def to_company(
     )
 
 
+def registered_as(rows: Sequence[Company], name: str) -> tuple[Company, ...]:
+    wanted = _joined(name)
+    return tuple(row for row in rows if wanted and wanted == _joined(row.name))
+
+
+def registered_board(rows: Sequence[Company], candidate: PlatformCandidate) -> Company | None:
+    from stage.companies import board_identity
+
+    wanted = board_identity(to_company(candidate.slug, candidate))
+    return next((row for row in rows if board_identity(row) == wanted), None)
+
+
+def unaddable(candidate: PlatformCandidate) -> str:
+    if not candidate.resolves_board:
+        return f"{candidate.platform.value} links name a front end, not a board Stage can read"
+    if candidate.platform is Platform.WORKDAY and candidate.workday_site is None:
+        return "the link lacks the Workday site. Copy the link from the page that lists the jobs"
+    if not is_routable(candidate.platform):
+        return f"Stage cannot read {candidate.platform.value} boards yet"
+    return ""
+
+
+def discovered_row(
+    name: str, candidate: PlatformCandidate, today: date, board_name: str = ""
+) -> Company:
+    if board_name:
+        return replace(
+            to_company(name, candidate, verified_on=today),
+            notes=f'{today}: added with stage discover, the board names itself "{board_name}"',
+        )
+    return replace(
+        to_company(name, candidate),
+        enabled=is_routable(candidate.platform),
+        notes=f"{today}: added with stage discover --url from this employer's careers link",
+    )
+
+
 def _selected_probes(
     platforms: Sequence[Platform] | None,
     excluded: Sequence[Platform] | None = None,
+    *,
+    boards: bool = False,
 ) -> tuple[PlatformProbe, ...]:
-    if platforms is None:
-        chosen = list(PROBES)
-    else:
-        chosen = [
-            PROBES_BY_PLATFORM[platform] for platform in platforms if platform in PROBES_BY_PLATFORM
-        ]
-    if excluded is None:
-        return tuple(chosen)
-    skip = set(excluded)
-    return tuple(probe for probe in chosen if probe.platform not in skip)
+    catalogue = _EVERY_PROBE if boards else PROBES_BY_PLATFORM
+    chosen = (
+        catalogue.values()
+        if platforms is None
+        else [catalogue[platform] for platform in dict.fromkeys(platforms) if platform in catalogue]
+    )
+    return tuple(probe for probe in chosen if excluded is None or probe.platform not in excluded)
+
+
+@dataclass(slots=True)
+class _Tally:
+    matched: list[ProbeResult] = field(default_factory=list)
+    unverified: list[ProbeResult] = field(default_factory=list)
+    rejected: list[ProbeResult] = field(default_factory=list)
+    missed: int = 0
+    errors: int = 0
+    requests: int = 0
+    ceiling_hit: list[str] = field(default_factory=list)
+    attempts: dict[str, int] = field(default_factory=dict)
+    unreadable: dict[str, int] = field(default_factory=dict)
+    started: float = field(default_factory=time.perf_counter)
+
+    def counted(self, result: ProbeResult) -> PlatformProbed:
+        match result.verdict:
+            case ProbeVerdict.MATCH:
+                self.matched.append(result)
+            case ProbeVerdict.UNVERIFIED:
+                self.unverified.append(result)
+            case ProbeVerdict.REJECTED:
+                self.rejected.append(result)
+            case ProbeVerdict.ERROR:
+                self.errors += 1
+            case _:
+                self.missed += 1
+        return PlatformProbed(result)
+
+    def finished(self, *, non_json: bool) -> DiscoveryFinished:
+        unanswered = tuple(
+            (platform, count)
+            for platform, count in sorted(self.unreadable.items())
+            if count == self.attempts.get(platform, 0) and count >= 2
+        )
+        return DiscoveryFinished(
+            matched=tuple(self.matched),
+            unverified=tuple(self.unverified),
+            rejected=tuple(self.rejected),
+            missed=self.missed,
+            errors=self.errors,
+            requests=self.requests,
+            elapsed_ms=(time.perf_counter() - self.started) * 1000,
+            ceiling_hit=tuple(self.ceiling_hit),
+            non_json=unanswered if non_json else (),
+        )
 
 
 async def probe_companies(
@@ -315,132 +402,152 @@ async def probe_companies(
 ) -> AsyncIterator[DiscoveryEvent]:
     probes = _selected_probes(platforms, excluded)
     plans = {name: slug_candidates(name) for name in names}
-
-    started = time.perf_counter()
+    tally = _Tally()
     yield DiscoveryStarted(
         companies=tuple(names),
         platforms=tuple(probe.platform.value for probe in probes),
         probes_planned=sum(len(plan.accepted) for plan in plans.values()) * len(probes),
     )
-
-    seen_skips: set[tuple[str, str]] = set()
     for name, plan in plans.items():
         for slug, reason in plan.skipped:
-            if (name, slug) in seen_skips:
-                continue
-            seen_skips.add((name, slug))
             yield CandidateSkipped(company=name, slug=slug, reason=reason)
-
-    matched: list[ProbeResult] = []
-    unverified: list[ProbeResult] = []
-    rejected: list[ProbeResult] = []
-    missed = 0
-    errors = 0
-    requests = 0
-    ceiling_hit: list[str] = []
-    decode_failures: dict[str, int] = {}
-    attempts: dict[str, int] = {}
-
     for probe in probes:
-        posture = resolve(probe.rate_profile, [DISCOVERY_PROFILE])
-        hosts = frozenset(probe.host_for(slug) for plan in plans.values() for slug in plan.accepted)
-        if not hosts:
+        boards = [
+            (name, PlatformCandidate(probe.platform, slug))
+            for name, plan in plans.items()
+            for slug in plan.accepted
+        ]
+        if not boards:
             continue
-        blocked = False
-        async with client_factory(hosts, posture) as client:
-            for name, plan in plans.items():
-                if blocked:
-                    break
-                for slug in plan.accepted:
-                    candidate = PlatformCandidate(probe.platform, slug)
-                    url = probe.url_for(slug)
-                    key = probe.platform.value
-                    attempts[key] = attempts.get(key, 0) + 1
+        posture = resolve(probe.rate_profile, [DISCOVERY_PROFILE])
+        async with client_factory(_hosts(probe, boards), posture) as client:
+            async for event in _sweep(client, probe, boards, tally, source="discover", size=size):
+                yield event
+            tally.requests += client.request_count
+    yield tally.finished(non_json=True)
 
-                    response = None
-                    failure: Exception | None = None
-                    board_name = ""
-                    try:
-                        response = await client.get_json(url, params=dict(probe.params))
-                    except Exception as exc:
-                        failure = exc
-                    if response is not None:
-                        board_name = first_str(response.payload, probe.name_paths)
-                        if not board_name and probe.verify_url is not None:
-                            board_name = await _verify_name(client, probe, slug)
 
-                    for record in client.drain_log():
-                        yield RequestLogged(
-                            source="discover",
-                            method=record.method,
-                            url=record.url,
-                            status=record.status,
-                            elapsed_ms=record.elapsed_ms,
-                            attempt=record.attempt,
-                            error=record.error,
-                        )
-
-                    if isinstance(failure, HostBudgetExceededError):
-                        blocked = True
-                        ceiling_hit.append(f"{probe.platform.value}: {failure}")
-                        break
-                    if failure is not None or response is None:
-                        absent = failure is not None and _is_absent(failure)
-                        if isinstance(failure, ValueError):
-                            decode_failures[key] = decode_failures.get(key, 0) + 1
-                        if absent:
-                            missed += 1
-                        else:
-                            errors += 1
-                        yield PlatformProbed(
-                            ProbeResult(
-                                company=name,
-                                candidate=candidate,
-                                verdict=ProbeVerdict.MISS if absent else ProbeVerdict.ERROR,
-                                url=url,
-                                detail=f"{type(failure).__name__}: {failure}",
-                            )
-                        )
-                        continue
-
-                    result = classify(
-                        name,
-                        candidate,
-                        url,
-                        response.payload,
-                        probe,
-                        board_name=board_name,
-                        size=size,
-                    )
-                    match result.verdict:
-                        case ProbeVerdict.MATCH:
-                            matched.append(result)
-                        case ProbeVerdict.UNVERIFIED:
-                            unverified.append(result)
-                        case ProbeVerdict.REJECTED:
-                            rejected.append(result)
-                        case ProbeVerdict.ERROR:
-                            errors += 1
-                        case _:
-                            missed += 1
-                    yield PlatformProbed(result)
-            requests += client.request_count
-
-    yield DiscoveryFinished(
-        matched=tuple(matched),
-        unverified=tuple(unverified),
-        rejected=tuple(rejected),
-        missed=missed,
-        errors=errors,
-        requests=requests,
-        elapsed_ms=(time.perf_counter() - started) * 1000,
-        ceiling_hit=tuple(ceiling_hit),
-        non_json=tuple(
-            (platform, count)
-            for platform, count in sorted(decode_failures.items())
-            if count == attempts.get(platform, 0) and count >= 2
-        ),
+async def verify_registry(
+    companies: Sequence[Company],
+    *,
+    platforms: Sequence[Platform] | None = None,
+    excluded: Sequence[Platform] | None = None,
+    only: Sequence[str] | None = None,
+    client_factory: ClientFactory = _default_client,
+    board_checks: bool = False,
+) -> AsyncIterator[DiscoveryEvent]:
+    wanted = None if only is None else {fold(name) for name in only}
+    catalogue = _EVERY_PROBE if board_checks else PROBES_BY_PLATFORM
+    selected = [
+        company
+        for company in companies
+        if company.platform in catalogue
+        and _reachable(company)
+        and (platforms is None or company.platform in platforms)
+        and (excluded is None or company.platform not in excluded)
+        and (wanted is None or fold(company.name) in wanted)
+    ]
+    if wanted is not None and not selected:
+        raise NoMatchingCompanyError(_no_such_rows(only or (), companies))
+    grouped: dict[Platform, list[Company]] = {}
+    for company in selected:
+        grouped.setdefault(company.platform, []).append(company)
+    ordered = sorted(grouped, key=lambda platform: platform.value)
+    tally = _Tally()
+    yield DiscoveryStarted(
+        companies=tuple(company.name for company in selected),
+        platforms=tuple(platform.value for platform in ordered),
+        probes_planned=len(selected),
     )
+    for platform in ordered:
+        probe = catalogue[platform]
+        boards = [(company.name, company) for company in grouped[platform]]
+        async with client_factory(_hosts(probe, boards), resolve(probe.rate_profile, [])) as client:
+            async for event in _sweep(client, probe, boards, tally, source="verify"):
+                yield event
+            tally.requests += client.request_count
+    yield tally.finished(non_json=False)
+
+
+def _no_such_rows(only: Sequence[str], companies: Sequence[Company]) -> str:
+    from difflib import get_close_matches
+
+    names = {fold(company.name): company.name for company in companies}
+    near = [
+        names[match]
+        for asked in only
+        for match in get_close_matches(fold(asked), list(names), n=1, cutoff=0.75)
+    ]
+    asked = ", ".join(f'"{name}"' for name in sorted(only))
+    hint = did_you_mean(near[0]) if near else "Check the spelling, or leave out --company."
+    return f"No registry row is named {asked}. {hint}"
+
+
+def _hosts(probe: PlatformProbe, boards: Sequence[tuple[str, Board]]) -> frozenset[str]:
+    return frozenset(_target(probe, board)[0] for _, board in boards)
+
+
+async def _sweep(
+    client: HttpClient,
+    probe: PlatformProbe,
+    boards: Sequence[tuple[str, Board]],
+    tally: _Tally,
+    *,
+    source: str,
+    size: EmployerSize | None = None,
+) -> AsyncIterator[DiscoveryEvent]:
+    key = probe.platform.value
+    for name, board in boards:
+        candidate = board if isinstance(board, PlatformCandidate) else candidate_for(board)
+        url = _target(probe, board)[1]
+        tally.attempts[key] = tally.attempts.get(key, 0) + 1
+        payload, board_name, failure = await _ask(client, probe, board, url)
+        for record in client.drain_log():
+            yield RequestLogged(
+                source=source,
+                method=record.method,
+                url=record.url,
+                status=record.status,
+                elapsed_ms=record.elapsed_ms,
+                attempt=record.attempt,
+                error=record.error,
+            )
+        if isinstance(failure, HostBudgetExceededError):
+            tally.ceiling_hit.append(f"{key}: {plain_error(str(failure))}")
+            return
+        if failure is not None:
+            if isinstance(failure, ValueError):
+                tally.unreadable[key] = tally.unreadable.get(key, 0) + 1
+            absent = _is_absent(failure)
+            yield tally.counted(
+                ProbeResult(
+                    company=name,
+                    candidate=candidate,
+                    verdict=ProbeVerdict.MISS if absent else ProbeVerdict.ERROR,
+                    url=url,
+                    detail=failure_text(failure),
+                    status=_status(failure),
+                )
+            )
+            continue
+        result = classify(name, candidate, url, payload, probe, board_name=board_name, size=size)
+        exempt = isinstance(board, Company) and board.name_gate_exempt
+        if result.verdict is ProbeVerdict.REJECTED and exempt:
+            result = replace(result, verdict=ProbeVerdict.UNVERIFIED)
+        yield tally.counted(result)
+
+
+async def _ask(
+    client: HttpClient, probe: PlatformProbe, board: Board, url: str
+) -> tuple[object, str, Exception | None]:
+    try:
+        payload = await _payload(client, probe, board, url)
+    except Exception as exc:
+        return None, "", exc
+    board_name = first_str(payload, probe.name_paths)
+    if not board_name and probe.verify_url is not None:
+        board_name = await _verify_name(client, probe, board.slug)
+    return payload, board_name, None
 
 
 async def _verify_name(client: HttpClient, probe: PlatformProbe, slug: str) -> str:
@@ -454,170 +561,242 @@ async def _verify_name(client: HttpClient, probe: PlatformProbe, slug: str) -> s
     return first_str(response.payload, probe.verify_name_paths)
 
 
-def _is_absent(exc: Exception) -> bool:
-    if isinstance(exc, ValueError):
-        return True
+def _status(exc: Exception) -> int | None:
     status = getattr(getattr(exc, "response", None), "status_code", None)
-    return status in (401, 403, 404, 410)
+    return status if isinstance(status, int) else None
 
 
-async def verify_registry(
-    companies: Sequence[Company],
+def _is_absent(exc: Exception) -> bool:
+    return isinstance(exc, ValueError) or _status(exc) in (404, 410)
+
+
+def is_gone(result: ProbeResult) -> bool:
+    return result.verdict is ProbeVerdict.REJECTED or (
+        result.verdict is ProbeVerdict.MISS and result.status in (404, 410)
+    )
+
+
+def gone_reason(result: ProbeResult) -> str:
+    if result.verdict is ProbeVerdict.MISS and result.status is not None:
+        return f"the board answered {result.status}"
+    return first_line(result.detail or result.verdict.value)[:200]
+
+
+def candidate_for(company: Company) -> PlatformCandidate:
+    return PlatformCandidate(
+        platform=company.platform,
+        slug=company.slug,
+        workday_tenant=company.workday_tenant,
+        workday_site=company.workday_site,
+        workday_dc=company.workday_dc,
+        oracle_host=company.oracle_host,
+        oracle_site=company.oracle_site,
+    )
+
+
+def _target(probe: PlatformProbe, board: Board) -> tuple[str, str]:
+    if board.platform is Platform.WORKDAY:
+        host, path = workday_target(
+            board.workday_tenant or "", board.workday_site or "", board.workday_dc or ""
+        )
+        return host, f"https://{host}{path}"
+    if board.platform is Platform.ORACLE_CLOUD:
+        from stage.sources.oracle_cloud import PATH
+
+        host, _ = oracle_target(board.oracle_host or "", board.oracle_site or "")
+        return host, f"https://{host}{PATH}"
+    return probe.host_for(board.slug), probe.url_for(board.slug)
+
+
+def _reachable(board: Board) -> bool:
+    probe = BOARD_PROBES.get(board.platform)
+    if probe is None:
+        return True
+    try:
+        _target(probe, board)
+    except SlugRejectedError:
+        return False
+    return True
+
+
+WORKDAY_PROBE_BODY = {"appliedFacets": {}, "limit": 1, "offset": 0, "searchText": ""}
+
+
+async def _payload(client: HttpClient, probe: PlatformProbe, board: Board, url: str) -> object:
+    if board.platform is Platform.WORKDAY:
+        return (await client.post_json(url, body=dict(WORKDAY_PROBE_BODY))).payload
+    if board.platform is Platform.ORACLE_CLOUD:
+        _, site = oracle_target(board.oracle_host or "", board.oracle_site or "")
+        finder = f"findReqs;siteNumber={site},limit=1"
+        params = {"onlyData": "true", "expand": "requisitionList", "finder": finder}
+        return (await client.get_json(url, params=params)).payload
+    if board.platform is Platform.JOBVITE:
+        return _jobvite_total((await client.get_text(url)).text)
+    return (await client.get_json(url, params=dict(probe.params))).payload
+
+
+def _jobvite_total(text: str) -> dict[str, int]:
+    from stage.sources.jobvite import read_page
+
+    page = read_page(text)
+    if not page.listing:
+        return {"total": 0} if page.declared_empty else {}
+    return {"total": len(page.rows)}
+
+
+def _robots_target(board: Board) -> tuple[str, tuple[str, ...]] | None:
+    probe = _EVERY_PROBE.get(board.platform)
+    if probe is None:
+        return None
+    try:
+        host, url = _target(probe, board)
+    except SlugRejectedError:
+        return None
+    query = urlencode(dict(probe.params))
+    paths = [urlsplit(url).path + (f"?{query}" if query else "")]
+    if board.platform is Platform.WORKDAY and board.workday_site:
+        paths.append(f"/{board.workday_site.strip()}/")
+    return host, tuple(paths)
+
+
+@dataclass(frozen=True, slots=True)
+class Robots:
+    rules: Mapping[str, RobotsRules] = field(default_factory=dict)
+
+    def refusal(self, board: Board) -> str:
+        host, paths = _robots_target(board) or ("", ())
+        rules = self.rules.get(host)
+        caseless = board.platform is Platform.WORKDAY
+        blocked = next(
+            (path for path in paths if rules and not rules.allows(path, caseless=caseless)), ""
+        )
+        return f"{host}/robots.txt does not allow reading {blocked}" if blocked else ""
+
+    def screened(self, row: Company, today: date | None = None) -> Company:
+        host, _ = _robots_target(row) or ("", ())
+        rules = self.rules.get(host)
+        delay = 0.0 if rules is None else rules.crawl_delay or 0.0
+        if delay < PATIENT_DELAY_S:
+            return row
+        line = (
+            f"{today or datetime.now(UTC).date()}: {host}/robots.txt asks for {delay:g} "
+            "seconds between requests, so Stage reads it with rate_profile patient"
+        )
+        return replace(
+            row, rate_profile="patient", notes="\n".join(filter(None, (row.notes, line)))
+        )
+
+    def screen(
+        self, rows: Iterable[Company], today: date | None = None
+    ) -> tuple[list[Company], list[tuple[Company, str]]]:
+        kept: list[Company] = []
+        skipped: list[tuple[Company, str]] = []
+        for row in rows:
+            reason = self.refusal(row)
+            if reason:
+                skipped.append((row, reason))
+            else:
+                kept.append(self.screened(row, today))
+        return kept, skipped
+
+
+NO_ROBOTS = Robots()
+
+
+def _read_by_owner_decision(host: str) -> bool:
+    return any(host == site or host.endswith(f".{site}") for site in READ_BY_OWNER_DECISION)
+
+
+async def read_robots(
+    boards: Iterable[Board],
     *,
-    platforms: Sequence[Platform] | None = None,
-    excluded: Sequence[Platform] | None = None,
-    only: Sequence[str] | None = None,
     client_factory: ClientFactory = _default_client,
-) -> AsyncIterator[DiscoveryEvent]:
-    wanted = None if only is None else {fold(name) for name in only}
-    selected = [
-        company
-        for company in companies
-        if company.platform in PROBES_BY_PLATFORM
-        and (platforms is None or company.platform in platforms)
-        and (excluded is None or company.platform not in excluded)
-        and (wanted is None or fold(company.name) in wanted)
-    ]
-    if wanted is not None and not selected:
-        raise NoMatchingCompanyError(f"no registry row matches: {', '.join(sorted(only or ()))}")
-    grouped: dict[Platform, list[Company]] = {}
-    for company in selected:
-        grouped.setdefault(company.platform, []).append(company)
-
-    started = time.perf_counter()
-    yield DiscoveryStarted(
-        companies=tuple(company.name for company in selected),
-        platforms=tuple(platform.value for platform in sorted(grouped, key=lambda p: p.value)),
-        probes_planned=len(selected),
+    timeout: float = ROBOTS_TIMEOUT_S,
+) -> Robots:
+    hosts = sorted(
+        {
+            target[0]
+            for board in boards
+            if (target := _robots_target(board)) and not _read_by_owner_decision(target[0])
+        }
     )
+    if not hosts:
+        return NO_ROBOTS
+    gate = asyncio.Semaphore(ROBOTS_AT_ONCE)
+    async with client_factory(frozenset(hosts), resolve(DISCOVERY_PROFILE, [])) as client:
 
-    matched: list[ProbeResult] = []
-    unverified: list[ProbeResult] = []
-    rejected: list[ProbeResult] = []
-    missed = 0
-    errors = 0
-    requests = 0
-    ceiling_hit: list[str] = []
-
-    for platform in sorted(grouped, key=lambda item: item.value):
-        probe = PROBES_BY_PLATFORM[platform]
-        rows = grouped[platform]
-        posture = resolve(probe.rate_profile, [])
-        hosts = frozenset(probe.host_for(company.slug) for company in rows)
-        blocked = False
-        async with client_factory(hosts, posture) as client:
-            for company in rows:
-                if blocked:
-                    break
-                candidate = PlatformCandidate(platform, company.slug)
-                url = probe.url_for(company.slug)
-                response = None
-                failure: Exception | None = None
-                board_name = ""
+        async def read(host: str) -> tuple[str, str]:
+            async with gate:
                 try:
-                    response = await client.get_json(url, params=dict(probe.params))
-                except Exception as exc:
-                    failure = exc
-                if response is not None:
-                    board_name = first_str(response.payload, probe.name_paths)
-                    if not board_name and probe.verify_url is not None:
-                        board_name = await _verify_name(client, probe, company.slug)
+                    async with asyncio.timeout(timeout):
+                        return host, (await client.get_text(f"https://{host}/robots.txt")).text
+                except Exception:
+                    return host, ""
 
-                for record in client.drain_log():
-                    yield RequestLogged(
-                        source="verify",
-                        method=record.method,
-                        url=record.url,
-                        status=record.status,
-                        elapsed_ms=record.elapsed_ms,
-                        attempt=record.attempt,
-                        error=record.error,
-                    )
+        found = await asyncio.gather(*(read(host) for host in hosts))
+    return Robots({host: robots_rules(text, ROBOTS_AGENT) for host, text in found if text})
 
-                if isinstance(failure, HostBudgetExceededError):
-                    blocked = True
-                    ceiling_hit.append(f"{platform.value}: {failure}")
-                    break
-                if failure is not None or response is None:
-                    absent = failure is not None and _is_absent(failure)
-                    if absent:
-                        missed += 1
-                    else:
-                        errors += 1
-                    yield PlatformProbed(
-                        ProbeResult(
-                            company=company.name,
-                            candidate=candidate,
-                            verdict=ProbeVerdict.MISS if absent else ProbeVerdict.ERROR,
-                            url=url,
-                            detail=f"{type(failure).__name__}: {failure}",
-                        )
-                    )
-                    continue
 
-                result = classify(
-                    company.name,
-                    candidate,
-                    url,
-                    response.payload,
-                    probe,
-                    board_name=board_name,
-                    size=None,
-                )
-                if result.verdict is ProbeVerdict.REJECTED and _acquisition_named(company):
-                    result = replace(result, verdict=ProbeVerdict.UNVERIFIED)
-                match result.verdict:
-                    case ProbeVerdict.MATCH:
-                        matched.append(result)
-                    case ProbeVerdict.UNVERIFIED:
-                        unverified.append(result)
-                    case ProbeVerdict.REJECTED:
-                        rejected.append(result)
-                    case ProbeVerdict.ERROR:
-                        errors += 1
-                    case _:
-                        missed += 1
-                yield PlatformProbed(result)
-            requests += client.request_count
+VERIFY_STRIKE = "switched off by stage discover --verify"
+_VERIFY_LINE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}: (switched off by stage discover --verify, |board is named )"
+)
 
-    yield DiscoveryFinished(
-        matched=tuple(matched),
-        unverified=tuple(unverified),
-        rejected=tuple(rejected),
-        missed=missed,
-        errors=errors,
-        requests=requests,
-        elapsed_ms=(time.perf_counter() - started) * 1000,
-        ceiling_hit=tuple(ceiling_hit),
-    )
+
+@dataclass(frozen=True, slots=True)
+class VerifyReport:
+    verified: int = 0
+    disabled: int = 0
+    held: tuple[str, ...] = ()
+
+
+def _note_lines(company: Company) -> list[str]:
+    return (company.notes or "").splitlines()
+
+
+def switched_off_by_verify(company: Company) -> bool:
+    lines = _note_lines(company)
+    return not company.enabled and bool(lines) and bool(_VERIFY_LINE.match(lines[-1]))
 
 
 def apply_verification(
-    companies: Sequence[Company], outcome: DiscoveryFinished, today: date
-) -> tuple[tuple[Company, ...], int, int]:
-    live = {result.company for result in outcome.matched}
-    dead = {result.company: result.detail or result.verdict.value for result in outcome.rejected}
+    companies: Sequence[Company], results: Sequence[ProbeResult], today: date
+) -> tuple[tuple[Company, ...], VerifyReport]:
+    answers = {(result.company, result.candidate.label): result for result in results}
     updated: list[Company] = []
     verified = disabled = 0
+    held: list[str] = []
     for company in companies:
-        if company.name in live:
-            if company.last_verified != today or not company.enabled:
+        result = answers.get((company.name, candidate_for(company).label))
+        if result is None:
+            updated.append(company)
+        elif result.verdict is ProbeVerdict.MATCH and company.enabled:
+            if company.last_verified != today:
                 verified += 1
-            updated.append(replace(company, enabled=True, last_verified=today, notes=None))
-        elif company.name in dead:
-            if company.enabled:
-                disabled += 1
+            updated.append(replace(company, last_verified=today))
+        elif result.verdict is ProbeVerdict.MATCH and switched_off_by_verify(company):
+            verified += 1
+            kept = [line for line in _note_lines(company) if not _VERIFY_LINE.match(line)]
+            updated.append(
+                replace(company, enabled=True, last_verified=today, notes="\n".join(kept) or None)
+            )
+        elif result.verdict is ProbeVerdict.MATCH:
+            held.append(company.name)
+            updated.append(company)
+        elif is_gone(result) and company.enabled:
+            disabled += 1
+            line = f"{today.isoformat()}: {VERIFY_STRIKE}, {gone_reason(result)}"
             updated.append(
                 replace(
                     company,
                     enabled=False,
                     last_verified=None,
-                    notes=f"{today.isoformat()}: {first_line(dead[company.name])[:200]}",
+                    notes="\n".join([*_note_lines(company), line]),
                 )
             )
         else:
             updated.append(company)
-    return tuple(updated), verified, disabled
+    return tuple(updated), VerifyReport(verified, disabled, tuple(held))
 
 
 GENERIC_SLUG_MAX = 6
@@ -648,7 +827,6 @@ class AdoptionReport:
     refused: tuple[tuple[str, str, str], ...]
     already_known: int
     probed: int
-    applied: bool
     review: tuple[ReviewCandidate, ...] = ()
 
     @property
@@ -663,9 +841,9 @@ def slug_is_distinctive(company: str, slug: str) -> bool:
 
 def adoption_refusal(result: ProbeResult) -> str:
     if result.verdict is not ProbeVerdict.MATCH:
-        return f"verdict {result.verdict.value}, only a self-naming board is adopted"
+        return f"only a self-naming board is adopted, and this one is {result.verdict.value}"
     if (result.job_count or 0) < 1:
-        return "board answered with no postings"
+        return "the board has no postings"
     return ""
 
 
@@ -674,20 +852,17 @@ def needs_review(result: ProbeResult) -> bool:
 
 
 def _adopted_note(today: date, result: ProbeResult) -> str:
+    if result.verdict is not ProbeVerdict.MATCH:
+        return (
+            f"{today}: board token from this employer's own apply URL, not a guessed slug. "
+            f"{result.candidate.platform.value} publishes no board name, so that link is the "
+            f"evidence ({counted(result.job_count or 0, 'job')})"
+        )
     return (
-        f"{today}: seen in feed postings but absent from the registry; discover matched "
+        f"{today}: seen in feed postings but missing from the registry. stage discover matched "
         f"{result.candidate.platform.value}/{result.candidate.slug} with "
-        f"{counted(result.job_count or 0, 'job')} and the board named itself, so it is polled "
-        "directly instead of secondhand"
-    )
-
-
-def _unnamed_note(today: date, result: ProbeResult) -> str:
-    platform = result.candidate.platform.value
-    return (
-        f"{today}: token from this employer's own apply URL, not slug guessing; {platform} "
-        f"publishes no board name, so provenance is the evidence "
-        f"({counted(result.job_count or 0, 'job')})"
+        f"{counted(result.job_count or 0, 'job')} and the board named itself, so Stage reads "
+        "it directly"
     )
 
 
@@ -697,63 +872,76 @@ def adopt_unregistered(
     *,
     today: date,
     adopt_unnamed: bool = False,
+    robots: Robots = NO_ROBOTS,
 ) -> AdoptionReport:
     keys = {(row.platform, row.slug.lower()) for row in existing}
     captions = {row.name.casefold() for row in existing}
     adopted: list[AdoptedRow] = []
     refused: list[tuple[str, str, str]] = []
-    review: list[ReviewCandidate] = []
-    seen_review: set[tuple[Platform, str]] = set()
+    review: dict[tuple[Platform, str], ReviewCandidate] = {}
     known = 0
 
     for company, result in results:
+        key = (result.candidate.platform, result.candidate.slug.lower())
         reason = adoption_refusal(result)
         if reason and not (adopt_unnamed and needs_review(result)):
-            key = (result.candidate.platform, result.candidate.slug.lower())
             if result.verdict is ProbeVerdict.MATCH:
                 refused.append((company, result.candidate.label, reason))
-            elif needs_review(result) and key not in keys and key not in seen_review:
-                seen_review.add(key)
-                review.append(
+            elif needs_review(result) and key not in keys:
+                review.setdefault(
+                    key,
                     ReviewCandidate(
                         company=company,
                         platform=result.candidate.platform,
                         slug=result.candidate.slug,
                         job_count=result.job_count or 0,
                         distinctive=slug_is_distinctive(company, result.candidate.slug),
-                    )
+                    ),
                 )
             continue
-        key = (result.candidate.platform, result.candidate.slug.lower())
         if key in keys or company.casefold() in captions:
             known += 1
             continue
+        blocked = robots.refusal(result.candidate)
+        if blocked:
+            refused.append((company, result.candidate.label, blocked))
+            continue
         keys.add(key)
         captions.add(company.casefold())
+        row = replace(
+            to_company(company, result.candidate, verified_on=today),
+            enabled=True,
+            name_gate_exempt=result.verdict is not ProbeVerdict.MATCH,
+            notes=_adopted_note(today, result),
+        )
         adopted.append(
-            AdoptedRow(
-                company=Company(
-                    name=company,
-                    platform=result.candidate.platform,
-                    slug=result.candidate.slug,
-                    enabled=True,
-                    last_verified=today,
-                    source_of_record=SourceOfRecord.DISCOVER,
-                    name_gate_exempt=result.verdict is not ProbeVerdict.MATCH,
-                    notes=(
-                        _adopted_note(today, result)
-                        if result.verdict is ProbeVerdict.MATCH
-                        else _unnamed_note(today, result)
-                    ),
-                ),
-                job_count=result.job_count or 0,
-            )
+            AdoptedRow(company=robots.screened(row, today), job_count=result.job_count or 0)
         )
     return AdoptionReport(
         adopted=tuple(adopted),
         refused=tuple(refused),
         already_known=known,
         probed=len({company for company, _ in results}),
-        applied=False,
-        review=tuple(review),
+        review=tuple(review.values()),
     )
+
+
+async def plan_adoption(
+    existing: Sequence[Company],
+    results: Sequence[tuple[str, ProbeResult]],
+    *,
+    today: date,
+    adopt_unnamed: bool = False,
+    check_robots: bool = False,
+    client_factory: ClientFactory = _default_client,
+) -> tuple[AdoptionReport, Robots]:
+    outcome = adopt_unregistered(existing, results, today=today, adopt_unnamed=adopt_unnamed)
+    if not check_robots or not outcome.adopted:
+        return outcome, NO_ROBOTS
+    robots = await read_robots(
+        (row.company for row in outcome.adopted), client_factory=client_factory
+    )
+    screened = adopt_unregistered(
+        existing, results, today=today, adopt_unnamed=adopt_unnamed, robots=robots
+    )
+    return screened, robots

@@ -1,4 +1,6 @@
-from collections.abc import Callable, Mapping, Sequence
+import asyncio
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -111,6 +113,35 @@ def _problem(exc: TrackerUnreadableError) -> TrackerProblemError:
     )
 
 
+class _Lane:
+    def __init__(self, path: Path) -> None:
+        self._path = path
+        self._store: TrackerStore | None = None
+        self._pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="stage-tracker")
+
+    async def run[T](self, call: Callable[[TrackerStore], T]) -> T:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._pool, lambda: call(self._opened()))
+
+    def _opened(self) -> TrackerStore:
+        if self._store is None:
+            self._store = TrackerStore.connect(self._path)
+        return self._store
+
+    def close(self) -> None:
+        self._pool.submit(self._shut)
+        self._pool.shutdown(wait=False)
+
+    def _shut(self) -> None:
+        if self._store is not None:
+            self._store.close()
+
+
+def _held_entries(store: TrackerStore) -> dict[str, TrackedPosting]:
+    store.hold()
+    return {entry.posting_id: entry for entry in store.entries()}
+
+
 def _read_entries() -> list[TrackedPosting]:
     path = tracker_path()
     if not path.exists():
@@ -122,13 +153,17 @@ def _read_entries() -> list[TrackedPosting]:
         raise _problem(exc) from exc
 
 
+def _read_statuses(path: Path) -> dict[str, tuple[ApplicationStatus, datetime]]:
+    with TrackerStore.connect(path) as store:
+        return store.statuses()
+
+
 async def tracker_view(repository: AsyncRepository) -> TrackerView:
     path = tracker_path()
     if not path.exists():
         return TrackerView({})
     try:
-        with TrackerStore.connect(path) as store:
-            raw = store.statuses()
+        raw = await asyncio.to_thread(_read_statuses, path)
     except TrackerUnreadableError:
         return TrackerView({}, LIST_PROBLEM)
     if not raw:
@@ -154,21 +189,18 @@ async def record_status(
 ) -> ChangeReport:
     moment = now or datetime.now(UTC)
     path = tracker_path()
+    lane = _Lane(path)
     try:
-        store = TrackerStore.connect(path) if path.exists() else None
-        try:
-            entries = {entry.posting_id: entry for entry in store.entries()} if store else {}
-            targets = await _targets(repository, references, entries)
-            plan = _plan(targets, status, on, note, moment, forward_only)
-            if plan.writes:
-                store = store or TrackerStore.connect(path)
-                store.write(plan.writes, plan.history, plan.renamed or {})
-            return plan.report
-        finally:
-            if store is not None:
-                store.close()
+        entries = await lane.run(_held_entries) if path.exists() else {}
+        targets = await _targets(repository, references, entries)
+        plan = _plan(targets, status, on, note, moment, forward_only)
+        if plan.writes:
+            await lane.run(lambda store: store.write(plan.writes, plan.history, plan.renamed or {}))
+        return plan.report
     except TrackerUnreadableError as exc:
         raise _problem(exc) from exc
+    finally:
+        lane.close()
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,6 +275,7 @@ def restore_unless_changed(
     path = tracker_path()
     try:
         with TrackerStore.connect(path) as store:
+            store.hold()
             current = {entry.posting_id: entry for entry in store.entries()}
             fresh = tuple(
                 change
@@ -267,6 +300,7 @@ def follow_successors(successors: Sequence[tuple[str, str]]) -> int | None:
         return 0
     try:
         with TrackerStore.connect(path) as store:
+            store.hold()
             tracked = {entry.posting_id: entry for entry in store.entries()}
             renamed: dict[str, str] = {}
             stale: list[str] = []
@@ -281,13 +315,30 @@ def follow_successors(successors: Sequence[tuple[str, str]]) -> int | None:
                 if kept is not None:
                     stale.append(heir)
                 renamed[former] = heir
-            if stale:
-                store.remove(stale)
-            if renamed:
-                store.write((), (), renamed)
+            if stale or renamed:
+                store.follow(set(stale), renamed)
     except TrackerUnreadableError:
         return None
     return len(renamed)
+
+
+async def follow_recorded(repository: AsyncRepository) -> int | None:
+    pending = await repository.pending_heirs()
+    if not pending:
+        return 0
+    heirs = dict(pending)
+    followed = follow_successors([(former, _last_heir(heirs, heir)) for former, heir in pending])
+    if followed is not None:
+        await repository.forget_heirs([former for former, _ in pending])
+    return followed
+
+
+def _last_heir(heirs: Mapping[str, str], heir: str) -> str:
+    seen = {heir}
+    while heirs.get(heir, heir) not in seen:
+        heir = heirs[heir]
+        seen.add(heir)
+    return heir
 
 
 def _unchanged_since(current: TrackedPosting | None, written: TrackedPosting) -> bool:
@@ -305,30 +356,32 @@ async def remove_tracked(repository: AsyncRepository, references: Sequence[str])
     if not path.exists():
         missing, absent = await _unknown(repository, references)
         return RemoveReport(missing=missing) if missing else RemoveReport(not_tracked=absent)
+    lane = _Lane(path)
     try:
-        with TrackerStore.connect(path) as store:
-            entries = {entry.posting_id: entry for entry in store.entries()}
-            targets = await _targets(repository, references, entries)
-            missing = tuple(t.reference for t in targets if t.live is None and t.record is None)
-            if missing:
-                return RemoveReport(missing=missing)
-            canonical = await repository.canonical_ids(list(entries))
-            removed: dict[str, TrackedPosting] = {}
-            not_tracked: list[str] = []
-            for target in targets:
-                victims = [
-                    entry
-                    for entry in entries.values()
-                    if target.posting_id in (entry.posting_id, canonical.get(entry.posting_id))
-                    or entry.posting_id == target.reference
-                ]
-                if not victims:
-                    not_tracked.append(target.reference)
-                for victim in victims:
-                    removed.setdefault(victim.posting_id, victim)
-            store.remove(list(removed))
+        entries = await lane.run(_held_entries)
+        targets = await _targets(repository, references, entries)
+        missing = tuple(t.reference for t in targets if t.live is None and t.record is None)
+        if missing:
+            return RemoveReport(missing=missing)
+        canonical = await repository.canonical_ids(list(entries))
+        removed: dict[str, TrackedPosting] = {}
+        not_tracked: list[str] = []
+        for target in targets:
+            victims = [
+                entry
+                for entry in entries.values()
+                if target.posting_id in (entry.posting_id, canonical.get(entry.posting_id))
+                or entry.posting_id == target.reference
+            ]
+            if not victims:
+                not_tracked.append(target.reference)
+            for victim in victims:
+                removed.setdefault(victim.posting_id, victim)
+        await lane.run(lambda store: store.remove(list(removed)))
     except TrackerUnreadableError as exc:
         raise _problem(exc) from exc
+    finally:
+        lane.close()
     return RemoveReport(removed=tuple(removed.values()), not_tracked=tuple(not_tracked))
 
 
@@ -336,7 +389,7 @@ async def tracked_for(
     repository: AsyncRepository, references: Sequence[str]
 ) -> tuple[dict[str, TrackedPosting], str]:
     try:
-        entries = {entry.posting_id: entry for entry in _read_entries()}
+        entries = {entry.posting_id: entry for entry in await asyncio.to_thread(_read_entries)}
     except TrackerProblemError as exc:
         return {}, str(exc)
     if not entries:
@@ -357,7 +410,7 @@ async def tracker_listing(
     *,
     now: datetime | None = None,
 ) -> TrackerListing:
-    entries = _read_entries()
+    entries = await asyncio.to_thread(_read_entries)
     states = await repository.posting_states([entry.posting_id for entry in entries])
     shown = [
         entry
@@ -418,35 +471,21 @@ _READERS: dict[str, Callable[[TrackerRow], str]] = {
 COLUMNS = tuple(_READERS)
 
 
+def _cells(rows: Sequence[TrackerRow]) -> Iterator[list[str]]:
+    return ([_READERS[name](row) for name in COLUMNS] for row in rows)
+
+
 def tracker_csv(rows: Sequence[TrackerRow]) -> str:
-    import csv
-    import io
+    from stage.services.export import csv_table
 
-    from stage.services.export import _cell, _guard
-
-    buffer = io.StringIO()
-    writer = csv.writer(buffer, lineterminator="\r\n")
-    writer.writerow(COLUMNS)
-    for row in rows:
-        writer.writerow([_guard(_cell(_READERS[name](row))) for name in COLUMNS])
-    return buffer.getvalue()
+    return csv_table(COLUMNS, _cells(rows))
 
 
 def tracker_markdown(rows: Sequence[TrackerRow], *, generated_at: datetime) -> str:
-    from stage.services.export import _markdown_cell
+    from stage.services.export import markdown_table
 
-    lines = [
-        f"# Stage tracker, {generated_at.astimezone(UTC):%Y-%m-%d %H:%M UTC}",
-        "",
-        f"{counted(len(rows), 'tracked posting')}.",
-        "",
-        "| " + " | ".join(COLUMNS) + " |",
-        "| " + " | ".join("---" for _ in COLUMNS) + " |",
-    ]
-    for row in rows:
-        cells = [_markdown_cell(_READERS[name](row)) for name in COLUMNS]
-        lines.append("| " + " | ".join(cells) + " |")
-    return "\n".join(lines) + "\n"
+    count = counted(len(rows), "tracked posting")
+    return markdown_table("Stage tracker", generated_at, count, COLUMNS, _cells(rows))
 
 
 def tracker_json(rows: Sequence[TrackerRow]) -> str:
@@ -577,6 +616,7 @@ __all__ = [
     "export_tracker",
     "record_status",
     "remove_tracked",
+    "follow_recorded",
     "follow_successors",
     "restore_unless_changed",
     "stats_payload",

@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
@@ -22,10 +22,10 @@ async def repair_integrity(repository: AsyncRepository) -> tuple[IntegrityRepair
 
 
 async def purge_expired(repository: AsyncRepository, *, now: datetime | None = None) -> PurgeResult:
-    from stage.services.tracker import follow_successors
+    from stage.services.tracker import follow_recorded
 
     result = await repository.purge(now or datetime.now(UTC))
-    if follow_successors(result.successors) is None:
+    if await follow_recorded(repository) is None:
         return replace(result, tracker_busy=True)
     return result
 
@@ -67,11 +67,17 @@ class RescreenResult:
     released: int = 0
     relabelled: int = 0
     relocated: int = 0
+    relinked: int = 0
 
     @property
     def changed(self) -> bool:
         return bool(
-            self.updated or self.quarantined or self.released or self.relabelled or self.relocated
+            self.updated
+            or self.quarantined
+            or self.released
+            or self.relabelled
+            or self.relocated
+            or self.relinked
         )
 
     @property
@@ -79,27 +85,58 @@ class RescreenResult:
         return max(0, self.total - self.examined)
 
 
+async def rescreen_after_upgrade(
+    repository: AsyncRepository, *, now: datetime | None = None
+) -> RescreenResult | None:
+    from stage.paths import rules_stamp
+
+    if await repository.screened_with() == rules_stamp():
+        return None
+    return await rescreen(repository, now=now)
+
+
+def upgrade_note(result: RescreenResult) -> str:
+    from stage.domain.text import counted
+
+    return (
+        "This version of Stage screens postings differently, so it checked the ones already "
+        f"stored: {counted(result.quarantined, 'posting')} now rejected, "
+        f"{counted(result.released, 'posting')} brought back."
+    )
+
+
 async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) -> RescreenResult:
     from stage.domain import JobFilters
-    from stage.services.tracker import follow_successors
+    from stage.normalize import canonical_apply_url
+    from stage.paths import rules_stamp
+    from stage.services.tracker import follow_recorded
 
     moment = now or datetime.now(UTC)
     examined = 0
     quarantined = 0
     updated = 0
-    total = await repository.count_jobs(JobFilters(status=None, limit=RESCREEN_LIMIT))
+    total = await repository.count_jobs(
+        JobFilters(status=None, limit=RESCREEN_LIMIT, with_duplicates=True)
+    )
+    settled: dict[str, Job] = {}
 
     for pass_number in range(RESCREEN_PASSES):
-        stored = await repository.list_jobs(JobFilters(status=None, limit=RESCREEN_LIMIT))
+        stored = await repository.list_jobs(
+            JobFilters(status=None, limit=RESCREEN_LIMIT, with_duplicates=True)
+        )
         if not pass_number:
             examined = len(stored)
-        candidates, rejected = _reclassifications(stored) if stored else ((), ())
-        changed = tuple(
-            candidate for job, candidate in zip(stored, candidates, strict=True) if job != candidate
-        )
+        pending = [job for job in stored if settled.get(job.id) != job]
+        candidates, rejected = _reclassifications(pending) if pending else ((), ())
+        rejected_ids = {entry.id for entry in rejected}
+        changed: list[Job] = []
+        for job, candidate in zip(pending, candidates, strict=True):
+            if job != candidate:
+                changed.append(candidate)
+            elif job.id not in rejected_ids:
+                settled[job.id] = job
         if not changed and not rejected:
             break
-        rejected_ids = {entry.id for entry in rejected}
         updates = tuple(entry for entry in changed if entry.id not in rejected_ids)
         sources = {entry.source for entry in updates} | {entry.source for entry in rejected}
         for source in sorted(sources):
@@ -111,11 +148,14 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
                     quarantined=tuple(entry for entry in rejected if entry.source == source),
                 )
             )
-            follow_successors(applied.successors)
-        quarantined += len(rejected)
+            if applied.successors:
+                await follow_recorded(repository)
+            quarantined += applied.quarantined
         updated += len(updates)
     released, relabelled = await _release_reclassified_quarantine(repository, moment)
-    relocated = await repository.refresh_quarantine_locations(_resolved_place)
+    relocated = await repository.refresh_quarantine_locations(_place_resolver())
+    relinked = await repository.relink_duplicates(resolve_duplicates, canonical_apply_url)
+    await repository.mark_screened(rules_stamp())
     return RescreenResult(
         examined=examined,
         quarantined=quarantined,
@@ -124,22 +164,27 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
         released=released,
         relabelled=relabelled,
         relocated=relocated,
+        relinked=relinked,
     )
 
 
-def _resolved_place(location_raw: str) -> tuple[str, str | None]:
-    from stage.normalize import resolve_location
+def _place_resolver() -> Callable[[str, str, str], tuple[str, str | None]]:
+    from stage.domain import LocationBucket
+    from stage.normalize import listed_place, resolve_listing, resolve_location
 
-    resolved = resolve_location(location_raw)
-    scope = resolved.remote_scope
-    return resolved.bucket.value, None if scope is None else scope.value
+    def resolve(raw: str, url: str, title: str) -> tuple[str, str | None]:
+        resolved = resolve_location(raw)
+        if resolved.bucket is LocationBucket.UNKNOWN:
+            resolved = resolve_listing(listed_place(raw, url, title), title)
+        scope = resolved.remote_scope
+        return resolved.bucket.value, None if scope is None else scope.value
+
+    return resolve
 
 
 def _reclassifications(
     jobs: Sequence[Job],
 ) -> tuple[tuple[Job, ...], tuple[QuarantinedJob, ...]]:
-    from dataclasses import replace
-
     from stage.classify import (
         classify_role,
         screen_degree_scope,
@@ -148,13 +193,13 @@ def _reclassifications(
         screen_location,
     )
     from stage.classify.scope import to_quarantined
-    from stage.normalize import canonical_apply_url, listed_place, resolve_location
+    from stage.normalize import canonical_apply_url, listed_place, resolve_listing
 
     candidates: list[Job] = []
     rejected: list[QuarantinedJob] = []
     for job in jobs:
-        place = listed_place(job.location_raw, job.apply_url_raw)
-        location = resolve_location(place)
+        place = listed_place(job.location_raw, job.apply_url_raw, job.title_raw)
+        location = resolve_listing(place, job.title_raw)
         title_role = classify_role(job.title_raw, job.description).role
         candidate = replace(
             job,
@@ -182,7 +227,7 @@ async def _release_reclassified_quarantine(
 ) -> tuple[int, int]:
     from stage.domain import QuarantineFilters, RejectionReason
     from stage.lexicon import fold
-    from stage.services.screening import normalize_batch
+    from stage.services.screening import Screener
 
     remaining = RESCREEN_LIMIT
     entries: list[QuarantinedJob] = []
@@ -213,7 +258,11 @@ async def _release_reclassified_quarantine(
         )
         for entry in entries
     )
-    kept, rejected = normalize_batch(candidates)
+    screener = Screener()
+    try:
+        kept, rejected = await screener(candidates)
+    finally:
+        screener.close()
     known = {entry.id: entry for entry in entries}
     sharpened = tuple(
         entry

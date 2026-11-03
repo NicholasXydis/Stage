@@ -180,7 +180,7 @@ def _contradiction(
         return f"a disabled {company.platform.value} row exists for it"
     age = (moment - record.checked_on).days
     if age >= REVIEW_STALE_DAYS:
-        return f"the verdict is {age} days old and nothing has re-derived it"
+        return f"the verdict is {age} days old and nobody has checked it since"
     return ""
 
 
@@ -215,7 +215,11 @@ async def coverage(
 
     seen = await repository.company_counts() if unregistered else {}
     rejected = await repository.quarantine_company_counts() if unregistered else {}
-    reasons = await repository.quarantine_company_reasons() if unregistered else {}
+    reasons = (
+        await repository.quarantine_company_reasons(INTERNSHIP_EVIDENCE_REASONS)
+        if unregistered
+        else {}
+    )
     classifications = await repository.coverage_classifications()
     return CoverageReport(
         contradictions=contradicted_reviews(classifications, companies, now=moment),

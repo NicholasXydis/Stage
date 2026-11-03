@@ -149,6 +149,31 @@ async def get_posting(repository: AsyncRepository, job_id: str) -> PostingDetail
     )
 
 
+def searched_as(query: str, terms: tuple[str, ...], width: int = 60) -> str:
+    import unicodedata
+
+    from stage.domain.text import truncate
+    from stage.lexicon import fold
+
+    lost = [
+        part
+        for part in unicodedata.normalize("NFC", query)
+        if not part.isspace() and not fold(part).strip()
+    ]
+    shown = "".join(part for part in query if unicodedata.category(part) not in ("Cc", "Cf"))
+    if not lost or (terms and " ".join(shown.lower().split()) == " ".join(terms)):
+        return ""
+    reason = (
+        "Stage searches only Latin letters and digits"
+        if any(part.isalpha() for part in lost)
+        else "Stage drops punctuation and symbols"
+    )
+    asked = truncate(query.strip(), width)
+    if not terms:
+        return f'{reason}, so nothing in "{asked}" could be searched.'
+    return f'{reason}, so "{asked}" was searched as "{truncate(" ".join(terms), width)}".'
+
+
 __all__ = [
     "JobListing",
     "PostingDetail",
@@ -158,4 +183,5 @@ __all__ = [
     "get_posting",
     "list_jobs",
     "search_jobs",
+    "searched_as",
 ]

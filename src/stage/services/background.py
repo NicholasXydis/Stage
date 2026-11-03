@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from stage.domain.text import plain_error
+
 STALE_AFTER = timedelta(minutes=10)
 START_WAIT_SECONDS = 8.0
 POLL_SECONDS = 0.2
@@ -16,6 +18,8 @@ CREATE_NEW_PROCESS_GROUP = 0x00000200
 CREATE_NO_WINDOW = 0x08000000
 STATES = {"waiting": "starting", "syncing": "running"}
 RUNNING = ("starting", "running")
+OFFLINE = "No internet connection, so nothing was synced."
+TRACEBACK = "Traceback (most recent call last)"
 _CHILDREN: list["subprocess.Popen[bytes]"] = []
 
 
@@ -73,7 +77,7 @@ def sync_progress(database: Path, now: datetime | None = None) -> dict[str, obje
         "employers_checked": _count(progress, "complete"),
         "employers_total": max(_count(progress, "total"), _count(progress, "complete")),
         "warnings": _count(progress, "warnings"),
-        "error": payload.get("error"),
+        "error": _plain(payload.get("error")),
     }
 
 
@@ -96,17 +100,20 @@ def start_sync(
     deadline = time.monotonic() + wait
     while True:
         found = sync_progress(database)
+        if found is not None and found["state"] == "offline":
+            return SyncStart(False, sentence(found["error"] or OFFLINE), found)
         if found is not None and found["state"] == "blocked":
-            said = str(found["error"] or "Another sync is already running.")
-            return SyncStart(False, said, found)
+            return SyncStart(
+                False, sentence(found["error"] or "Another sync is already running."), found
+            )
         if found is not None and found["state"] == "failed":
-            return SyncStart(False, str(found["error"] or "The sync stopped at once."), found)
+            return SyncStart(False, sentence(found["error"] or "The sync stopped at once."), found)
         if found is not None and found["state"] == "finished":
             return SyncStart(True, "The sync already finished.", found)
         if found is not None and found["state"] in RUNNING:
             return SyncStart(True, "The sync started.", found)
         if process.poll() is not None:
-            return SyncStart(False, f"The sync stopped at once: {_tail(database)}")
+            return SyncStart(False, _stopped(database))
         if time.monotonic() >= deadline:
             return SyncStart(True, "The sync is starting.", found or {})
         sleep(POLL_SECONDS)
@@ -137,12 +144,32 @@ def _reap() -> None:
     _CHILDREN[:] = [child for child in _CHILDREN if child.poll() is None]
 
 
-def _tail(database: Path) -> str:
+def _stopped(database: Path) -> str:
     try:
-        said = log_path(database).read_text(encoding="utf-8", errors="replace")
+        said = output_tail(log_path(database).read_text(encoding="utf-8", errors="replace"))
     except OSError:
-        return "no output"
-    return " ".join(said.split())[-LOG_TAIL:] or "no output"
+        said = ""
+    if not said:
+        return (
+            "The sync stopped at once without saying why. Run stage sync in a terminal to see why."
+        )
+    return sentence(f"The sync stopped at once: {said}")
+
+
+def output_tail(output: str, limit: int = LOG_TAIL) -> str:
+    if TRACEBACK in output:
+        output = output.rstrip().rsplit("\n", 1)[-1]
+    said = " ".join(output.split())[-limit:]
+    return plain_error(said) if said else ""
+
+
+def _plain(error: object) -> object:
+    return plain_error(error) if isinstance(error, str) and error.strip() else error
+
+
+def sentence(said: object) -> str:
+    text = str(said).strip()
+    return text if text.endswith((".", "!", "?")) else f"{text}."
 
 
 def _moment(value: object) -> datetime | None:
@@ -163,7 +190,9 @@ def _count(progress: Mapping[str, object], key: str) -> int:
 __all__ = [
     "SyncStart",
     "log_path",
+    "output_tail",
     "progress_path",
+    "sentence",
     "start_sync",
     "sync_command",
     "sync_progress",

@@ -20,6 +20,7 @@ from stage.domain.preferences import (
     parse_roles,
     parse_terms,
 )
+from stage.domain.text import did_you_mean
 from stage.storage import AsyncRepository
 
 FILE_NAME = "preferences.json"
@@ -108,15 +109,19 @@ def revise_preferences(
     follow: Sequence[str] | None = None,
     avoid: Sequence[str] | None = None,
     about: str | None = None,
+    commas: bool = True,
 ) -> Preferences:
     from stage.lexicon import fold
+
+    def companies(values: Sequence[str]) -> tuple[ChosenCompany, ...]:
+        return parse_companies(values, fold, known, commas=commas)
 
     revised = Preferences(
         locations=current.locations if locations is None else parse_locations(locations),
         roles=current.roles if roles is None else parse_roles(roles),
         terms=current.terms if terms is None else parse_terms(terms),
-        follow=current.follow if follow is None else parse_companies(follow, fold, known),
-        avoid=current.avoid if avoid is None else parse_companies(avoid, fold, known),
+        follow=current.follow if follow is None else companies(follow),
+        avoid=current.avoid if avoid is None else companies(avoid),
         about=current.about if about is None else parse_about(about),
     )
     check_overlap(revised.follow, revised.avoid)
@@ -129,18 +134,21 @@ async def stored_companies(repository: AsyncRepository) -> dict[str, str]:
     return {fold(name): name for name in await repository.company_names()}
 
 
-def unseen_companies(preferences: Preferences, known: Mapping[str, str]) -> list[str]:
+def unseen_companies(
+    preferences: Preferences, known: Mapping[str, str], before: Preferences | None = None
+) -> list[str]:
     from difflib import get_close_matches
 
     if not known:
         return []
+    had = set() if before is None else {e.folded for e in (*before.follow, *before.avoid)}
     warnings: list[str] = []
     for company in (*preferences.follow, *preferences.avoid):
-        if company.folded in known:
+        if company.folded in known or company.folded in had:
             continue
         near = get_close_matches(company.folded, list(known), n=1, cutoff=0.75)
-        hint = f" Did you mean {known[near[0]]!r}?" if near else ""
-        warnings.append(f"Saved {company.name!r}, but Stage has no postings from it yet.{hint}")
+        hint = f" {did_you_mean(known[near[0]])}" if near else ""
+        warnings.append(f'Saved "{company.name}", but Stage has no postings from it yet.{hint}')
     return warnings
 
 
@@ -190,7 +198,8 @@ def _from_payload(payload: dict[str, Any], label: str) -> LoadedPreferences:
     both = [company.name for company in follow if company.folded in avoided]
     if both:
         problems.append(
-            f"{label}: {', '.join(both)} is in both follow and avoid, so it is avoided."
+            f"{label}: {', '.join(both)} {'is' if len(both) == 1 else 'are'} in both follow and "
+            f"avoid, so {'it is' if len(both) == 1 else 'they are'} avoided."
         )
     preferences = Preferences(
         locations=field("locations", parse_locations, ()),

@@ -1,13 +1,16 @@
 import asyncio
+import multiprocessing
 import os
 import signal
 import sys
-from collections.abc import Iterator, Sequence
-from concurrent.futures import ProcessPoolExecutor
+import threading
+from collections.abc import Callable, Iterator, Sequence
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from multiprocessing import get_context
+from typing import cast
 
 from stage.classify import (
     classify_role,
@@ -23,7 +26,7 @@ from stage.normalize import (
     canonical_apply_url,
     detect_language,
     listed_place,
-    resolve_location,
+    resolve_listing,
     resolve_term,
 )
 
@@ -32,6 +35,7 @@ CHUNK_SIZE = 1_000
 WORKERS = 2
 
 Screened = tuple[tuple[Job, ...], tuple[QuarantinedJob, ...]]
+_PARSE_WAITERS = ThreadPoolExecutor(max_workers=WORKERS, thread_name_prefix="stage-parse")
 
 
 EARLIEST_POSTED = datetime(1990, 1, 1, tzinfo=UTC)
@@ -52,10 +56,10 @@ def normalize_batch(jobs: Sequence[Job]) -> Screened:
     for job in jobs:
         job = replace(
             job,
-            location_raw=listed_place(job.location_raw, job.apply_url_raw),
+            location_raw=listed_place(job.location_raw, job.apply_url_raw, job.title_raw),
             source_posted_at=_plausible(job.source_posted_at, job.first_seen),
         )
-        location = resolve_location(job.location_raw)
+        location = resolve_listing(job.location_raw, job.title_raw)
         term = resolve_term(
             title=job.title_raw,
             description=job.description,
@@ -91,10 +95,52 @@ def normalize_batch(jobs: Sequence[Job]) -> Screened:
 
 def _ignore_interrupts() -> None:
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    parent = multiprocessing.parent_process()
+    if parent is not None:
+        threading.Thread(target=_exit_with, args=(parent,), daemon=True).start()
+
+
+def _exit_with(parent: multiprocessing.process.BaseProcess) -> None:
+    parent.join()
+    os._exit(0)
 
 
 def _screen_in(pool: ProcessPoolExecutor, chunks: list[list[Job]]) -> list[Screened]:
-    return list(pool.map(normalize_batch, chunks))
+    with _interrupts_held():
+        results = pool.map(normalize_batch, chunks)
+    return list(results)
+
+
+def _outcome[R](call: Callable[[], R]) -> tuple[R | None, Exception | None]:
+    try:
+        return call(), None
+    except Exception as exc:
+        return None, exc
+
+
+def _parse_in[R](
+    pool: ProcessPoolExecutor, call: Callable[[], R]
+) -> tuple[R | None, Exception | None]:
+    with _interrupts_held():
+        future = pool.submit(_outcome, call)
+    return future.result()
+
+
+if sys.platform == "win32":
+
+    @contextmanager
+    def _interrupts_held() -> Iterator[None]:
+        yield
+
+else:
+
+    @contextmanager
+    def _interrupts_held() -> Iterator[None]:
+        previous = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT})
+        try:
+            yield
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous)
 
 
 @contextmanager
@@ -116,20 +162,42 @@ class Screener:
         self._pool: ProcessPoolExecutor | None = None
 
     async def __call__(self, jobs: Sequence[Job]) -> Screened:
+        from stage.sources.base import off_loop
+
         batch = list(jobs)
         if self.broken or len(batch) < self.threshold:
-            return await asyncio.to_thread(normalize_batch, batch)
+            return await off_loop(normalize_batch, batch)
         chunks = [batch[start : start + CHUNK_SIZE] for start in range(0, len(batch), CHUNK_SIZE)]
         try:
             results = await asyncio.to_thread(_screen_in, self._started(), chunks)
         except Exception:
-            self.broken = True
-            self.close()
-            return await asyncio.to_thread(normalize_batch, batch)
+            self._give_up()
+            return await off_loop(normalize_batch, batch)
         return (
             tuple(job for kept, _ in results for job in kept),
             tuple(entry for _, rejected in results for entry in rejected),
         )
+
+    async def parse[R](self, call: Callable[[], R]) -> R:
+        from stage.sources.base import off_loop
+
+        if not self.broken:
+            loop = asyncio.get_running_loop()
+            try:
+                value, error = await loop.run_in_executor(
+                    _PARSE_WAITERS, _parse_in, self._started(), call
+                )
+            except Exception:
+                self._give_up()
+            else:
+                if error is not None:
+                    raise error
+                return cast(R, value)
+        return await off_loop(call)
+
+    def _give_up(self) -> None:
+        self.broken = True
+        self.close()
 
     def _started(self) -> ProcessPoolExecutor:
         if self._pool is None:

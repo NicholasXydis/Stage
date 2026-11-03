@@ -17,6 +17,7 @@ from stage.domain import (
     assess_volume,
     classify_visit,
 )
+from stage.domain.text import plain_error
 from stage.storage import AsyncRepository
 
 RUN_HISTORY = 20
@@ -32,6 +33,16 @@ class BoardHealth:
     last_success_at: datetime | None
     consecutive_failures: int
     last_error: str
+
+    @property
+    def error(self) -> str:
+        return plain_error(self.last_error) if self.last_error else ""
+
+    @property
+    def breaker_open(self) -> bool:
+        from stage.http import skipped_by_breaker
+
+        return skipped_by_breaker(self.last_error)
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,11 +112,17 @@ class DoctorReport:
 
     @property
     def warnings(self) -> int:
-        return len(self.failing_boards) + len(self.stale_boards) + len(self.due_for_recheck)
+        return (
+            len(self.failing_boards)
+            + len(self.stale_boards)
+            + len(self.due_for_recheck)
+            + len(self.volume_alerts)
+            + len(self.blocks)
+        )
 
     @property
     def is_healthy(self) -> bool:
-        return not (self.integrity_problems or self.volume_alerts or self.blocks)
+        return not self.integrity_problems
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +178,7 @@ async def doctor(
     stale_after_days: int = STALE_AFTER_DAYS,
     history: int = RUN_HISTORY,
     companies: Sequence[Company] = (),
+    whole_file: bool = False,
 ) -> DoctorReport:
     moment = now or datetime.now(UTC)
     runs = await repository.run_history(history)
@@ -176,29 +194,31 @@ async def doctor(
             latest.setdefault(stats.source, stats)
     names = sorted(set(volumes) | set(stored) | set(latest) | set(boards))
 
-    sources = tuple(
-        SourceHealth(
-            source=name,
-            stored=stored.get(name, 0),
-            volume=assess_volume(name, list(volumes.get(name, ()))),
-            requests=latest[name].requests if name in latest else 0,
-            not_modified=latest[name].not_modified if name in latest else 0,
-            latency_p50_ms=latest[name].latency_p50_ms if name in latest else 0.0,
-            latency_p95_ms=latest[name].latency_p95_ms if name in latest else 0.0,
-            errors=latest[name].errors if name in latest else 0,
-            tightenings=latest[name].tightenings if name in latest else 0,
-            deferred=latest[name].deferred if name in latest else 0,
-            blocked=latest[name].blocked if name in latest else False,
-            boards=tuple(boards.get(name, ())),
+    sources: list[SourceHealth] = []
+    for name in names:
+        last = latest.get(name) or SourceRunStats(source=name)
+        sources.append(
+            SourceHealth(
+                source=name,
+                stored=stored.get(name, 0),
+                volume=assess_volume(name, list(volumes.get(name, ()))),
+                requests=last.requests,
+                not_modified=last.not_modified,
+                latency_p50_ms=last.latency_p50_ms,
+                latency_p95_ms=last.latency_p95_ms,
+                errors=last.errors,
+                tightenings=last.tightenings,
+                deferred=last.deferred,
+                blocked=last.blocked,
+                boards=tuple(boards.get(name, ())),
+            )
         )
-        for name in names
-    )
 
     return DoctorReport(
         schema_version=await repository.schema_version(),
         last_sync_at=await repository.last_sync_at(),
-        integrity=tuple(await repository.integrity_findings()),
-        sources=sources,
+        integrity=tuple(await repository.integrity_findings(whole_file=whole_file)),
+        sources=tuple(sources),
         blocks=tuple(state for state in rate_state.values() if state.is_blocked(moment)),
         never_synced=not runs,
         stale_after_days=stale_after_days,

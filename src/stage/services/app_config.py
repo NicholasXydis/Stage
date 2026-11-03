@@ -1,5 +1,6 @@
 import copy
 import json
+import math
 import os
 import re
 import stat
@@ -7,6 +8,7 @@ import tempfile
 import tomllib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,7 @@ NEW_FILE_MODE = 0o600
 
 _BARE_TOML_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
 _PLAIN_YAML_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_-]*$")
+_NESTING = {"[": 1, "{": 1, "]": -1, "}": -1}
 
 
 class UnwritableError(Exception):
@@ -159,12 +162,16 @@ def _pruned(root: dict[str, Any], key: Sequence[str]) -> dict[str, Any]:
 
 
 def _target(path: Path) -> Path:
-    if path.is_symlink():
+    try:
+        if not path.is_symlink():
+            return path
         resolved = Path(os.path.realpath(path))
-        if not resolved.exists():
-            raise UnwritableError(f"{path} is a link to {resolved}, which does not exist")
-        return resolved
-    return path
+        missing = not resolved.exists()
+    except OSError:
+        return path
+    if missing:
+        raise UnwritableError(f"{path} is a link to {resolved}, which does not exist")
+    return resolved
 
 
 def _mode(path: Path) -> int:
@@ -179,7 +186,10 @@ def _replace(target: Path, data: bytes, mode: int) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         descriptor, name = tempfile.mkstemp(prefix=f".{target.name}.", dir=target.parent)
     except OSError as exc:
-        raise UnwritableError(f"cannot write in {target.parent}: {exc.strerror or exc}") from exc
+        raise UnwritableError(
+            f"could not be saved, because Stage cannot write in {target.parent} "
+            f"({exc.strerror or exc})"
+        ) from exc
     temporary = Path(name)
     try:
         with os.fdopen(descriptor, "wb") as handle:
@@ -191,7 +201,7 @@ def _replace(target: Path, data: bytes, mode: int) -> None:
         temporary.replace(target)
     except OSError as exc:
         temporary.unlink(missing_ok=True)
-        raise UnwritableError(f"cannot write {target}: {exc.strerror or exc}") from exc
+        raise UnwritableError(f"could not be saved ({exc.strerror or exc})") from exc
     except BaseException:
         temporary.unlink(missing_ok=True)
         raise
@@ -202,12 +212,14 @@ def _load(text: str, kind: ConfigFormat, *, lenient: bool = False) -> dict[str, 
         return {}
     match kind:
         case ConfigFormat.JSON:
-            loaded = _load_json(_without_comments(text) if lenient else text)
+            loaded = _load_json(_without_comments(text) if lenient else text, lenient=lenient)
         case ConfigFormat.TOML:
             try:
                 loaded = tomllib.loads(text)
             except tomllib.TOMLDecodeError as exc:
-                raise UnwritableError(f"is not valid TOML ({exc})") from exc
+                line = re.search(r"line (\d+)", str(exc))
+                where = f" (line {line.group(1)})" if line else ""
+                raise UnwritableError(f"is not valid TOML{where}") from exc
         case ConfigFormat.YAML:
             try:
                 loaded = yaml.safe_load(text)
@@ -220,17 +232,25 @@ def _load(text: str, kind: ConfigFormat, *, lenient: bool = False) -> dict[str, 
     return loaded
 
 
-def _load_json(text: str) -> Any:
+def _load_json(text: str, *, lenient: bool = False) -> Any:
     def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         seen: dict[str, Any] = {}
         for name, value in pairs:
             if name in seen:
-                raise UnwritableError(f"names {name!r} twice in one place")
+                raise UnwritableError(f'names "{name}" twice in one place')
             seen[name] = value
         return seen
 
+    def standard(number: str) -> float:
+        value = float(number)
+        if not lenient and not math.isfinite(value):
+            raise UnwritableError(f"holds {number[:20]}, which JSON does not allow")
+        return value
+
     try:
-        return json.loads(text, object_pairs_hook=unique)
+        return json.loads(
+            text, object_pairs_hook=unique, parse_float=standard, parse_constant=standard
+        )
     except json.JSONDecodeError as exc:
         if _json_has_comments(text):
             raise UnwritableError(
@@ -349,7 +369,7 @@ def _toml_value(value: Any) -> str:
         return "{ " + inner + " }" if inner else "{}"
     if isinstance(value, Sequence):
         return "[" + ", ".join(_toml_value(item) for item in value) + "]"
-    raise UnwritableError(f"cannot write {type(value).__name__} values")
+    raise UnwritableError("holds a value Stage cannot write as TOML")
 
 
 def _toml_header(key: Sequence[str], name: str) -> re.Pattern[str]:
@@ -358,31 +378,77 @@ def _toml_header(key: Sequence[str], name: str) -> re.Pattern[str]:
         return f"(?:{escaped}|\"{escaped}\"|'{escaped}')"
 
     joined = r"\s*\.\s*".join(part(segment) for segment in (*key, name))
-    return re.compile(rf"^\s*\[\s*{joined}\s*(?:\]|\.)")
+    return re.compile(rf"^\s*\[\[?\s*{joined}\s*(?:\]|\.)")
+
+
+def _toml_outside(lines: Sequence[str]) -> list[bool]:
+    starts: list[bool] = []
+    quote = ""
+    depth = 0
+    for line in lines:
+        starts.append(not quote and not depth)
+        if starts[-1] and _toml_table(line):
+            continue
+        index = 0
+        while 0 <= index < len(line):
+            if quote:
+                index = _toml_closed(line, index, quote)
+                quote = "" if index >= 0 else quote
+            elif line[index] == "#":
+                break
+            elif line.startswith(('"""', "'''"), index):
+                quote = line[index : index + 3]
+                index += 3
+            elif line[index] in "\"'":
+                index = _toml_closed(line, index + 1, line[index])
+            else:
+                depth += _NESTING.get(line[index], 0)
+                index += 1
+    return starts
+
+
+def _toml_table(line: str) -> bool:
+    return line.lstrip().startswith("[")
+
+
+def _toml_closed(line: str, start: int, quote: str) -> int:
+    index = start
+    while index < len(line):
+        if quote[0] == '"' and line[index] == "\\":
+            index += 2
+        elif line.startswith(quote, index):
+            end = index + len(quote)
+            while len(quote) == 3 and end < index + 5 and line.startswith(quote[0], end):
+                end += 1
+            return end
+        else:
+            index += 1
+    return -1
 
 
 def _toml_without(text: str, key: Sequence[str], name: str) -> str:
     header = _toml_header(key, name)
     lines = text.split("\n")
-    kept: list[str] = []
-    index = 0
-    while index < len(lines):
-        if not header.match(lines[index]):
-            kept.append(lines[index])
-            index += 1
+    outside = _toml_outside(lines)
+    heads = [index for index, line in enumerate(lines) if outside[index] and _toml_table(line)]
+    gone: set[int] = set()
+    for here, after in pairwise([*heads, len(lines)]):
+        if not header.match(lines[here]):
             continue
-        end = index + 1
-        while end < len(lines) and not lines[end].lstrip().startswith("["):
-            end += 1
-        tail = end
-        while tail > index + 1 and (
-            not lines[tail - 1].strip() or lines[tail - 1].lstrip().startswith("#")
+        stop = after
+        while (
+            after < len(lines)
+            and stop > here + 1
+            and outside[stop - 1]
+            and lines[stop - 1].lstrip().startswith("#")
         ):
-            tail -= 1
-        kept.extend(lines[tail:end])
-        index = end
+            stop -= 1
+        gone.update(range(here, stop))
+    kept = [line for index, line in enumerate(lines) if index not in gone]
     while len(kept) > 1 and not kept[-1].strip() and not kept[-2].strip():
         kept.pop()
+    if text.endswith("\n") and kept and kept[-1]:
+        kept.append("")
     return "\n".join(kept)
 
 

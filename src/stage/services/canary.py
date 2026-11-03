@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -9,6 +10,7 @@ from stage.domain import (
     CompanyUnchanged,
     Platform,
 )
+from stage.domain.text import plain_error
 from stage.storage import AsyncRepository
 
 AKAMAI_PLATFORMS = frozenset({Platform.WORKDAY})
@@ -24,6 +26,10 @@ class BoardProbe:
     unchanged: bool = False
     unreachable: bool = False
     declared_empty: bool = False
+
+    @property
+    def note(self) -> str:
+        return plain_error(self.error) if self.error else self.degraded
 
     @property
     def is_failure(self) -> bool:
@@ -44,6 +50,7 @@ class BoardProbe:
 class CanaryReport:
     probes: tuple[BoardProbe, ...] = field(default_factory=tuple)
     skipped_platforms: tuple[str, ...] = field(default_factory=tuple)
+    timed_out: bool = False
 
     @property
     def failures(self) -> tuple[BoardProbe, ...]:
@@ -59,7 +66,7 @@ class CanaryReport:
 
     @property
     def passed(self) -> bool:
-        return not (self.failures or self.empties)
+        return not (self.failures or self.empties or self.timed_out)
 
 
 def _probe_key(company: Company) -> tuple[str, str]:
@@ -90,43 +97,55 @@ async def canary(
     companies: Sequence[Company],
     *,
     exclude: frozenset[Platform] = AKAMAI_PLATFORMS,
+    timeout: float | None = None,
 ) -> CanaryReport:
-    from stage.services.sync import sync
-
     selected, skipped = select_probes(companies, exclude=exclude)
     probes: dict[tuple[str, str], BoardProbe] = {}
-
-    async for event in sync(repository, selected):
-        if isinstance(event, CompanyFinished):
-            probes[(event.source, event.company)] = BoardProbe(
-                source=event.source,
-                company=event.company,
-                fetched=event.fetched,
-                degraded=event.degraded,
-                declared_empty=event.declared_empty,
-            )
-        elif isinstance(event, CompanyFailed):
-            probes[(event.source, event.company)] = BoardProbe(
-                source=event.source,
-                company=event.company,
-                error=event.error,
-                unreachable=event.unreachable,
-            )
-        elif isinstance(event, CompanyDeferred):
-            probes[(event.source, event.company)] = BoardProbe(
-                source=event.source,
-                company=event.company,
-                error=event.reason,
-                unreachable=True,
-            )
-        elif isinstance(event, CompanyUnchanged):
-            probes[(event.source, event.company)] = BoardProbe(
-                source=event.source, company=event.company, unchanged=True
-            )
-
+    timed_out = False
+    try:
+        async with asyncio.timeout(timeout):
+            await _probe(repository, selected, probes)
+    except TimeoutError:
+        timed_out = True
     return CanaryReport(
-        probes=tuple(probes[key] for key in sorted(probes)), skipped_platforms=skipped
+        probes=tuple(probes[key] for key in sorted(probes)),
+        skipped_platforms=skipped,
+        timed_out=timed_out,
     )
+
+
+async def _probe(
+    repository: AsyncRepository,
+    selected: Sequence[Company],
+    probes: dict[tuple[str, str], BoardProbe],
+) -> None:
+    from stage.services.sync import sync
+
+    async for event in sync(
+        repository, selected, close_orphans=False, still_open=False, force_refresh=True
+    ):
+        match event:
+            case CompanyFinished():
+                probe = BoardProbe(
+                    event.source,
+                    event.company,
+                    fetched=event.fetched,
+                    degraded=event.degraded,
+                    declared_empty=event.declared_empty,
+                )
+            case CompanyFailed():
+                probe = BoardProbe(
+                    event.source, event.company, error=event.error, unreachable=event.unreachable
+                )
+            case CompanyDeferred():
+                probe = BoardProbe(
+                    event.source, event.company, error=event.reason, unreachable=True
+                )
+            case CompanyUnchanged():
+                probe = BoardProbe(event.source, event.company, unchanged=True)
+            case _:
+                continue
+        probes[(event.source, event.company)] = probe
 
 
 __all__ = ["AKAMAI_PLATFORMS", "BoardProbe", "CanaryReport", "canary", "select_probes"]

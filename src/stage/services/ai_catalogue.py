@@ -86,7 +86,7 @@ APPS: tuple[AiApp, ...] = (
             "anthropic.claude-code-*/resources/native-binary/claude.exe",
         ),
         edits_file=False,
-        note="Applies to conversations started afterwards.",
+        note="Start a new session to use Stage.",
         docs="https://code.claude.com/docs/en/mcp",
     ),
     AiApp(
@@ -103,12 +103,12 @@ APPS: tuple[AiApp, ...] = (
         ),
         programs=("codex",),
         markers=(Where.everywhere("{env:CODEX_HOME|~/.codex}"), *_bundle("Codex")),
-        note="Applies to sessions started afterwards.",
+        note="Start a new session to use Stage.",
         docs="https://learn.chatgpt.com/docs/extend/mcp",
     ),
     AiApp(
         "chatgpt",
-        "ChatGPT desktop",
+        "ChatGPT Desktop",
         file=_file(
             Where.everywhere("{env:CODEX_HOME|~/.codex}/config.toml"), TOML, ("mcp_servers",)
         ),
@@ -158,7 +158,7 @@ APPS: tuple[AiApp, ...] = (
         ),
         programs=("gemini",),
         markers=(Where.everywhere("{env:GEMINI_CLI_HOME|~}/.gemini"),),
-        note="Gemini starts it only in folders you have trusted. Gemini Code Assist in VS "
+        note="Gemini starts Stage only in folders you have trusted. Gemini Code Assist in VS "
         "Code reads the same settings.",
         docs="https://github.com/google-gemini/gemini-cli/blob/main/docs/tools/mcp-server.md",
     ),
@@ -249,7 +249,7 @@ APPS: tuple[AiApp, ...] = (
         programs=("hermes",),
         markers=(Where.everywhere("{hermes}"),),
         restart=True,
-        note="Hermes starts servers only with its MCP support installed: "
+        note="Hermes starts Stage only with its MCP support installed: "
         "pip install 'hermes-agent[mcp]', or its own installer.",
         docs="https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp",
     ),
@@ -271,7 +271,7 @@ APPS: tuple[AiApp, ...] = (
             Where("{config}/goose", "{appdata}/Block/goose", "{config}/goose"),
             *_bundle("Goose"),
         ),
-        note="Applies to sessions started afterwards.",
+        note="Start a new session to use Stage.",
         docs="https://goose-docs.ai/docs/guides/config-files",
     ),
     AiApp(
@@ -512,7 +512,7 @@ APPS: tuple[AiApp, ...] = (
         "Warp",
         file=_file(Where.everywhere("~/.warp/.mcp.json")),
         markers=(*_bundle("Warp"), Where.everywhere("~/.warp")),
-        note="Warp can also start Claude Code's and Codex's servers, so Stage may show twice.",
+        note="Warp also starts Claude Code's and Codex's servers, so Stage may show twice there.",
         docs="https://docs.warp.dev/agents/capabilities/mcp",
     ),
     AiApp(
@@ -536,7 +536,7 @@ APPS: tuple[AiApp, ...] = (
         "jetbrains",
         "JetBrains AI Assistant",
         markers=(_electron("JetBrains"),),
-        screens="In your JetBrains IDE open Settings | Tools | AI Assistant | Model Context "
+        screens="In your JetBrains IDE, open Settings | Tools | AI Assistant | Model Context "
         "Protocol (MCP), choose Add, then paste:\n{json}",
         docs="https://www.jetbrains.com/help/ai-assistant/mcp.html",
     ),
@@ -679,7 +679,7 @@ APPS: tuple[AiApp, ...] = (
         "Cherry Studio",
         link=LinkStyle.CHERRY,
         markers=(*_bundle("Cherry Studio"), _electron("CherryStudio")),
-        note="Cherry Studio adds it switched off; switch it on and add it to an agent.",
+        note="Cherry Studio adds Stage switched off. Switch it on and add it to an agent.",
         docs="https://docs.cherry-ai.com",
     ),
     AiApp(
@@ -687,56 +687,56 @@ APPS: tuple[AiApp, ...] = (
         "DeepChat",
         link=LinkStyle.DEEPCHAT,
         markers=(*_bundle("DeepChat"), _electron("DeepChat")),
-        note="DeepChat adds it switched off; switch it on in its MCP settings.",
+        note="DeepChat adds Stage switched off. Switch it on in its MCP settings.",
         docs="https://github.com/ThinkInAIXYZ/deepchat",
     ),
     AiApp(
         "msty",
         "Msty Studio",
         markers=(*_bundle("Msty Studio"),),
-        screens="In Msty Studio open Toolbox, choose Add New Tool, then STDIO/JSON, paste the "
-        "entry below, and add the tool to a Toolset you use:\n{entry}",
+        screens="In Msty Studio, open Toolbox, choose Add New Tool, then STDIO/JSON. Paste the "
+        "entry below and add the tool to a Toolset you use:\n{entry}",
     ),
     AiApp(
         "raycast",
         "Raycast",
         markers=_bundle("Raycast"),
-        screens="In Raycast open AI settings, then MCP Servers, and add a server with these "
+        screens="In Raycast, open AI settings, then MCP Servers, and add a server with these "
         "fields (Raycast Pro):",
     ),
     AiApp(
         "boltai",
         "BoltAI",
         markers=(*_bundle("BoltAI"), Where.everywhere("~/.boltai")),
-        screens="In BoltAI open Settings, then MCP Servers. If Stage is already connected to "
-        "Claude Desktop, use Import from Claude Desktop; otherwise add a server with these "
+        screens="In BoltAI, open Settings, then MCP Servers. If Stage is already connected to "
+        "Claude Desktop, use Import from Claude Desktop. Otherwise add a server with these "
         "fields:",
     ),
     AiApp(
         "perplexity",
         "Perplexity",
         markers=_bundle("Perplexity"),
-        screens="In the Perplexity Mac app open Settings, then Connectors, and add a custom "
+        screens="In the Perplexity Mac app, open Settings, then Connectors, and add a custom "
         "local server with these fields (Perplexity Pro):",
     ),
     AiApp(
         "aionui",
         "AionUi",
         markers=_bundle("AionUi"),
-        screens="In AionUi open MCP Management, choose Add via JSON and paste:\n{json}",
+        screens="In AionUi, open MCP Management, choose Add via JSON, then paste:\n{json}",
     ),
     AiApp(
         "chatwise",
         "ChatWise",
         markers=_bundle("ChatWise"),
-        screens="Copy this, then in ChatWise open Settings, Tools, and import from clipboard "
-        "(ChatWise Pro):\n{json}",
+        screens="Copy this, then in ChatWise open Settings, then Tools, and import from the "
+        "clipboard (ChatWise Pro):\n{json}",
     ),
     AiApp(
         "lobehub",
         "LobeHub",
         markers=_bundle("LobeHub"),
-        screens="In LobeHub desktop open Plugins, add a custom MCP plugin of type stdio with "
+        screens="In LobeHub Desktop, open Plugins and add a custom MCP plugin of type stdio with "
         "these fields:",
     ),
     AiApp(

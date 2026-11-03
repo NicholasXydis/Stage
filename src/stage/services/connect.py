@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import os
@@ -28,6 +29,7 @@ from stage.domain.ai_apps import (
     shaped,
     version_key,
 )
+from stage.domain.text import counted, plain_error
 from stage.services.app_config import (
     UnwritableError,
     entry_in,
@@ -36,6 +38,7 @@ from stage.services.app_config import (
     without_entry,
     write_config,
 )
+from stage.services.background import output_tail, sentence
 
 SERVER_NAME = "Stage"
 OLD_NAMES = ("stage",)
@@ -57,6 +60,9 @@ POSIX_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
 WINDOWS_KEPT = ("SYSTEMROOT", "WINDIR", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "TEMP", "TMP")
 ERROR_TAIL = 600
 BATCH_SUFFIXES = (".cmd", ".bat")
+OWNED_KEYS = frozenset(
+    ("command", "cmd", "args", "env", "envs", "environment", "type", "transport", "url")
+)
 
 _ENV_TOKEN = re.compile(r"\{env:([A-Z0-9_]+)\|([^{}]*(?:\{[a-z]+\}[^{}]*)*)\}")
 
@@ -112,10 +118,14 @@ class Target:
         return (self.settings, *self.alternates) if self.settings is not None else ()
 
     @property
+    def editable(self) -> bool:
+        return self.settings is not None and self.app.file is not None and self.app.edits_file
+
+    @property
     def reach(self) -> Reach:
         if self.program is not None and self.app.command is not None:
             return Reach.COMMAND
-        if self.settings is not None and self.app.file is not None and self.app.edits_file:
+        if self.editable:
             return Reach.FILE
         if self.app.link is not None:
             return Reach.LINK
@@ -137,6 +147,7 @@ class Outcome:
     backup: Path | None = None
     instructions: str = ""
     link: str = ""
+    failed: bool = False
 
 
 def current_system() -> System:
@@ -238,7 +249,11 @@ def _lmstudio_home(machine: Machine) -> str:
     if pointed:
         return pointed
     legacy = machine.home / ".cache" / "lm-studio"
-    return str(legacy) if legacy.is_dir() else str(machine.home / ".lmstudio")
+    try:
+        kept = legacy.is_dir()
+    except OSError:
+        kept = False
+    return str(legacy) if kept else str(machine.home / ".lmstudio")
 
 
 def targets(
@@ -305,9 +320,16 @@ def _installed(app: AiApp, machine: Machine) -> bool:
         return True
     for marker in app.markers:
         template = marker.on(machine.system)
-        if template and Path(expand(template, machine)).exists():
+        if template and _there(Path(expand(template, machine))):
             return True
     return False
+
+
+def _there(path: Path) -> bool:
+    try:
+        return path.exists() or path.is_symlink()
+    except OSError:
+        return True
 
 
 def _program_named(names: Sequence[str], machine: Machine) -> str | None:
@@ -345,10 +367,6 @@ def _bundled(app: AiApp, machine: Machine, editors: Sequence[Editor]) -> str | N
     return str(max(found)[1]) if found else None
 
 
-def _settings(app: AiApp, machine: Machine, user: str | None = None) -> Path | None:
-    return _places(app, machine, user)[0]
-
-
 def _places(
     app: AiApp, machine: Machine, user: str | None = None
 ) -> tuple[Path | None, tuple[Path, ...]]:
@@ -361,9 +379,7 @@ def _places(
     ]
     if not candidates:
         return None, ()
-    chosen = next(
-        (path for path in candidates if path.exists() or path.is_symlink()), candidates[0]
-    )
+    chosen = next((path for path in candidates if _there(path)), candidates[0])
     return chosen, tuple(path for path in candidates if path != chosen)
 
 
@@ -451,7 +467,7 @@ def read_status(target: Target, entry: ServerEntry) -> Reading:
     if found is None:
         return Reading(Status.UNREADABLE, f"{path} could not be read")
     command, args, env = _parts(found)
-    if command != entry.command and not Path(command).exists() and shutil.which(command) is None:
+    if command != entry.command and not _there(Path(command)) and shutil.which(command) is None:
         return Reading(Status.BROKEN, f"it runs {command}, which no longer exists")
     if name != SERVER_NAME:
         return Reading(Status.OUTDATED, f"it is listed under the old name {name}")
@@ -544,8 +560,9 @@ def connect(
             target,
             Status.UNKNOWN,
             False,
-            f"Quit {app.name} first. It rewrites its settings while it is open and would "
+            f"{_quit_first(app, 'connect')} It rewrites its settings while it is open and would "
             "undo the change.",
+            failed=True,
         )
     before = read_status(target, entry)
     if before.status is Status.CONNECTED:
@@ -558,6 +575,7 @@ def connect(
             f"{app.name} cannot start a program whose path has a space in it, and Stage is "
             f"installed at {entry.command}. Install Stage in a folder without a space to use "
             f"it with {app.name}.",
+            failed=True,
         )
     reach = target.reach
     if reach is Reach.COMMAND and not _carries(app, entry):
@@ -600,9 +618,8 @@ def _connect_by_file(target: Target, entry: ServerEntry, dry_run: bool) -> Outco
     path = holder[0] if holder is not None else target.settings
     try:
         current = read_config(path)
-        edited = with_entry(
-            current.text, file.format, file.key, SERVER_NAME, desired(target, entry)
-        )
+        wanted = _kept(holder[2] if holder is not None else None, desired(target, entry))
+        edited = with_entry(current.text, file.format, file.key, SERVER_NAME, wanted)
         for name in OLD_NAMES:
             edited = without_entry(edited, file.format, file.key, name)
         if dry_run:
@@ -615,11 +632,29 @@ def _connect_by_file(target: Target, entry: ServerEntry, dry_run: bool) -> Outco
             target,
             Status.UNREADABLE,
             False,
-            f"{target.settings} {exc}",
+            _said(target.settings, exc),
             instructions=instructions(target, entry),
         )
     updated = holder is not None and holder[2] is not None
     return Outcome(target, Status.CONNECTED, True, _wrote(target, current.path, updated), backup)
+
+
+def _kept(found: Mapping[str, Any] | None, wanted: dict[str, Any]) -> dict[str, Any]:
+    if found is None:
+        return wanted
+    extra = {key: value for key, value in found.items() if key not in OWNED_KEYS | set(wanted)}
+    return {**wanted, **extra}
+
+
+def _said(path: Path, exc: UnwritableError) -> str:
+    message = str(exc).strip().rstrip(".")
+    if not message.startswith((str(path), os.path.realpath(path))):
+        message = f"{path} {message}"
+    return f"{message}."
+
+
+def _quit_first(app: AiApp, verb: str) -> str:
+    return f"Quit {app.name}, then run stage {verb} {app.key.removesuffix('-legacy')} again."
 
 
 def _wrote(target: Target, path: Path, updated: bool = False) -> str:
@@ -642,28 +677,33 @@ def _connect_by_command(
     )
     if dry_run:
         return Outcome(target, Status.ABSENT, False, f"would run {_shown(adding)}")
-    if removing and before.status in (Status.OUTDATED, Status.BROKEN, Status.UNKNOWN):
+    removed = bool(removing) and before.status in (Status.OUTDATED, Status.BROKEN, Status.UNKNOWN)
+    if removed:
         runner(removing)
     result = runner(adding)
     if result.returncode != 0:
-        said = " ".join((result.stderr or result.stdout or "").split())[-ERROR_TAIL:]
-        if target.settings is not None and target.app.file is not None and _editable(target):
+        said = output_tail(result.stderr or result.stdout or "", ERROR_TAIL)
+        if target.editable:
             fallback = _connect_by_file(target, entry, dry_run=False)
             if fallback.changed:
                 return fallback
+        refused = sentence(f"{command.program} refused: {said or f'exit code {result.returncode}'}")
+        if removed and holder is not None and holder[2] is not None:
+            refused += _put_back(target, holder[1], holder[2], runner)
         return Outcome(
             target,
             Status.UNKNOWN,
             False,
-            f"{Path(target.program).name} refused: {said or f'exit code {result.returncode}'}",
+            refused,
             instructions=instructions(target, entry),
+            failed=True,
         )
     _drop_old_names(target)
     after = read_status(target, entry)
     if after.status in (Status.CONNECTED, Status.UNKNOWN):
         return Outcome(target, Status.CONNECTED, True, f"ran {_shown(adding)}")
-    said = " ".join((result.stdout or result.stderr or "").split())[-ERROR_TAIL:]
-    if target.settings is not None and target.app.file is not None and _editable(target):
+    said = output_tail(result.stdout or result.stderr or "", ERROR_TAIL)
+    if target.editable:
         fallback = _connect_by_file(target, entry, dry_run=False)
         if fallback.changed:
             return fallback
@@ -671,19 +711,29 @@ def _connect_by_command(
         target,
         after.status,
         False,
-        f"{Path(target.program).name} said it worked, but Stage is not in its settings"
-        + (f": {said}" if said else "."),
+        sentence(
+            f"{command.program} said it worked, but Stage is not in its settings"
+            + (f": {said}" if said else "")
+        ),
         instructions=instructions(target, entry),
+        failed=True,
     )
 
 
-def _editable(target: Target) -> bool:
-    return target.app.edits_file
+def _put_back(target: Target, name: str, found: Mapping[str, Any], runner: Runner) -> str:
+    command = target.app.command
+    assert command is not None and target.program is not None
+    program, args, env = _parts(found)
+    old = ServerEntry(program, tuple(args), env)
+    again = runner([target.program, *fill(command.add, command.env_flag, old, name)])
+    if again.returncode == 0:
+        return f" Stage put back the {name} entry it had removed."
+    return f" Stage had removed the {name} entry first and could not put it back."
 
 
 def _drop_old_names(target: Target) -> None:
     file = target.app.file
-    if file is None or not _editable(target):
+    if file is None or not target.editable:
         return
     for path in target.files:
         try:
@@ -718,7 +768,7 @@ def disconnect(
 ) -> Outcome:
     app = target.app
     if app.closed_first and app.process and (running or _is_running)(app.process):
-        return Outcome(target, Status.UNKNOWN, False, f"Quit {app.name} first.")
+        return Outcome(target, Status.UNKNOWN, False, _quit_first(app, "disconnect"), failed=True)
     before = read_status(target, entry)
     if before.status is Status.ABSENT:
         return Outcome(target, Status.ABSENT, False, "was not connected")
@@ -742,7 +792,7 @@ def disconnect(
                 "ran " + " and ".join(_shown(command) for command in commands),
             )
     file = app.file
-    if file is None or target.settings is None or not _editable(target):
+    if file is None or not target.editable:
         return Outcome(
             target,
             Status.UNKNOWN,
@@ -775,7 +825,7 @@ def disconnect(
                 target,
                 Status.UNREADABLE,
                 False,
-                f"{path} {exc}. Delete the {SERVER_NAME} entry under "
+                f"{_said(path, exc)} Delete the {SERVER_NAME} entry under "
                 f"{'.'.join(file.key)} in that file yourself.",
             )
     places = " and ".join(str(path) for path in removed)
@@ -819,12 +869,12 @@ def fill(
             case "{each-arg}":
                 filled.extend(f"--arg={arg}" for arg in entry.args)
             case "{env}":
-                for name, value in entry.env.items():
-                    filled.extend((env_flag, f"{name}={value}"))
+                for variable, value in entry.env.items():
+                    filled.extend((env_flag, f"{variable}={value}"))
             case "{json}" | "{entry}":
-                payload = shaped(Shape.STDIO, SERVER_NAME, entry.command, entry.args, entry.env)
+                payload = shaped(Shape.STDIO, name, entry.command, entry.args, entry.env)
                 if part == "{json}":
-                    payload = {"name": SERVER_NAME, **payload}
+                    payload = {"name": name, **payload}
                 filled.append(json.dumps(payload, ensure_ascii=False))
             case _:
                 filled.append(part.replace("{name}", name))
@@ -845,7 +895,7 @@ def instructions(target: Target, entry: ServerEntry) -> str:
         program = target.program or app.command.program
         lines.append("Run:")
         lines.append("  " + _shown([program, *fill(app.command.add, app.command.env_flag, entry)]))
-    if app.file is not None and target.settings is not None and app.edits_file:
+    if app.file is not None and target.editable:
         lines.append(
             f"Or add this to {target.settings}:" if lines else f"Add this to {target.settings}:"
         )
@@ -920,7 +970,9 @@ def _locked(path: Path | None) -> Iterator[None]:
                 shutil.rmtree(lock, ignore_errors=True)
                 continue
             if time.monotonic() > deadline:
-                raise UnwritableError("is being saved by its app right now; try again") from None
+                raise UnwritableError(
+                    "is being saved by its app right now. Try again in a moment"
+                ) from None
             time.sleep(0.1)
         except OSError as exc:
             raise UnwritableError(f"cannot be locked: {exc.strerror or exc}") from exc
@@ -952,30 +1004,44 @@ async def self_test(entry: ServerEntry, *, timeout: float = SELF_TEST_SECONDS) -
     started = time.perf_counter()
     with (
         _quiet("mcp"),
-        tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as errors,
+        tempfile.TemporaryFile() as scratch,
+        io.TextIOWrapper(scratch, encoding="utf-8", errors="replace") as errors,
     ):
         try:
             with anyio.fail_after(timeout):
                 async with Client(stdio_client(parameters, errlog=errors)) as client:
                     listed = await client.list_tools()
         except TimeoutError:
-            return SelfTest(False, f"Stage did not answer within {timeout:.0f} seconds")
+            waited = counted(round(timeout), "second")
+            return SelfTest(
+                False,
+                f"Stage did not answer within {waited}. Run stage doctor to check this install.",
+            )
         except Exception as exc:
-            return SelfTest(False, _failure(exc, errors))
+            return SelfTest(False, _failure(exc, errors, entry))
     names = {tool.name for tool in listed.tools}
     if EXPECTED_TOOL not in names:
-        return SelfTest(False, "something answered, but it was not Stage", len(names))
+        return SelfTest(False, "Something answered, but it was not Stage.", len(names))
     took = time.perf_counter() - started
     return SelfTest(True, f"Stage answered with {len(names)} tools in {took:.1f}s", len(names))
 
 
-def _failure(exc: BaseException, errors: TextIO) -> str:
+def _failure(exc: BaseException, errors: TextIO, entry: ServerEntry) -> str:
     errors.seek(0)
-    said = " ".join(errors.read().split())[-ERROR_TAIL:]
+    said = output_tail(errors.read(), ERROR_TAIL)
     if said:
-        return f"Stage failed to start: {said}"
+        return sentence(f"Stage failed to start: {said}")
     reason = _innermost(exc)
-    return f"Stage stopped before answering ({type(reason).__name__}: {reason})"
+    if isinstance(reason, FileNotFoundError):
+        missing = reason.filename or "the program it runs"
+        return (
+            f"Stage could not start because {missing} does not exist. Reinstall Stage, then "
+            "run stage connect again."
+        )
+    told = str(reason).strip()
+    why = f" ({plain_error(told)})" if told else ""
+    run = _shown([entry.command, *entry.args])
+    return f"Stage stopped before answering{why}. Run {run} in a terminal to see why."
 
 
 def _innermost(exc: BaseException) -> BaseException:
