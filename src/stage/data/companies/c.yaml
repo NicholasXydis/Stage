@@ -1,3 +1,39 @@
+- name: C&S Wholesale Grocers
+  platform: workday
+  slug: cswg
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: cswg
+  workday_site: cs_careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 236 postings and kept 1 CS internship in Canada
+    or the US.
+- name: C3 AI
+  platform: greenhouse
+  slug: c3ascend
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 2 CS internships in Canada
+    or the US.
+- name: CAA Club Group
+  platform: custom_json
+  slug: caaclubgroup
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'SuccessFactors RSS verified 2026-11-01: 114 postings, 48 for the CAA club, 21 for
+    CAA Insurance, 44 for Echelon Insurance and 1 for Orion, no internship.'
+  custom:
+    url: https://jobs.caaclubgroup.ca/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: CACI
   platform: smartrecruiters
   slug: caci
@@ -30,6 +66,17 @@
   workday_tenant: cae
   workday_site: career
   workday_dc: wd3
+- name: CAI
+  platform: workday
+  slug: cai
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: cai
+  workday_site: computer_aid
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 170 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Calendly
   platform: greenhouse
   slug: calendly
@@ -73,6 +120,17 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Cambridge Investment Research
+  platform: workday
+  slug: cir
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: cir
+  workday_site: cir_external_career_site
+  workday_dc: wd108
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Campbell Soup
   platform: workday
   slug: campbellsoup
@@ -84,6 +142,15 @@
   workday_facet: workerSubType:2c9712637fee1027395fffa4ae951d8f
   notes: '2026-08-13: official Workday endpoint verified; its temporary intern facet
     has 16 listings.'
+- name: CAMS
+  platform: lever
+  slug: camstex
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 41 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Canada Life
   platform: custom_json
   slug: canadalife
@@ -141,9 +208,14 @@
   platform: jobvite
   slug: capcomusa
   source_of_record: openjobs
-  last_verified: 2026-08-21
+  last_verified: 2026-11-02
+  enabled: false
   notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/capcomusa/jobs
-    server-renders all 2 postings, which is the contract this row polls'
+    server-renders all 2 postings, which is the contract this row polls. 2026-11-02:
+    the board says it has no open jobs, which reads as empty and closes nothing. The
+    failures in stored visits came from an adapter that read that page as broken.
+    2026-11-03: switched off at the owner''s request after an overnight test still
+    reported failed reads; it posts no internships.'
 - name: Capgemini
   platform: custom_json
   slug: capgemini
@@ -165,6 +237,17 @@
     page_size: 25
     page_step: 25
     max_pages: 8
+- name: Capital Group
+  platform: workday
+  slug: capgroup
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: capgroup
+  workday_site: capitalgroupcareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 172 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Capital One
   platform: workday
   slug: capitalone
@@ -185,6 +268,22 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Capstone Investment Advisors
+  platform: greenhouse
+  slug: capstoneinvestmentadvisors
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 14 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: CapTech Consulting
+  platform: smartrecruiters
+  slug: captechconsulting
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 96 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Capula
   platform: workable
   slug: capula-investment-management-ltd
@@ -221,6 +320,17 @@
   notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
     1 jobs and needs-a-manual-check, the expected verdict where the platform publishes
     no board name; token equals the company name'
+- name: CareSource
+  platform: workday
+  slug: caresource
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: caresource
+  workday_site: caresource
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 2 CS internships whose
+    locations Stage could not parse.
 - name: Carlyle Group
   platform: workday
   slug: carlyle
@@ -230,18 +340,55 @@
   workday_site: Carlyle
   workday_dc: wd1
   notes: '2026-08-20: coordinates read from the owner-supplied careers URL; 80 postings.'
+- name: Carnegie Mellon Software Engineering Institute (SEI)
+  platform: workday
+  slug: cmu
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: cmu
+  workday_site: sei
+  workday_dc: wd115
+  notes: Workday site sei on the cmu tenant, which answers on wd115 (the Carnegie Mellon
+    University row still points at wd5), found through this employer's own apply links
+    in the community feeds. The tenant has no internship facet, so the whole board is
+    walked; a scratch sync on 2026-11-02 read 58 postings and kept 6 CS internships in
+    the US.
 - name: Carnegie Mellon University
   platform: workday
   slug: cmu
   source_of_record: discover
-  last_verified: 2026-08-16
+  last_verified: 2026-11-02
   workday_tenant: cmu
-  workday_site: cmu
+  workday_site: CMU
+  workday_dc: wd115
+  notes: '2026-11-02: the tenant moved to wd115, where site CMU answers with 207 postings;
+    the old wd5 coordinate gave 422 from August.'
+- name: Carrier
+  platform: workday
+  slug: carrier
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: carrier
+  workday_site: jobs
   workday_dc: wd5
-  enabled: false
-  recheck_after: 2026-11-25
-  notes: '2026-08-25: every plausible coordinate answers 422 and the tenant''s own
-    careers page returns 500, so the CXS contract is closed.'
+  notes: Board found through the employer's own careers site; a scratch sync on 2026-11-01
+    read 967 postings and kept 4 CS internships in Canada or the US.
+- name: Cartesian Systems
+  platform: greenhouse
+  slug: cartesiansystems
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Castelion
+  platform: greenhouse
+  slug: castelioncorporation
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 246 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Castleton Commodities International
   platform: workday
   slug: osv-cci
@@ -279,6 +426,17 @@
   oracle_site: CX_1
   notes: '2026-08-13: public Oracle candidate JSON verified; Application Support Student/Intern
     is a current technical posting'
+- name: Cboe Global Markets
+  platform: workday
+  slug: cboe
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: cboe
+  workday_site: external_career_cboe
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 6 CS internships in Canada
+    or the US.
 - name: CCC Intelligent Solutions
   platform: workday
   slug: cccis
@@ -342,6 +500,15 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 4 posting(s), 1 kept after
     the CS-internship screens'
+- name: Centene
+  platform: workday
+  slug: centene
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: centene
+  workday_site: Centene_External
+  workday_dc: wd5
+  notes: 'Workday site verified 2026-11-01: 2 intern postings, 0 kept as CS.'
 - name: Centerfield
   platform: ashby
   slug: centerfield
@@ -372,6 +539,17 @@
   workday_facet: JobFamilyGroup:8bdce696b10c10016a56951427200000,ffab1d38756510004860b3221fdf0000
   notes: '2026-08-13: official Workday endpoint verified; its technical intern facets
     total 12 listings.'
+- name: Central Hudson
+  platform: workday
+  slug: cenhud
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: cenhud
+  workday_site: cenhud
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 26 postings and kept 1 CS internship whose locations
+    Stage could not parse.
 - name: Cerebras Systems
   platform: greenhouse
   slug: cerebrassystems
@@ -389,6 +567,17 @@
   workday_site: Cerence
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Cerity Partners
+  platform: workday
+  slug: ceritypartners
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: ceritypartners
+  workday_site: ceritypartnerscareers
+  workday_dc: wd12
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Certify
   platform: ashby
   slug: certifyos
@@ -408,6 +597,15 @@
   workday_site: cerved
   workday_dc: wd3
   notes: '2026-08-31: disabled. Workday reports the tenant decommissioned.'
+- name: CesiumAstro
+  platform: lever
+  slug: CesiumAstro
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 323 postings and kept 4 CS internships in Canada
+    or the US.
 - name: Chainalysis
   platform: ashby
   slug: chainalysis-careers
@@ -451,6 +649,36 @@
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
     with postings, but this platform publishes no board name, so provenance is the
     evidence rather than a name match.'
+- name: Charles River Analytics
+  platform: greenhouse
+  slug: charlesriveranalytics90
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 6 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: Charter Manufacturing
+  platform: workday
+  slug: chartermfg
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: chartermfg
+  workday_site: Charter_Careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 31 postings and kept 5 CS internships in Canada
+    or the US.
+- name: Chatham Financial
+  platform: workday
+  slug: chathamfinancial
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: chathamfinancial
+  workday_site: chathamfinancial
+  workday_dc: wd501
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Chegg
   platform: workday
   slug: osv-chegg
@@ -534,6 +762,17 @@
   notes: '2026-08-15: token taken from the employer''s own apply URL in feed postings;
     the board publishes the name ''CTC Campus - Website'' (CTC = Chicago Trading Company,
     a campus board), so the name gate rejects a correct caption'
+- name: Children's Hospital of Philadelphia
+  platform: workday
+  slug: chop
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: chop
+  workday_site: choppreboardonly
+  workday_dc: wd108
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 33 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Chime
   platform: greenhouse
   slug: chime
@@ -541,6 +780,33 @@
   last_verified: 2026-08-21
   notes: '2026-08-21: official Chime job pages link to the chime Greenhouse board;
     the live board returned 58 postings.'
+- name: CHS
+  platform: custom_json
+  slug: chsinc
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    375 postings and kept 3 CS internships in the US.
+  custom:
+    url: https://careers.chsinc.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: Chubb
+  platform: oracle_cloud
+  slug: fa-ewgu-saasfaprod1
+  source_of_record: manual
+  last_verified: 2026-11-01
+  oracle_host: fa-ewgu-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_2001
+  notes: 'Oracle Cloud site CX_2001 from careers.chubb.com verified 2026-11-01: 23 keyword
+    matches, 2 US internships, 0 kept, though Summer Intern, Technology in Philadelphia is
+    a tech role.'
 - name: CIBC (campus)
   platform: workday
   slug: cibc
@@ -564,6 +830,15 @@
   workday_facet: workerSubType:ac99acc6fb6b108fe66503995497ae7c
   notes: '2026-08-13: official student careers page and public Workday endpoint verified;
     its Intern (Fixed Term) facet has 11 listings, so the board completes in one request'
+- name: Cigna
+  platform: workday
+  slug: cigna
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: cigna
+  workday_site: cignacareers
+  workday_dc: wd5
+  notes: 'Workday site verified 2026-11-01: 9 intern postings, 5 kept as CS.'
 - name: Cineplex
   platform: workday
   slug: cineplex
@@ -732,6 +1007,16 @@
     page_param: from
     page_size: 10
     max_pages: 20
+- name: Cisco (Workday)
+  platform: workday
+  slug: cisco
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: cisco
+  workday_site: cisco_careers
+  workday_dc: wd5
+  notes: The custom row keeps no internships; the feeds link here. A scratch sync on 2026-11-02
+    read 30 postings and kept 3 CS internships in the US.
 - name: Cisive
   platform: workday
   slug: cisive
@@ -773,6 +1058,16 @@
       title: title
       id: id
       url: loc
+- name: Citco
+  platform: oracle_cloud
+  slug: fa-euxc-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: fa-euxc-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 22 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Citigroup
   platform: workday
   slug: citi
@@ -783,6 +1078,37 @@
   workday_dc: wd5
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Citizens Energy Group
+  platform: custom_json
+  slug: citizensenergygroup
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: iCIMS search page from this employer's own apply link in the community feeds,
+    read with searchKeyword=intern; a scratch sync on 2026-11-02 read 9 postings and
+    kept 2 CS internships in the US.
+  custom:
+    url: https://careers-citizensenergygroup.icims.com/jobs/search?ss=1&in_iframe=1&searchKeyword=intern
+    format: html
+    row_selector: li.iCIMS_JobCardItem
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
+      description: .description
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 4
+- name: Citizens Financial Group
+  platform: oracle_cloud
+  slug: hcgn
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: hcgn.fa.us2.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 0 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: City of Austin
   platform: workday
   slug: austintexas
@@ -793,6 +1119,17 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Clarios
+  platform: workday
+  slug: clarios
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: clarios
+  workday_site: clarioscareers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 16 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Clarity Innovations
   platform: greenhouse
   slug: clarityinnovates
@@ -820,6 +1157,16 @@
   source_of_record: discover
   last_verified: 2026-08-21
   notes: '2026-08-21: official jobs page embeds the named Ashby board.'
+- name: Clean Harbors
+  platform: oracle_cloud
+  slug: epyc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: epyc.fa.us2.oraclecloud.com
+  oracle_site: CX_1001
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 41 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Clearco
   platform: ashby
   slug: clearco
@@ -837,6 +1184,17 @@
   workday_dc: wd1
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (2 posting(s), 0 kept)'
+- name: Clearwater Analytics
+  platform: workday
+  slug: clearwateranalytics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: clearwateranalytics
+  workday_site: Clearwater_Analytics_Careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 43 postings and kept 6 CS internships in Canada
+    or the US.
 - name: Clerkie
   platform: greenhouse
   slug: clerkie
@@ -849,6 +1207,14 @@
   last_verified: 2026-09-03
   notes: '2026-09-03: moved off greenhouse, which now answers 404 for this slug; the
     ashby board under the same slug returned 177 postings on a live probe'
+- name: Clinia
+  platform: collage
+  slug: clinia
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Montreal health-search startup on Collage, which publishes no board name; the postings
+    name Clinia and Montreal. A scratch sync on 2026-11-02 read 3 postings and kept 1 CS
+    internship in Montreal.
 - name: Clinical Ink
   platform: smartrecruiters
   slug: clinicalink
@@ -857,6 +1223,17 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched smartrecruiters/clinicalink with 5 job(s) and the board named itself,
     so it is polled directly instead of secondhand'
+- name: Clio
+  platform: workday
+  slug: clio
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: clio
+  workday_site: ClioCareerSite
+  workday_dc: wd3
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 125 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Cloud Chamber
   platform: greenhouse
   slug: cloudchamberen
@@ -891,6 +1268,15 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; greenhouse/cloudsek named itself
     with 13 jobs.'
+- name: CM Labs
+  platform: bamboohr
+  slug: cmlabs
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: CME Group
   platform: workday
   slug: cmegroup
@@ -968,6 +1354,53 @@
   enabled: false
   notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
     Re-probed 2026-08-14 and still dead.'
+- name: Co-operators
+  platform: custom_json
+  slug: co-operators
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: 'UKG/UltiPro board linked from cooperators.ca, verified 2026-11-02: 76 postings,
+    no internship. Read on the owner''s call although UKG''s robots.txt disallows
+    */JobBoardView. Places come from the address city.'
+  custom:
+    url: https://recruiting.ultipro.com/COO5000COOP/JobBoard/163383cc-cbae-4201-956e-c5e437bbfeb3/JobBoardView/LoadSearchResults
+    method: POST
+    body:
+      opportunitySearch:
+        Top: 50
+        Skip: 0
+        QueryString: ''
+        OrderBy:
+        - Value: postedDateDesc
+          PropertyName: PostedDate
+          Ascending: false
+        Filters:
+        - t: TermsSearchFilterDto
+          fieldName: 4
+          extra: null
+          values: []
+      matchCriteria:
+        PreferredJobs: []
+        Educations: []
+        LicenseAndCertifications: []
+        Skills: []
+        hasNoLicenses: false
+        SkippedSkills: []
+    headers:
+      Referer: https://recruiting.ultipro.com/COO5000COOP/JobBoard/163383cc-cbae-4201-956e-c5e437bbfeb3
+      Origin: https://recruiting.ultipro.com
+    jobs_path: opportunities
+    fields:
+      title: Title
+      id: Id
+      location: Locations.0.Address.City
+      description: BriefDescription
+      category: JobCategoryName
+    url_template: https://recruiting.ultipro.com/COO5000COOP/JobBoard/163383cc-cbae-4201-956e-c5e437bbfeb3/OpportunityDetail?opportunityId={id}
+    page_param: opportunitySearch.Skip
+    page_size: 50
+    page_step: 50
+    max_pages: 4
 - name: Cockroach Labs
   platform: greenhouse
   slug: cockroachlabs
@@ -984,9 +1417,8 @@
   platform: custom_json
   slug: cofomo
   source_of_record: discover
-  last_verified: 2026-08-17
-  notes: '2026-08-17: endpoint found by browser-assisted discovery from https://www.cofomo.com/jobs,
-    then replayed over plain HTTP with no browser.'
+  last_verified: 2026-11-01
+  notes: Pages are numbered from 1; 220 postings over 22 pages on 2026-11-01.
   custom:
     url: https://www.cofomo.com/en/jobs.json?page=1&jobCategory=&q=&orderBy=desc
     jobs_path: data
@@ -998,7 +1430,9 @@
       employment_type: jobType
     page_param: page
     page_size: 10
-    max_pages: 20
+    page_start: 1
+    page_step: 1
+    max_pages: 25
 - name: Cogeco
   platform: workday
   slug: cogeco
@@ -1009,6 +1443,25 @@
   workday_dc: wd3
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Cognex
+  platform: workday
+  slug: cognex
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: cognex
+  workday_site: External_Career_Site
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 1 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Cohen & Steers
+  platform: greenhouse
+  slug: cnssummerassociates
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Cohere
   platform: ashby
   slug: cohere
@@ -1038,6 +1491,18 @@
   enabled: false
   notes: '2026-08-08: breezy publishes no board name, so a 200 with jobs is not evidence
     of the right company; needs a human to open the board once'
+- name: Comcast
+  platform: workday
+  slug: comcast
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: comcast
+  workday_site: Comcast_Careers
+  workday_dc: wd115
+  notes: Board found through the employer's own careers site; a scratch sync on 2026-11-01
+    read 691 postings and kept no CS internship in Canada or the US, but this employer
+    hires CS interns most seasons; the tenant offers no internship facet, so interns
+    surface only as the crawl advances.
 - name: ComeOn Group
   platform: workable
   slug: comeon-group
@@ -1045,6 +1510,17 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Commerce Bank
+  platform: workday
+  slug: commercebank
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: commercebank
+  workday_site: CommerceJobs
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 159 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: CommerceIQ
   platform: greenhouse
   slug: commerceiq
@@ -1108,6 +1584,15 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Connor, Clark & Lunn Investment Management
+  platform: greenhouse
+  slug: cclim
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Greenhouse board cclim, embedded on cclinvest.cclgroup.com/careers where this
+    employer's feed apply links lead; a scratch sync on 2026-11-02 read 5 postings and
+    kept no CS internship in Canada or the US, but its Vancouver quantitative equity
+    interns appeared in the community feeds this season.
 - name: ConocoPhillips
   platform: workday
   slug: conocophillips
@@ -1118,6 +1603,43 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Constellation Brands
+  platform: workday
+  slug: cbrands
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: cbrands
+  workday_site: CBI_External_Careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 85 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Constellation Energy
+  platform: custom_json
+  slug: constellationenergy
+  rate_profile: patient
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Jibe job hub JSON on jobs.constellationenergy.com from this employer's own
+    apply links in the community feeds, read with keywords=intern; a scratch sync on
+    2026-11-02 read 153 postings and kept 22 CS internships in the US, though several
+    are plant engineering roles Stage files as CS.
+  custom:
+    url: https://jobs.constellationenergy.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://jobs.constellationenergy.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Constellation Software (Perseus)
   platform: workday
   slug: talentmanagementsolution
@@ -1137,6 +1659,23 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: Consumers Energy
+  platform: custom_json
+  slug: consumersenergy
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    36 postings and kept 1 CS internship in the US.
+  custom:
+    url: https://careers.consumersenergy.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
 - name: CookUnity
   platform: greenhouse
   slug: cookunity
@@ -1209,6 +1748,28 @@
   workday_facet: workerSubType:2187176562f010018ae3c3dc64300000
   notes: '2026-08-13: official Workday endpoint verified; its Working Student facet
     has one listing.'
+- name: Corteva
+  platform: workday
+  slug: corteva
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: corteva
+  workday_site: corteva
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 46 postings and kept 1 CS internship in Canada
+    or the US.
+- name: CoStar Group
+  platform: workday
+  slug: costar
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: costar
+  workday_site: Costar_Campus
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 8 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Cotiviti
   platform: icims
   slug: cotiviti
@@ -1229,6 +1790,14 @@
   slug: coupa
   source_of_record: openjobs
   last_verified: 2026-08-04
+- name: Courier Health
+  platform: greenhouse
+  slug: courierhealth
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 16 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Coursera
   platform: greenhouse
   slug: coursera
@@ -1260,6 +1829,26 @@
   workday_facet: workerSubType:ff1397ebecb201c5020ff2234a31c00f,0849407434d40125f8aaac0ff4006acd
   notes: '2026-08-13: official Workday endpoint verified; its student/intern facets
     total 27 listings.'
+- name: Cowboy Space
+  platform: ashby
+  slug: cowboyspace
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: A software engineering internship from this startup reached the community
+    feeds on 2026-11-01, and stage discover found this Ashby board. A scratch sync
+    on 2026-11-02 read 65 postings and kept 1 CS internship in San Carlos, California.
+- name: Cox
+  platform: workday
+  slug: cox
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: cox
+  workday_site: Cox_External_Career_Site_1
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 2 CS internships in Canada
+    or the US.
 - name: CPI Card Group
   platform: icims
   slug: cpicardgroup
@@ -1304,6 +1893,16 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (8 job(s))'
+- name: Creative Artists Agency
+  platform: workday
+  slug: caa
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: caa
+  workday_site: Careers
+  workday_dc: wd1
+  notes: Found through this employer's own apply links in the community feeds; a scratch sync
+    on 2026-11-02 read 102 postings and kept 1 CS internship in the US.
 - name: Credo Semiconductor
   platform: custom_json
   slug: credo
@@ -1332,23 +1931,16 @@
   source_of_record: openjobs
   last_verified: *id004
 - name: Croesus
-  platform: custom_json
+  platform: workday
   slug: croesus
-  source_of_record: discover
-  last_verified: 2026-10-20
-  notes: '2026-10-20: Cezanne/Intervieweb board, server-rendered with no JSON or RSS
-    contract, so the page itself is the listing. It reads No vacancies available
-    when nothing is open, which empty_marker treats as an empty board, not drift.'
-  custom:
-    url: https://cezanneondemand.intervieweb.it/croesus/en/career
-    format: html
-    row_selector: div.vacancy__header
-    empty_marker: No vacancies available
-    fields:
-      title: div.vacancy__title h3
-      url: div.vacancy__title a::attr(href)
-      location: span.subtitle__informations[title="Location"]
-      category: span.subtitle__informations[title="Functional Area"]
+  source_of_record: manual
+  last_verified: 2026-11-02
+  workday_tenant: croesus
+  workday_site: EXT
+  workday_dc: wd10
+  notes: Croesus left its Cezanne board, which matched no rows from 2026-09-24, for
+    the Workday site its careers page now links. A scratch sync on 2026-11-02 read
+    2 postings and kept 2 CS internships in Laval.
 - name: Croix Bleue
   platform: workday
   slug: canassurance
@@ -1379,6 +1971,35 @@
   workday_dc: wd12
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Crystal Dynamics
+  platform: greenhouse
+  slug: crystaldynamics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 1 CS internship in Canada
+    or the US.
+- name: CSAA Insurance Group
+  platform: workday
+  slug: aaaie
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: aaaie
+  workday_site: CSAACareers2
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 2 postings and kept 1 CS internship in Canada
+    or the US.
+- name: CSX
+  platform: oracle_cloud
+  slug: fa-eowa-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: fa-eowa-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CSXCareers
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 13 postings and kept 1 CS internship in Canada
+    or the US.
 - name: CTGT
   platform: ashby
   slug: ctgt
@@ -1396,6 +2017,16 @@
   workday_site: cubic_global_careers
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Cummins
+  platform: oracle_cloud
+  slug: fa-espx-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: fa-espx-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 69 postings and kept 1 CS internship in Canada
+    or the US.
 - name: CuspAI
   platform: ashby
   slug: cuspai
@@ -1404,3 +2035,24 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (15 job(s))'
+- name: CVS Health (Aetna)
+  platform: workday
+  slug: cvshealth
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: cvshealth
+  workday_site: CVS_Health_Careers
+  workday_dc: wd1
+  workday_facet: workerSubType:183bb31d97231001005066125c530000
+  notes: 'Workday site verified 2026-11-01 with the Intern (Seasonal) subtype pinned, because
+    the automatic facet adds pharmacy interns and reports 3,835 postings: 55 internships,
+    11 kept as CS.'
+- name: Cyvl
+  platform: ashby
+  slug: cyvl
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 16 postings and kept 2 CS internships in Canada
+    or the US.

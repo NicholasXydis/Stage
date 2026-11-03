@@ -2,11 +2,10 @@
   platform: custom_json
   slug: l3harris
   source_of_record: discover
-  last_verified: 2026-08-20
-  notes: TalentBrew, server-rendered like BlackRock; its p parameter paginates and
-    page two shares no ids with page one.
+  last_verified: 2026-11-01
+  notes: TalentBrew search for intern (k=intern), 15 per page; the p parameter keeps the keyword, while the /search-jobs/intern path drops it on later pages. 117 postings on 2026-11-01.
   custom:
-    url: https://careers.l3harris.com/en/search-jobs
+    url: https://careers.l3harris.com/en/search-jobs?k=intern
     format: html
     row_selector: '#search-results-list li'
     fields:
@@ -16,10 +15,21 @@
       location: .job-location
       category: .job-category
     page_param: p
-    page_size: 1
+    page_size: 15
     page_start: 1
     page_step: 1
     max_pages: 12
+- name: LabCorp
+  platform: workday
+  slug: labcorp
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: labcorp
+  workday_site: external
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Lam Research
   platform: custom_json
   slug: lamresearch
@@ -46,6 +56,15 @@
   last_verified: &id001 2026-08-11
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 67 job(s)'
+- name: Laminar
+  platform: ashby
+  slug: laminar-jobs
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
 - name: LangChain
   platform: ashby
   slug: langchain
@@ -116,6 +135,14 @@
   last_verified: 2026-08-21
   notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/leadventure/jobs
     server-renders all 16 postings, which is the contract this row polls'
+- name: Legend Biotech
+  platform: greenhouse
+  slug: legendcareers
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 74 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Leidos
   platform: workday
   slug: leidos
@@ -166,6 +193,65 @@
     page_param: paginationStart
     page_size: 25
     page_step: 25
+- name: Levi Strauss & Co.
+  platform: workday
+  slug: levistraussandco
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: levistraussandco
+  workday_site: external
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 15 postings and kept 1 CS internship whose locations
+    Stage could not parse.
+- name: Levio
+  platform: greenhouse
+  slug: levio
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Greenhouse board behind the job list at levio.ca/carrieres. A scratch sync on
+    2026-11-02 read 57 postings and kept no CS internship, but this is a Quebec IT
+    consulting employer with a live board.
+- name: LexisNexis Risk Solutions
+  platform: workday
+  slug: relx
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: relx
+  workday_site: risksolutions
+  workday_dc: wd3
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: LGI Healthcare Solutions
+  platform: smartrecruiters
+  slug: LGIHealthcareSolutionsSanteInc
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: 'Logibec, Montreal health software; SmartRecruiters board verified 2026-11-02 with
+    29 postings, including an AI laboratory. Read on the same terms as every other
+    SmartRecruiters row, whose API robots.txt names only LinkedInBot.'
+- name: Liberty Mutual (campus)
+  platform: custom_json
+  slug: libertymutual-campus
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'iCIMS campus search page verified 2026-11-01: 20 postings, 15 internships or co-ops,
+    1 kept as CS.'
+  custom:
+    url: https://campus-libertymutual.icims.com/jobs/search?ss=1&in_iframe=1
+    format: html
+    row_selector: li.iCIMS_JobCardItem
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
+      description: .description
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 4
 - name: Liberty University
   platform: workday
   slug: liberty
@@ -176,11 +262,30 @@
   workday_dc: wd5
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (84 posting(s), 0 kept)'
+- name: Life Fitness
+  platform: workday
+  slug: lifefitness
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: lifefitness
+  workday_site: searchLFN
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 15 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Lightcast
   platform: lever
   slug: economicmodeling
   source_of_record: openjobs
   last_verified: *id003
+- name: Lightmatter
+  platform: greenhouse
+  slug: lightmatter
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 58 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Lightspeed
   platform: custom_json
   slug: lightspeedhq
@@ -210,6 +315,17 @@
   slug: lilasciences
   source_of_record: discover
   last_verified: *id004
+- name: Lilly
+  platform: workday
+  slug: lilly
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: lilly
+  workday_site: cmp
+  workday_dc: wd115
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 94 postings and kept 6 CS internships in Canada
+    or the US.
 - name: Lilt
   platform: ashby
   slug: lilt
@@ -226,6 +342,22 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (11 job(s))'
+- name: Lincoln Financial
+  platform: custom_json
+  slug: lincolnfinancial
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'SuccessFactors RSS verified 2026-11-01: 90 postings, all in the US, no internship.'
+  custom:
+    url: https://jobs.lincolnfinancial.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Linear
   platform: ashby
   slug: linear
@@ -240,6 +372,16 @@
   slug: linkedin3
   source_of_record: openjobs
   last_verified: *id005
+- name: Linkup
+  platform: ashby
+  slug: linkup
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: A Member of Technical Staff internship from this startup reached the community
+    feeds this season with its own apply link to this Ashby board. A scratch sync
+    on 2026-11-02 read 14 postings and kept none, because the role screen does not
+    read MTS Intern as CS.
 - name: Liquid Development
   platform: workable
   slug: liquid-development
@@ -313,7 +455,7 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
-- name: London stock Exchange
+- name: London Stock Exchange Group
   platform: workday
   slug: lseg
   source_of_record: openjobs
@@ -361,6 +503,17 @@
   workday_dc: wd1
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (1 posting(s), 0 kept)'
+- name: Lowe's
+  platform: workday
+  slug: lowes
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: lowes
+  workday_site: LWS_External_CS
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 140 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Loyalty Juggernaut
   platform: bamboohr
   slug: lji
@@ -405,6 +558,17 @@
   last_verified: 2026-08-21
   notes: '2026-08-21: bamboohr publishes no board name; its postings carry Ludia in
     their own bilingual titles'
+- name: Lumentum
+  platform: workday
+  slug: lumentum
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: lumentum
+  workday_site: LITE
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 14 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Lumeto
   platform: bamboohr
   slug: lumeto
@@ -419,6 +583,39 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Lunar Energy
+  platform: greenhouse
+  slug: lunarenergy
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: The board names itself Lunar Energy. Found through this employer's own apply links in
+    the community feeds; a scratch sync on 2026-11-02 read 24 postings; the feeds carried
+    its Hardware Test Engineer Intern this season.
+- name: Lunar Outpost
+  platform: bamboohr
+  slug: lunaroutpost
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 34 postings and kept 4 CS internships in Canada
+    or the US.
+- name: Luqia
+  platform: custom_json
+  slug: crim
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: CRIM, now Luqia, links each opening to Workland from its own jobs page, so
+    that page is read as HTML. The links carry no place; every role is in Montreal
+    or Quebec City. A scratch sync on 2026-11-02 read 9 postings and kept 2 CS internships.
+  custom:
+    url: https://www.crim.ca/fr/offres-demploi-et-de-stage/
+    format: html
+    row_selector: p:has(> a[href*="workland.com/work/"])
+    fields:
+      title: a
+      id: a::number(href)
+      url: a::attr(href)
 - name: Lyft
   platform: greenhouse
   slug: lyft

@@ -63,6 +63,74 @@
   slug: eclipse
   source_of_record: discover
   last_verified: &id002 2026-08-14
+  recheck_after: 2027-03-01
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. This Greenhouse board belongs
+    to a different employer named Eclipse (one remote data science posting all season).
+    Eclipse Automation posts its co-ops on Dayforce, read by the dayforce-eclipse row.'
+- name: Eclipse Automation
+  platform: custom_json
+  slug: dayforce-eclipse
+  source_of_record: manual
+  last_verified: 2026-11-02
+  rate_profile: conservative
+  notes: Eclipse Automation posts its co-ops on this Dayforce board, which its own
+    apply links in the community feeds point to. The greenhouse/eclipse row carries
+    a different employer. A scratch sync on 2026-11-02 read 71 postings in Cambridge,
+    Ontario, 16 of them software or controls roles, and kept 3 CS co-ops.
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/eclipse/jobposting/search
+    method: POST
+    body:
+      clientNamespace: eclipse
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/eclipse/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+    max_pages: 20
+- name: Eddyfi Technologies
+  platform: custom_json
+  slug: dayforce-eddyfi
+  source_of_record: manual
+  last_verified: 2026-11-02
+  rate_profile: conservative
+  notes: Dayforce, reached by sending the /api/auth/csrf token as x-csrf-token and
+    pinned conservative like the other Dayforce rows. A scratch sync on 2026-11-02
+    read 26 postings and kept no CS internship.
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/eddyfi/jobposting/search
+    method: POST
+    body:
+      clientNamespace: eddyfi
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/eddyfi/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+    max_pages: 20
 - name: Egra
   platform: ashby
   slug: egra
@@ -102,6 +170,34 @@
     page_size: 25
     page_step: 25
     max_pages: 20
+- name: Ekimetrics
+  platform: lever
+  slug: ekimetrics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 34 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Elanco
+  platform: workday
+  slug: elanco
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: elanco
+  workday_site: External_Career
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Elastic
+  platform: greenhouse
+  slug: elastic
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: Board found through the employer's own careers site; a scratch sync on 2026-11-01
+    read 407 postings and kept no CS internship in Canada or the US, but this employer
+    hires CS interns most seasons.
 - name: Electric Hydrogen
   platform: greenhouse
   slug: eh2internship
@@ -131,6 +227,15 @@
     page_param: jobOffset
     page_size: 20
     max_pages: 20
+- name: Elevance Health
+  platform: workday
+  slug: elevancehealth
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: elevancehealth
+  workday_site: ANT
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 10 intern postings, 1 kept as CS.'
 - name: ElevenLabs
   platform: ashby
   slug: elevenlabs
@@ -138,6 +243,16 @@
   last_verified: 2026-08-11
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 238 job(s)'
+- name: Eli Health
+  platform: ashby
+  slug: eli
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Montreal health tech startup listed as Eli on the Real Ventures portfolio
+    job board, which links this Ashby board. A scratch sync on 2026-11-02 read 6 postings
+    in Montreal, a machine learning scientist and a senior software developer among
+    them, and kept no CS internship.
 - name: Ellipsis Labs
   platform: ashby
   slug: ellipsislabs
@@ -157,6 +272,22 @@
   workday_dc: wd3
   notes: '2026-08-17: verified by scratch sync, 120 postings returned. Canadian construction;
     0 internships on the day of adoption, kept for its seasonal IT and co-op intake'
+- name: Elucid
+  platform: custom_json
+  slug: elucid
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: JazzHR board from this employer's own apply link in the community feeds, which
+    server-renders its list; a scratch sync on 2026-11-02 read 10 postings and kept 1 CS
+    internship in the US.
+  custom:
+    url: https://elucid.applytojob.com/apply
+    format: html
+    row_selector: li.list-group-item
+    fields:
+      title: h3 a
+      url: h3 a::attr(href)
+      location: li:has(> i.fa-map-marker)
 - name: Eluvio
   platform: workable
   slug: eluvio
@@ -164,6 +295,36 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Emerson Electric
+  platform: oracle_cloud
+  slug: hdjq
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: hdjq.fa.us2.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 84 postings and kept 8 CS internships in Canada
+    or the US.
+- name: Empire Life
+  platform: custom_json
+  slug: empire-life
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'ADP Workforce Now public JSON from empire.ca verified 2026-11-01, where $skip counts
+    from 1: 48 postings, 3 co-op postings, 1 kept as CS.'
+  custom:
+    url: https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=1813b5f5-505e-4c90-9c6f-49f292293ac6&ccId=19000101_000001&lang=en_CA&locale=en_CA&$top=20
+    jobs_path: jobRequisitions
+    fields:
+      title: requisitionTitle
+      id: itemID
+      location: requisitionLocations.0.nameCode.shortName
+    url_template: https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=1813b5f5-505e-4c90-9c6f-49f292293ac6&ccId=19000101_000001&lang=en_CA&jobId={id}
+    page_param: $skip
+    page_size: 20
+    page_start: 1
+    page_step: 20
+    max_pages: 6
 - name: Enbridge
   platform: workday
   slug: enbridge
@@ -212,11 +373,30 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active automation and software-development internship
     application verifies the public Ashby board.'
+- name: Ensco
+  platform: greenhouse
+  slug: ensco
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 28 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Ensemble Health Partners
   platform: greenhouse
   slug: ensemble
   source_of_record: discover
   last_verified: *id002
+- name: Entegris
+  platform: workday
+  slug: entegris
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: entegris
+  workday_site: entegriscareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 68 postings and kept 8 CS internships in Canada
+    or the US.
 - name: Enterpret
   platform: greenhouse
   slug: enterpret
@@ -224,6 +404,17 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; greenhouse/enterpret named itself
     with 18 jobs.'
+- name: Entrust
+  platform: workday
+  slug: entrust
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: entrust
+  workday_site: entrustcareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 6 postings and kept 4 CS internships in Canada
+    or the US.
 - name: Enverus
   platform: jobvite
   slug: drillinginfo
@@ -231,6 +422,17 @@
   enabled: false
   notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
     answers but renders no jv-job-list table, so it is an empty or retired board'
+- name: Envita Solutions
+  platform: workday
+  slug: thgrp
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: thgrp
+  workday_site: envita
+  workday_dc: wd12
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 2 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Epia Neuro
   platform: ashby
   slug: epianeuro
@@ -278,6 +480,23 @@
   enabled: false
   notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
     422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: EQ Bank
+  platform: lever
+  slug: eqbank
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 82 postings and kept 3 CS internships in Canada
+    or the US.
+- name: EQT Corporation
+  platform: greenhouse
+  slug: eqtcorporation
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 65 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Equativ
   platform: lever
   slug: equativ
@@ -298,6 +517,16 @@
   workday_facet: jobFamilyGroup:ef45ca2670b010249197ce07f79d9cf0
   notes: '2026-08-13: official Workday endpoint verified; its Internships job-family
     group has two listings.'
+- name: Equisoft
+  platform: workday
+  slug: equisoft
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: equisoft
+  workday_site: External
+  workday_dc: wd10
+  notes: 'Workday site verified 2026-11-01: 15 postings with 15 distinct ids now that a
+    place in the first bullet field is no longer read as the id, no internship.'
 - name: Eragon
   platform: ashby
   slug: eragon
@@ -307,13 +536,23 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (4 job(s))'
+- name: Ercot
+  platform: workday
+  slug: ercot
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: ercot
+  workday_site: ercot_careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Ericsson
   platform: custom_json
   slug: ericsson
   source_of_record: discover
-  last_verified: 2026-08-20
-  notes: Its Phenom-shaped widgets answer 401, but the site is Eightfold; /api/pcsx/search
-    returns all 491 positions.
+  last_verified: 2026-11-01
+  notes: Eightfold tenant read in full (about 500 positions), because a keyword search would miss co-op and French titles.
   custom:
     url: https://jobs.ericsson.com/api/pcsx/search?domain=ericsson.com&query=&start=0&sort_by=relevance
     jobs_path: data.positions
@@ -325,7 +564,7 @@
     url_template: https://jobs.ericsson.com/careers/job/{id}
     page_param: start
     page_size: 10
-    max_pages: 20
+    max_pages: 55
 - name: Escape Velocity Entertainment
   platform: workable
   slug: escape-velocity-entertainment-inc
@@ -442,6 +681,11 @@
   slug: eurofins
   source_of_record: discover
   last_verified: *id005
+  recheck_after: 2027-03-01
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. This SmartRecruiters board
+    lists about 2,640 open postings, most of them laboratory roles in Europe, takes up
+    to 27 pages a read and kept no CS internship in Canada or the US all season.'
 - name: Euronext
   platform: workday
   slug: hrhub
@@ -497,6 +741,36 @@
   slug: excelsportsmanagement
   source_of_record: discover
   last_verified: *id002
+- name: Excellus BlueCross BlueShield
+  platform: workday
+  slug: lthc
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: lthc
+  workday_site: ExcellusBCBSCareers
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 53 postings and no facets, 19 college internships,
+    1 kept as CS.'
+- name: Exegy
+  platform: ashby
+  slug: exegy
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-02 read 4 postings and kept 1 CS internship in Canada
+    or the US.
+- name: EXFO
+  platform: workday
+  slug: exfo
+  source_of_record: manual
+  last_verified: 2026-11-02
+  workday_tenant: exfo
+  workday_site: EXFO_Careers
+  workday_dc: wd10
+  notes: careers.exfo.com moved off SuccessFactors and links this Workday site. A scratch
+    sync on 2026-11-02 read the 2 postings under its intern and student facet and kept
+    no CS internship.
 - name: Expedia
   platform: workday
   slug: expedia
@@ -508,6 +782,22 @@
   workday_dc: wd108
   notes: Parked as never answering on wd5/private; it is live on wd108/search with
     141 postings.
+- name: Explorance
+  platform: bamboohr
+  slug: explorance
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Board found through the employer's own careers page; a scratch sync on 2026-11-02
+    read 26 postings and kept no CS internship. Its two interns are in Chennai.
+- name: Export Development Canada
+  platform: workable
+  slug: export-development-canada
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Crown corporation whose careers page links this Workable board, and the account
+    names itself Export Development Canada. A scratch sync on 2026-11-02 read 31 distinct
+    postings, among them a Technology and Analytics student stream, and kept no CS
+    internship.
 - name: extreme network
   platform: lever
   slug: extremenetworks

@@ -11,6 +11,11 @@
   slug: nagarro1
   source_of_record: openjobs
   last_verified: &id001 2026-08-14
+  recheck_after: 2027-03-01
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. This SmartRecruiters board
+    lists about 612 open postings and kept no CS internship in Canada or the US all
+    season.'
 - name: Nanoleaf
   platform: bamboohr
   slug: nanoleaf
@@ -19,6 +24,17 @@
   notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
     1 jobs and needs-a-manual-check, the expected verdict where the platform publishes
     no board name; token equals the company name'
+- name: NASA Jet Propulsion Laboratory
+  platform: workday
+  slug: citjpl
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: citjpl
+  workday_site: Jobs
+  workday_dc: wd5
+  notes: Board found through the employer's own careers site; a scratch sync on 2026-11-01
+    read 8 postings and kept no CS internship in Canada or the US, but this employer
+    hires CS interns most seasons.
 - name: Nasdaq
   platform: workday
   slug: nasdaq
@@ -35,9 +51,11 @@
   platform: custom_json
   slug: bnc
   source_of_record: discover
-  last_verified: 2026-08-18
-  notes: Every Avature JSON shape returns markup, so the server-rendered results table
-    is read instead.
+  last_verified: 2026-11-02
+  notes: 'Every Avature JSON shape returns markup, so the server-rendered results table
+    is read instead. 2026-11-02: a scratch sync read all 408 postings in 21 pages, and
+    its 4 internships were finance and audit roles. Some student postings are listed only
+    on the students page, which the bnc-students row reads.'
   custom:
     url: https://emplois.bnc.ca/en_CA/careers/searchjobs/
     format: html
@@ -51,6 +69,36 @@
     page_size: 20
     page_step: 20
     max_pages: 25
+- name: National Bank of Canada
+  platform: custom_json
+  slug: bnc-students
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: '2026-11-02: the Avature students page lists internships and student jobs, some
+    of them missing from the all-jobs search the bnc row reads (Intern Corporate Account
+    Manager in Levis). A scratch sync read 4 postings, all finance or account management,
+    and kept none.'
+  custom:
+    url: https://emplois.bnc.ca/en_CA/careers/studentsandintershipjoboffers
+    format: html
+    row_selector: table tr:has(a[data-map='job-detail-link'])
+    fields:
+      title: a[data-map='job-detail-link']
+      id: a[data-map='job-detail-link']::attr(href)
+      url: a[data-map='job-detail-link']::attr(href)
+      location: td:nth-of-type(1)
+    page_param: jobOffset
+    page_size: 20
+    page_step: 20
+    max_pages: 5
+- name: National Information Solutions Cooperative
+  platform: greenhouse
+  slug: nisc
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 39 postings and kept 6 CS internships, 4 in the US
+    and 2 open to any NISC office.
 - name: National Laboratory of the Rockies
   platform: workday
   slug: nrel
@@ -62,6 +110,14 @@
   workday_facet: workerSubType:41059f5be019104091d88850a3f54318
   notes: '2026-08-13: official Workday endpoint verified; its Intern fixed-term facet
     has 21 listings.'
+- name: National Life
+  platform: greenhouse
+  slug: nationallifeinsurancecompany
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 97 postings and kept 2 CS internships in Canada
+    or the US.
 - name: NationGraph
   platform: ashby
   slug: nationgraph
@@ -81,6 +137,27 @@
   workday_dc: wd5
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (120 posting(s), 0 kept)'
+- name: Nationwide Insurance
+  platform: workday
+  slug: nationwide
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: nationwide
+  workday_site: Nationwide_Career
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 123 postings with 123 distinct ids, 6 internships,
+    none CS. The list sends the place only as a bullet field, so locations read unknown.'
+- name: NAV CANADA
+  platform: workday
+  slug: navcanada
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: navcanada
+  workday_site: NAV_Careers
+  workday_dc: wd10
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 1 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Navan
   platform: greenhouse
   slug: tripactions
@@ -111,6 +188,17 @@
   slug: nbcuniversal3
   source_of_record: discover
   last_verified: *id001
+- name: NCR Atleos
+  platform: workday
+  slug: ncratleos
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: ncratleos
+  workday_site: ext_intern
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 7 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Nelnet
   platform: workday
   slug: nelnet
@@ -266,6 +354,50 @@
   last_verified: 2026-08-16
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
     a live probe that matched the company name on the returned board'
+- name: New York ISO
+  platform: greenhouse
+  slug: nyisocoops
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 7 postings and kept 1 CS internship in Canada
+    or the US.
+- name: New York ISO
+  platform: greenhouse
+  slug: nyisointernships
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: NYISO's internship board, found through the feeds' apply links; its co-ops are
+    on the nyisocoops board. A scratch sync on 2026-11-02 read 8 postings and kept 1 CS
+    internship in the US.
+- name: New York Life
+  platform: custom_json
+  slug: newyorklife
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK on jobs.newyorklife.com; /rss.xml carries the whole board. A
+    scratch sync on 2026-11-02 read 336 postings and kept 1 CS internship in the US.
+  custom:
+    url: https://jobs.newyorklife.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: New York Mets
+  platform: workday
+  slug: sterlingmets
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: sterlingmets
+  workday_site: Mets
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 29 postings and kept 1 CS internship in Canada
+    or the US.
 - name: New York Post Holdings
   platform: workday
   slug: dowjones
@@ -276,6 +408,23 @@
   workday_dc: wd1
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (63 posting(s), 0 kept)'
+- name: Newell Brands
+  platform: custom_json
+  slug: newellbrands
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    536 postings and kept 1 CS internship in the US.
+  custom:
+    url: https://jobs.newellbrands.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
 - name: Newrich Network
   platform: workable
   slug: newrich-network
@@ -309,6 +458,15 @@
   slug: nextiva
   source_of_record: discover
   last_verified: *id004
+- name: Niantic Spatial
+  platform: ashby
+  slug: niantic-spatial
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 19 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Nidec
   platform: workday
   slug: nidec
@@ -335,6 +493,17 @@
   workday_dc: wd12
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Nike
+  platform: workday
+  slug: nike
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: nike
+  workday_site: nke
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 16 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Nintendo
   platform: greenhouse
   slug: nintendo
@@ -370,6 +539,15 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (27 job(s))'
+- name: NJM Insurance
+  platform: workday
+  slug: njm
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: njm
+  workday_site: njm
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 9 intern postings, 2 kept as CS.'
 - name: Nokia
   platform: oracle_cloud
   slug: fa-evmr-saasfaprod1
@@ -380,6 +558,25 @@
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
     endpoint has no offline probe, and this host and site come from the employer''s
     own application URL'
+- name: Nomad GCS
+  platform: bamboohr
+  slug: nomadgcs
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: BambooHR publishes no board name; the postings are in Huntsville, Columbia Falls and
+    Libby, where Nomad GCS works. A scratch sync on 2026-11-02 read 20 postings; the feeds
+    carried its Software Engineer Intern this season.
+- name: Nordson
+  platform: workday
+  slug: nordsonhcm
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: nordsonhcm
+  workday_site: nordsoncareers
+  workday_dc: wd501
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Normal Computing
   platform: ashby
   slug: normalcomputing
@@ -388,6 +585,16 @@
   name_gate_exempt: true
   notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (22 job(s))'
+- name: Northbridge Insurance
+  platform: workday
+  slug: northbridgefinancial
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: northbridgefinancial
+  workday_site: NBFC
+  workday_dc: wd3
+  notes: 'Northbridge Financial''s Workday site, named by the careers.nbfc.com apply links,
+    verified 2026-11-01: 42 postings, no internship.'
 - name: Northeastern University
   platform: workday
   slug: northeastern
@@ -423,6 +630,15 @@
   slug: northwesternmutual
   source_of_record: discover
   last_verified: *id001
+- name: Northwood Space
+  platform: ashby
+  slug: northwoodspace
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 60 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Notarius
   platform: bamboohr
   slug: portagecybertech
@@ -450,6 +666,15 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Novisto
+  platform: greenhouse
+  slug: novisto78
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Montreal ESG software company listed on the Inovia portfolio job board, and
+    its careers page embeds this Greenhouse board. A scratch sync on 2026-11-02 read
+    15 postings, 2 of them AI and data engineering roles in Montreal, and kept no
+    CS internship.
 - name: Novogradac
   platform: workday
   slug: novoco
@@ -487,6 +712,30 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (14 job(s))'
+- name: Nulogy
+  platform: custom_json
+  slug: nulogy
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: JazzHR board linked from nulogy.com/company/careers, which server-renders its
+    list. A scratch sync on 2026-11-02 read 5 postings and kept no CS internship, but
+    this is a Toronto software employer with a live board.
+  custom:
+    url: https://nulogy.applytojob.com/apply
+    format: html
+    row_selector: li.list-group-item
+    fields:
+      title: h3 a
+      url: h3 a::attr(href)
+      location: li:has(> i.fa-map-marker)
+- name: Nuovo Photography
+  platform: workable
+  slug: nuovophotography
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 29 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Nuro
   platform: greenhouse
   slug: nuro
@@ -515,6 +764,31 @@
       category: category
       employment_type: jobtype
       department: department
+- name: Nutrien
+  platform: custom_json
+  slug: nutrien
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK at jobs.nutrien.com; /rss.xml carries the whole board. A
+    scratch sync on 2026-11-02 read 610 postings and kept 4 CS co-ops in Saskatchewan.
+  custom:
+    url: https://jobs.nutrien.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: NUVACORE
+  platform: lever
+  slug: nuvacore
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 21 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Nuvei
   platform: workable
   slug: nuvei
@@ -537,8 +811,8 @@
   platform: custom_json
   slug: nvidia-eightfold
   source_of_record: discover
-  last_verified: 2026-08-18
-  notes: Eightfold tenant whose intern filter is honoured, 9 hits against 2,628.
+  last_verified: 2026-11-01
+  notes: Eightfold tenant whose intern filter is honoured; 206 intern postings on 2026-11-01, so the cap covers 25 pages.
   custom:
     url: https://jobs.nvidia.com/api/pcsx/search?domain=nvidia.com&query=&start=0&num=10&filter_job_type=intern%20(fixed%20term)
     jobs_path: data.positions
@@ -550,7 +824,7 @@
     url_template: https://jobs.nvidia.com/careers/job/{id}
     page_param: start
     page_size: 10
-    max_pages: 5
+    max_pages: 25
 - name: Nvizzio Creations
   platform: smartrecruiters
   slug: nvizziocreations

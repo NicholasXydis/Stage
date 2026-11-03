@@ -1,3 +1,13 @@
+- name: F&G
+  platform: greenhouse
+  slug: fidelityguarantylifeinternships
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Greenhouse board fidelityguarantylifeinternships, embedded on fglife.com's
+    intern page where this employer's feed apply links lead; it publishes the name
+    'Fidelity & Guaranty Life Internships', so the name gate rejects a correct caption.
+    A scratch sync on 2026-11-02 read 15 postings and kept 4 CS internships in the US.
 - name: F5 Networks
   platform: workday
   slug: ffive
@@ -51,6 +61,22 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched smartrecruiters/fanniemae1sb with 133 job(s) and the board named itself,
     so it is polled directly instead of secondhand'
+- name: Faraday Future
+  platform: greenhouse
+  slug: faradayfuture
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 82 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Farmers Mutual Hail
+  platform: greenhouse
+  slug: farmersmutualhailinsurancecompany
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 23 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Fastly
   platform: greenhouse
   slug: fastly
@@ -58,6 +84,28 @@
   last_verified: 2026-08-21
   notes: '2026-08-21: official careers page resolves to the live Fastly Greenhouse
     board.'
+- name: Federal Home Loan Bank of Indianapolis
+  platform: workday
+  slug: fhlbi
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: fhlbi
+  workday_site: FHLBI_Careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 3 CS internships in Canada
+    or the US.
+- name: FedEx Freight
+  platform: workday
+  slug: freight
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: freight
+  workday_site: FXF_External_Career_Site
+  workday_dc: wd108
+  notes: Found through this employer's own apply links in the community feeds; a scratch sync
+    on 2026-11-02 searched this 652-posting board; the feeds carried its Intern-Data
+    Scientist this season.
 - name: Felix & Paul Studios
   platform: bamboohr
   slug: felixandpaul
@@ -68,6 +116,38 @@
   enabled: false
   notes: '2026-10-20: felixandpaul.bamboohr.com redirects to a suspended-account page,
     so the board answers 401; parked until the studio posts roles again.'
+- name: Fellow
+  platform: ashby
+  slug: fellowai
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Ottawa meeting software company listed on the Inovia portfolio job board,
+    which links this Ashby board. A scratch sync on 2026-11-02 read 6 postings, 3
+    of them software or QA roles with a 2026-2027 new grad engineer in Ottawa, and
+    kept no CS internship.
+- name: Fenwick & West
+  platform: workday
+  slug: fenwick
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: fenwick
+  workday_site: Fenwick_External_Careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 22 postings and kept 1 CS internship whose locations
+    Stage could not parse.
+- name: FHLBank Chicago
+  platform: workday
+  slug: fhlbc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: fhlbc
+  workday_site: search
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 17 postings and kept 2 CS internships in Canada
+    or the US.
 - name: FICO
   platform: workday
   slug: fico
@@ -88,6 +168,28 @@
   workday_dc: wd3
   notes: '2026-08-20: the Canadian Fidelity board, distinct from the American Fidelity
     row; 146 postings.'
+- name: Fidelity Investments
+  platform: workday
+  slug: fmr
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: fmr
+  workday_site: targeted
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 168 postings and kept 2 CS internships in Canada
+    or the US; this is the targeted campus site, not the main FidelityCareers site.
+- name: Fidelity National Information Services
+  platform: workday
+  slug: fis
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: fis
+  workday_site: searchjobs
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 40 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Field AI
   platform: lever
   slug: field-ai
@@ -97,6 +199,17 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (126 job(s))'
+- name: Fifth Third Bank
+  platform: workday
+  slug: fifththird
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: fifththird
+  workday_site: 53careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 40 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Figma
   platform: greenhouse
   slug: figma
@@ -107,6 +220,14 @@
   slug: figure
   source_of_record: discover
   last_verified: *id001
+- name: Figure AI
+  platform: greenhouse
+  slug: figureai
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 99 postings and kept 4 CS internships in Canada
+    or the US.
 - name: Final Strike Games
   platform: bamboohr
   slug: finalstrikegames
@@ -169,6 +290,15 @@
   enabled: false
   notes: '2026-10-31: api.ashbyhq.com answers 404 for this token on every sync since
     October, and stage discover found the employer on no other platform.'
+- name: Firework
+  platform: lever
+  slug: fireworkhq
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 24 postings and kept 1 CS internship in Canada
+    or the US.
 - name: First American
   platform: workday
   slug: firstam
@@ -190,6 +320,31 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: First Citizens BancShares
+  platform: custom_json
+  slug: firstcitizens
+  rate_profile: patient
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Jibe job hub JSON from this employer's own apply links in the community feeds,
+    read with keywords=intern; a scratch sync on 2026-11-02 read 27 postings and kept 3
+    CS internships in the US.
+  custom:
+    url: https://firstcitizens.jibeapply.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://firstcitizens.jibeapply.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: First Quality
   platform: workday
   slug: firstquality
@@ -210,6 +365,16 @@
   workday_dc: wd3
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: First Solar
+  platform: oracle_cloud
+  slug: fa-esbv-saasfaprod1
+  source_of_record: manual
+  last_verified: 2026-11-02
+  oracle_host: fa-esbv-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: Oracle Cloud site CX_1, the United States site linked from
+    firstsolar.com/en/Careers; a scratch sync on 2026-11-02 read 24 postings and kept 11
+    CS internships in the US.
 - name: Five Rings
   platform: greenhouse
   slug: fiveringsllc
@@ -230,6 +395,43 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (32 job(s))'
+- name: Flagship Pioneering
+  platform: greenhouse
+  slug: fspco-op012325
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 27 postings and kept 7 CS internships in Canada
+    or the US.
+- name: Flare
+  platform: bamboohr
+  slug: flare
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Montreal cybersecurity company listed on the Inovia portfolio job board,
+    which links this BambooHR board. A scratch sync on 2026-11-02 read 9 postings,
+    5 of them software or IT roles in Montreal, and kept 1 CS internship, a software
+    developer intern in Montreal.
+- name: Flatiron Health
+  platform: greenhouse
+  slug: flatironhealth
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Board found through the employer's own careers site; a scratch sync on
+    2026-11-02 read 26 postings and kept no CS internship in Canada or the US, but this
+    employer hires CS interns most seasons.
+- name: Flex
+  platform: workday
+  slug: flextronics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: flextronics
+  workday_site: careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 42 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Flexera Software
   platform: workday
   slug: flexerasoftware
@@ -261,6 +463,17 @@
   source_of_record: discover
   last_verified: 2026-08-20
   notes: Board token read from the early-talent page's own greenhouse embed (11 job(s)).
+- name: Florida Atlantic University
+  platform: workday
+  slug: fau
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: fau
+  workday_site: FAU
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship whose locations
+    Stage could not parse.
 - name: Flow Traders
   platform: greenhouse
   slug: flowtraders
@@ -289,6 +502,17 @@
   slug: fluxon
   source_of_record: openjobs
   last_verified: *id007
+- name: FNBO
+  platform: workday
+  slug: firstnational
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: firstnational
+  workday_site: fnbocareers
+  workday_dc: wd12
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Fonds FTQ
   platform: workday
   slug: fondsftq
@@ -354,6 +578,23 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (48 job(s))'
+- name: FOTH
+  platform: lever
+  slug: foth
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 66 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Found Energy
+  platform: greenhouse
+  slug: foundenergy
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Four Hands
   platform: greenhouse
   slug: fourhands
@@ -377,6 +618,17 @@
   slug: framestore
   source_of_record: openjobs
   last_verified: *id001
+- name: Freddie Mac
+  platform: workday
+  slug: freddiemac
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: freddiemac
+  workday_site: External
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 2 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Freeform
   platform: greenhouse
   slug: freeformfuturecorp
@@ -385,6 +637,25 @@
   notes: '2026-08-16: seen in feed postings but absent from the registry; discover
     matched greenhouse/freeformfuturecorp with 62 job(s) and the board named itself,
     so it is polled directly instead of secondhand'
+- name: Fresenius Medical Care
+  platform: workday
+  slug: freseniusmedicalcare
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: freseniusmedicalcare
+  workday_site: fme
+  workday_dc: wd3
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 1 CS internship in Canada
+    or the US.
+- name: FreshCut Paper
+  platform: workable
+  slug: freshcutpaper
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Frima
   platform: custom_json
   slug: frima-studio
@@ -455,6 +726,15 @@
   name_gate_exempt: true
   notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
     bamboohr publishes no board name, so provenance is the evidence (11 job(s))'
+- name: Fullscript
+  platform: lever
+  slug: fullscript
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 16 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Fundwell
   platform: ashby
   slug: fundwell
@@ -471,3 +751,12 @@
   notes: '2026-08-16: seen in feed postings but absent from the registry; discover
     matched greenhouse/fccincinnati with 14 job(s) and the board named itself, so
     it is polled directly instead of secondhand'
+- name: FUTO
+  platform: lever
+  slug: futo-org
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 2 postings and kept 1 CS internship in Canada
+    or the US.

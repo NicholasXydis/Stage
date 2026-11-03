@@ -42,6 +42,15 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (10 job(s))'
+- name: Zendar
+  platform: breezy
+  slug: zendar
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Zendesk
   platform: workday
   slug: zendesk
@@ -97,6 +106,25 @@
   source_of_record: discover
   last_verified: 2026-09-01
   notes: '2026-09-01: verified 328 postings with 68 internships in South San Francisco.'
+- name: ZipRecruiter
+  platform: greenhouse
+  slug: ziprecruiter
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Greenhouse token checked against the board's own name for an employer whose CS
+    interns appear in the community feeds; a scratch sync on 2026-11-02 read 46 postings
+    and kept 1 CS internship in the US.
+- name: Zoetis
+  platform: workday
+  slug: zoetis
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: zoetis
+  workday_site: broadbean_external
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 16 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Zoom
   platform: workday
   slug: zoom
@@ -123,6 +151,34 @@
   last_verified: 2026-08-16
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
     a live probe that matched the company name on the returned board'
+- name: Zurich
+  platform: custom_json
+  slug: zurich
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'SuccessFactors RSS verified 2026-11-01: a 10 MB feed of 719 postings worldwide,
+    10 North American internships, 0 kept as CS.'
+  custom:
+    url: https://www.careers.zurich.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Zurn Elkay Water Solutions
+  platform: workday
+  slug: elkay
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: elkay
+  workday_site: Elkay_External
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 36 postings and kept 7 CS internships in Canada
+    or the US.
 - name: Zuru
   platform: lever
   slug: zuru
@@ -139,3 +195,20 @@
   notes: '2026-08-14: board resolved from this employer''s own application URL in
     a feed posting; the older Lever row for the same employer stays disabled as a
     vendor-migration fossil'
+- name: Zus Health
+  platform: ashby
+  slug: zus-health
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 9 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Zynga
+  platform: greenhouse
+  slug: zyngacareers
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 47 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.

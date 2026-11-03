@@ -8,11 +8,39 @@
   workday_dc: wd5
   notes: '2026-08-20: careers.spglobal.com is a shell over this Workday tenant; 300
     postings.'
+- name: Saab
+  platform: workday
+  slug: saabusa
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: saabusa
+  workday_site: saab_careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Safari AI
   platform: greenhouse
   slug: safariai
   source_of_record: openjobs
   last_verified: &id006 2026-08-11
+- name: Safran Defense & Space
+  platform: custom_json
+  slug: safran-dsi
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    26 postings and kept 2 CS internships in the US.
+  custom:
+    url: https://careers.safran-dsi.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
 - name: Sage
   platform: greenhouse
   slug: sage49
@@ -20,6 +48,13 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; greenhouse/sage49 named itself with
     11 jobs.'
+- name: SageSure
+  platform: greenhouse
+  slug: sagesure
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 22 postings and kept 4 CS internships in the US.
 - name: Sailpoint
   platform: workday
   slug: sailpoint
@@ -163,6 +198,15 @@
       url: link
       location: g:location
       description: description
+- name: Sardine
+  platform: ashby
+  slug: sardine
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 45 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Saronic
   platform: ashby
   slug: saronic
@@ -171,6 +215,53 @@
   name_gate_exempt: true
   notes: '2026-08-20: the owner supplied this exact ashby board URL, which is the
     provenance ashby cannot give because it publishes no board name; 225 postings.'
+- name: Saskatchewan Blue Cross
+  platform: custom_json
+  slug: saskatchewan-blue-cross
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: 'UKG/UltiPro board linked from sk.bluecross.ca/careers, verified 2026-11-02: 6
+    postings in Saskatoon, no internship. Read on the owner''s call although UKG''s
+    robots.txt disallows */JobBoardView.'
+  custom:
+    url: https://recruiting.ultipro.ca/SAS5000SKBC/JobBoard/ca16fca0-a89e-40d6-a159-7538bb324182/JobBoardView/LoadSearchResults
+    method: POST
+    body:
+      opportunitySearch:
+        Top: 50
+        Skip: 0
+        QueryString: ''
+        OrderBy:
+        - Value: postedDateDesc
+          PropertyName: PostedDate
+          Ascending: false
+        Filters:
+        - t: TermsSearchFilterDto
+          fieldName: 4
+          extra: null
+          values: []
+      matchCriteria:
+        PreferredJobs: []
+        Educations: []
+        LicenseAndCertifications: []
+        Skills: []
+        hasNoLicenses: false
+        SkippedSkills: []
+    headers:
+      Referer: https://recruiting.ultipro.ca/SAS5000SKBC/JobBoard/ca16fca0-a89e-40d6-a159-7538bb324182
+      Origin: https://recruiting.ultipro.ca
+    jobs_path: opportunities
+    fields:
+      title: Title
+      id: Id
+      location: Locations.0.Address.City
+      description: BriefDescription
+      category: JobCategoryName
+    url_template: https://recruiting.ultipro.ca/SAS5000SKBC/JobBoard/ca16fca0-a89e-40d6-a159-7538bb324182/OpportunityDetail?opportunityId={id}
+    page_param: opportunitySearch.Skip
+    page_size: 50
+    page_step: 50
+    max_pages: 4
 - name: Savannah River National Laboratory
   platform: oracle_cloud
   slug: ewvl
@@ -242,6 +333,14 @@
   notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
     match the rest of the workable platform, which is parked until 2026-08-18 after
     two 429s in one day.'
+- name: SCM
+  platform: greenhouse
+  slug: scmaea
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 1 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Scopely
   platform: greenhouse
   slug: scopely
@@ -273,6 +372,15 @@
       url: link
       location: g:location
       description: description
+- name: Scout AI
+  platform: ashby
+  slug: scout-ai
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 26 postings and kept 1 CS internship in Canada
+    or the US.
 - name: SDSU Research Foundation
   platform: icims
   slug: sdsurf
@@ -304,6 +412,17 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Sedgwick
+  platform: workday
+  slug: sedgwick
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: sedgwick
+  workday_site: Sedgwick
+  workday_dc: wd1
+  notes: Found through this employer's own apply links in the community feeds; a scratch sync
+    on 2026-11-02 searched the board; the feeds carried its Data Analyst Intern this
+    season.
 - name: SEGA Europe
   platform: custom_json
   slug: sega
@@ -381,12 +500,34 @@
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (43 job(s))'
 - name: ServiceNow
-  platform: smartrecruiters
+  platform: custom_json
   slug: servicenow
   source_of_record: openjobs
-  last_verified: 2026-08-16
-  notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
-    a live probe that matched the company name on the returned board'
+  last_verified: 2026-11-02
+  notes: '2026-11-02: the same SmartRecruiters board, read through its q=intern search
+    instead of all 717 postings in 8 pages. The search also matches Internships and
+    descriptions. A scratch sync read 176 postings in 2 pages and kept the 1 CS internship
+    the whole read kept, and every intern title of the whole read was in it.'
+  custom:
+    url: https://api.smartrecruiters.com/v1/companies/servicenow/postings?q=intern&limit=100
+    jobs_path: content
+    fields:
+      title: name
+      id: id
+      location: location.fullLocation
+    url_template: https://jobs.smartrecruiters.com/servicenow/{id}
+    page_param: offset
+    page_size: 100
+    page_step: 100
+    max_pages: 5
+- name: SESCO
+  platform: greenhouse
+  slug: sesco
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Seven Research
   platform: greenhouse
   slug: sevenresearch
@@ -399,6 +540,14 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; greenhouse/sezzle named itself with
     183 jobs.'
+- name: Shakepay
+  platform: greenhouse
+  slug: shakepay
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Montreal fintech found with stage discover, and the Greenhouse board names
+    itself Shakepay. A scratch sync on 2026-11-02 read 9 postings, 4 of them software,
+    data or security roles in Canada, and kept no CS internship.
 - name: SharkNinja
   platform: greenhouse
   slug: sharkninjaoperatingllc
@@ -417,6 +566,16 @@
   workday_tenant: shell
   workday_site: shellcareers
   workday_dc: wd3
+- name: Sherwin-Williams
+  platform: oracle_cloud
+  slug: ejhp
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: ejhp.fa.us6.oraclecloud.com
+  oracle_site: CX_2
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 60 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Shield AI
   platform: lever
   slug: shieldai
@@ -426,6 +585,15 @@
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
     with postings, but this platform publishes no board name, so provenance is the
     evidence rather than a name match.'
+- name: Shield AI
+  platform: ashby
+  slug: f7d8749a-72d6-407c-bf98-292ea630c73a
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Shield AI's software internships are posted on this Ashby board, whose token is
+    a UUID, and not on its Lever board. Found through the feeds' apply links; a scratch
+    sync on 2026-11-02 read 681 postings and kept 2 CS internships in the US.
 - name: Shift Technology
   platform: greenhouse
   slug: shifttechnology
@@ -446,9 +614,11 @@
   platform: custom_json
   slug: shopify
   source_of_record: discover
-  last_verified: 2026-08-18
-  notes: Internships are kept off the careers sitemap and /careers/search, so the
-    board is read from the internships microsite where they are published.
+  last_verified: 2026-11-02
+  notes: 'Internships are kept off the careers sitemap and /careers/search, so the
+    board is read from the internships microsite where they are published. 2026-11-02:
+    the selector still matches. The microsite lists one posting, Software Engineering
+    Internships Winter 2027, and a scratch sync kept it.'
   custom:
     url: https://internships.shopify.com/
     format: html
@@ -494,6 +664,17 @@
       id: path2
       url: loc
       location: path4_title
+- name: Siemens Healthineers
+  platform: workday
+  slug: onehealthineers
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: onehealthineers
+  workday_site: SHSJB
+  workday_dc: wd3
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 1 CS internship whose locations
+    Stage could not parse.
 - name: Sierra
   platform: ashby
   slug: sierra
@@ -501,6 +682,16 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 191 job(s)'
+- name: Sierra Nevada Corporation
+  platform: workday
+  slug: snc
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: snc
+  workday_site: SNC_External_Career_Site
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-02 read 35 postings and kept 7 CS internships in the US.
 - name: SiFive
   platform: workday
   slug: sifive
@@ -549,6 +740,11 @@
   slug: sikaag
   source_of_record: openjobs
   last_verified: &id009 2026-08-14
+  recheck_after: 2027-03-01
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. This SmartRecruiters board
+    lists about 710 open postings and kept no CS internship in Canada or the US all
+    season.'
 - name: Silicon Labs
   platform: workday
   slug: silabs
@@ -567,6 +763,15 @@
   enabled: false
   notes: '2026-08-21: re-checked on the server-rendered board as well; the tenant
     redirects to its own /careers page, so the board moved off Jobvite'
+- name: Simbe Robotics
+  platform: lever
+  slug: SimbeRobotics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 17 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Simcorp
   platform: workday
   slug: simcorp
@@ -599,11 +804,35 @@
   slug: sitetracker
   source_of_record: openjobs
   last_verified: *id004
+- name: SiTime
+  platform: greenhouse
+  slug: sitimecorporation
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 193 postings and kept 1 CS internship in Canada
+    or the US.
 - name: SIXT
   platform: smartrecruiters
   slug: sixt
   source_of_record: discover
   last_verified: *id009
+  recheck_after: 2027-03-01
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. This SmartRecruiters board
+    lists about 555 open postings, mostly rental branch and airport staff, and kept no
+    CS internship in Canada or the US all season.'
+- name: SJI - South Jersey Industries
+  platform: workday
+  slug: sjindustries
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: sjindustries
+  workday_site: sji
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 13 postings and kept 1 CS internship in Canada
+    or the US.
 - name: SK Hynix Memory Solution
   platform: greenhouse
   slug: skhynixmemorysolutionsamericainc
@@ -620,6 +849,27 @@
   last_verified: 2026-08-20
   notes: '2026-08-20: owner-captured request named the board token; the careers page
     guesses would never have found it, and greenhouse names the board Skild AI.'
+- name: Skyband Systems
+  platform: custom_json
+  slug: skyband-systems
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Ashby board named with a space (skyband systems), which the ashby adapter's
+    slug check refuses, so its public posting API is read here; the place comes from
+    address.postalAddress because location holds the city alone. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    8 postings and kept 2 CS internships in the US.
+  custom:
+    url: https://api.ashbyhq.com/posting-api/job-board/skyband%20systems
+    jobs_path: jobs
+    fields:
+      title: title
+      id: id
+      url: jobUrl
+      location: address.postalAddress
+      description: descriptionPlain
+      department: department
+      employment_type: employmentType
 - name: skybox labs
   platform: lever
   slug: skyboxlabs
@@ -645,9 +895,8 @@
   platform: custom_json
   slug: skyworks
   source_of_record: discover
-  last_verified: 2026-10-20
-  notes: '2026-10-20: successfactors — CSRF handshake. Category 9923100 now answers
-    totalJobs 0 while its interns are live, so this searches the keyword instead.'
+  last_verified: 2026-11-01
+  notes: SuccessFactors with a CSRF handshake, searched for intern because category 9923100 answers totalJobs 0; 238 postings on 2026-11-01.
   custom:
     url: https://careers.skyworksinc.com/services/recruiting/v1/jobs
     method: POST
@@ -675,6 +924,34 @@
     page_param: pageNumber
     page_size: 10
     page_step: 1
+    max_pages: 40
+- name: SmartFlower Solar
+  platform: workable
+  slug: smartflower-solar-llc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Smith+Nephew
+  platform: workday
+  slug: smithnephew
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: smithnephew
+  workday_site: External
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Smiths Detection Group
+  platform: smartrecruiters
+  slug: smithsgroup2
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 542 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Smoking Gun Interactive
   platform: workable
   slug: smoking-gun-interactive-1
@@ -699,6 +976,14 @@
       url: _source.absolute_url
       category: _source.role
       employment_type: _source.employment_type
+- name: Snorkel AI
+  platform: greenhouse
+  slug: snorkelai
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 42 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Snowed In Studios
   platform: workable
   slug: snowed-in-studios-3
@@ -746,6 +1031,14 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; workable/softeta named itself with
     11 jobs.'
+- name: Solace
+  platform: bamboohr
+  slug: solace
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: BambooHR board linked from solace.com/careers. A scratch sync on 2026-11-02 read
+    26 postings and kept no CS internship, but this is an Ottawa software employer with
+    a live board.
 - name: Solar Turbines
   platform: workday
   slug: cat
@@ -762,6 +1055,23 @@
   source_of_record: discover
   last_verified: 2026-09-01
   notes: '2026-09-01: verified 14 postings including six internships in Colorado.'
+- name: Solidigm
+  platform: smartrecruiters
+  slug: solidigm
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 64 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Solink
+  platform: ashby
+  slug: solink
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 22 postings and kept 2 CS internships in Canada
+    or the US.
 - name: SoloPulse
   platform: lever
   slug: solopulseco
@@ -769,6 +1079,17 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active systems-engineering internship application verifies
     the public Lever board.'
+- name: Sonos
+  platform: workday
+  slug: sonos
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: sonos
+  workday_site: Sonos
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 8 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Sony Global
   platform: workday
   slug: sonyglobal
@@ -795,6 +1116,14 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Sophinea
+  platform: workable
+  slug: sophinea
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Sophos
   platform: lever
   slug: sophos
@@ -812,6 +1141,33 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: SouthState Bank
+  platform: workday
+  slug: southstatebank
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: southstatebank
+  workday_site: external
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 179 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Space Dynamics Laboratory
+  platform: custom_json
+  slug: spacedynamicslaboratory
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: JazzHR board from this employer's own apply link in the community feeds, which
+    server-renders its list; a scratch sync on 2026-11-02 read 23 postings and kept 3 CS
+    internships in the US.
+  custom:
+    url: https://spacedynamicslaboratory.applytojob.com/apply
+    format: html
+    row_selector: li.list-group-item
+    fields:
+      title: h3 a
+      url: h3 a::attr(href)
+      location: li:has(> i.fa-map-marker)
 - name: SpaceX
   platform: greenhouse
   slug: spacex
@@ -839,6 +1195,15 @@
   enabled: false
   notes: '2026-08-21: the recruitee tenant answers with the Senior Marketer (Sample)
     demo posting, so the board is a trial tenant and not this employer'
+- name: Spellbook
+  platform: ashby
+  slug: spellbook.com
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Toronto legal AI company listed on the Inovia portfolio job board, which
+    links this Ashby board. A scratch sync on 2026-11-02 read 25 postings, 5 of them
+    software engineering roles in Canada, and kept no CS internship.
 - name: Spiria
   platform: lever
   slug: spiria
@@ -859,7 +1224,7 @@
   slug: spotify
   source_of_record: openjobs
   last_verified: *id004
-- name: Sprinkler
+- name: Sprinklr
   platform: workday
   slug: sprinklr
   source_of_record: openjobs
@@ -894,6 +1259,14 @@
   slug: squeezestudio
   source_of_record: openjobs
   last_verified: *id003
+- name: SRC, Inc
+  platform: jobvite
+  slug: src-inc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 71 postings and kept 1 CS internship in Canada
+    or the US.
 - name: SRI International
   platform: icims
   slug: sri
@@ -902,6 +1275,17 @@
   notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
     and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
     on its icims.com host is 404.'
+- name: SS&C
+  platform: workday
+  slug: ssctech
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: ssctech
+  workday_site: ssctechnologies
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 40 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: SS8
   platform: greenhouse
   slug: ss8
@@ -936,6 +1320,35 @@
   slug: stackadapt-confidential
   source_of_record: discover
   last_verified: *id003
+- name: Stand Together
+  platform: lever
+  slug: standtogether
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 132 postings and kept 3 CS internships in Canada
+    or the US.
+- name: Stantec
+  platform: oracle_cloud
+  slug: hdhl
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: hdhl.fa.us6.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 182 postings and kept 5 CS internships in Canada
+    or the US.
+- name: Staples
+  platform: oracle_cloud
+  slug: fa-exhh-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: fa-exhh-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: StaplesInc
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Starburst
   platform: greenhouse
   slug: starburst
@@ -943,6 +1356,38 @@
   last_verified: 2026-08-16
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
     a live probe that matched the company name on the returned board'
+- name: State Affairs
+  platform: greenhouse
+  slug: stateaffairs
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 1 CS internship in Canada
+    or the US.
+- name: State Farm
+  platform: custom_json
+  slug: statefarm
+  rate_profile: patient
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'Jibe job hub JSON verified 2026-11-01 with keywords=intern: 14 US internships, 0
+    kept, though the MAGNet tech program postings were screened as an unknown role.'
+  custom:
+    url: https://jobs.statefarm.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://jobs.statefarm.com/main/jobs/{id}?lang=en-us
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: State of Nebraska
   platform: workday
   slug: son
@@ -963,6 +1408,23 @@
   workday_dc: wd1
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Stay22
+  platform: greenhouse
+  slug: stay22
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Montreal travel tech startup listed on the Real Ventures portfolio job board,
+    which links this Greenhouse board. A scratch sync on 2026-11-02 read 12 postings,
+    4 of them developer roles at its Montreal office, and kept no CS internship.
+- name: Steel
+  platform: ashby
+  slug: steel
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
 - name: StepStone Group
   platform: greenhouse
   slug: stepstone
@@ -973,6 +1435,31 @@
   slug: scm
   source_of_record: discover
   last_verified: *id003
+- name: Stifel
+  platform: custom_json
+  slug: stifel
+  rate_profile: patient
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Jibe job hub JSON from this employer's own apply links in the community feeds,
+    read with keywords=intern; a scratch sync on 2026-11-02 read 4 postings and kept 1
+    CS internship in the US.
+  custom:
+    url: https://stifel.jibeapply.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://stifel.jibeapply.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Stingray
   platform: custom_json
   slug: stingray
@@ -995,6 +1482,32 @@
   enabled: false
   notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
     Re-probed 2026-08-14 and still dead.'
+- name: Strada
+  platform: ashby
+  slug: stradahq
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 6 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Strada Education Foundation
+  platform: lever
+  slug: stradaeducation
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 14 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Stratolaunch
+  platform: greenhouse
+  slug: stratolaunch
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 73 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Strava
   platform: ashby
   slug: strava
@@ -1030,6 +1543,15 @@
   last_verified: *id008
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 12 job(s)'
+- name: Subtotal
+  platform: ashby
+  slug: subtotal
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 2 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Sumo Logic
   platform: greenhouse
   slug: sumologic
@@ -1099,6 +1621,7 @@
 - name: Susquehanna International Group (SIG)
   platform: custom_json
   slug: sig
+  rate_profile: patient
   source_of_record: discover
   last_verified: 2026-08-20
   notes: '2026-08-20: reopened — the iCIMS listing host is still closed, but this
@@ -1121,6 +1644,17 @@
     page_start: 1
     page_step: 1
     max_pages: 8
+- name: SWBC
+  platform: workday
+  slug: swbc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: swbc
+  workday_site: collegeinternships
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 7 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Sweatpals
   platform: ashby
   slug: sweatpals
@@ -1134,6 +1668,26 @@
   slug: swordhealth
   source_of_record: openjobs
   last_verified: *id004
+- name: Sycamore
+  platform: ashby
+  slug: sycamore
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Symbotic
+  platform: workday
+  slug: symbotic
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: symbotic
+  workday_site: Symbotic
+  workday_dc: wd504
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 8 CS internships in Canada
+    or the US.
 - name: Synchrony Financial
   platform: workday
   slug: synchronyfinancial
@@ -1180,6 +1734,14 @@
       id: path1
       url: loc
       location: path4_title
+- name: Syntiant
+  platform: workable
+  slug: syntiant
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Sysco
   platform: workday
   slug: sysco
@@ -1198,3 +1760,28 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; greenhouse/syskahennessy named itself
     with 109 jobs.'
+- name: Systems Planning and Analysis
+  platform: custom_json
+  slug: spa
+  rate_profile: patient
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Jibe job hub JSON from this employer's own apply links in the community feeds,
+    read with keywords=intern; a scratch sync on 2026-11-02 read 16 postings and kept 6
+    CS internships in the US.
+  custom:
+    url: https://spa.jibeapply.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://spa.jibeapply.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3

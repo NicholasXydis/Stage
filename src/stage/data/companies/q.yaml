@@ -1,3 +1,14 @@
+- name: Q2
+  platform: workday
+  slug: q2ebanking
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: q2ebanking
+  workday_site: Q2
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 6 CS internships in Canada
+    or the US.
 - name: Q5
   platform: workable
   slug: q5-partners
@@ -38,12 +49,14 @@
   notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
     evidence of the right company; needs a human to open the board once'
 - name: Quadric
-  platform: workable
-  slug: quadric-dot-i-o-inc
+  platform: ashby
+  slug: quadric
   source_of_record: discover
-  last_verified: 2026-08-17
-  notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
-    paused_until resumed it.'
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: The workable/quadric-dot-i-o-inc board has listed nothing since September, and
+    Quadric's feed apply links point at this Ashby board. A scratch sync on 2026-11-02
+    read 21 postings and kept 2 CS internships in Burlingame.
 - name: Quadrillion
   platform: ashby
   slug: quadrillion-labs
@@ -94,6 +107,14 @@
   enabled: false
   notes: '2026-08-08: lever publishes no board name, so a 200 with jobs is not evidence
     of the right company; needs a human to open the board once'
+- name: Quantiq
+  platform: greenhouse
+  slug: quantiq
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Quantlab
   platform: jobvite
   slug: quantlab
@@ -114,12 +135,52 @@
   slug: queracomputinginc
   source_of_record: discover
   last_verified: *id001
+- name: Questrade
+  platform: custom_json
+  slug: dayforce-qfg
+  source_of_record: manual
+  last_verified: 2026-11-02
+  rate_profile: conservative
+  notes: Toronto fintech whose careers page links this Dayforce board, read with the
+    csrf handshake like Eidos-Montreal. A scratch sync on 2026-11-02 read 81 postings,
+    35 of them software, data or QA roles in Toronto and Calgary, and kept no CS internship.
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/qfg/jobposting/search
+    method: POST
+    body:
+      clientNamespace: qfg
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/qfg/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+    max_pages: 20
 - name: Quince
   platform: greenhouse
   slug: quince
   source_of_record: openjobs
   last_verified: 2026-08-11
   name_gate_exempt: true
+- name: Qumulo
+  platform: ashby
+  slug: qumulo
+  source_of_record: manual
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Ashby board checked against its own Seattle postings for an employer whose CS
+    interns appear in the community feeds; a scratch sync on 2026-11-02 read 22 postings
+    and kept 1 CS internship in the US.
 - name: Quora
   platform: ashby
   slug: quora

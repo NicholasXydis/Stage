@@ -23,6 +23,28 @@
   last_verified: 2026-08-20
   notes: Its early-talent page server-renders greenhouse job ids, and the native board
     carries all 24 postings.
+- name: Daimler Truck
+  platform: workday
+  slug: dtna
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: dtna
+  workday_site: dtna_affiliate
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: Dairyland Power Cooperative
+  platform: workday
+  slug: dairynet
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: dairynet
+  workday_site: dpccareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Dallas College
   platform: workday
   slug: dallascollege
@@ -33,6 +55,17 @@
   workday_dc: wd1
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (50 posting(s), 0 kept)'
+- name: Dallas Fort Worth International Airport
+  platform: workday
+  slug: dfwairport
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: dfwairport
+  workday_site: External
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 15 postings and kept 2 CS internships whose
+    locations Stage could not parse.
 - name: Damen Shiprepair Harlingen
   platform: workday
   slug: damen
@@ -44,6 +77,17 @@
   workday_facet: workerSubType:1ab29651b443102311bddfb190170002,1ab29651b443102311bddf16ba660001
   notes: '2026-08-13: official Workday endpoint verified; its intern and dual-student
     facets total 12 listings.'
+- name: Danaher
+  platform: workday
+  slug: danaher
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: danaher
+  workday_site: danaherjobs
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 519 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Dark Slope
   platform: bamboohr
   slug: darkslope
@@ -79,6 +123,14 @@
   slug: databricks
   source_of_record: manual
   last_verified: &id001 2026-08-14
+- name: Datacor
+  platform: greenhouse
+  slug: datacor
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 13 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Datadog
   platform: greenhouse
   slug: datadog
@@ -101,6 +153,49 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: David Yurman
+  platform: workday
+  slug: davidyurman
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: davidyurman
+  workday_site: DavidYurmanCareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Dayforce
+  platform: custom_json
+  slug: dayforce-mydayforce
+  source_of_record: manual
+  last_verified: 2026-11-02
+  rate_profile: conservative
+  notes: Dayforce's careers page links its InternshipsandCoops board on its own Dayforce
+    tenant, which carries only student postings. A scratch sync on 2026-11-02 read
+    2 postings and kept none, because its Winter 2027 AI App and Tool Development
+    Intern in Toronto has a title the role screen does not yet read as CS.
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/mydayforce/jobposting/search
+    method: POST
+    body:
+      clientNamespace: mydayforce
+      jobBoardCode: InternshipsandCoops
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-US/mydayforce/InternshipsandCoops/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+    max_pages: 20
 - name: Dayshape
   platform: workable
   slug: dayshape
@@ -109,6 +204,16 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched workable/dayshape with 8 job(s) and the board named itself, so it is polled
     directly instead of secondhand'
+- name: dcbel
+  platform: bamboohr
+  slug: dcbel
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Montreal energy hardware and software startup listed on the Real Ventures
+    portfolio job board, which links this BambooHR board. A scratch sync on 2026-11-02
+    read 28 postings, 6 of them software, DevOps and test software roles in Montreal,
+    and kept no CS internship.
 - name: Decagon
   platform: ashby
   slug: decagon
@@ -124,6 +229,17 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (7 job(s))'
+- name: Dee Zee
+  platform: workday
+  slug: deezee
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: deezee
+  workday_site: DeeZee_Careers
+  workday_dc: wd108
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 40 postings and kept 1 CS internship in Canada
+    or the US.
 - name: deel.
   platform: ashby
   slug: deel
@@ -138,6 +254,17 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active software-engineering internship application
     verifies the public Ashby board.'
+- name: Definity Financial
+  platform: oracle_cloud
+  slug: hdks
+  source_of_record: manual
+  last_verified: 2026-11-01
+  oracle_host: hdks.fa.ca2.oraclecloud.com
+  oracle_site: CX_1
+  oracle_keyword: ''
+  notes: 'Oracle Cloud site CX_1 verified 2026-11-01 and read without a keyword because its
+    titles say Co-op/Intern: 57 postings, 5 co-op terms in Waterloo and Toronto, 0 kept as
+    CS.'
 - name: Dell
   platform: oracle_cloud
   slug: dell
@@ -259,6 +386,25 @@
   slug: dialpad
   source_of_record: openjobs
   last_verified: *id006
+- name: Dick's Sporting Goods
+  platform: workday
+  slug: dickssportinggoods
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: dickssportinggoods
+  workday_site: DSG
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 40 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: DiDi Global
+  platform: greenhouse
+  slug: didi
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 9 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Digital extremes
   platform: greenhouse
   slug: digitalextremes
@@ -274,6 +420,17 @@
   slug: diligentcorporation
   source_of_record: openjobs
   last_verified: *id006
+- name: Dimensional Fund Advisors
+  platform: workday
+  slug: dimensional
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: dimensional
+  workday_site: dfa_careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Discord
   platform: greenhouse
   slug: discord
@@ -301,6 +458,22 @@
     page_start: 1
     page_step: 1
     max_pages: 12
+- name: DivcoWest
+  platform: greenhouse
+  slug: divcowest
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Divergent Technologies
+  platform: greenhouse
+  slug: divergent
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 138 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Diversified Automation
   platform: lever
   slug: diversified-automation
@@ -308,6 +481,17 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active hardware-engineering co-op application verifies
     the public Lever board.'
+- name: Dmainc
+  platform: workday
+  slug: dmainc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: dmainc
+  workday_site: dma
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 17 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Dmg Media
   platform: greenhouse
   slug: dmgmedia
@@ -352,6 +536,9 @@
   slug: doctolib
   source_of_record: discover
   last_verified: *id001
+  enabled: false
+  recheck_after: 2027-03-01
+  notes: '2026-11-02: the Greenhouse board answers 404, and Doctolib hires in Europe only.'
 - name: Doctors Without Borders
   platform: greenhouse
   slug: msfcareers
@@ -362,11 +549,65 @@
   slug: docugami
   source_of_record: discover
   last_verified: *id001
+- name: Dollarama
+  platform: custom_json
+  slug: dollarama
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries all 68 postings, nearly all head-office
+    IT roles in Mont-Royal. A scratch sync on 2026-11-02 kept no CS internship; it
+    has posted AI automation interns before.
+  custom:
+    url: https://jobs.dollarama.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: Dominion Energy
+  platform: custom_json
+  slug: dominionenergy
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    76 postings and kept 1 CS internship in the US.
+  custom:
+    url: https://careers.dominionenergy.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: Domino Data Lab
+  platform: greenhouse
+  slug: dominodatalab
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Greenhouse token checked against the board's own name for an employer whose CS
+    interns appear in the community feeds; a scratch sync on 2026-11-02 read 20 postings
+    and kept 2 CS internships in the US.
 - name: Don't Nod
   platform: smartrecruiters
   slug: dontnod
   source_of_record: openjobs
   last_verified: 2026-08-14
+- name: Donaldson
+  platform: workday
+  slug: donaldson
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: donaldson
+  workday_site: donaldsoncareers
+  workday_dc: wd115
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 2 postings and kept 1 CS internship in Canada
+    or the US.
 - name: DoorDash
   platform: greenhouse
   slug: doordashusa
@@ -384,6 +625,25 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Dow Jones
+  platform: workday
+  slug: dowjones
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: dowjones
+  workday_site: Dow_Jones_Career
+  workday_dc: wd1
+  notes: Found through this employer's own apply links in the community feeds; the
+    tenant's New York Post site is a separate row. A scratch sync on 2026-11-02 read 55
+    postings and kept 5 CS internships in New York.
+- name: Doximity
+  platform: greenhouse
+  slug: doximity
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Board found through the employer's own careers site; a scratch sync on
+    2026-11-02 read 11 postings and kept no CS internship in Canada or the US, but this
+    employer hires CS interns most seasons.
 - name: DP World
   platform: oracle_cloud
   slug: ehpv
@@ -427,6 +687,26 @@
   source_of_record: discover
   last_verified: 2026-08-21
   notes: '2026-08-21: official careers page embeds the Dremio Greenhouse board.'
+- name: DriveTime
+  platform: workday
+  slug: drivetime
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: drivetime
+  workday_site: DriveTime
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 3 CS internships in Canada
+    or the US.
+- name: DriveWealth
+  platform: ashby
+  slug: drivewealth
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 27 postings and kept no CS internship in Canada or
+    the US, but its AI engineering interns appeared in the community feeds this season.
 - name: Dropbox
   platform: greenhouse
   slug: dropbox
@@ -458,6 +738,15 @@
   slug: drweng
   source_of_record: discover
   last_verified: *id001
+- name: DRW
+  platform: greenhouse
+  slug: drwfr
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: DRW's French-language Montreal board, found through the feeds' apply links; the
+    drweng board does not carry its Montreal internships. A scratch sync on 2026-11-02
+    read 8 postings and kept 1 CS internship in Montreal.
 - name: Dryft
   platform: ashby
   slug: dryft
@@ -467,6 +756,16 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (5 job(s))'
+- name: DTCC
+  platform: oracle_cloud
+  slug: ebxr
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: ebxr.fa.us2.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 29 postings and kept 3 CS internships in Canada
+    or the US.
 - name: dun bradstreet
   platform: lever
   slug: dnb

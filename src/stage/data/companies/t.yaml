@@ -1,3 +1,15 @@
+- name: T-Mobile
+  platform: workday
+  slug: tmobile
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: tmobile
+  workday_site: External
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 140 postings and kept 1 CS internship in Canada
+    or the US; the tenant offers no internship facet, so Stage crawls about 2,000
+    postings a few pages per run.
 - name: Taboola
   platform: greenhouse
   slug: taboola
@@ -60,11 +72,31 @@
   enabled: false
   notes: '2026-08-16: recruitment agency: posts client roles rather than its own,
     so its rows are third-hand data.'
+- name: Talos
+  platform: ashby
+  slug: talos-trading
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 21 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Tanium
   platform: greenhouse
   slug: tanium
   source_of_record: discover
   last_verified: 2026-08-21
+- name: Target
+  platform: workday
+  slug: target
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: target
+  workday_site: targetcareers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: tarte cosmetics
   platform: workable
   slug: tarte-inc
@@ -116,6 +148,22 @@
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset and the board answered
     with postings, but this platform publishes no board name, so provenance is the
     evidence rather than a name match.'
+- name: TechInsights
+  platform: custom_json
+  slug: techinsights
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: JazzHR board from this employer's own apply link in the community feeds, which
+    server-renders its list; a scratch sync on 2026-11-02 read 34 postings and kept 2 CS
+    co-ops in Ottawa.
+  custom:
+    url: https://techinsights.applytojob.com/apply
+    format: html
+    row_selector: li.list-group-item
+    fields:
+      title: h3 a
+      url: h3 a::attr(href)
+      location: li:has(> i.fa-map-marker)
 - name: Techtronic Industries
   platform: workday
   slug: tti
@@ -156,6 +204,14 @@
   slug: teleperformance
   source_of_record: discover
   last_verified: *id001
+- name: Telesat
+  platform: lever
+  slug: telesat
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Lever board behind the job list at telesat.com/careers. A scratch sync on
+    2026-11-02 read 52 postings and kept no CS internship, but this Ottawa satellite
+    operator posts embedded and systems software roles on a live board.
 - name: TELUS
   platform: custom_json
   slug: telus
@@ -173,6 +229,15 @@
       url: link
       location: g:location
       description: description
+- name: TELUS Digital
+  platform: ashby
+  slug: telus-digital
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-02 read 55 postings and kept 2 CS internships, one of them
+    in Vancouver.
 - name: TELUS Health
   platform: workday
   slug: lifeworks
@@ -209,11 +274,35 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Tenet3
+  platform: greenhouse
+  slug: tenet3
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 1 CS internship in Canada
+    or the US.
+- name: TensorWave
+  platform: ashby
+  slug: tensorwave
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 63 postings and kept 4 CS internships in Canada
+    or the US.
 - name: Tenstorrent
   platform: greenhouse
   slug: tenstorrent
   source_of_record: discover
   last_verified: *id001
+- name: Tenstorrent (university)
+  platform: greenhouse
+  slug: tenstorrentuniversity
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: The university board beside the main one, which keeps no internships. A scratch sync
+    on 2026-11-02 read 13 postings and kept 8 CS internships in Canada and the US.
 - name: Terminal
   platform: ashby
   slug: terminal
@@ -236,6 +325,14 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (11 job(s))'
+- name: Tevora
+  platform: lever
+  slug: tevora
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 27 postings and kept 16 CS internships in the US.
 - name: Texas A&M International University
   platform: workday
   slug: tamus
@@ -260,13 +357,34 @@
   platform: workday
   slug: thales
   source_of_record: openjobs
-  last_verified: 2026-10-20
+  last_verified: 2026-11-02
   recheck_after: 2027-01-20
   workday_tenant: thales
   workday_site: Careers
   workday_dc: wd3
-  notes: '2026-08-14: verified by a real sync — this board returned postings, which
-    is the only verification a Workday tenant can have without an offline probe'
+  workday_facet: locationCountry:a30a87ed25634629aa6c3958aa2b91ea,bc33aa3152ec42d4995f4791a106ed09
+  notes: '2026-11-02: pinned to Canada and the US. The internship facet held 924 postings,
+    almost all in France under city names Stage cannot place (Brest, Gennevilliers), and
+    the corrected Workday ids turned them into 275 open rows.'
+- name: The Aerospace Corporation
+  platform: workday
+  slug: aero
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: aero
+  workday_site: external
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 56 postings and kept 12 CS internships in Canada
+    or the US.
+- name: The Allen Institute for AI
+  platform: greenhouse
+  slug: thealleninstitute
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 16 postings and kept 1 CS internship in Canada
+    or the US.
 - name: The E.W. Scripps Company
   platform: workday
   slug: scripps
@@ -318,6 +436,22 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: The MJ Companies
+  platform: greenhouse
+  slug: themjcos
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 24 postings and kept 1 CS internship in Canada
+    or the US.
+- name: The New York Times
+  platform: greenhouse
+  slug: thenewyorktimes
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 158 postings and kept 1 CS internship in Canada
+    or the US.
 - name: The Nuclear Company
   platform: greenhouse
   slug: thenuclearcompany
@@ -328,6 +462,17 @@
   slug: theorchard
   source_of_record: openjobs
   last_verified: *id007
+- name: The Toro Company
+  platform: workday
+  slug: ttc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: ttc
+  workday_site: Toro_External_Careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 51 postings and kept 8 CS internships in Canada
+    or the US.
 - name: The Trade Desk
   platform: greenhouse
   slug: thetradedesk
@@ -360,6 +505,15 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Thinkific
+  platform: ashby
+  slug: thinkific
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Ashby board linked from thinkific.com/careers. A scratch sync on 2026-11-02 read
+    3 postings and kept no CS internship, but this is a Vancouver software employer with
+    a live board.
 - name: Thomson Reuters
   platform: workday
   slug: thomsonreuters
@@ -402,6 +556,15 @@
       location: location
       category: role
     url_template: https://www.thoughtworks.com/careers/jobs/{id}
+- name: Thrivent
+  platform: workday
+  slug: thrivent
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: thrivent
+  workday_site: external
+  workday_dc: wd5
+  notes: 'Workday site verified 2026-11-01: 3 intern postings, 1 kept as CS.'
 - name: Thumbtack
   platform: greenhouse
   slug: thumbtack
@@ -419,6 +582,17 @@
   workday_dc: wd12
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (4 posting(s), 0 kept)'
+- name: TIAA
+  platform: workday
+  slug: tiaa
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: tiaa
+  workday_site: Search
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 149 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Tier 9 Game Studios
   platform: breezy
   slug: tier-9-game-studios-ltd
@@ -435,9 +609,13 @@
   platform: custom_json
   slug: tiktok
   source_of_record: discover
-  last_verified: 2026-08-20
-  notes: The listing needs the website-path and accept-language headers its own bundle
-    sends; recruit type 202 is the publisher's Intern facet, so no keyword is used.
+  last_verified: 2026-11-02
+  notes: 'The listing needs the website-path and accept-language headers its own bundle
+    sends. Recruit type 202 is the publisher''s Intern facet, so no keyword is used.
+    2026-11-02: a scratch sync read 1,269 interns worldwide in 13 pages and kept 117
+    CS internships, every TikTok internship the community feeds carry. The board kept
+    its interns all season and the 14-day purge retired them. max_pages went from 14
+    to 18 so a busier season is not cut off.'
   custom:
     url: https://api.lifeattiktok.com/api/v1/public/supplier/search/job/posts
     method: POST
@@ -467,7 +645,7 @@
     page_param: offset
     page_size: 100
     page_step: 100
-    max_pages: 14
+    max_pages: 18
 - name: Tilde Research
   platform: ashby
   slug: tilderesearch
@@ -477,6 +655,17 @@
   enabled: false
   notes: '2026-10-31: api.ashbyhq.com answers 404 for this token on every sync since
     October, and stage discover found the employer on no other platform.'
+- name: TJX
+  platform: workday
+  slug: tjx
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: tjx
+  workday_site: tjx_external
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 13 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: TMEIC Corporation Americas
   platform: workable
   slug: tmeic-corporation-americas
@@ -501,6 +690,14 @@
   last_verified: 2026-08-21
   notes: '2026-08-21: official early-career page resolves to the live Toast Greenhouse
     board.'
+- name: TobogganLabs
+  platform: greenhouse
+  slug: tobogganlabs
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Together AI
   platform: greenhouse
   slug: togetherai
@@ -519,6 +716,15 @@
   notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
     7 jobs and needs-a-manual-check, the expected verdict where the platform publishes
     no board name; token equals the company name'
+- name: Top Hat
+  platform: ashby
+  slug: top-hat
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Ashby board linked from tophat.com/company/work-with-us. A scratch sync on
+    2026-11-02 read 6 postings and kept no CS internship, but this is a Toronto software
+    employer with a live board.
 - name: Toppan MErril
   platform: workday
   slug: toppanmerrill
@@ -549,6 +755,26 @@
   slug: towerresearchcapital
   source_of_record: openjobs
   last_verified: *id001
+- name: Tower Research Capital
+  platform: greenhouse
+  slug: capitalderecherchetower
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Tower's Montreal board, named Capital de Recherche Tower and embedded at
+    tower-research.ca; the towerresearchcapital board does not carry its Montreal
+    internships. A scratch sync on 2026-11-02 read 8 postings and kept 2 CS internships
+    in Montreal.
+- name: Toyota
+  platform: workday
+  slug: toyota
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: toyota
+  workday_site: TMNA
+  workday_dc: wd503
+  notes: Toyota Motor North America's site, found through the feeds' apply links. A
+    scratch sync on 2026-11-02 read 110 postings and kept 1 CS internship in Plano.
 - name: Toyota Research Institute
   platform: lever
   slug: tri
@@ -564,6 +790,23 @@
   last_verified: *id008
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Trace Labs
+  platform: ashby
+  slug: tracelabs
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Trace3
+  platform: greenhouse
+  slug: trace3
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 99 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Track VFX
   platform: lever
   slug: trackvfx
@@ -615,6 +858,15 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Travelers
+  platform: workday
+  slug: travelers
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: travelers
+  workday_site: External
+  workday_dc: wd5
+  notes: 'Workday site verified 2026-11-01: 76 intern postings, 2 kept as CS.'
 - name: Trek
   platform: workday
   slug: trekbikes
@@ -663,6 +915,17 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Trinity
+  platform: workday
+  slug: trinitylifesciences
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: trinitylifesciences
+  workday_site: trinity
+  workday_dc: wd108
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 4 CS internships in Canada
+    or the US.
 - name: Triotech
   platform: bamboohr
   slug: triotech
@@ -692,6 +955,25 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Trulioo
+  platform: ashby
+  slug: trulioo
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Vancouver identity verification company whose careers page links this Ashby
+    board. A scratch sync on 2026-11-02 read 25 postings, 4 of them software engineering
+    roles in Vancouver, and kept no CS internship.
+- name: TruStage
+  platform: workday
+  slug: trustage
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: trustage
+  workday_site: TruStage
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 28 postings and no facets, 2 internships, 1 kept
+    as CS.'
 - name: Truveta
   platform: greenhouse
   slug: truveta
@@ -736,6 +1018,16 @@
   slug: ttcglobal
   source_of_record: openjobs
   last_verified: *id007
+- name: TTM Technologies
+  platform: workday
+  slug: ttmtech
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: ttmtech
+  workday_site: jobs
+  workday_dc: wd5
+  notes: Board found through the employer's own careers site; a scratch sync on 2026-11-01
+    read 36 postings and kept 3 CS internships in Canada or the US.
 - name: Tuckernuck
   platform: bamboohr
   slug: tnuck
@@ -779,11 +1071,27 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: TWG Global
+  platform: workable
+  slug: twgai
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 13 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Twilio
   platform: greenhouse
   slug: twilio
   source_of_record: discover
   last_verified: *id001
+- name: Twitch
+  platform: greenhouse
+  slug: twitch
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 63 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Two Circles
   platform: workable
   slug: twocircles
@@ -822,3 +1130,11 @@
   notes: '2026-08-16: seen in feed postings but absent from the registry; discover
     matched greenhouse/twosixtechnologies with 59 job(s) and the board named itself,
     so it is polled directly instead of secondhand'
+- name: Tyler Technologies
+  platform: jobvite
+  slug: tylertech
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 124 postings and kept 1 CS internship in Canada
+    or the US.

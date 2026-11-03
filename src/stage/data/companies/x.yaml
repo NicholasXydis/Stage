@@ -9,12 +9,6 @@
   enabled: false
   notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
     422 for this site, so the closed-contract verdict stands on a fresh measurement.'
-- name: Xaira Therapeutics
-  platform: greenhouse
-  slug: xairatherapeutics
-  source_of_record: discover
-  last_verified: 2026-09-01
-  notes: '2026-09-01: verified 22 postings including an AI Scientist Intern in Seattle.'
 - name: X-energy
   platform: workday
   slug: xenergy
@@ -32,6 +26,12 @@
   last_verified: 2026-08-18
   name_gate_exempt: true
   notes: careers.x.com redirects to x.ai/careers, whose greenhouse board is xai.
+- name: Xaira Therapeutics
+  platform: greenhouse
+  slug: xairatherapeutics
+  source_of_record: discover
+  last_verified: 2026-09-01
+  notes: '2026-09-01: verified 22 postings including an AI Scientist Intern in Seattle.'
 - name: Xantium
   platform: greenhouse
   slug: xantium
@@ -40,6 +40,17 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched greenhouse/xantium with 7 job(s) and the board named itself, so it is
     polled directly instead of secondhand'
+- name: Xcel Energy
+  platform: workday
+  slug: xcelenergy
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: xcelenergy
+  workday_site: External
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 7 postings and kept 1 CS internship in Canada
+    or the US.
 - name: XPENG Motors
   platform: greenhouse
   slug: xpengmotors
@@ -50,6 +61,14 @@
   slug: xsolla
   source_of_record: openjobs
   last_verified: 2026-08-04
+- name: Xtillion
+  platform: greenhouse
+  slug: xtillion
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 1 CS internship in Canada
+    or the US.
 - name: XTX Markets
   platform: custom_json
   slug: xtx-markets

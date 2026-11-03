@@ -1,3 +1,11 @@
+- name: AArete
+  platform: jobvite
+  slug: aarete
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 22 postings and kept 2 CS internships in Canada
+    or the US.
 - name: ABB
   platform: workday
   slug: abb
@@ -39,6 +47,23 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (45 job(s))'
+- name: Absolute Software
+  platform: jobvite
+  slug: absolute
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: Board found through the employer's own careers site; a scratch sync on 2026-11-01
+    read 19 postings and kept no CS internship in Canada or the US, but this employer
+    hires CS interns most seasons.
+- name: Abundant
+  platform: ashby
+  slug: abundant
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 9 postings and kept 1 CS internship in Canada
+    or the US.
 - name: AccelData
   platform: lever
   slug: acceldata
@@ -61,6 +86,44 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (18 job(s))'
+- name: Ace Hardware
+  platform: workday
+  slug: acehardware
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: acehardware
+  workday_site: External
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
+- name: ACI Worldwide
+  platform: oracle_cloud
+  slug: ebwg
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: ebwg.fa.us2.oraclecloud.com
+  oracle_site: CX
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: ACLU
+  platform: greenhouse
+  slug: acluinternships
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 58 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Acron Aviation
+  platform: lever
+  slug: acronaviation
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 49 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Activate Games
   platform: bamboohr
   slug: activategames
@@ -129,6 +192,24 @@
     page_param: from
     page_size: 10
     max_pages: 8
+- name: Acuity
+  platform: custom_json
+  slug: acuity
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board, 290 postings in 5.5MB,
+    with Distech's Brossard roles. A scratch sync on 2026-11-02 kept 3 CS internships,
+    firmware in Brossard and data and AI in Atlanta.
+  custom:
+    url: https://careers.acuityinc.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Adaption Labs
   platform: ashby
   slug: adaption
@@ -150,6 +231,16 @@
   workday_tenant: adobe
   workday_site: external_experienced
   workday_dc: wd5
+- name: ADT
+  platform: oracle_cloud
+  slug: fa-erqb-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: fa-erqb-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Adtheorant
   platform: icims
   slug: cadent
@@ -273,6 +364,33 @@
   last_verified: 2026-08-21
   notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/agscareer/jobs
     server-renders all 15 postings, which is the contract this row polls'
+- name: AgZen
+  platform: ashby
+  slug: agzen
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
+- name: AiDash
+  platform: greenhouse
+  slug: aidashinc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 18 postings and kept 1 CS internship in Canada
+    or the US.
+- name: AIG
+  platform: workday
+  slug: aig
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: aig
+  workday_site: early_careers
+  workday_dc: wd1
+  notes: 'Workday early careers site verified 2026-11-01: 4 postings, 3 US internships, 0
+    kept as CS.'
 - name: Air Canada
   platform: custom_json
   slug: aircanada
@@ -316,6 +434,17 @@
     page_param: from
     page_size: 100
     max_pages: 3
+- name: Air Liquide
+  platform: workday
+  slug: airliquidehr
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: airliquidehr
+  workday_site: airliquideexternalcareer
+  workday_dc: wd3
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 86 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Air Transat
   platform: smartrecruiters
   slug: transatat1
@@ -397,6 +526,15 @@
   slug: akunacapital
   source_of_record: discover
   last_verified: *id008
+- name: Akuna Capital
+  platform: greenhouse
+  slug: akunacapitaloci
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Akuna's campus board, found through the feeds' apply links, carries the
+    per-school internship postings the akunacapital board does not. A scratch sync on
+    2026-11-02 read 17 postings and kept 5 CS internships in Chicago.
 - name: Al Warren Oil Company
   platform: workable
   slug: al-warren-oil-company-inc
@@ -418,6 +556,28 @@
   slug: alayacare
   source_of_record: discover
   last_verified: *id008
+- name: Alberta Investment Management Corporation
+  platform: workday
+  slug: aimco
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: aimco
+  workday_site: aimcocareers
+  workday_dc: wd10
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Alcon
+  platform: workday
+  slug: alcon
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: alcon
+  workday_site: careers_alcon
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Alertus Technologies
   platform: lever
   slug: alertus
@@ -449,6 +609,58 @@
   name_gate_exempt: true
   notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
     bamboohr publishes no board name, so provenance is the evidence (15 job(s))'
+- name: Allegion
+  platform: workday
+  slug: allegion
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: allegion
+  workday_site: careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 56 postings and kept 13 CS internships in Canada
+    or the US.
+- name: Allen Control Systems
+  platform: ashby
+  slug: allen-control-systems
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 22 postings and kept 4 CS internships in Canada
+    or the US.
+- name: AllianceBernstein
+  platform: workday
+  slug: abglobal
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: abglobal
+  workday_site: abcampuscareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 23 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Allied Solutions
+  platform: workday
+  slug: alliedsolutions
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: alliedsolutions
+  workday_site: Allied_External
+  workday_dc: wd501
+  notes: 'Workday site verified 2026-11-01: 7 intern postings, 0 kept as CS.'
+- name: Allstate
+  platform: workday
+  slug: allstate
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: allstate
+  workday_site: sourcing_event
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 3 CS internships in Canada
+    or the US; interns are posted on this sourcing_event site rather than the main
+    allstate_careers site.
 - name: Alpha Sense
   platform: greenhouse
   slug: alphasense
@@ -459,11 +671,14 @@
   slug: alphawave
   source_of_record: openjobs
   last_verified: 2026-10-20
-  recheck_after: 2027-01-20
+  recheck_after: 2027-03-01
   workday_tenant: alphawave
   workday_site: Alphawave_External
   workday_dc: wd10
-  notes: '2026-08-14: verified by a real sync — this board returned postings'
+  enabled: false
+  notes: '2026-11-02: switched off because the site moved. Qualcomm bought Alphawave
+    Semi, awavesemi.com/careers now redirects to Qualcomm, and this Workday site
+    answered empty all season. The Qualcomm row reads its postings.'
 - name: Alstom
   platform: custom_json
   slug: alstom
@@ -481,6 +696,17 @@
       location: g:location
       description: description
       category: g:job_function
+- name: Alston & Bird
+  platform: workday
+  slug: alston
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: alston
+  workday_site: externalcareer
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 28 postings and kept 1 CS internship in Canada
+    or the US.
 - name: AltaGas
   platform: workday
   slug: wgl
@@ -492,6 +718,14 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 1 posting(s), 1 kept after
     the CS-internship screens'
+- name: AltaLink
+  platform: workable
+  slug: altalink
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 18 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Altamira Technologies
   platform: jobvite
   slug: altamiracorps
@@ -499,11 +733,25 @@
   last_verified: 2026-08-21
   notes: '2026-08-21: the Jobvite API answers 401, but jobs.jobvite.com/altamiracorps/jobs
     server-renders all 53 postings, which is the contract this row polls'
+- name: AltaML
+  platform: lever
+  slug: altaml
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 7 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: ALTEN
   platform: smartrecruiters
   slug: alten
   source_of_record: discover
   last_verified: *id010
+  recheck_after: 2027-03-01
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. This SmartRecruiters board
+    lists about 1,271 open postings, mostly in Europe, and kept no CS internship in
+    Canada or the US all season.'
 - name: Altera Corporation
   platform: workday
   slug: altera
@@ -568,6 +816,14 @@
   name_gate_exempt: true
   notes: '2026-08-26: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (15 job(s))'
+- name: AMCA
+  platform: greenhouse
+  slug: amca
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 54 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Amcor
   platform: workday
   slug: amcor
@@ -581,13 +837,16 @@
 - name: AMD
   platform: custom_json
   slug: amd
+  rate_profile: patient
   source_of_record: discover
-  last_verified: 2026-08-20
-  notes: '2026-08-20: iCIMS careers-home site, a different contract from the icims.com
-    listing that was parked; /api/jobs returns full bodies and the board carries no
-    intern facet.'
+  last_verified: 2026-11-02
+  notes: '2026-11-02: the iCIMS careers-home API has no intern facet, so the row searches
+    keywords=intern, which also matches co-op titles through their descriptions. A scratch
+    sync read 105 postings in 2 pages and kept 25 CS internships, the same 25 a whole
+    read of 1,273 postings in 13 pages kept. The board kept its interns all season and
+    the 14-day purge retired them, which read as nothing kept.'
   custom:
-    url: https://careers.amd.com/api/jobs?limit=100
+    url: https://careers.amd.com/api/jobs?keywords=intern&limit=100
     jobs_path: jobs
     fields:
       title: data.title
@@ -602,17 +861,28 @@
     page_size: 100
     page_start: 1
     page_step: 1
-    max_pages: 16
+    max_pages: 5
+- name: AMEND Consulting
+  platform: greenhouse
+  slug: amendconsulting
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Amentum
   platform: workday
   slug: pae
   source_of_record: discover
   last_verified: *id001
+  recheck_after: 2027-03-01
   workday_tenant: pae
   workday_site: amentum_careers
   workday_dc: wd1
-  notes: '2026-08-14: verified by a real sync — this board returned postings, which
-    is the only verification a Workday tenant can have without an offline probe'
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. The Amentum board holds over
+    2,000 postings, so it never gets a whole read, and it kept no CS internship all
+    season.'
 - name: Ameren
   platform: workday
   slug: ameren
@@ -641,6 +911,39 @@
       location: g:location
       description: description
       category: g:job_function
+- name: American Bankers Association
+  platform: workday
+  slug: aba
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: aba
+  workday_site: aba
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
+- name: American Century Investments
+  platform: workday
+  slug: americancentury
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: americancentury
+  workday_site: AmericanCenturyInvestments
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
+- name: American Electric Power
+  platform: workday
+  slug: aep
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: aep
+  workday_site: AEPCareerSite
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 3 CS internships in Canada
+    or the US.
 - name: American Express
   platform: oracle_cloud
   slug: egug
@@ -651,6 +954,25 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 62 posting(s), 2 kept after
     the CS-internship screens'
+- name: American Family Insurance
+  platform: workday
+  slug: amfam
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: amfam
+  workday_site: Careers
+  workday_dc: wd1
+  notes: 'Workday main site verified 2026-11-01: its Intern facet holds 3 postings that are
+    not on the intern site, all 3 kept as CS.'
+- name: American Family Insurance (interns)
+  platform: workday
+  slug: amfam
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: amfam
+  workday_site: AmFamGroupInternCareers
+  workday_dc: wd1
+  notes: 'Workday intern site verified 2026-11-01: 13 intern postings, 7 kept as CS.'
 - name: American Fidelity
   platform: workday
   slug: americanfidelity
@@ -687,6 +1009,23 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Amperesand
+  platform: greenhouse
+  slug: amperesand
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 54 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Amplify
+  platform: ashby
+  slug: amplify
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 35 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Amplitude
   platform: ashby
   slug: amplitude
@@ -694,7 +1033,7 @@
   last_verified: 2026-10-20
   notes: '2026-10-20: greenhouse/amplitude answers 404; amplitude.com/careers now
     links jobs.ashbyhq.com/amplitude, which lists 39 roles.'
-- name: Analog Devices Thailand
+- name: Analog Devices
   platform: workday
   slug: analogdevices
   source_of_record: discover
@@ -704,6 +1043,15 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Analytic Partners
+  platform: lever
+  slug: analyticpartners
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Analytical Mechanics Associates
   platform: workday
   slug: amainc
@@ -737,6 +1085,23 @@
   slug: andurilindustries
   source_of_record: openjobs
   last_verified: *id008
+- name: Angel City
+  platform: greenhouse
+  slug: wfclainc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Antares Nuclear
+  platform: ashby
+  slug: antares
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 92 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Anthelion Capital
   platform: ashby
   slug: anthelioncap
@@ -785,6 +1150,30 @@
   last_verified: *id006
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Aon
+  platform: custom_json
+  slug: aon
+  rate_profile: patient
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'Jibe job hub JSON verified 2026-11-01 with keywords=intern: 44 postings, 28 North
+    American internships, 5 kept as CS.'
+  custom:
+    url: https://jobs.aon.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://jobs.aon.com/jobs/{id}?lang=en-us
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Apex Technology, Inc.
   platform: ashby
   slug: apex-technology-inc
@@ -803,6 +1192,13 @@
   workday_site: Apollo_Careers
   workday_dc: wd5
   notes: '2026-08-20: coordinates read from the owner-supplied careers URL; 67 postings.'
+- name: AppDirect
+  platform: greenhouse
+  slug: appdirect
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Board found through the employer's own careers page; a scratch sync on 2026-11-02
+    read 62 postings, most of them in Montreal, and kept no CS internship.
 - name: Appian
   platform: greenhouse
   slug: appian
@@ -848,6 +1244,14 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: AppLovin
+  platform: greenhouse
+  slug: applovin
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 43 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: ApplyBoard
   platform: workday
   slug: applyboard
@@ -904,6 +1308,47 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: ArangoDB
+  platform: custom_json
+  slug: arangodb
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: JazzHR board from this employer's own apply link in the community feeds, which
+    server-renders its list; a scratch sync on 2026-11-02 read 18 postings and kept 1 CS
+    internship, a remote one whose place Stage could not parse.
+  custom:
+    url: https://arangodb.applytojob.com/apply
+    format: html
+    row_selector: li.list-group-item
+    fields:
+      title: h3 a
+      url: h3 a::attr(href)
+      location: li:has(> i.fa-map-marker)
+- name: Arc
+  platform: greenhouse
+  slug: arcboatcompany
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 51 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Arcesium
+  platform: greenhouse
+  slug: arcesiumllc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 44 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Arch Capital Group
+  platform: workday
+  slug: archgroup
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: archgroup
+  workday_site: careers
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 23 intern postings, 1 kept as CS.'
 - name: Architect Labs
   platform: ashby
   slug: architect
@@ -913,6 +1358,16 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Arconic
+  platform: oracle_cloud
+  slug: hdnn
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: hdnn.fa.us6.oraclecloud.com
+  oracle_site: CX
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 27 postings and kept 5 CS internships in Canada
+    or the US.
 - name: Arctic Wolf
   platform: workday
   slug: arcticwolf
@@ -1023,6 +1478,15 @@
       id: path1
       url: loc
       location: path4_title
+- name: Armadin
+  platform: ashby
+  slug: armadin
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 27 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Arrowstreet Capital
   platform: workday
   slug: arrowstreetcapital
@@ -1052,11 +1516,13 @@
   slug: asmglobal
   source_of_record: discover
   last_verified: *id001
+  recheck_after: 2027-03-01
   workday_tenant: asmglobal
   workday_site: careers
   workday_dc: wd1
-  notes: '2026-08-14: verified by a real sync — this board returned postings, which
-    is the only verification a Workday tenant can have without an offline probe'
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. ASM Global posts venue and
+    event staff and kept no CS internship all season.'
 - name: ASML
   platform: workday
   slug: asml
@@ -1067,6 +1533,17 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: AspenTech
+  platform: workday
+  slug: aspentech
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: aspentech
+  workday_site: aspentech
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Assurant
   platform: workday
   slug: assurant
@@ -1087,6 +1564,14 @@
   slug: asteralabs
   source_of_record: discover
   last_verified: *id008
+- name: Astera Labs (early careers)
+  platform: greenhouse
+  slug: asteraearlycareer2027
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: The student board beside the main one, which keeps no internships. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    93 postings and kept 17 CS internships in the US and Canada.
 - name: Astranis
   platform: greenhouse
   slug: astranis
@@ -1103,6 +1588,24 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 120 posting(s), 0 kept after
     the CS-internship screens'
+- name: Astronics
+  platform: greenhouse
+  slug: astronicscorporation
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 91 postings and kept 1 CS internship in Canada
+    or the US.
+- name: AT&T
+  platform: workday
+  slug: att
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: att
+  workday_site: ATTcollege
+  workday_dc: wd1
+  notes: Board found through the employer's own careers site; a scratch sync on 2026-11-01
+    read 9 postings and kept 1 CS internship in Canada or the US.
 - name: Ataccama
   platform: lever
   slug: ataccama
@@ -1112,6 +1615,38 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (15 job(s))'
+- name: ATB Financial
+  platform: custom_json
+  slug: atb
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Alberta financial institution whose careers page links this Eightfold tenant,
+    read through the pcsx search like Boston Scientific. A scratch sync on 2026-11-02
+    read 54 postings, 13 of them security, cloud or software roles in Calgary and
+    Edmonton, and kept no CS internship.
+  custom:
+    url: https://atb.eightfold.ai/api/pcsx/search?domain=atb.com&query=&start=0&sort_by=relevance
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://atb.eightfold.ai/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
+- name: ATC
+  platform: workday
+  slug: atcllc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: atcllc
+  workday_site: atcllc
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 14 postings and kept 1 CS internship in Canada
+    or the US.
 - name: ATCO
   platform: oracle_cloud
   slug: eezy
@@ -1121,6 +1656,28 @@
   oracle_site: CX
   notes: The park cited a rotation budget that later moved; the board answers with
     79 postings.
+- name: Athene
+  platform: workday
+  slug: athene
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: athene
+  workday_site: athene_careers
+  workday_dc: wd5
+  notes: Workday site athene_careers on the tenant the Apollo Global Management row
+    reads, found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 8 postings and kept 1 CS internship in the US.
+- name: AtkinsRéalis
+  platform: workday
+  slug: slihrms
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: slihrms
+  workday_site: careers
+  workday_dc: wd3
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 26 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Atlassian
   platform: custom_json
   slug: atlassian
@@ -1138,6 +1695,15 @@
       location: locations.0
       description: overview
       category: category
+- name: Atom Computing
+  platform: lever
+  slug: atomcomputing
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 41 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Atomic cartoons
   platform: greenhouse
   slug: atomiccartoons
@@ -1145,9 +1711,13 @@
   last_verified: *id003
 - name: Atoms
   platform: greenhouse
-  slug: atoms
+  slug: cssmerge
   source_of_record: discover
-  last_verified: *id008
+  last_verified: 2026-11-02
+  notes: The feeds' apply links point at this board, which names itself ATOMS Careers
+    page. It repeats most titles of the atoms board this row read before and adds the
+    internships that board lacked. A scratch sync on 2026-11-02 read 338 postings and
+    kept 3 CS internships in the US.
 - name: ATS Automation
   platform: custom_json
   slug: atsautomation
@@ -1221,6 +1791,17 @@
       category: category
       employment_type: employmentType
       url: applyLink
+- name: Auto-Owners Insurance
+  platform: workday
+  slug: aoins
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: aoins
+  workday_site: AutoOwners
+  workday_dc: wd5
+  workday_facet: jobFamilyGroup:87fadf8c078701c789f8bc4cb02e4c27
+  notes: Workday site verified 2026-11-01 with the Intern job family pinned, which cuts 258
+    postings to 86 internships, 8 kept as CS.
 - name: Autodesk
   platform: workday
   slug: autodesk
@@ -1245,6 +1826,16 @@
   notes: '2026-08-16: seen in feed postings but absent from the registry; discover
     matched greenhouse/autoscout24 with 52 job(s) and the board named itself, so it
     is polled directly instead of secondhand'
+- name: AutoZone
+  platform: oracle_cloud
+  slug: egud
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: egud.fa.us2.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 27 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Avalanche Studios Group
   platform: lever
   slug: avalanchestudios
@@ -1268,6 +1859,25 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; smartrecruiters/averydennison named
     itself with 433 jobs.'
+- name: Avis Budget Group
+  platform: workday
+  slug: avisbudget
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: avisbudget
+  workday_site: abg_careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 1 CS internship whose locations
+    Stage could not parse.
+- name: Awardco
+  platform: greenhouse
+  slug: awardco
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Greenhouse token checked against the board's own name for an employer whose CS
+    interns appear in the community feeds; a scratch sync on 2026-11-02 read 6 postings
+    and kept 2 CS internships in the US.
 - name: Awetomaton
   platform: greenhouse
   slug: awetomaton
@@ -1275,6 +1885,26 @@
   last_verified: 2026-09-01
   notes: '2026-09-01: verified 10 postings including a Platform Engineering Intern
     in Beavercreek, OH.'
+- name: Axcelis Technologies
+  platform: workday
+  slug: axcelis
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: axcelis
+  workday_site: axcelis
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Axiom Math
+  platform: ashby
+  slug: axiommath
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Axiom Space
   platform: workday
   slug: axiomspace
@@ -1305,8 +1935,35 @@
   slug: axon
   source_of_record: openjobs
   last_verified: *id003
+- name: Axon
+  platform: greenhouse
+  slug: axontalentcommunity
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Axon's talent community board, found through the feeds' apply links, carries
+    its internship postings. A scratch sync on 2026-11-02 read 9 postings and kept 1 CS
+    internship in the US.
+- name: Axos Bank
+  platform: workday
+  slug: axos
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: axos
+  workday_site: Axos
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 46 postings and kept 3 CS internships in Canada
+    or the US.
 - name: AXQ Capital
   platform: greenhouse
   slug: axq
   source_of_record: discover
   last_verified: *id008
+- name: Azul Systems
+  platform: lever
+  slug: azul
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Found through this employer's own apply links in the community feeds; a scratch sync
+    on 2026-11-02 read 18 postings and kept 1 CS internship in the US.

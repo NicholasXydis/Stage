@@ -28,6 +28,15 @@
   workday_site: GSKCareers
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Happyrobot
+  platform: ashby
+  slug: happyrobot.ai
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 83 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Harman
   platform: workday
   slug: harman
@@ -90,6 +99,15 @@
   last_verified: 2026-08-20
   notes: '2026-08-20: owner-supplied careers URL; the board names itself Headlands
     Technologies LLC.'
+- name: Health Care Service Corporation (HCSC)
+  platform: workday
+  slug: hcsc
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: hcsc
+  workday_site: HCSC_External
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 28 intern postings, 8 kept as CS.'
 - name: HealthCorps
   platform: workable
   slug: healthcorpsorg
@@ -98,6 +116,16 @@
   notes: '2026-08-16: adopted from this employer''s own apply URL, then paused to
     match the rest of the workable platform, which is parked until 2026-08-18 after
     two 429s in one day.'
+- name: Hearst
+  platform: oracle_cloud
+  slug: eevd
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: eevd.fa.us6.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 21 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Heidelberg Materials
   platform: workday
   slug: heidelbergmaterials
@@ -161,13 +189,24 @@
   platform: workday
   slug: hpe
   source_of_record: manual
-  last_verified: 2026-08-13
+  last_verified: 2026-11-02
   workday_tenant: hpe
-  workday_site: acjobsite
+  workday_site: Jobsathpe
   workday_dc: wd5
   workday_facet: workerSubType:98cbd30d374e1033353f1fbd0c2452f5
-  notes: '2026-08-13: official Workday endpoint verified; its Temp Intern (Fixed Term)
-    facet has six listings.'
+  notes: The acjobsite site held six Temp Intern (Fixed Term) postings and no kept CS
+    internship, while HPE's feed apply links point at Jobsathpe, where the same facet
+    holds 173. A scratch sync on 2026-11-02 read the first 100 and kept 12 CS
+    internships in the US.
+- name: Hex Technologies
+  platform: ashby
+  slug: hex
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 39 postings and kept 1 CS internship in Canada
+    or the US.
 - name: HEXAWARE
   platform: oracle_cloud
   slug: fa-etqo-saasfaprod1
@@ -178,6 +217,31 @@
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
     endpoint has no offline probe, and this host and site come from the employer''s
     own application URL'
+- name: HeyGen
+  platform: greenhouse
+  slug: heygen
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 19 postings and kept 1 CS internship in Canada
+    or the US.
+- name: HF Sinclair
+  platform: custom_json
+  slug: hfsinclair
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    135 postings and kept 5 CS internships in the US.
+  custom:
+    url: https://careers.hfsinclair.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
 - name: High Voltage Software
   platform: workable
   slug: high-voltage-software
@@ -190,16 +254,51 @@
   slug: highdive
   source_of_record: openjobs
   last_verified: *id001
+- name: Highmark Health
+  platform: workday
+  slug: highmarkhealth
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: highmarkhealth
+  workday_site: highmark
+  workday_dc: wd1
+  workday_facet: jobFamilyGroup:a5e8692f5a3101037aedbf73176faee6
+  notes: Workday site verified 2026-11-01 with the Intern job family pinned, which cuts 1,969
+    postings to 107 internships, 17 kept as CS.
 - name: Highspot
   platform: lever
   slug: highspot
   source_of_record: openjobs
   last_verified: 2026-08-04
+  recheck_after: 2027-03-01
+  enabled: false
+  notes: '2026-11-02: switched off because the site moved. highspot.com/careers now
+    redirects to seismic.com/careers, and this Lever board answered empty all season.'
 - name: Hitachi
   platform: smartrecruiters
   slug: hitachisolutions
   source_of_record: openjobs
   last_verified: 2026-08-14
+- name: Hitachi
+  platform: workday
+  slug: hitachi
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: hitachi
+  workday_site: hitachi
+  workday_dc: wd1
+  notes: The Hitachi group tenant, found through the feeds' apply links; the other Hitachi
+    row is Hitachi Solutions on SmartRecruiters. A scratch sync on 2026-11-02 read 100 of
+    the 156 postings under its intern and student facets and kept 12 CS internships, 3
+    of them in Toronto.
+- name: Hive Financial Systems
+  platform: greenhouse
+  slug: hivefinancialsystems
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 7 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Hiverge
   platform: ashby
   slug: hiverge
@@ -238,6 +337,17 @@
   enabled: false
   notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
     evidence of the right company; needs a human to open the board once'
+- name: Home Depot
+  platform: workday
+  slug: homedepot
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: homedepot
+  workday_site: careerdepot
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 40 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Homebase
   platform: ashby
   slug: homebase
@@ -338,6 +448,14 @@
   slug: hyannisportresearch
   source_of_record: discover
   last_verified: *id004
+- name: HPS Investment Partners
+  platform: greenhouse
+  slug: hpsinterns
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 2 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Hubs.is
   platform: ashby
   slug: hubs.is
@@ -379,6 +497,26 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (12 job(s))'
+- name: Humana
+  platform: workday
+  slug: humana
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: humana
+  workday_site: humana_external_career_site
+  workday_dc: wd5
+  workday_facet: jobFamilyGroup:fbb60995c99901c52b0c6e4815c540c6
+  notes: Workday site verified 2026-11-01 with the Intern/Temp job family pinned, which cuts
+    225 postings to 8, 1 kept as CS.
+- name: Humble Robotics
+  platform: lever
+  slug: humble-robotics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 23 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Hunt Oil Company
   platform: oracle_cloud
   slug: fa-eqcd-saasfaprod1
@@ -389,6 +527,17 @@
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
     endpoint has no offline probe, and this host and site come from the employer''s
     own application URL'
+- name: Huntington Bancshares
+  platform: workday
+  slug: huntington
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: huntington
+  workday_site: HNBcareers
+  workday_dc: wd12
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 9 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Huntress
   platform: greenhouse
   slug: huntress
@@ -454,3 +603,12 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Hyphenate
+  platform: ashby
+  slug: hyphenate
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 15 postings and kept 1 CS internship in Canada
+    or the US.

@@ -1,3 +1,30 @@
+- name: Obsidian Entertainment
+  platform: custom_json
+  slug: obsidian
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: JazzHR board from this employer's own apply link in the community feeds, which
+    server-renders its list; a scratch sync on 2026-11-02 read 4 postings and kept 1 CS
+    internship in the US.
+  custom:
+    url: https://obsidian.applytojob.com/apply
+    format: html
+    row_selector: li.list-group-item
+    fields:
+      title: h3 a
+      url: h3 a::attr(href)
+      location: li:has(> i.fa-map-marker)
+- name: OCC
+  platform: workday
+  slug: theocc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: theocc
+  workday_site: careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 29 postings and kept 7 CS internships in Canada
+    or the US.
 - name: Occidental Petroleum
   platform: workday
   slug: oxy
@@ -25,6 +52,16 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Oceaneering
+  platform: oracle_cloud
+  slug: ebfr
+  source_of_record: discover
+  last_verified: 2026-11-02
+  oracle_host: ebfr.fa.us2.oraclecloud.com
+  oracle_site: CX_1
+  notes: Oracle recruiting site linked from oceaneering.com/careers, whose internships
+    the community feeds listed. A scratch sync on 2026-11-02 read 26 postings and kept
+    10 CS internships in Houston and Austin.
 - name: Octaura
   platform: greenhouse
   slug: octaura
@@ -65,11 +102,14 @@
   slug: osu
   source_of_record: discover
   last_verified: 2026-08-16
+  recheck_after: 2027-03-01
   workday_tenant: osu
   workday_site: OSUCareers
   workday_dc: wd1
-  notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
-    verified by a scratch sync (120 posting(s), 0 kept)'
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. OSUCareers is the Ohio State
+    University staff site and kept no CS internship all season (120 postings and none
+    kept when it was added on 2026-08-16).'
 - name: Oklo
   platform: greenhouse
   slug: oklo
@@ -94,13 +134,13 @@
   platform: workday
   slug: olg
   source_of_record: openjobs
-  last_verified: 2026-10-20
-  recheck_after: 2027-01-20
+  last_verified: 2026-11-02
   workday_tenant: olg
-  workday_site: Careers
+  workday_site: Careers-Students
   workday_dc: wd3
-  notes: '2026-08-14: verified by a real sync — this board returned postings, which
-    is the only verification a Workday tenant can have without an offline probe'
+  notes: OLG posts student roles on its Careers-Students site, not on the Careers site
+    this row read before, which kept no CS internship. A scratch sync on 2026-11-02 read
+    4 co-op postings and kept 1 CS internship in Sault Ste. Marie.
 - name: Oligo Space
   platform: ashby
   slug: oligo
@@ -157,6 +197,15 @@
   slug: onenergy
   source_of_record: discover
   last_verified: *id001
+- name: One Robot
+  platform: ashby
+  slug: onerobot
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
 - name: OneLocal
   platform: greenhouse
   slug: onelocal
@@ -164,6 +213,17 @@
   enabled: false
   notes: '2026-08-08: probed — board does not respond; re-resolve with discover --url
     Re-probed 2026-08-14 and still dead.'
+- name: OneMain Financial
+  platform: workday
+  slug: myhrhome
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: myhrhome
+  workday_site: OneMainCareers
+  workday_dc: wd1
+  notes: Found through this employer's own apply links in the community feeds; a scratch sync
+    on 2026-11-02 searched the board; the feeds carried its Data Science Analyst Intern
+    this season.
 - name: ONEOK
   platform: workday
   slug: oneok
@@ -216,6 +276,14 @@
   enabled: false
   notes: Greenhouse, Ashby and Lever tokens all fail and the careers page names no
     ATS host.
+- name: OpenSesame
+  platform: greenhouse
+  slug: opensesame
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: The board names itself OpenSesame. Found through this employer's own apply links in
+    the community feeds; a scratch sync on 2026-11-02 read 21 postings; the feeds carried
+    its AI Product Builder Intern this season.
 - name: OpenText
   platform: custom_json
   slug: opentext
@@ -360,6 +428,15 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Otto Engineering
+  platform: breezy
+  slug: otto-engineering-inc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 24 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Output Biosciences
   platform: ashby
   slug: output
@@ -369,3 +446,19 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (9 job(s))'
+- name: Overland AI
+  platform: custom_json
+  slug: rippling-overland-ai
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Rippling ATS public board API from this employer's own apply link in the
+    community feeds; a scratch sync on 2026-11-02 read 46 postings and kept 1 CS
+    internship in the US.
+  custom:
+    url: https://api.rippling.com/platform/api/ats/v1/board/overland-ai/jobs
+    fields:
+      title: name
+      id: uuid
+      url: url
+      location: workLocation.label
+      department: department.label

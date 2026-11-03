@@ -8,6 +8,17 @@
   workday_dc: wd3
   notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: IAT Insurance Group
+  platform: workday
+  slug: iatinsurancegroup
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: iatinsurancegroup
+  workday_site: iat
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 4 CS internships in Canada
+    or the US.
 - name: IBKR External
   platform: greenhouse
   slug: ibkrexternal
@@ -71,6 +82,43 @@
     page_size: 30
     page_step: 30
     max_pages: 12
+- name: ibotta
+  platform: ashby
+  slug: ibotta
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 45 postings and kept 4 CS internships in Canada
+    or the US.
+- name: ICBC
+  platform: custom_json
+  slug: icbc
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'Insurance Corporation of British Columbia. SuccessFactors RSS verified 2026-11-01:
+    9 postings, no internship.'
+  custom:
+    url: https://careers.icbc.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
+- name: ICF International
+  platform: workday
+  slug: icf
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: icf
+  workday_site: icfexternal_career_site
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 409 postings and kept 6 CS internships in Canada
+    or the US.
 - name: Icon Creative
   platform: bamboohr
   slug: iconcreative
@@ -78,6 +126,14 @@
   last_verified: &id001 2026-08-11
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 25 job(s)'
+- name: ID.me
+  platform: greenhouse
+  slug: idmeuniversityrecruiting
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 8 postings and kept 2 CS internships in Canada
+    or the US.
 - name: ideogram
   platform: ashby
   slug: ideogram
@@ -138,6 +194,14 @@
     page_param: from
     page_size: 10
     max_pages: 4
+- name: IEX
+  platform: greenhouse
+  slug: iex-interns
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 0 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: iFLIP4
   platform: smartrecruiters
   slug: iflip4
@@ -173,6 +237,13 @@
   workday_site: illumina-careers
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Illumio
+  platform: ashby
+  slug: illumio
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Ashby publishes no board name; the postings are Illumio's Sunnyvale security roles. A
+    scratch sync on 2026-11-02 read 64 postings and kept 2 CS internships in the US.
 - name: Image Engine
   platform: bamboohr
   slug: imageengine
@@ -185,6 +256,25 @@
   slug: imc
   source_of_record: discover
   last_verified: &id002 2026-08-14
+- name: Impulse Space
+  platform: custom_json
+  slug: impulsespace
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Pinpoint postings.json from this employer's own apply link in the community
+    feeds; a scratch sync on 2026-11-02 read 218 postings and kept 4 CS internships in
+    the US.
+  custom:
+    url: https://impulsespace.pinpointhq.com/postings.json
+    jobs_path: data
+    fields:
+      title: title
+      id: id
+      location: location
+      description: description
+      url: url
+      category: job.department
+      employment_type: employment_type
 - name: Inbulks
   platform: smartrecruiters
   slug: inbulkscorp
@@ -195,6 +285,17 @@
   slug: incidentiq
   source_of_record: discover
   last_verified: *id002
+- name: indie Semiconductor
+  platform: greenhouse
+  slug: indieinterns
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Greenhouse board indieinterns, embedded on indie.inc's internship page where
+    this employer's feed apply links lead (its main board indiesemiconductor lists no
+    interns); it publishes the name 'indie Interns', so the name gate rejects a correct
+    caption. A scratch sync on 2026-11-02 read 4 postings and kept 1 CS internship, in
+    Aliso Viejo, whose place Stage could not parse.
 - name: Indigo Books
   platform: smartrecruiters
   slug: indigobooksmusic
@@ -206,11 +307,13 @@
   platform: custom_json
   slug: infineon
   source_of_record: discover
-  last_verified: 2026-08-17
-  notes: Eightfold tenant; url_template added after 6 kept postings were found pointing
-    at the listing API instead of the job page.
+  last_verified: 2026-11-02
+  notes: '2026-11-02: the Eightfold intern search now names United States as its location.
+    Worldwide it read 279 postings over up to 30 pages and none outside the US was in
+    scope. A scratch sync read 29 postings in 3 pages and kept 4 CS internships. The
+    search takes one location, so the infineon-canada row reads Canada.'
   custom:
-    url: https://jobs.infineon.com/api/pcsx/search?domain=infineon.com&query=&location=&start=0&
+    url: https://jobs.infineon.com/api/pcsx/search?domain=infineon.com&query=intern&location=United%20States&start=0&
     jobs_path: data.positions
     fields:
       title: name
@@ -220,12 +323,40 @@
     url_template: https://jobs.infineon.com/careers/job/{id}
     page_param: start
     page_size: 10
-    max_pages: 20
+    max_pages: 10
+- name: Infineon
+  platform: custom_json
+  slug: infineon-canada
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: '2026-11-02: every Infineon posting in Canada, mostly Ottawa (Kanata), the former
+    GaN Systems. The Eightfold search takes one location, so the infineon row reads the
+    US. A scratch sync read 1 posting and no internship.'
+  custom:
+    url: https://jobs.infineon.com/api/pcsx/search?domain=infineon.com&query=&location=Canada&start=0&
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: locations
+      category: department
+    url_template: https://jobs.infineon.com/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 5
 - name: InfiniteQuant
   platform: smartrecruiters
   slug: infinitequant
   source_of_record: discover
   last_verified: *id003
+- name: Infleqtion
+  platform: workable
+  slug: coldquanta
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 53 postings and kept 1 CS internship in Canada
+    or the US.
 - name: InfluxData
   platform: ashby
   slug: influxdata
@@ -252,6 +383,17 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Ingredion
+  platform: workday
+  slug: ingredion
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: ingredion
+  workday_site: IngredionCareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 49 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Inherent
   platform: ashby
   slug: inherent
@@ -274,6 +416,25 @@
   notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
     careers page and the board answered with postings, but ashby publishes no board
     name, so provenance is the evidence rather than a name match'
+- name: Insomniac Games
+  platform: greenhouse
+  slug: insomniac
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 28 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Insperity
+  platform: workday
+  slug: insperity
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: insperity
+  workday_site: NSP
+  workday_dc: wd12
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 90 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Instacart
   platform: greenhouse
   slug: instacart
@@ -305,6 +466,17 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (44 job(s))'
+- name: Insulet
+  platform: workday
+  slug: insulet
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: insulet
+  workday_site: insuletcareers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 4 CS internships in Canada
+    or the US.
 - name: Intact
   platform: workday
   slug: intactfc
@@ -321,6 +493,23 @@
   slug: integra
   source_of_record: discover
   last_verified: *id002
+- name: Integra FEC (interns)
+  platform: greenhouse
+  slug: integrainterns
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: The intern board beside the main one. Found through this employer's own apply links in
+    the community feeds; a scratch sync on 2026-11-02 read 8 postings and kept 2 CS
+    internships in the US.
+- name: Integrate
+  platform: ashby
+  slug: integrate
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Intel
   platform: workday
   slug: intel
@@ -385,6 +574,31 @@
   slug: interco
   source_of_record: discover
   last_verified: *id003
+- name: Intercontinental Exchange
+  platform: custom_json
+  slug: ice
+  rate_profile: patient
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Jibe job hub JSON from this employer's own apply links in the community feeds,
+    read with keywords=intern; a scratch sync on 2026-11-02 read 55 postings and kept 18
+    CS internships in the US.
+  custom:
+    url: https://ice.jibeapply.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://ice.jibeapply.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Interdigital
   platform: workday
   slug: interdigital
@@ -405,7 +619,7 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
-- name: Internship
+- name: Interplay
   platform: ashby
   slug: interplay
   source_of_record: discover
@@ -426,9 +640,8 @@
   platform: custom_json
   slug: intuit-avature
   source_of_record: discover
-  last_verified: 2026-08-21
-  notes: '2026-08-21: supplied Avature facets returned two current co-op postings
-    through the server-rendered listing.'
+  last_verified: 2026-11-01
+  notes: Avature co-op and intern facets through the server-rendered listing; 36 postings on 2026-11-01.
   custom:
     url: https://jobs.intuit.com/search-jobs?acm=9205024,9205760,9205744&alrpm=ALL&ascf=%5B%7B%22key%22%3A%22ALL%22%2C%22value%22%3A%22%22%7D%5D
     format: html
@@ -443,12 +656,42 @@
     page_size: 15
     page_start: 1
     page_step: 1
-    max_pages: 2
+    max_pages: 6
 - name: Intuitive Surgical
   platform: smartrecruiters
   slug: intuitive
   source_of_record: discover
   last_verified: *id003
+- name: Inversion Space
+  platform: greenhouse
+  slug: inversionspace
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 90 postings and kept 3 CS internships in Canada
+    or the US.
+- name: Invesco
+  platform: workday
+  slug: invesco
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: invesco
+  workday_site: IVZearlycareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 9 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Invesco
+  platform: workday
+  slug: invesco
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: invesco
+  workday_site: IVZ
+  workday_dc: wd1
+  notes: Invesco's main site, found through the feeds' apply links; the other Invesco
+    row reads its early-careers site. A scratch sync on 2026-11-02 read 9 postings under
+    its Student/Intern facet and kept 1 CS internship in Boston.
 - name: Investissement Québec
   platform: workday
   slug: investquebec
@@ -471,6 +714,25 @@
   slug: ion
   source_of_record: openjobs
   last_verified: 2026-08-04
+- name: IonQ
+  platform: greenhouse
+  slug: ionq
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 122 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: iRhythm Technologies
+  platform: workday
+  slug: irhythmtech
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: irhythmtech
+  workday_site: irhythm
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Iron Mountain
   platform: workday
   slug: ironmountain
@@ -498,6 +760,17 @@
   workday_site: ISScareers
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings'
+- name: Itron
+  platform: workday
+  slug: itron
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: itron
+  workday_site: Early_Careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Ivy Tech Community College
   platform: workday
   slug: ivytech
@@ -508,3 +781,20 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Ixian Robotics
+  platform: ashby
+  slug: ixianrobotics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 7 postings and kept 1 CS internship in Canada
+    or the US.
+- name: IXL Learning
+  platform: greenhouse
+  slug: ixllearning
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Greenhouse token checked against the board's own name for an employer whose CS
+    interns appear in the community feeds; a scratch sync on 2026-11-02 read 119
+    postings and kept 1 CS internship in the US.

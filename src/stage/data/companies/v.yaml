@@ -8,6 +8,25 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Valmont
+  platform: workday
+  slug: valmont
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: valmont
+  workday_site: ValmontCareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 267 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Valsoft
+  platform: workable
+  slug: valsoft-corp
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Workable account for Valsoft and its subsidiaries, linked from valsoftcorp.com.
+    A scratch sync on 2026-11-02 read 272 postings and kept no CS internship; the
+    one intern was M&A, and its subsidiaries have posted software interns here.
 - name: Valstad
   platform: ashby
   slug: valstad
@@ -72,14 +91,13 @@
   last_verified: &id004 2026-08-11
 - name: Veeda AI
   platform: ashby
-  slug: veeda-labs
-  enabled: false
+  slug: veeda-ai
   source_of_record: discover
-  last_verified: *id002
+  last_verified: 2026-11-02
   name_gate_exempt: true
-  notes: '2026-09-03: disabled — ashby answers 404 for this token and no other platform
-    carries it. 2026-08-14: the token came from this employer''s own application URL
-    in a feed posting, not from slug guessing (6 job(s))'
+  notes: The veeda-labs token answers 404, and a feed apply link shows the employer now
+    posts under veeda-ai. A scratch sync on 2026-11-02 read 8 postings and kept 1 CS
+    internship in Toronto.
 - name: Veeva Systems
   platform: lever
   slug: veeva
@@ -130,6 +148,11 @@
   slug: veoliaenvironnementsa
   source_of_record: discover
   last_verified: &id005 2026-08-14
+  recheck_after: 2027-03-01
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. This SmartRecruiters board
+    lists about 2,899 open postings, most of them in Europe, takes up to 29 pages a read
+    and kept no CS internship in Canada or the US all season.'
 - name: Vercel
   platform: greenhouse
   slug: vercel
@@ -147,13 +170,16 @@
   workday_dc: wd1
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
-- name: Verkada
-  platform: greenhouse
-  slug: verkada
+- name: Verisk
+  platform: oracle_cloud
+  slug: fa-ewmy-saasfaprod1
   source_of_record: discover
-  last_verified: 2026-08-31
-  notes: '2026-08-31: verified 282 postings including five 2027 SWE internships in
-    San Mateo.'
+  last_verified: 2026-11-01
+  oracle_host: fa-ewmy-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Verition Group
   platform: greenhouse
   slug: veritiongroupllc
@@ -161,6 +187,35 @@
   last_verified: 2026-08-20
   notes: '2026-08-20: owner-supplied careers URL; the board names itself Verition
     Group LLC and carries 2027 internships.'
+- name: Verizon Communications
+  platform: workday
+  slug: verizon
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: verizon
+  workday_site: verizon-careers
+  workday_dc: wd12
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 1 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: Verkada
+  platform: greenhouse
+  slug: verkada
+  source_of_record: discover
+  last_verified: 2026-08-31
+  notes: '2026-08-31: verified 282 postings including five 2027 SWE internships in
+    San Mateo.'
+- name: Vertex Pharmaceuticals
+  platform: workday
+  slug: vrtx
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: vrtx
+  workday_site: vertex_careers
+  workday_dc: wd501
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 41 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Vertiv
   platform: oracle_cloud
   slug: vertiv
@@ -181,6 +236,25 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Vestmark
+  platform: greenhouse
+  slug: internrecruiting
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 6 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Veterans United
+  platform: workday
+  slug: veteransunited
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: veteransunited
+  workday_site: VUHL
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 35 postings and kept 1 CS internship in Canada
+    or the US.
 - name: VetsEZ
   platform: breezy
   slug: vetsez
@@ -195,6 +269,33 @@
   slug: vgw
   source_of_record: openjobs
   last_verified: *id004
+- name: VIA Rail
+  platform: custom_json
+  slug: viarail
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries all 26 postings. A scratch sync on 2026-11-02
+    kept no CS internship; its student roles post each season.
+  custom:
+    url: https://careers.viarail.ca/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: Viavi Solutions
+  platform: workday
+  slug: viavisolutions
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: viavisolutions
+  workday_site: careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 9 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Videotron
   platform: smartrecruiters
   slug: Videotron
@@ -219,6 +320,15 @@
       title: name
       id: id
       location: location
+- name: Viget
+  platform: lever
+  slug: viget
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Viking Global
   platform: greenhouse
   slug: vikingglobalinvestors
@@ -243,10 +353,26 @@
   source_of_record: discover
   last_verified: *id006
 - name: Visa
-  platform: smartrecruiters
+  platform: workday
   slug: visa
-  source_of_record: openjobs
-  last_verified: *id005
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: visa
+  workday_site: Visa_Early_Careers
+  workday_dc: wd5
+  notes: The smartrecruiters/visa board answers with no postings, and Visa's apply links
+    in the community feeds point at this Workday early-careers site. A scratch sync on
+    2026-11-02 read 50 postings in its Intern job family and kept 12 CS internships in
+    the US.
+- name: Visier
+  platform: ashby
+  slug: visier
+  source_of_record: manual
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Board found through the employer's own careers site; a scratch sync on
+    2026-11-02 read 3 postings and kept no CS internship in Canada or the US (its one
+    intern posting is in Singapore), but this employer hires Vancouver co-ops each term.
 - name: Vital Lyfe
   platform: ashby
   slug: vital-lyfe
@@ -319,6 +445,33 @@
   last_verified: 2026-08-20
   notes: '2026-08-20: the careers page answers 403 from CloudFront, but the greenhouse
     board behind it is open and names itself Vooban.'
+- name: Vosker
+  platform: smartrecruiters
+  slug: Vosker
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Sherbrooke and Montreal camera maker whose careers page links this SmartRecruiters
+    board. A scratch sync on 2026-11-02 read 28 postings, 11 of them software and
+    embedded roles in Montreal, and kept no CS internship.
+- name: Voyager Technologies
+  platform: greenhouse
+  slug: voyagertechnologiesinc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 191 postings and kept 2 CS internships whose
+    locations Stage could not parse.
+- name: VSP Vision
+  platform: workday
+  slug: vsp
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: vsp
+  workday_site: vspvisioncareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 36 postings and kept 4 CS internships in Canada
+    or the US.
 - name: VWH Capital Management
   platform: smartrecruiters
   slug: vwhcapitalmanagementlp

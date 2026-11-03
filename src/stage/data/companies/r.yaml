@@ -36,11 +36,39 @@
   last_verified: &id002 2026-08-11
   notes: '2026-08-11: enabled on slug evidence - ashby publishes no board name, but
     the slug folds to the caption and the board returned 128 job(s)'
+- name: Range
+  platform: ashby
+  slug: range
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 65 postings and kept 1 CS internship in Canada
+    or the US.
 - name: RAPP
   platform: greenhouse
   slug: rapp
   source_of_record: openjobs
   last_verified: &id005 2026-08-11
+- name: RAVE Aerospace
+  platform: workable
+  slug: raveaerospace
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Raymond James Financial
+  platform: workday
+  slug: raymondjames
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: raymondjames
+  workday_site: RaymondJamesEarlyCareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Razer
   platform: workday
   slug: razer
@@ -71,6 +99,25 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched greenhouse/readystate with 1 job(s) and the board named itself, so it
     is polled directly instead of secondhand'
+- name: Real-Time Innovations
+  platform: greenhouse
+  slug: rti
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 8 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
+- name: Realty Income
+  platform: workday
+  slug: realtyincome
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: realtyincome
+  workday_site: realty_income_careers
+  workday_dc: wd108
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Recursion
   platform: greenhouse
   slug: recursionpharmaceuticals
@@ -100,6 +147,13 @@
   workday_dc: wd5
   notes: '2026-08-21: supplied URL exposes the Workday tenant, site, and data center;
     endpoint returned live postings.'
+- name: Red Ventures
+  platform: greenhouse
+  slug: redventures
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 60 postings and kept 2 CS internships in the US.
 - name: Reddit
   platform: greenhouse
   slug: reddit
@@ -116,6 +170,15 @@
   slug: redwoodmaterials
   source_of_record: discover
   last_verified: *id003
+- name: Reflect Orbital
+  platform: ashby
+  slug: reflect-orbital
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 17 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Reflector Entertainment
   platform: custom_json
   slug: dayforce-ref
@@ -146,7 +209,7 @@
     page_size: 25
     page_step: 25
     max_pages: 20
-- name: reflector entertainment
+- name: Reflector Entertainment
   platform: recruitee
   slug: reflectorentertainment
   source_of_record: openjobs
@@ -161,6 +224,28 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched smartrecruiters/regdeskinc with 2 job(s) and the board named itself, so
     it is polled directly instead of secondhand'
+- name: Regeneron Pharmaceuticals
+  platform: workday
+  slug: regeneron
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: regeneron
+  workday_site: Careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 55 postings and kept 14 CS internships whose
+    locations Stage could not parse.
+- name: Regions Bank
+  platform: workday
+  slug: regions
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: regions
+  workday_site: regions_careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 40 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Reitmans
   platform: smartrecruiters
   slug: reitmanscanadalteltd
@@ -175,13 +260,30 @@
   last_verified: 2026-08-20
   notes: '2026-08-20: reached from the owner''s RippleMatch link; the greenhouse board
     names itself Relativity Space.'
-- name: relic entertainment
+- name: Relay
+  platform: greenhouse
+  slug: relaypro
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 24 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Relic Entertainment
   platform: bamboohr
   slug: relicentertainment
   source_of_record: openjobs
   last_verified: *id002
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 1 job(s)'
+- name: Relling
+  platform: ashby
+  slug: relling
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Reltio
   platform: greenhouse
   slug: reltio
@@ -264,6 +366,28 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; lever publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (40 job(s))'
+- name: Republic Airways
+  platform: workday
+  slug: rjet
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: rjet
+  workday_site: External_Career_Site
+  workday_dc: wd108
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship whose locations
+    Stage could not parse.
+- name: ResMed
+  platform: workday
+  slug: resmed
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: resmed
+  workday_site: resmed_external_careers
+  workday_dc: wd3
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Resolver
   platform: jobvite
   slug: resolver
@@ -283,6 +407,15 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: Resurgent Industries
+  platform: ashby
+  slug: resurgent-industries
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 15 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Retool
   platform: custom_json
   slug: retool
@@ -314,6 +447,17 @@
       department: job.department.name
       employment_type: job.employmentType
     url_template: https://jobs.gem.com/retool/{id}
+- name: Revantage
+  platform: workday
+  slug: revantage
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: revantage
+  workday_site: revantage
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 2 postings and kept 1 CS internship in Canada
+    or the US.
 - name: ReversingLabs
   platform: workable
   slug: reversinglabs
@@ -352,6 +496,16 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 120 posting(s), 1 kept after
     the CS-internship screens'
+- name: RGA (Reinsurance Group of America)
+  platform: workday
+  slug: rgare
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: rgare
+  workday_site: Careers
+  workday_dc: wd1
+  notes: 'Workday site named by the rgarecareers.com apply links verified 2026-11-01: 5 intern
+    postings, 4 in the US, 0 kept as CS.'
 - name: Rho
   platform: ashby
   slug: rho
@@ -361,6 +515,15 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (43 job(s))'
+- name: Rhoda AI
+  platform: ashby
+  slug: rhoda-ai
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 42 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Riot Games
   platform: greenhouse
   slug: riotgames
@@ -389,6 +552,17 @@
       location: workLocation.label
       url: url
       category: department.label
+- name: Risepoint
+  platform: workday
+  slug: risepoint
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: risepoint
+  workday_site: Risepoint
+  workday_dc: wd503
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Riveron
   platform: ashby
   slug: riveron
@@ -408,6 +582,7 @@
 - name: Rivian
   platform: custom_json
   slug: rivian
+  rate_profile: patient
   source_of_record: discover
   last_verified: 2026-08-19
   notes: iCIMS career-site (careers-home) JSON API, which is a different contract
@@ -459,6 +634,15 @@
   slug: roblox
   source_of_record: discover
   last_verified: *id003
+- name: Robotiq
+  platform: bamboohr
+  slug: robotiq
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Robotics company in Lévis whose careers page embeds this BambooHR board.
+    A scratch sync on 2026-11-02 read 9 postings, 4 of them web and embedded developer
+    roles in Lévis, and kept no CS internship.
 - name: Roche
   platform: workday
   slug: roche
@@ -493,6 +677,17 @@
   slug: rockstargames
   source_of_record: openjobs
   last_verified: *id005
+- name: Rockwell Automation
+  platform: workday
+  slug: rockwellautomation
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: rockwellautomation
+  workday_site: External-Rockwell-Automation-Early-Careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 41 postings and kept 10 CS internships in Canada
+    or the US.
 - name: Rodeo FX
   platform: smartrecruiters
   slug: rodeofx
@@ -515,6 +710,13 @@
       location: g:location
       description: description
       category: g:job_function
+- name: Roku
+  platform: greenhouse
+  slug: roku
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: The board names itself Roku. A scratch sync on 2026-11-02 read 82 postings and kept 1
+    CS internship in the US.
 - name: Rolls-Royce
   platform: workday
   slug: rollsroyce
@@ -526,6 +728,23 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: RosaicLabs
+  platform: lever
+  slug: rosaiclabs
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 9 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Ross Video
+  platform: jobvite
+  slug: ross-video-careers
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 18 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Rovio
   platform: lever
   slug: rovio-2
@@ -574,6 +793,14 @@
   slug: rubrik
   source_of_record: discover
   last_verified: 2026-08-21
+- name: Rugged Robotics
+  platform: greenhouse
+  slug: ruggedrobotics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Runway
   platform: ashby
   slug: runway
@@ -599,6 +826,17 @@
   slug: rushstreetinteractive
   source_of_record: openjobs
   last_verified: *id005
+- name: Ryan
+  platform: workday
+  slug: ryan
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: ryan
+  workday_site: RyanCareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 35 postings and kept 5 CS internships in Canada
+    or the US.
 - name: Rystad Energy
   platform: workable
   slug: rystad-energy

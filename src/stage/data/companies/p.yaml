@@ -8,6 +8,47 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: PACCAR
+  platform: custom_json
+  slug: paccar
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    267 postings and kept 10 CS internships in the US.
+  custom:
+    url: https://jobs.paccar.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: Pacific Blue Cross
+  platform: custom_json
+  slug: pacific-bluecross
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'Brainhunter board embedded in pac.bluecross.ca verified 2026-11-01: 20 postings, and
+    sorting oldest first shows the same 20, so the one page is the whole board. No internship.'
+  custom:
+    url: https://www.brainhunter.com/frontoffice/enterSeekerHomeAction.do?sitecode=pl527
+    format: html
+    row_selector: tr:has(> td > div > a.joblisttable_link)
+    fields:
+      title: a.joblisttable_link
+      url: a.joblisttable_link::attr(href)
+      location: td:nth-of-type(3)
+- name: Pacific Life
+  platform: workday
+  slug: pacificlife
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: pacificlife
+  workday_site: pacificlifecareers
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 8 intern postings, 2 kept as CS.'
 - name: PagerDuty
   platform: greenhouse
   slug: pagerduty
@@ -64,6 +105,7 @@
 - name: Panasonic North America
   platform: custom_json
   slug: panasonic-na
+  rate_profile: patient
   source_of_record: discover
   last_verified: 2026-08-20
   notes: '2026-08-20: iCIMS careers-home site, the same contract as the AMD row; this
@@ -85,6 +127,41 @@
     page_start: 1
     page_step: 1
     max_pages: 8
+- name: Pangram Labs
+  platform: ashby
+  slug: pangramlabs
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 15 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Papa John's
+  platform: workday
+  slug: papajohns
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: papajohns
+  workday_site: papajohnscareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Parallel Systems
+  platform: greenhouse
+  slug: parallel
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
+- name: ParetoHealth
+  platform: greenhouse
+  slug: paretocaptiveservicesllc
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Found through this employer's own apply links in the community feeds; a scratch sync
+    on 2026-11-02 read 37 postings and kept 2 CS internships in the US.
 - name: Parsons
   platform: custom_json
   slug: parsons
@@ -112,15 +189,49 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (42 job(s))'
-- name: Patsnap
-  platform: lever
-  slug: patsnap
+- name: Path Robotics
+  platform: greenhouse
+  slug: pathrobotics
   source_of_record: discover
-  last_verified: *id001
+  last_verified: 2026-11-02
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-02 read 65 postings and kept no CS internship, but its
+    machine learning and robotics internship was listed earlier this season.
+- name: Patreon
+  platform: ashby
+  slug: patreon
+  source_of_record: discover
+  last_verified: 2026-11-01
   name_gate_exempt: true
-  notes: '2026-08-14: board token taken from this employer''s own application URL
-    in a feed posting, not from slug guessing; lever publishes no board name, so the
-    name gate cannot confirm it and provenance is the evidence (32 job(s))'
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 19 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Patsnap
+  platform: recruitee
+  slug: patsnap
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: '2026-11-02: moved from lever/patsnap, which answered empty all season. Its
+    careers site, careers.patsnap.com, is the Recruitee account patsnap. A scratch sync
+    read 41 postings, 3 of them internships in Singapore, and kept none.'
+- name: Pattern
+  platform: lever
+  slug: pattern
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 99 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Payfacto
+  platform: bamboohr
+  slug: payfacto
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Montreal payments company found with stage discover and checked by hand against
+    its Montreal titles. A scratch sync on 2026-11-02 read 3 postings, all of them
+    developer or data roles in Montreal, and kept no CS internship.
 - name: Payoneer
   platform: greenhouse
   slug: payoneer
@@ -167,6 +278,13 @@
   slug: pdtpartners
   source_of_record: discover
   last_verified: *id002
+- name: Peak Energy
+  platform: greenhouse
+  slug: peakenergy
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 25 postings and kept 5 CS internships in the US.
 - name: PEAK6
   platform: custom_json
   slug: peak6
@@ -238,6 +356,15 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (92 job(s))'
+- name: Pebl
+  platform: ashby
+  slug: pebl
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 30 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Pelmorex
   platform: lever
   slug: pelmorex
@@ -296,6 +423,7 @@
 - name: PepsiCo
   platform: custom_json
   slug: pepsico
+  rate_profile: patient
   source_of_record: discover
   last_verified: 2026-08-21
   notes: '2026-08-21: keyword and category params are ignored but country is honoured,
@@ -317,13 +445,31 @@
     page_step: 1
     max_pages: 35
 - name: Peraton
-  platform: icims
+  platform: custom_json
   slug: peraton
+  rate_profile: patient
   source_of_record: discover
-  enabled: false
-  notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
-    and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
-    on its icims.com host is 404.'
+  last_verified: 2026-11-02
+  notes: The icims row was off because the icims.com host has no /api/jobs; this
+    employer's own apply links in the community feeds point at a Jibe job hub on
+    peraton.jibeapply.com, read with keywords=intern. A scratch sync on 2026-11-02 read
+    70 postings and kept 9 CS internships in the US.
+  custom:
+    url: https://peraton.jibeapply.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://peraton.jibeapply.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Periodic Labs
   platform: ashby
   slug: periodic-labs
@@ -333,6 +479,14 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (26 job(s))'
+- name: Perpay
+  platform: greenhouse
+  slug: perpay
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 23 postings and kept 6 CS internships in Canada
+    or the US.
 - name: Perplexity AI
   platform: ashby
   slug: perplexity
@@ -463,6 +617,15 @@
       url: url
       category: job.department
       employment_type: employment_type
+- name: Physical Intelligence
+  platform: ashby
+  slug: physicalintelligence
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 44 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Picton Mahoney Asset Management
   platform: bamboohr
   slug: pictonmahoney
@@ -480,6 +643,14 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (10 job(s))'
+- name: Pilot Company
+  platform: smartrecruiters
+  slug: pilotcompany
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 1934 postings and kept 2 CS internships in Canada
+    or the US.
 - name: PIMCO
   platform: workday
   slug: pimco
@@ -554,6 +725,24 @@
   workday_dc: wd504
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Plot Technologies
+  platform: ashby
+  slug: plot
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Plotly
+  platform: ashby
+  slug: plotly
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Montreal data tooling company listed on the Real Ventures portfolio job board,
+    which links this Ashby board. A scratch sync on 2026-11-02 read 4 postings, 2
+    of them software engineering roles in Canada, and kept no CS internship.
 - name: Plug power
   platform: workday
   slug: plugpower
@@ -624,6 +813,17 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Poet
+  platform: workday
+  slug: poet
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: poet
+  workday_site: POET
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Point C
   platform: greenhouse
   slug: pointc
@@ -634,6 +834,15 @@
   slug: point72
   source_of_record: discover
   last_verified: *id002
+- name: PointClickCare
+  platform: lever
+  slug: pointclickcare
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Mississauga health software company whose careers page links this Lever board.
+    A scratch sync on 2026-11-02 read 70 postings, 30 of them software, ML or QA roles
+    in Canada and the US, and kept no CS internship.
 - name: Poka
   platform: greenhouse
   slug: poka
@@ -696,6 +905,15 @@
   last_verified: 2026-08-20
   notes: '2026-08-20: careers-page ATS scan found the lever board; the token is capitalised
     and lever is case-sensitive, so the lowercase form answers 404.'
+- name: Powertown
+  platform: ashby
+  slug: powertown
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 8 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Pratt & Whitney Canada
   platform: workday
   slug: globalhr
@@ -712,6 +930,38 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; workable/praytell named itself with
     8 jobs.'
+- name: Pretium
+  platform: greenhouse
+  slug: pretiuminternships2027
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Principal Financial Group
+  platform: custom_json
+  slug: principal
+  rate_profile: patient
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'Jibe job hub JSON verified 2026-11-01 with keywords=intern: 36 postings, 5 US internships
+    and the rest in Chile, 1 kept as CS.'
+  custom:
+    url: https://careers.principal.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://careers.principal.com/jobs/{id}?lang=en-us
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Prior Labs
   platform: ashby
   slug: prior-labs
@@ -720,11 +970,37 @@
   name_gate_exempt: true
   notes: '2026-08-16: token from this employer''s own apply URL, not slug guessing;
     ashby publishes no board name, so provenance is the evidence (16 job(s))'
+- name: PrizePicks
+  platform: greenhouse
+  slug: prizepicks
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 31 postings and kept 3 CS internships in the US.
 - name: ProCogia
   platform: greenhouse
   slug: procogia
   source_of_record: discover
   last_verified: *id002
+- name: Profluent
+  platform: greenhouse
+  slug: profluent
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Prologis
+  platform: workday
+  slug: prologis
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: prologis
+  workday_site: Prologis_External_Careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 109 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Promutuel
   platform: workday
   slug: promutuel
@@ -752,6 +1028,14 @@
   workday_dc: wd5
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Protagonist
+  platform: greenhouse
+  slug: protagonist
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Protech Automotive Solutions
   platform: workday
   slug: calibercollision
@@ -762,6 +1046,17 @@
   workday_dc: wd1
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (117 posting(s), 0 kept)'
+- name: Protiviti
+  platform: workday
+  slug: roberthalf
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: roberthalf
+  workday_site: ProtivitiNA
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 154 postings and kept 6 CS internships in Canada
+    or the US.
 - name: Prudential Financial
   platform: workday
   slug: pru
@@ -808,13 +1103,31 @@
   workday_dc: wd1
   notes: '2026-08-20: coordinates read from the owner-supplied careers URL, not guessed.'
 - name: Publicis Groupe
-  platform: smartrecruiters
+  platform: custom_json
   slug: publicisgroupe
-  source_of_record: openjobs
-  enabled: false
-  notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
-    as a token that does not exist; re-check if the employer relaunches Re-probed
-    2026-08-14 and still dead.'
+  rate_profile: patient
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: The SmartRecruiters token answered with zero postings; this employer's own
+    apply links in the community feeds point at a Jibe job hub on
+    publicisgroupe.jibeapply.com, read with keywords=intern. A scratch sync on
+    2026-11-02 read 180 postings and kept 3 CS internships in the US.
+  custom:
+    url: https://publicisgroupe.jibeapply.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://publicisgroupe.jibeapply.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Publicis Sapient
   platform: custom_json
   slug: publicissapient

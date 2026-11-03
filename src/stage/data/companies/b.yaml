@@ -1,3 +1,14 @@
+- name: Badger Meter
+  platform: workday
+  slug: badgermeter
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: badgermeter
+  workday_site: US_CareerSite
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 12 postings and kept 1 CS internship in Canada
+    or the US.
 - name: BAE Systems
   platform: custom_json
   slug: baesystems
@@ -19,6 +30,17 @@
     page_start: 1
     page_step: 1
     max_pages: 8
+- name: Baird
+  platform: workday
+  slug: baird
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: baird
+  workday_site: careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Baker Hughes
   platform: workday
   slug: bakerhughes
@@ -135,6 +157,17 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
+- name: BC Pension Corporation
+  platform: oracle_cloud
+  slug: fa-exby-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-11-02
+  oracle_host: fa-exby-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: CX_1013
+  oracle_keyword: ''
+  notes: Oracle Cloud site CX_1013 from this employer's own apply links in the community
+    feeds, read without a keyword because its titles say Co-op; a scratch sync on
+    2026-11-02 read 10 postings and kept 2 CS co-ops in Victoria.
 - name: BCG
   platform: custom_json
   slug: bcg
@@ -188,6 +221,17 @@
     page_param: from
     page_size: 10
     max_pages: 15
+- name: BDC
+  platform: workday
+  slug: bdc
+  source_of_record: manual
+  last_verified: 2026-11-02
+  workday_tenant: bdc
+  workday_site: BDC_Careers
+  workday_dc: wd10
+  notes: Workday site linked from bdc.ca; a scratch sync on 2026-11-02 read 55 postings
+    and kept no CS internship. The tenant advertises no facets, so its student postings
+    arrive with the rest each winter.
 - name: BDO Canada
   platform: workday
   slug: bdo
@@ -206,6 +250,14 @@
   enabled: false
   notes: '2026-10-31: api.ashbyhq.com answers 404 for this token on every sync since
     October, and stage discover found the employer on no other platform.'
+- name: Beam Therapeutics
+  platform: greenhouse
+  slug: beamtherapeutics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 42 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Beamdog
   platform: bamboohr
   slug: beamdog
@@ -213,6 +265,15 @@
   enabled: false
   notes: '2026-08-08: bamboohr publishes no board name, so a 200 with jobs is not
     evidence of the right company; needs a human to open the board once'
+- name: Bedrock Robotics
+  platform: ashby
+  slug: bedrock-robotics
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 55 postings and kept 7 CS internships in Canada
+    or the US.
 - name: Beenox
   platform: custom_json
   slug: beenox
@@ -260,6 +321,15 @@
   slug: bhvr
   source_of_record: openjobs
   last_verified: &id005 2026-08-04
+- name: Beli
+  platform: breezy
+  slug: beli
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Software and data science internships from this startup reached the community
+    feeds this season, and stage discover found this Breezy board. A scratch sync
+    on 2026-11-02 read 12 postings and kept 2 CS internships in New York.
 - name: Bell Canada
   platform: custom_json
   slug: bell-canada
@@ -310,6 +380,15 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active quantitative-trading internship application
     verifies the public Lever board.'
+- name: Benchmark Space Systems
+  platform: breezy
+  slug: benchmark-space-systems-inc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 13 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Beneva
   platform: workday
   slug: beneva
@@ -328,6 +407,15 @@
   notes: '2026-08-17: found by careers-page ATS scan, one plain GET. verify returned
     13 jobs and needs-a-manual-check, the expected verdict where the platform publishes
     no board name; token equals the company name'
+- name: Berkshire Grey
+  platform: bamboohr
+  slug: berkshiregrey
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 19 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Berkshire Hathaway Energy
   platform: oracle_cloud
   slug: fa-essf-saasfaprod1
@@ -338,6 +426,14 @@
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
     endpoint has no offline probe, and this host and site come from the employer''s
     own application URL'
+- name: Bertelsmann
+  platform: smartrecruiters
+  slug: bertelsmann-jobs
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 946 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Bestow
   platform: ashby
   slug: bestow
@@ -417,6 +513,22 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: bioMérieux
+  platform: jobvite
+  slug: biofiredx
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 45 postings and kept 2 CS internships in Canada
+    or the US.
+- name: BitGo
+  platform: greenhouse
+  slug: bitgowinter2027
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Black Bery
   platform: workday
   slug: bb
@@ -457,6 +569,31 @@
   slug: blackedgecapital
   source_of_record: discover
   last_verified: &id010 2026-08-14
+- name: Blackhawk Network
+  platform: custom_json
+  slug: blackhawknetwork
+  rate_profile: patient
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Jibe job hub JSON from this employer's own apply links in the community feeds,
+    read with keywords=intern; a scratch sync on 2026-11-02 read 4 postings and kept 2
+    CS internships in the US.
+  custom:
+    url: https://blackhawknetwork.jibeapply.com/api/jobs?keywords=intern&limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.req_id
+      location: data.full_location
+      description: data.description
+      category: data.categories
+      employment_type: data.employment_type
+    url_template: https://blackhawknetwork.jibeapply.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Blackline Safety
   platform: workday
   slug: blackline
@@ -543,6 +680,25 @@
     page_param: jobOffset
     page_size: 12
     max_pages: 40
+- name: Blue Cross & Blue Shield of Mississippi
+  platform: workday
+  slug: bcbsms
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: bcbsms
+  workday_site: BCBSMS
+  workday_dc: wd5
+  notes: 'Workday site verified 2026-11-01: 1 actuarial intern posting, 0 kept as CS.'
+- name: Blue Cross and Blue Shield of Nebraska
+  platform: workday
+  slug: nebraskablue
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: nebraskablue
+  workday_site: BCBSNE
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 11 postings and no intern facet, 1 Data Intern
+    kept as CS.'
 - name: Blue Cross Blue Shield of Michigan
   platform: oracle_cloud
   slug: ejko
@@ -569,6 +725,16 @@
   workday_facet: workerSubType:f3db39143e3e01ea6d86269150283618
   notes: '2026-08-13: official Workday endpoint verified; its Intern fixed-term facet
     has one listing.'
+- name: BlueCross BlueShield of South Carolina
+  platform: workday
+  slug: ourhrconnect
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: ourhrconnect
+  workday_site: SCBlues
+  workday_dc: wd501
+  notes: 'Workday site verified 2026-11-01: 73 postings and no facets, 6 summer internships,
+    0 kept as CS.'
 - name: BlueLabs Analytics
   platform: greenhouse
   slug: bluelabsanalyticsinc
@@ -619,6 +785,15 @@
   oracle_host: eofe.fa.us2.oraclecloud.com
   oracle_site: BNY-Careers
   notes: '2026-09-01: verified 1401 postings on the Oracle Cloud candidate endpoint.'
+- name: Bobyard
+  platform: ashby
+  slug: bobyard
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 39 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Boeing
   platform: workday
   slug: boeing
@@ -657,6 +832,7 @@
 - name: Booking.com
   platform: custom_json
   slug: booking-com-jibe
+  rate_profile: patient
   source_of_record: discover
   last_verified: 2026-08-21
   notes: '2026-08-21: official Jibe search API with the supplied internship keyword
@@ -703,6 +879,26 @@
   slug: boschgroup
   source_of_record: discover
   last_verified: *id007
+- name: Bose
+  platform: workday
+  slug: boseallaboutme
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: boseallaboutme
+  workday_site: Bose_Careers
+  workday_dc: wd503
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept 6 CS internships in Canada
+    or the US.
+- name: Boson Ai
+  platform: lever
+  slug: bosonai
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 10 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Boston Dynamics
   platform: workday
   slug: bostondynamics
@@ -713,6 +909,26 @@
   workday_dc: wd1
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Boston Scientific
+  platform: custom_json
+  slug: bostonscientific
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Eightfold tenant from this employer's own apply links in the community feeds,
+    read with query=intern; a scratch sync on 2026-11-02 read 40 postings and kept 6 CS
+    internships, 5 in the US and 1 in the Netherlands whose place Stage could not parse.
+  custom:
+    url: https://bostonscientific.eightfold.ai/api/pcsx/search?domain=bostonscientific.com&query=intern&start=0&sort_by=relevance
+    jobs_path: data.positions
+    fields:
+      title: name
+      id: id
+      location: standardizedLocations
+      department: department
+    url_template: https://bostonscientific.eightfold.ai/careers/job/{id}
+    page_param: start
+    page_size: 10
+    max_pages: 20
 - name: Bot Auto
   platform: greenhouse
   slug: botauto
@@ -748,6 +964,33 @@
   workday_dc: wd3
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (9 posting(s), 0 kept)'
+- name: Bracco
+  platform: workday
+  slug: bracco
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: bracco
+  workday_site: braccocareers
+  workday_dc: wd103
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 28 postings and kept 7 CS internships in Canada
+    or the US.
+- name: Bracebridge Capital
+  platform: greenhouse
+  slug: bracebridgecapital
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 5 postings and kept 2 CS internships in Canada
+    or the US.
+- name: Brain Co.
+  platform: ashby
+  slug: brainco
+  source_of_record: discover
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-02 read 49 postings and kept 8 CS internships in the US.
 - name: Brain Hunter
   platform: smartrecruiters
   slug: brainhunter
@@ -773,6 +1016,17 @@
   last_verified: 2026-08-13
   notes: '2026-08-13: official active machine-learning internship/co-op application
     verifies the public Ashby board.'
+- name: Brevan Howard
+  platform: workday
+  slug: brevanhoward
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: brevanhoward
+  workday_site: bh_externalcareers
+  workday_dc: wd3
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 17 postings and kept 3 CS internships in Canada
+    or the US.
 - name: Brevium
   platform: greenhouse
   slug: brevium
@@ -800,24 +1054,28 @@
   source_of_record: openjobs
   last_verified: *id005
 - name: Bristol Myers Squibb
-  platform: custom_json
-  slug: bristol-myers-squibb
+  platform: workday
+  slug: bristolmyerssquibb
+  source_of_record: manual
+  last_verified: 2026-11-02
+  workday_tenant: bristolmyerssquibb
+  workday_site: bms
+  workday_dc: wd5
+  notes: '2026-11-02: moved from the jobs.bms.com Eightfold search, which answered with
+    no postings all season. The company now posts on Workday site bms, where the feeds''
+    intern links point. A scratch sync found the Intern facet, read its 14 postings in 2
+    requests and kept no CS internship (biology, quality and regulatory roles).'
+- name: British Columbia Investment
+  platform: workday
+  slug: bci
   source_of_record: discover
-  last_verified: 2026-08-17
-  notes: '2026-08-17: eightfold. filter_family carries the employer''s own early-career
-    and intern/co-op families.'
-  custom:
-    url: https://jobs.bms.com/api/pcsx/search?domain=bms.com&query=&start=0&sort_by=relevance&filter_family=early%20career%20program%2Cintern%2Fco-op
-    jobs_path: data.positions
-    fields:
-      title: name
-      id: id
-      location: standardizedLocations
-      department: department
-    url_template: https://jobs.bms.com/careers/job/{id}
-    page_param: start
-    page_size: 10
-    max_pages: 20
+  last_verified: 2026-11-01
+  workday_tenant: bci
+  workday_site: BCI_Careers
+  workday_dc: wd10
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 11 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Broadcom
   platform: workday
   slug: broadcom
@@ -838,6 +1096,15 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Brooks Running
+  platform: lever
+  slug: brooksrunning
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 26 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Brown Brothers Harriman
   platform: workday
   slug: bbh
@@ -848,6 +1115,52 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: BRP
+  platform: custom_json
+  slug: brp
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: BRP's own careers site careers.brp.com is a Phenom site, read through its
+    public widgets search like Air Canada. A scratch sync on 2026-11-02 read 291 postings,
+    41 of them software, data or security roles in Valcourt, Sherbrooke and Montreal,
+    and kept no CS internship, though it lists a Winter 2027 internship program in
+    Valcourt.
+  custom:
+    url: https://careers.brp.com/widgets
+    method: POST
+    body:
+      lang: en_global
+      deviceType: desktop
+      country: global
+      pageName: search-results
+      ddoKey: refineSearch
+      from: 0
+      size: 100
+      jobs: true
+      counts: true
+      all_fields:
+      - category
+      - country
+      - type
+      keywords: ''
+      siteType: external
+      clearAll: false
+      selected_fields: {}
+      locationData: {}
+      sortBy: ''
+      subsearch: ''
+    jobs_path: refineSearch.data.jobs
+    fields:
+      title: title
+      id: jobId
+      location: location
+      description: descriptionTeaser
+      category: category
+      department: department
+    url_template: https://careers.brp.com/global/en/job/{id}
+    page_param: from
+    page_size: 100
+    max_pages: 3
 - name: Bruce Power
   platform: workday
   slug: brucepower
@@ -858,6 +1171,17 @@
   workday_dc: wd3
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Brunswick
+  platform: workday
+  slug: brunswick
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: brunswick
+  workday_site: search
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 25 postings and kept 4 CS internships in Canada
+    or the US.
 - name: BTI360
   platform: greenhouse
   slug: bti36021
@@ -887,6 +1211,25 @@
   slug: bungie
   source_of_record: openjobs
   last_verified: *id010
+- name: Burlington Stores
+  platform: workday
+  slug: burlington
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: burlington
+  workday_site: BurlingtonCareers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 310 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Businessolver
+  platform: greenhouse
+  slug: businessolverinvitationonly
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Bybit
   platform: greenhouse
   slug: bybit

@@ -7,6 +7,30 @@
   notes: '2026-08-14: board token taken from this employer''s own application URL
     in a feed posting, not from slug guessing; ashby publishes no board name, so the
     name gate cannot confirm it and provenance is the evidence (9 job(s))'
+- name: K1 Investment Management
+  platform: custom_json
+  slug: k1im
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: JazzHR board from this employer's own apply link in the community feeds, which
+    server-renders its list; a scratch sync on 2026-11-02 read 9 postings and kept 1 CS
+    internship in the US.
+  custom:
+    url: https://k1im.applytojob.com/apply
+    format: html
+    row_selector: li.list-group-item
+    fields:
+      title: h3 a
+      url: h3 a::attr(href)
+      location: li:has(> i.fa-map-marker)
+- name: K2 Space
+  platform: greenhouse
+  slug: k2spacecorporation
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 255 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Kabam
   platform: lever
   slug: kabam
@@ -31,6 +55,22 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Keenfinity
+  platform: smartrecruiters
+  slug: keenfinity
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 120 postings and kept 3 CS internships in Canada
+    or the US.
+- name: Kensington
+  platform: greenhouse
+  slug: kensingtontours
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 33 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Kepler Communications
   platform: lever
   slug: kepler
@@ -53,6 +93,7 @@
 - name: Keysight Technologies
   platform: custom_json
   slug: keysight
+  rate_profile: patient
   source_of_record: discover
   last_verified: 2026-08-20
   notes: '2026-08-20: reopened — the old row pointed at jobs.keysight.com; the iCIMS
@@ -107,6 +148,31 @@
   notes: '2026-08-20: re-probed with the careers-home route that opened AMD, Garmin
     and Panasonic; this employer publishes no careers.<domain> site, and /api/jobs
     on its icims.com host is 404.'
+- name: Kinaxis
+  platform: custom_json
+  slug: kinaxis
+  rate_profile: patient
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: Board found through the employer's own careers site; a scratch sync on 2026-11-01
+    read 110 postings and kept 7 CS internships in Canada or the US.
+  custom:
+    url: https://kinaxis.jibeapply.com/api/jobs?limit=100
+    jobs_path: jobs
+    fields:
+      title: data.title
+      id: data.slug
+      location: data.full_location
+      description: data.description
+      employment_type: data.employment_type
+      category: data.category
+      department: data.department
+    url_template: https://kinaxis.jibeapply.com/jobs/{id}
+    page_param: page
+    page_size: 100
+    page_start: 1
+    page_step: 1
+    max_pages: 3
 - name: Kion Group
   platform: workday
   slug: kiongroup
@@ -150,12 +216,14 @@
   platform: workday
   slug: kla
   source_of_record: discover
-  last_verified: *id002
+  last_verified: 2026-11-02
   workday_tenant: kla
-  workday_site: AnnArbor
+  workday_site: UR
   workday_dc: wd1
-  notes: '2026-08-14: verified by a real sync — this board returned postings, which
-    is the only verification a Workday tenant can have without an offline probe'
+  notes: KLA's feed apply links point at its UR site, which lists the internships of the
+    AnnArbor site this row read before plus those in Milpitas. A scratch sync on
+    2026-11-02 read 100 of its 104 Intern (Fixed Term) postings and kept 11 CS
+    internships in the US.
 - name: Klaviyo
   platform: greenhouse
   slug: klaviyo
@@ -172,6 +240,13 @@
   notes: '2026-08-17: found by browser-assisted discovery from the employer''s own
     careers page and the board answered with postings, but ashby publishes no board
     name, so provenance is the evidence rather than a name match'
+- name: KnowBe4
+  platform: greenhouse
+  slug: knowbe4
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 60 postings and kept 1 CS internship in the US.
 - name: Kodiak Robotics
   platform: greenhouse
   slug: kodiak
@@ -207,6 +282,17 @@
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync — the board answered with 120 posting(s), 1 kept after
     the CS-internship screens'
+- name: Koppers
+  platform: workday
+  slug: koppers
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: koppers
+  workday_site: koppers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 29 postings and kept 1 CS internship in Canada
+    or the US.
 - name: kos.ai
   platform: ashby
   slug: kos.ai
@@ -227,6 +313,7 @@
 - name: KPMG
   platform: custom_json
   slug: kpmg
+  rate_profile: patient
   source_of_record: discover
   last_verified: 2026-08-18
   notes: 'The earlier park named a wrong filter, not a dead endpoint: tags1=Intern/Co-op
@@ -247,6 +334,17 @@
     page_start: 1
     page_step: 1
     max_pages: 20
+- name: Kraft Heinz
+  platform: workday
+  slug: heinz
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: heinz
+  workday_site: kraftheinz_careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 78 postings and kept 2 CS internships whose
+    locations Stage could not parse.
 - name: Krafton
   platform: greenhouse
   slug: krafton

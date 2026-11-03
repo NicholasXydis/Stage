@@ -1,3 +1,24 @@
+- name: W. R. Berkley
+  platform: custom_json
+  slug: berkley
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'iCIMS search page verified 2026-11-01 with searchKeyword=intern, which also finds
+    co-ops: 25 postings, 22 internships, 4 kept as CS.'
+  custom:
+    url: https://careers-berkley.icims.com/jobs/search?ss=1&in_iframe=1&searchKeyword=intern
+    format: html
+    row_selector: li.iCIMS_JobCardItem
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.right span + span
+      department: .header.left span + span
+      description: .description
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 4
 - name: Waabi
   platform: lever
   slug: waabi
@@ -14,6 +35,14 @@
   notes: '2026-08-18: seen in feed postings but absent from the registry; discover
     matched smartrecruiters/wabtec with 661 job(s) and the board named itself, so
     it is polled directly instead of secondhand'
+- name: Waggoner Financial
+  platform: workable
+  slug: waggoner-financial
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 9 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Walleye Capital
   platform: greenhouse
   slug: walleyecapital-external-students
@@ -37,6 +66,15 @@
   enabled: false
   notes: '2026-08-20: re-checked tenant-wide; the CXS jobs endpoint still answers
     422 for this site, so the closed-contract verdict stands on a fresh measurement.'
+- name: Walrus
+  platform: ashby
+  slug: walrusfi
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Warner Bros Games
   platform: workday
   slug: warnerbros
@@ -45,6 +83,14 @@
   workday_tenant: warnerbros
   workday_site: global
   workday_dc: wd5
+- name: Waterworth
+  platform: workable
+  slug: waterworth
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 3 postings and kept 1 CS internship in Canada
+    or the US.
 - name: WATI.io
   platform: workable
   slug: wati-dot-i-o
@@ -60,11 +106,49 @@
   name_gate_exempt: true
   notes: Board token read from the employer's own jobs page (29 job(s)); lever publishes
     no board name.
+- name: Watts Water
+  platform: workday
+  slug: wattswater
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: wattswater
+  workday_site: Intern-External
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 38 postings and kept 7 CS internships in Canada
+    or the US.
 - name: WaveApps
   platform: lever
   slug: waveapps
   source_of_record: openjobs
   last_verified: &id003 2026-08-04
+- name: Wawa
+  platform: workday
+  slug: wawa
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: wawa
+  workday_site: careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 15 postings and kept 1 CS internship whose locations
+    Stage could not parse.
+- name: Wawanesa Insurance
+  platform: custom_json
+  slug: wawanesa
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'SuccessFactors RSS verified 2026-11-01: 86 postings, all in Canada, no internship.'
+  custom:
+    url: https://jobs.wawanesa.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+      category: g:job_function
 - name: Wayfair
   platform: smartrecruiters
   slug: wayfair
@@ -143,6 +227,14 @@
   workday_dc: wd5
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Wellmark
+  platform: smartrecruiters
+  slug: wellmarkinc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 49 postings and kept 8 CS internships in Canada
+    or the US.
 - name: Wells Fargo
   platform: workday
   slug: wf
@@ -163,6 +255,45 @@
   workday_dc: wd1
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Werner
+  platform: workday
+  slug: werner
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: werner
+  workday_site: werner
+  workday_dc: wd501
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 123 postings and kept 2 CS internships in Canada
+    or the US.
+- name: West Monroe
+  platform: greenhouse
+  slug: westmonroe5
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Greenhouse board westmonroe5, named West Monroe (Campus), embedded on
+    westmonroe.com's student job pages where this employer's feed apply links lead; a
+    scratch sync on 2026-11-02 read 80 postings and kept 12 CS internships in the US.
+- name: Western & Southern Financial Group
+  platform: custom_json
+  slug: westernsouthern
+  source_of_record: manual
+  last_verified: 2026-11-01
+  notes: 'iCIMS search page verified 2026-11-01 with searchKeyword=intern: 17 postings, 14
+    internships, 4 kept as CS.'
+  custom:
+    url: https://careers-westernsouthern.icims.com/jobs/search?ss=1&in_iframe=1&searchKeyword=intern
+    format: html
+    row_selector: li.iCIMS_JobCardItem
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
+      description: .description
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 4
 - name: Western Digital
   platform: smartrecruiters
   slug: westerndigital
@@ -175,6 +306,76 @@
   last_verified: 2026-08-26
   notes: '2026-08-26: adopted from feed postings; workable/western-magnetics named
     itself with 18 jobs.'
+- name: Westinghouse Electric Company
+  platform: custom_json
+  slug: westinghouse
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: SuccessFactors RMK; /rss.xml carries the whole board. Found through this
+    employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
+    1,122 postings and kept 6 CS internships in the US.
+  custom:
+    url: https://careers.westinghousenuclear.com/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
+- name: WestJet
+  platform: custom_json
+  slug: dayforce-westjet
+  source_of_record: manual
+  last_verified: 2026-11-02
+  rate_profile: conservative
+  notes: Calgary airline whose careers page links this Dayforce board, read with the
+    csrf handshake like Eidos-Montreal. A scratch sync on 2026-11-02 read 30 postings,
+    4 of them data, AI and database roles in Calgary, and kept no CS internship.
+  custom:
+    url: https://jobs.dayforcehcm.com/api/geo/WestJet/jobposting/search
+    method: POST
+    body:
+      clientNamespace: WestJet
+      jobBoardCode: CANDIDATEPORTAL
+      cultureCode: en-CA
+      distanceUnit: 1
+    handshake_url: https://jobs.dayforcehcm.com/api/auth/csrf
+    token_pattern: '"csrfToken":"([a-f0-9]+)"'
+    token_header: x-csrf-token
+    jobs_path: jobPostings
+    fields:
+      title: jobTitle
+      id: jobPostingId
+      description: jobDescription
+      location: postingLocations.0.formattedAddress
+    url_template: https://jobs.dayforcehcm.com/en-CA/WestJet/CANDIDATEPORTAL/jobs/{id}
+    page_param: paginationStart
+    page_size: 25
+    page_step: 25
+    max_pages: 20
+- name: WEX
+  platform: workday
+  slug: wexinc
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: wexinc
+  workday_site: wexinc
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 1 postings and kept 1 CS internship in Canada
+    or the US.
+- name: Whataburger
+  platform: workday
+  slug: whataburger
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: whataburger
+  workday_site: WAB_CAREERS
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 1 postings and kept 1 CS internship in Canada
+    or the US.
 - name: WhiteWater Midstream
   platform: greenhouse
   slug: whitewatermidstream
@@ -190,11 +391,27 @@
   notes: '2026-08-08: probed — board answers 200 with zero postings, which §5.3 treats
     as a token that does not exist; re-check if the employer relaunches Re-probed
     2026-08-14 and still dead.'
+- name: Wikimedia Foundation
+  platform: greenhouse
+  slug: wikimedia
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 15 postings and kept 1 CS internship whose locations
+    Stage could not parse.
 - name: WildBrain
   platform: smartrecruiters
   slug: wildbrain
   source_of_record: openjobs
   last_verified: *id005
+- name: William Blair
+  platform: greenhouse
+  slug: williamblair
+  source_of_record: discover
+  last_verified: 2026-11-02
+  notes: Board found through this employer's own apply link in the community feeds; a
+    scratch sync on 2026-11-02 read 50 postings and kept no CS internship in Canada or
+    the US, but its technology interns appeared in the community feeds this season.
 - name: Wincent
   platform: ashby
   slug: wincent
@@ -248,6 +465,14 @@
   workday_dc: wd1
   notes: '2026-08-16: coordinates taken from this employer''s own apply URL, then
     verified by a scratch sync (105 posting(s), 0 kept)'
+- name: Winsupply
+  platform: smartrecruiters
+  slug: winsupply1
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 38 postings and kept 2 CS internships in Canada
+    or the US.
 - name: Wintermute
   platform: lever
   slug: wintermute-trading
@@ -265,11 +490,13 @@
   notes: '2026-08-21: official Wise jobs page identifies its SmartRecruiters board;
     public API returned live postings.'
 - name: Wiz
-  platform: ashby
-  slug: wiz
-  source_of_record: discover
-  last_verified: 2026-08-21
-  notes: '2026-08-21: public Ashby board is named Wiz; it currently returns no postings.'
+  platform: greenhouse
+  slug: wizinc
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: '2026-11-02: moved from ashby/wiz, which stayed empty all season. Wiz posts on
+    the Greenhouse board named Wiz, Inc., whose job links open on wiz.io/careers. A
+    scratch sync read 115 postings and none was an internship.'
 - name: Wizards of the Coast
   platform: greenhouse
   slug: wizardsofthecoast
@@ -308,6 +535,17 @@
       location: location.name
       description: description
       employment_type: employment_type_text
+- name: Wonder
+  platform: workday
+  slug: wonder
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: wonder
+  workday_site: WG
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 2 CS internships in Canada
+    or the US.
 - name: WongDoody
   platform: greenhouse
   slug: wongdoody
@@ -328,6 +566,17 @@
   workday_dc: wd5
   notes: '2026-08-17: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, no browser and one request per host.'
+- name: Workday
+  platform: workday
+  slug: workday
+  source_of_record: discover
+  last_verified: 2026-11-02
+  workday_tenant: workday
+  workday_site: Workday_Early_Career
+  workday_dc: wd5
+  notes: Workday's early-career site, found through the feeds' apply links; the other
+    Workday row reads its main site. A scratch sync on 2026-11-02 read 13 postings and
+    kept 7 CS internships, 2 of them in Vancouver.
 - name: Workiva
   platform: workday
   slug: workiva
@@ -351,6 +600,26 @@
   last_verified: 2026-08-18
   notes: '2026-08-18: found by a plain-HTTP scan of the employer''s own careers page
     for a known ATS hostname, part of the Montreal/Quebec sweep.'
+- name: WorldEngine AI
+  platform: ashby
+  slug: worldengine
+  source_of_record: discover
+  last_verified: 2026-11-01
+  name_gate_exempt: true
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 4 postings and kept 1 CS internship in Canada
+    or the US.
+- name: WSFS Bank
+  platform: workday
+  slug: wsfsbank
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: wsfsbank
+  workday_site: wsfscareers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 1 CS internship in Canada
+    or the US.
 - name: WSP
   platform: oracle_cloud
   slug: emit

@@ -1,8 +1,30 @@
+- name: J.M. Smucker
+  platform: workday
+  slug: smucker
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: smucker
+  workday_site: US_External_Careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 20 postings and kept 2 CS internships in Canada
+    or the US.
 - name: J.S. Held LLC
   platform: smartrecruiters
   slug: jsheldllc
   source_of_record: openjobs
   last_verified: &id001 2026-08-14
+- name: Jabil
+  platform: workday
+  slug: jabil
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: jabil
+  workday_site: jabil_careers
+  workday_dc: wd5
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 140 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Jade Global
   platform: smartrecruiters
   slug: jadeglobal
@@ -49,6 +71,26 @@
   last_verified: 2026-08-16
   notes: '2026-08-16: ats_link recorded in the OpenJobs dataset, then verified by
     a live probe that matched the company name on the returned board'
+- name: JM Family
+  platform: workday
+  slug: jmfamily
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: jmfamily
+  workday_site: jmfamily_external
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 32 postings and kept 7 CS internships in Canada
+    or the US.
+- name: Jobber
+  platform: ashby
+  slug: jobber
+  source_of_record: manual
+  last_verified: 2026-11-02
+  name_gate_exempt: true
+  notes: Board found through the employer's own careers site; a scratch sync on
+    2026-11-02 read 39 postings and kept no CS internship in Canada or the US, but this
+    employer hires software engineering interns most years.
 - name: Jobs for Humanity
   platform: smartrecruiters
   slug: jobsforhumanity
@@ -78,6 +120,7 @@
 - name: Johns Hopkins APL
   platform: custom_json
   slug: jhuapl
+  rate_profile: patient
   source_of_record: discover
   last_verified: 2026-08-20
   notes: '2026-08-20: iCIMS careers-home site, the same contract as the AMD row; 356
@@ -131,6 +174,14 @@
   notes: '2026-08-14: enabled to be verified by a real sync — the Oracle Cloud candidate
     endpoint has no offline probe, and this host and site come from the employer''s
     own application URL'
+- name: Judi Health
+  platform: greenhouse
+  slug: judihealth
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 98 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Jump Trading
   platform: greenhouse
   slug: jumptrading

@@ -1,8 +1,30 @@
+- name: U.S. Bank
+  platform: workday
+  slug: usbank
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: usbank
+  workday_site: US_Bank_Careers
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 40 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: Uber
   platform: smartrecruiters
   slug: uber
   source_of_record: openjobs
   last_verified: &id001 2026-08-14
+- name: Uber
+  platform: oracle_cloud
+  slug: iaziqy
+  source_of_record: discover
+  last_verified: 2026-11-02
+  oracle_host: iaziqy.fa.ocs.oraclecloud.com
+  oracle_site: CX_1
+  notes: Uber's Oracle recruiting site, found through the feeds' apply links; the
+    smartrecruiters/uber board lists one posting. A scratch sync on 2026-11-02 read 23
+    intern postings, all outside Canada and the US, but its software engineering
+    internships in both countries were listed here earlier this season.
 - name: Ubisoft
   platform: smartrecruiters
   slug: ubisoft2
@@ -30,6 +52,16 @@
   last_verified: 2026-08-11
   notes: '2026-08-11: enabled on slug evidence - bamboohr publishes no board name,
     but the slug folds to the caption and the board returned 3 job(s)'
+- name: UL Solutions
+  platform: oracle_cloud
+  slug: fa-eups-saasfaprod1
+  source_of_record: discover
+  last_verified: 2026-11-01
+  oracle_host: fa-eups-saasfaprod1.fa.ocs.oraclecloud.com
+  oracle_site: ULSolutionsCareers
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 27 postings and kept 1 CS internship in Canada
+    or the US.
 - name: Uline
   platform: workday
   slug: uline
@@ -111,6 +143,14 @@
   workday_dc: wd3
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: University Health Network
+  platform: smartrecruiters
+  slug: universityhealthnetwork
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 168 postings and kept no CS internship in Canada
+    or the US, but this employer hires CS interns most seasons.
 - name: University of Arkansas
   platform: workday
   slug: uasys
@@ -121,6 +161,17 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: University of Miami
+  platform: workday
+  slug: umiami
+  source_of_record: discover
+  last_verified: 2026-11-01
+  workday_tenant: umiami
+  workday_site: UMCareerStaff
+  workday_dc: wd1
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 140 postings and kept 4 CS internships in Canada
+    or the US.
 - name: University of Nevada, Reno
   platform: smartrecruiters
   slug: universityofnevadareno
@@ -145,11 +196,14 @@
   slug: rochester
   source_of_record: discover
   last_verified: *id002
+  recheck_after: 2027-03-01
   workday_tenant: rochester
   workday_site: UR_Staff
   workday_dc: wd5
-  notes: '2026-08-14: verified by a real sync — this board returned postings, which
-    is the only verification a Workday tenant can have without an offline probe'
+  enabled: false
+  notes: '2026-11-02: switched off on the owner''s call. UR_Staff is the University of
+    Rochester staff site (hospital, clerical and research staff) and kept no CS
+    internship all season.'
 - name: University of Texas at Austin
   platform: workday
   slug: utaustin
@@ -175,6 +229,16 @@
   workday_dc: wd5
   notes: '2026-08-14: verified by a real sync — this board returned postings, which
     is the only verification a Workday tenant can have without an offline probe'
+- name: Unum
+  platform: workday
+  slug: unum
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: unum
+  workday_site: External
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 66 postings and no facets, 6 internships, 0 kept
+    as CS.'
 - name: Upgrade
   platform: greenhouse
   slug: upgrade
@@ -195,6 +259,31 @@
   slug: upwork
   source_of_record: openjobs
   last_verified: *id004
+- name: Ursa Major
+  platform: greenhouse
+  slug: ursamajor
+  source_of_record: manual
+  last_verified: 2026-11-02
+  notes: Greenhouse token checked against the board's own name for an employer whose CS
+    interns appear in the community feeds; a scratch sync on 2026-11-02 read 120
+    postings and kept 1 CS internship in the US.
+- name: USAA
+  platform: workday
+  slug: usaa
+  source_of_record: manual
+  last_verified: 2026-11-01
+  workday_tenant: usaa
+  workday_site: USAAJOBSWD
+  workday_dc: wd1
+  notes: 'Workday site verified 2026-11-01: 1 intern posting, 0 kept as CS.'
+- name: USAFacts
+  platform: greenhouse
+  slug: usafacts
+  source_of_record: discover
+  last_verified: 2026-11-01
+  notes: Board found through this employer's own apply link in the community feeds;
+    a scratch sync on 2026-11-01 read 1 postings and kept 1 CS internship in Canada
+    or the US.
 - name: USE Insider
   platform: lever
   slug: useinsider
