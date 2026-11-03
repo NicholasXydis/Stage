@@ -41,6 +41,7 @@ dependencies = [
     "pydantic>=2.10.0",
     "pyyaml>=6.0.2",
     "rich>=13.9.4",
+    "sniffio>=1.3.1",
     "tenacity>=9.2.1",
     "textual>=8.2.8",
     "typer>=0.27.1,<0.28",
@@ -82,9 +83,11 @@ packages = ["src/stage"]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
+    ".claude",
     ".claude-plugin",
     ".github",
     "CLAUDE.md",
+    "plan.md",
     "plugins",
     "scripts",
 ]
@@ -127,7 +130,7 @@ ignore = ["S101", "S311"]
 "src/stage/services/background.py" = ["S603"]
 "scripts/app_canary.py" = ["S603", "S607"]
 "src/stage/paths.py" = ["S603"]
-"src/stage/storage/sqlite_repo.py" = ["S608"]
+"src/stage/storage/*.py" = ["S608"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -139,6 +142,7 @@ enable_error_code = ["redundant-expr", "truthy-bool", "ignore-without-code"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = ["error"]
 markers = [
     "serial: asserts an upper bound on wall clock and must not run under parallel load",

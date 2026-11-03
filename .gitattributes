@@ -45,6 +45,8 @@
 uv.lock text linguist-generated=true
 
 tests/fixtures/**  linguist-vendored=true
+src/stage/data/cards/*.html  linguist-detectable=false
+scripts/*.html               linguist-detectable=false
 tests/golden/**    linguist-generated=true
 
 src/stage/data/companies/**  text
