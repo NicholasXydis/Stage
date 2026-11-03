@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -93,3 +94,49 @@ async def test_writes_are_visible_through_the_async_repository(
         jobs = await repository.list_jobs(JobFilters())
         assert [job.id for job in jobs] == ["greenhouse:acme:1"]
         assert jobs[0].first_seen == run_time
+
+
+def _closed(connection: sqlite3.Connection) -> bool:
+    try:
+        return connection.total_changes < 0
+    except sqlite3.ProgrammingError:
+        return True
+
+
+@pytest.mark.parametrize("cancels", [1, 2])
+async def test_a_cancelled_open_still_closes_its_connection(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch, cancels: int
+) -> None:
+    from stage.storage.sqlite_repo import SqliteRepository
+
+    opened: list[SqliteRepository] = []
+    entered = threading.Event()
+    release = threading.Event()
+    connect = SqliteRepository.connect
+
+    def slow(path: Path, *, read_only: bool = False) -> SqliteRepository:
+        entered.set()
+        release.wait(5)
+        opened.append(connect(path, read_only=read_only))
+        return opened[-1]
+
+    monkeypatch.setattr(SqliteRepository, "connect", slow)
+
+    async def use() -> None:
+        async with open_repository(db_path):
+            pass
+
+    task = asyncio.create_task(use())
+    await asyncio.to_thread(entered.wait, 5)
+    for _ in range(cancels):
+        task.cancel()
+        await asyncio.sleep(0.01)
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    for _ in range(100):
+        if opened and _closed(opened[0]._conn):
+            break
+        await asyncio.sleep(0.05)
+
+    assert opened and _closed(opened[0]._conn)

@@ -175,8 +175,9 @@ def test_an_adopted_nameless_row_records_that_the_name_gate_could_not_confirm_it
     results = [("Alan", _result(Platform.ASHBY, "alan", 90, ProbeVerdict.UNVERIFIED))]
     row = adopt_unregistered([], results, today=TODAY, adopt_unnamed=True).adopted[0].company
     assert row.name_gate_exempt, "a later --verify sweep must not disable it for lacking a name"
-    assert "provenance is the evidence" in (row.notes or "")
     assert "apply URL" in (row.notes or ""), "the reader needs the evidence, not a verdict"
+    assert "publishes no board name" in (row.notes or "")
+    assert ";" not in (row.notes or "")
 
 
 def test_provenance_adoption_still_refuses_a_board_with_no_postings() -> None:
@@ -189,3 +190,38 @@ def test_provenance_adoption_never_rescues_a_name_gate_rejection() -> None:
     results = [("Coveo", _result(Platform.GREENHOUSE, "someoneelse", 40, ProbeVerdict.REJECTED))]
     report = adopt_unregistered([], results, today=TODAY, adopt_unnamed=True)
     assert not report.adopted, "a board that named a different company is still a rejection"
+
+
+def test_an_adopted_workday_or_oracle_board_keeps_its_coordinates() -> None:
+    workday = PlatformCandidate(
+        platform=Platform.WORKDAY,
+        slug="zyx",
+        workday_tenant="zyx",
+        workday_site="External",
+        workday_dc="wd3",
+    )
+    oracle = PlatformCandidate(
+        platform=Platform.ORACLE_CLOUD,
+        slug="eeho",
+        oracle_host="eeho.fa.us2.oraclecloud.com",
+        oracle_site="CX_1",
+    )
+    results = [
+        (
+            name,
+            ProbeResult(name, candidate, ProbeVerdict.UNVERIFIED, "https://x.test/", job_count=5),
+        )
+        for name, candidate in (("Zyx", workday), ("Qux", oracle))
+    ]
+    adopted = adopt_unregistered([], results, today=TODAY, adopt_unnamed=True).adopted
+    rows = {row.company.name: row.company for row in adopted}
+    assert (rows["Zyx"].workday_tenant, rows["Zyx"].workday_site, rows["Zyx"].workday_dc) == (
+        "zyx",
+        "External",
+        "wd3",
+    )
+    assert (rows["Qux"].oracle_host, rows["Qux"].oracle_site) == (
+        "eeho.fa.us2.oraclecloud.com",
+        "CX_1",
+    )
+    assert all(row.enabled and row.last_verified == TODAY for row in rows.values())

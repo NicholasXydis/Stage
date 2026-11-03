@@ -79,7 +79,7 @@ def test_database_newer_than_this_build_is_refused(db_path: Path) -> None:
             "INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)",
             (9999, "from_the_future", datetime.now(UTC).isoformat()),
         )
-        with pytest.raises(SchemaVersionError, match="newer than this build"):
+        with pytest.raises(SchemaVersionError, match="newer version of Stage"):
             migrate(conn, db_path)
     finally:
         conn.close()
@@ -127,7 +127,7 @@ def test_a_read_only_open_refuses_a_newer_database(db_path: Path) -> None:
         )
     finally:
         conn.close()
-    with pytest.raises(SchemaVersionError, match="newer than this build"):
+    with pytest.raises(SchemaVersionError, match="newer version of Stage"):
         SqliteRepository.connect(db_path, read_only=True)
 
 
@@ -175,6 +175,8 @@ def test_the_console_reports_a_prebaseline_database_without_a_traceback(
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         env={**os.environ, "STAGE_DB": str(db_path)},
         check=False,
     )
@@ -212,7 +214,6 @@ def test_a_locked_database_is_reported_rather_than_opened_for_writing() -> None:
 def test_a_baseline_another_process_applied_first_is_not_an_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import sqlite3
     from contextlib import closing
 
     from stage.storage import migrations
@@ -254,3 +255,19 @@ def test_a_database_that_is_not_stages_is_left_exactly_as_it_was(tmp_path: Path)
     assert hashlib.sha256(other.read_bytes()).hexdigest() == before
     assert other.stat().st_mode & 0o777 == 0o644 or os.name == "nt"
     assert not other.with_name("other.sqlite-wal").exists()
+
+
+def test_a_hidden_file_beside_the_migrations_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    from stage.storage import migrations
+
+    expected = [migration.name for migration in migrations.discover()]
+    folder = tmp_path / "migrations"
+    shutil.copytree(migrations._MIGRATIONS_DIR, folder)
+    (folder / "._0001_initial.sql").write_bytes(b"\x00\x05\x16\x07Mac OS X")
+    monkeypatch.setattr(migrations, "_MIGRATIONS_DIR", folder)
+
+    assert [migration.name for migration in migrations.discover()] == expected

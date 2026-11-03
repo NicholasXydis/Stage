@@ -1,3 +1,4 @@
+from contextlib import closing
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -498,7 +499,7 @@ async def test_classifying_without_a_selection_warns(tmp_path: Path) -> None:
         await pilot.pause()
 
         assert warned
-        assert "Highlight" in warned[0]
+        assert "is listed. Press r to reload." in warned[0]
 
 
 async def test_the_boards_screen_lists_disabled_rows_so_they_can_return(
@@ -532,7 +533,7 @@ async def test_the_detail_pane_expands_and_collapses(tmp_path: Path) -> None:
 
     target = tmp_path / "expand.db"
     _seed(target, count=1)
-    with sqlite3.connect(target) as conn:
+    with closing(sqlite3.connect(target)) as conn, conn:
         conn.execute("UPDATE jobs SET description = ?", ("Build things.\n\nShip them.",))
     app = StageApp(target, "")
 
@@ -718,6 +719,18 @@ def test_every_bracket_reads_as_text_in_textual(text: str) -> None:
     assert to_content(quoted(text)).plain == text, "Textual reads more tags than Rich escapes"
 
 
+@pytest.mark.parametrize("text", ["Software Intern \\", "C:\\path\\", "Acme \\\\"])
+def test_a_trailing_backslash_cannot_swallow_the_closing_tag(text: str) -> None:
+    from textual.markup import to_content
+
+    from stage.tui.safe import inline, quoted
+
+    for escape in (inline, quoted):
+        shown = to_content(f"[b]{escape(text)}[/b] after")
+        assert shown.plain.removesuffix(" after").rstrip() == text
+        assert len(shown.spans) == 1 and shown.spans[0].end < len(shown.plain) - 5
+
+
 async def test_a_hostile_posting_does_not_crash_the_browser(tmp_path: Path) -> None:
     from textual.widgets import DataTable
 
@@ -729,6 +742,8 @@ async def test_a_hostile_posting_does_not_crash_the_browser(tmp_path: Path) -> N
         await pilot.pause()
         screen = PostingsScreen()
         app.push_screen(screen)
+        await pilot.pause()
+        await app.workers.wait_for_complete()
         await pilot.pause()
         screen._jobs = (
             _hostile_job("Intern [/bold]"),
@@ -752,6 +767,8 @@ async def test_a_non_web_apply_url_is_never_handed_to_the_browser(tmp_path: Path
         await pilot.pause()
         screen = PostingsScreen()
         app.push_screen(screen)
+        await pilot.pause()
+        await app.workers.wait_for_complete()
         await pilot.pause()
 
         screen._jobs = (_hostile_job("Intern", url="file:///etc/passwd"),)
@@ -800,6 +817,8 @@ async def test_opening_marked_rows_stops_at_the_same_cap_as_the_cli(
         screen = PostingsScreen()
         app.push_screen(screen)
         await pilot.pause()
+        await app.workers.wait_for_complete()
+        await pilot.pause()
 
         job = _hostile_job("Intern")
         screen._jobs = tuple(
@@ -841,129 +860,171 @@ async def test_disabling_without_a_selection_warns(
         screen.action_disable()
 
         assert warned
-        assert "Highlight" in warned[0]
+        assert "is listed. Press r to reload." in warned[0]
+
+
+def _ship(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *rows: Any) -> None:
+    from stage.companies import write_registry
+
+    target = tmp_path / "shipped.yaml"
+    write_registry(rows, target)
+    monkeypatch.setenv("STAGE_REGISTRY", str(target))
+
+
+async def _boards_screen(app: Any, pilot: Any, monkeypatch: pytest.MonkeyPatch) -> Any:
+    from stage.tui.screens.boards import BoardsScreen
+
+    await pilot.pause()
+    screen = BoardsScreen()
+    app.push_screen(screen)
+    await pilot.pause()
+    monkeypatch.setattr(screen, "load", lambda: None)
+    return screen
 
 
 async def test_a_registry_write_failure_is_reported(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from stage.companies import RegistryError
+    from stage.domain import Company, Platform
     from stage.tui.app import StageApp
-    from stage.tui.screens.boards import BoardsScreen
 
+    def explode(_: object) -> None:
+        raise RegistryError("the list is read-only")
+
+    acme = Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")
+    _ship(tmp_path, monkeypatch, acme)
+    monkeypatch.setattr("stage.companies.update_personal", explode)
     app = StageApp(tmp_path / "boards.db", "")
     async with app.run_test(size=(120, 40)) as pilot:
-        await pilot.pause()
-        screen = BoardsScreen()
-        app.push_screen(screen)
-        await pilot.pause()
-
-        def explode(_: object) -> None:
-            raise RegistryError("the registry is read-only")
-
-        monkeypatch.setattr("stage.companies.update_registry", explode)
-        screen.selected_company = lambda: "Acme"  # type: ignore[method-assign]
+        screen = await _boards_screen(app, pilot, monkeypatch)
+        screen.selected_company = lambda: "Acme"
         warned: list[str] = []
-        screen.notify = lambda message, **_: warned.append(str(message))  # type: ignore[method-assign]
+        screen.notify = lambda message, **_: warned.append(str(message))
         screen._set_enabled(False)
+        await app.workers.wait_for_complete()
 
-        assert warned
-        assert "Could not write the registry" in warned[0]
-        assert "read-only" in warned[0]
+    assert warned and warned[0] == "Could not write your board list. The list is read-only."
+    assert "read-only" in warned[0]
 
 
 async def test_a_board_already_in_that_state_says_so(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from stage.domain import Company, Platform
     from stage.tui.app import StageApp
-    from stage.tui.screens.boards import BoardsScreen
 
+    acme = Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")
+    _ship(tmp_path, monkeypatch, acme)
     app = StageApp(tmp_path / "boards.db", "")
     async with app.run_test(size=(120, 40)) as pilot:
-        await pilot.pause()
-        screen = BoardsScreen()
-        app.push_screen(screen)
-        await pilot.pause()
-
-        calls: list[object] = []
-
-        def unchanged(apply: object) -> tuple[tuple[object, ...], int]:
-            calls.append(apply)
-            return (), 0
-
-        monkeypatch.setattr("stage.companies.update_registry", unchanged)
-        screen.selected_company = lambda: "Acme"  # type: ignore[method-assign]
+        screen = await _boards_screen(app, pilot, monkeypatch)
+        screen.selected_company = lambda: "Acme"
         warned: list[str] = []
-        screen.notify = lambda message, **_: warned.append(str(message))  # type: ignore[method-assign]
+        screen.notify = lambda message, **_: warned.append(str(message))
         screen._set_enabled(True)
+        await app.workers.wait_for_complete()
 
-        assert warned
-        assert "already enabled" in warned[0]
-        assert calls
+    assert warned and "already enabled" in warned[0]
 
 
-async def test_disabling_a_board_confirms_the_change(
+async def test_switching_a_stage_board_off_and_on_only_touches_your_list(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from stage.companies import load_boards, load_personal
+    from stage.domain import Company, Platform
     from stage.tui.app import StageApp
-    from stage.tui.screens.boards import BoardsScreen
 
+    acme = Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")
+    _ship(tmp_path, monkeypatch, acme)
     app = StageApp(tmp_path / "boards.db", "")
     async with app.run_test(size=(120, 40)) as pilot:
-        await pilot.pause()
-        screen = BoardsScreen()
-        app.push_screen(screen)
-        await pilot.pause()
-
-        applied: list[object] = []
-
-        def record(apply: object) -> tuple[tuple[object, ...], int]:
-            applied.append(apply)
-            return (), 1
-
-        monkeypatch.setattr("stage.companies.update_registry", record)
-        monkeypatch.setattr(screen, "load", lambda: None)
-        screen.selected_company = lambda: "Acme"  # type: ignore[method-assign]
+        screen = await _boards_screen(app, pilot, monkeypatch)
+        screen.selected_company = lambda: "Acme"
         told: list[str] = []
-        screen.notify = lambda message, **_: told.append(str(message))  # type: ignore[method-assign]
+        screen.notify = lambda message, **_: told.append(str(message))
         screen._set_enabled(False)
+        await app.workers.wait_for_complete()
+        assert "Disabled Acme" in told[-1]
+        assert [row.enabled for row in load_boards()[0]] == [False]
+        assert [row.enabled for row in load_personal().rows] == [False]
+        screen._set_enabled(True)
+        await app.workers.wait_for_complete()
+        assert "Enabled Acme" in told[-1]
 
-        assert told
-        assert "Disabled Acme" in told[0]
-        assert applied
+    assert [row.enabled for row in load_boards()[0]] == [True]
+    assert load_personal().rows == ()
+
+
+async def test_a_board_stage_switched_off_cannot_be_switched_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import Company, Platform
+    from stage.tui.app import StageApp
+
+    meta = Company(name="Meta", platform=Platform.GREENHOUSE, slug="meta", enabled=False)
+    _ship(tmp_path, monkeypatch, meta)
+    app = StageApp(tmp_path / "boards.db", "")
+    async with app.run_test(size=(120, 40)) as pilot:
+        screen = await _boards_screen(app, pilot, monkeypatch)
+        screen.selected_company = lambda: "Meta"
+        warned: list[str] = []
+        screen.notify = lambda message, **_: warned.append(str(message))
+        screen._set_enabled(True)
+        await app.workers.wait_for_complete()
+
+    assert warned and "Stage switched Meta off" in warned[0]
 
 
 async def test_disabling_one_board_leaves_the_same_employers_other_board(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from stage.companies import load_boards
     from stage.domain import Company, Platform
     from stage.services.coverage import board_of
     from stage.tui.app import StageApp
-    from stage.tui.screens.boards import BoardsScreen
 
     lever = Company(name="Palantir", platform=Platform.LEVER, slug="palantir")
     other = Company(name="Palantir", platform=Platform.SMARTRECRUITERS, slug="palantir")
+    _ship(tmp_path, monkeypatch, lever, other)
+    app = StageApp(tmp_path / "boards.db", "")
+    async with app.run_test(size=(120, 40)) as pilot:
+        screen = await _boards_screen(app, pilot, monkeypatch)
+        screen.selected_company = lambda: "Palantir"
+        screen.selected_board = lambda: board_of(other)
+        screen.notify = lambda *_, **__: None
+        screen._set_enabled(False)
+        await app.workers.wait_for_complete()
+
+    assert [row.enabled for row in load_boards()[0]] == [True, False]
+
+
+async def test_switching_off_one_of_your_own_boards_writes_your_list(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.companies import load_personal, update_personal
+    from stage.domain import Company, Platform
+    from stage.tui.app import StageApp
+    from stage.tui.screens.boards import BoardsScreen
+
+    mine = Company(name="Zyx", platform=Platform.GREENHOUSE, slug="zyx")
+    update_personal(lambda _: ([mine], None))
     app = StageApp(tmp_path / "boards.db", "")
     async with app.run_test(size=(120, 40)) as pilot:
         await pilot.pause()
         screen = BoardsScreen()
         app.push_screen(screen)
         await pilot.pause()
-        written: list[object] = []
-
-        def record(apply: Any) -> tuple[object, int]:
-            rows, changed = apply((lever, other))
-            written.extend(rows)
-            return rows, changed
-
-        monkeypatch.setattr("stage.companies.update_registry", record)
         monkeypatch.setattr(screen, "load", lambda: None)
-        screen.selected_company = lambda: "Palantir"  # type: ignore[method-assign]
-        screen.selected_board = lambda: board_of(other)  # type: ignore[method-assign]
-        screen.notify = lambda *_, **__: None  # type: ignore[method-assign]
+        screen.selected_company = lambda: "Zyx"  # type: ignore[method-assign]
+        screen.selected_board = lambda: "greenhouse:zyx"  # type: ignore[method-assign]
+        told: list[str] = []
+        screen.notify = lambda message, **_: told.append(str(message))  # type: ignore[method-assign]
         screen._set_enabled(False)
+        await app.workers.wait_for_complete()
 
-    assert [row.enabled for row in written] == [True, False]  # type: ignore[attr-defined]
+    assert "Disabled Zyx" in told[0]
+    assert [row.enabled for row in load_personal().rows] == [False]
 
 
 def _undecorated(screen: object, name: str) -> Any:
@@ -2061,7 +2122,7 @@ def test_disabling_a_board_needs_a_second_press() -> None:
 
 async def test_a_board_is_only_disabled_on_the_second_press(tmp_path: Path) -> None:
     from stage.tui.app import StageApp
-    from stage.tui.screens.boards import BoardsScreen
+    from stage.tui.screens.boards import BoardRow, BoardsScreen
 
     app = StageApp(tmp_path / "boards-confirm.db", "")
 
@@ -2070,7 +2131,7 @@ async def test_a_board_is_only_disabled_on_the_second_press(tmp_path: Path) -> N
         screen = BoardsScreen()
         app.push_screen(screen)
         await pilot.pause()
-        screen._companies = ("Acme",)
+        screen._rows = (BoardRow("empty", "Acme", "greenhouse", "greenhouse:acme"),)
 
         screen.action_disable()
 
@@ -2558,7 +2619,6 @@ def test_a_search_looks_past_the_default_window_like_the_cli() -> None:
 
 async def test_a_search_finds_a_posting_older_than_the_window(tmp_path: Path) -> None:
     import sqlite3
-    from contextlib import closing
 
     from stage.tui.app import StageApp
     from stage.tui.screens.postings import PostingsScreen
@@ -2721,7 +2781,7 @@ async def test_w_reads_every_line_of_the_description(tmp_path: Path) -> None:
     target = tmp_path / "read.db"
     _seed(target, count=2)
     lines = [f"Line {index} of the posting." for index in range(60)]
-    with sqlite3.connect(target) as conn:
+    with closing(sqlite3.connect(target)) as conn, conn:
         conn.execute("UPDATE jobs SET description = ?", ("\n\n\n".join(lines),))
     app = StageApp(target, "")
 
@@ -2747,3 +2807,279 @@ async def test_w_reads_every_line_of_the_description(tmp_path: Path) -> None:
         assert not screen._expanded
         assert isinstance(app.focused, DataTable)
         assert "Line 1 " not in str(detail.render())
+
+
+async def test_a_second_sync_is_refused_while_another_holds_the_lock(tmp_path: Path) -> None:
+    from textual.widgets import Static
+
+    from stage.runlock import run_lock_path, single_run
+    from stage.tui.app import StageApp
+    from stage.tui.screens.sync import SyncScreen
+
+    database = tmp_path / "locked.db"
+    app = StageApp(database, "")
+
+    with single_run("sync", run_lock_path(database)):
+        async with app.run_test(size=(120, 40)) as pilot:
+            await pilot.pause()
+            screen = SyncScreen()
+            app.push_screen(screen)
+            await pilot.pause()
+            await pilot.press("s")
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            chips = str(screen.query_one("#chips", Static).render())
+
+    assert "did not start. stage sync (pid" in chips
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Software Engineering Intern",
+        "株式会社テスト インターン募集 2027 夏",
+        "ＦＵＬＬＷＩＤＴＨ Intern",
+        "👨‍👩‍👧‍👦 family team 👨‍👩‍👧‍👦",
+        "🇨🇦🇺🇸 cross border 👍🏽",
+        "❤️ école 1️⃣ 한국어 인턴십",
+    ],
+)
+def test_truncation_counts_the_cells_a_terminal_draws(text: str) -> None:
+    from rich.cells import cell_len
+
+    from stage.domain.text import cells, graphemes, truncate
+
+    assert cells(text) == cell_len(text)
+    for width in range(3, 40):
+        cut = truncate(text, width)
+        assert cell_len(cut) <= width, (width, cut)
+        assert cut == text or cut.endswith("..."), (width, cut)
+        assert set(graphemes(cut.removesuffix("..."))) <= set(graphemes(text)), (width, cut)
+
+
+def test_a_single_line_field_drops_breaks_and_invisible_spaces() -> None:
+    from stage.domain.text import one_line, truncate
+    from stage.tui.safe import cell, inline
+
+    assert one_line("Acme\nCorp​\tInc\r\n") == "Acme Corp Inc "
+    assert truncate("Acme\nCorp", 20) == str(cell("Acme\nCorp")) == inline("Acme\nCorp")
+
+
+def test_stat_labels_stay_inside_their_column() -> None:
+    from collections import Counter
+
+    from rich.cells import cell_len
+
+    from stage.tui.screens.stats import LABEL_WIDTH, bars
+
+    lines = bars(Counter({"株式会社" * 12: 3, "👨‍👩‍👧‍👦" * 20: 2, "Acme": 1})).splitlines()
+    starts = {cell_len(line.split("  [b]")[0]) for line in lines}
+
+    assert len(starts) == 1 and starts.pop() <= LABEL_WIDTH
+
+
+def _seed_long(path: Path) -> None:
+    from datetime import UTC, datetime
+
+    from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
+    from stage.storage.repository import SourceBatch
+    from stage.storage.sqlite_repo import SqliteRepository
+
+    when = datetime.now(UTC)
+    company = "Zyxwvut Holdings International Group Incorporated"
+    title = "Senior Principal Staff Software Engineering Intern " * 3
+    repo = SqliteRepository.connect(path)
+    repo.apply_source_batch(
+        SourceBatch(
+            source="speedyapply",
+            run_started_at=when,
+            jobs=(
+                Job(
+                    id="speedyapply:zyx:1",
+                    source="speedyapply",
+                    company=company,
+                    title_raw=title,
+                    title_normalized=title.lower(),
+                    apply_url_raw="https://boards.example.test/1",
+                    description="",
+                    first_seen=when,
+                    last_seen=when,
+                    location_raw="Montreal, QC",
+                    location=LocationBucket.MONTREAL,
+                ),
+            ),
+            quarantined=(
+                QuarantinedJob(
+                    id="speedyapply:zyx:2",
+                    source="speedyapply",
+                    company=company,
+                    title_raw=title,
+                    reason=RejectionReason.OUT_OF_SCOPE_LOCATION,
+                    first_seen=when,
+                    last_seen=when,
+                    location_raw="Lyon, France",
+                ),
+            ),
+        )
+    )
+    repo.close()
+
+
+@pytest.mark.parametrize("width", [80, 100])
+async def test_boards_and_review_columns_fit_the_terminal(tmp_path: Path, width: int) -> None:
+    from textual.widgets import DataTable
+
+    from stage.tui.app import StageApp
+
+    target = tmp_path / "fit.db"
+    _seed_long(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(width, 24)) as pilot:
+        await _settled(app, pilot)
+        await pilot.press("b")
+        await _settled(app, pilot)
+        tables = list(app.screen.query(DataTable))
+        await pilot.press("escape", "v")
+        await _settled(app, pilot)
+        tables += list(app.screen.query(DataTable))
+
+        for table in tables:
+            used = sum(column.get_render_width(table) for column in table.columns.values())
+            assert table.row_count and used < width, (table.id, used)
+
+
+async def test_the_quarantine_tab_shows_the_posting_not_the_filing_keys(tmp_path: Path) -> None:
+    from textual.widgets import Static, TabbedContent
+
+    from stage.tui.app import StageApp
+
+    target = tmp_path / "quarantine.db"
+    _seed_long(target)
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        screen = await _review(app, pilot)
+        detail = screen.query_one("#detail", Static)
+        assert "adapter-candidate" in str(detail.render())
+
+        screen.query_one("#tabs", TabbedContent).active = "tab-quarantine"
+        await _settled(app, pilot)
+        shown = str(detail.render())
+
+    assert "adapter-candidate" not in shown
+    assert "out-of-scope-location" in shown and "Lyon, France" in shown
+
+
+async def test_a_huge_title_leaves_the_employer_and_facts_in_view(tmp_path: Path) -> None:
+    import sqlite3
+
+    from textual.widgets import Static
+
+    from stage.domain.text import cells
+    from stage.tui.app import StageApp
+
+    target = tmp_path / "huge.db"
+    _seed(target, count=1)
+    with closing(sqlite3.connect(target)) as conn, conn:
+        conn.execute("UPDATE jobs SET title_raw = ?", ("Software Engineering Intern " * 40,))
+    app = StageApp(target, "")
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await _settled(app, pilot)
+        lines = str(app.screen.query_one("#detail", Static).render()).splitlines()
+
+    assert lines[1].endswith("...") and lines[2].startswith("Beta")
+    assert all(cells(line) <= 75 for line in lines[:2])
+
+
+async def test_sync_warnings_leave_the_source_table_in_view(tmp_path: Path) -> None:
+    from textual.widgets import DataTable
+
+    from stage.domain import CompanyFailed, SourceStarted
+    from stage.tui.app import StageApp
+    from stage.tui.screens.sync import SyncScreen
+
+    app = StageApp(tmp_path / "empty.db", "")
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        screen = SyncScreen(dry_run=True)
+        app.push_screen(screen)
+        await pilot.pause()
+        for name in ("ashby", "greenhouse", "lever", "workday"):
+            screen._absorb(SourceStarted(source=name, companies=3))
+        for index in range(12):
+            screen._absorb(
+                CompanyFailed(
+                    source="lever", company=f"Acme {index}", error="boom " * 40, elapsed_ms=1.0
+                )
+            )
+        await pilot.pause()
+
+        table = screen.query_one("#sources", DataTable)
+        assert table.scrollable_content_region.height >= table.row_count + 1
+
+
+async def test_the_cursor_stays_on_a_board_you_switch_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.companies import load_boards
+    from stage.domain import Company, Platform
+    from stage.tui.app import StageApp
+    from stage.tui.screens.boards import BoardsScreen
+
+    names = ("Acme", "Beta", "Coda")
+    _ship(
+        tmp_path,
+        monkeypatch,
+        *(Company(name=name, platform=Platform.GREENHOUSE, slug=name.lower()) for name in names),
+    )
+    app = StageApp(tmp_path / "boards.db", "")
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await _settled(app, pilot)
+        await pilot.press("b")
+        await _settled(app, pilot)
+        screen = app.screen
+        assert isinstance(screen, BoardsScreen)
+        chosen = screen.selected_company()
+        await pilot.press("d", "d")
+        await _settled(app, pilot)
+        followed = screen.selected_company(), screen._companies[-1]
+        await pilot.press("e")
+        await _settled(app, pilot)
+
+    assert followed == (chosen, chosen)
+    assert all(row.enabled for row in load_boards()[0])
+
+
+async def test_switching_a_board_returns_before_the_list_is_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import time
+
+    from stage import companies
+    from stage.companies import load_boards
+    from stage.domain import Company, Platform
+    from stage.tui.app import StageApp
+
+    write = companies.update_personal
+
+    def slow(update: Any) -> Any:
+        time.sleep(0.5)
+        return write(update)
+
+    _ship(tmp_path, monkeypatch, Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme"))
+    monkeypatch.setattr("stage.companies.update_personal", slow)
+    app = StageApp(tmp_path / "boards.db", "")
+    async with app.run_test(size=(120, 40)) as pilot:
+        screen = await _boards_screen(app, pilot, monkeypatch)
+        screen.selected_company = lambda: "Acme"
+        started = time.perf_counter()
+        screen._set_enabled(False)
+        returned = time.perf_counter() - started
+        await app.workers.wait_for_complete()
+
+    assert returned < 0.25
+    assert [row.enabled for row in load_boards()[0]] == [False]

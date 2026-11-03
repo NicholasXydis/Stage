@@ -188,7 +188,7 @@ def _seed(*entries: TrackedPosting) -> None:
 
 def test_status_names_are_forgiving_and_suggest() -> None:
     assert parse_status(" Applied ") is APPLIED
-    with pytest.raises(TrackerError, match="Did you mean 'saved'"):
+    with pytest.raises(TrackerError, match='Did you mean "saved"'):
         parse_status("sav")
     with pytest.raises(TrackerError, match="Choose from: saved, applied"):
         parse_status("zzz")
@@ -339,10 +339,7 @@ def test_a_file_that_is_not_a_database_is_refused() -> None:
         _entries()
 
 
-def test_excluded_ids_drop_rows_and_keep_counts_true(
-    db_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from stage.storage import sqlite_repo
+def test_excluded_ids_drop_rows_and_keep_counts_true(db_path: Path) -> None:
     from stage.storage.sqlite_repo import SqliteRepository
 
     _store(db_path, _catalogue())
@@ -352,9 +349,11 @@ def test_excluded_ids_drop_rows_and_keep_counts_true(
         listed = [job.id for job in repository.list_jobs(small)]
         assert listed == [_id("b"), _id("d"), _id("e")]
         assert repository.count_jobs(small) == 3
-        monkeypatch.setattr(sqlite_repo, "_ID_CHUNK", 1)
-        assert [job.id for job in repository.list_jobs(small)] == listed
         assert repository.count_search("intern", small) == 3
+        many = JobFilters(
+            limit=None, excluded_ids=small.excluded_ids | {f"x{n}" for n in range(40000)}
+        )
+        assert [job.id for job in repository.list_jobs(many)] == listed
     finally:
         repository.close()
 
@@ -700,9 +699,9 @@ def test_a_sync_after_the_listing_refuses_row_numbers(db_path: Path) -> None:
         (["applied", "1", "--on", "2999-01-01"], 2, "is in the future"),
         (["applied", "1", "--on", "soon"], 2, "Write dates like"),
         (["track", "1"], 2, "stage track needs --status, --on or --note."),
-        (["track", "1", "--status", "intervewing"], 2, "Did you mean 'interviewing'?"),
-        (["save", "1", "greenhouse:nope:1"], 1, "No posting with id 'greenhouse:nope:1'."),
-        (["save", "3-1"], 2, "3-1 counts backwards; write 1-3."),
+        (["track", "1", "--status", "intervewing"], 2, 'Did you mean "interviewing"?'),
+        (["save", "1", "greenhouse:nope:1"], 1, 'No posting has the id "greenhouse:nope:1".'),
+        (["save", "3-1"], 2, "3-1 counts backwards. Write 1-3."),
         (["save", "9"], 2, "so 9 is out of range."),
         (["save"], 2, "stage save needs a row number or a posting id."),
         (["track", "2", "--note", "hi"], 1, "Row 2 is not tracked yet"),
@@ -746,7 +745,7 @@ def test_quick_commands_say_how_to_move_back(db_path: Path) -> None:
 
     assert result[1] == (
         "Nothing to change. Already marked offer: Intern a - Acme "
-        "Quick commands never move a status back; stage track ROW --status saved does."
+        "Quick commands never move a status back, but stage track ROW --status saved does."
     )
 
 
@@ -803,13 +802,13 @@ def test_the_tracker_exports_and_refuses_conflicting_options(db_path: Path, tmp_
     shouted = _run("tracker", "--export", "CSV", "--out", str(tmp_path / "t.csv"), "--db", db)
     assert shouted[1].startswith("Wrote 1 tracked posting to"), "the format ignores case"
     for args, said in [
-        (["--export", "pdf"], "The tracker exports as csv, json or md."),
-        (["--export", "xls"], "The tracker exports as csv, json or md."),
-        (["--export", "PDF"], "The tracker exports as csv, json or md."),
+        (["--export", "pdf"], 'The tracker exports csv, json or md, not "pdf".'),
+        (["--export", "xls"], 'The tracker exports csv, json or md, not "xls".'),
+        (["--export", "PDF"], 'The tracker exports csv, json or md, not "PDF".'),
         (["--stats", "--status", "saved"], "--stats counts every tracked posting"),
         (["--export", "csv", "--json"], "--export writes a file"),
         (["--out", "x.csv"], "--out and --force only apply with --export."),
-        (["--status", "nope"], "Unknown status 'nope'"),
+        (["--status", "nope"], 'Unknown status "nope"'),
     ]:
         code, _, err = _run("tracker", *args, "--db", db)
         assert code == 2 and said in err
@@ -866,9 +865,9 @@ def test_open_refuses_an_unsafe_saved_link(db_path: Path) -> None:
     _run("save", "1", "--db", db)
     _sql(db, "DELETE FROM jobs WHERE id = ?", _id("a"))
 
-    code, out, _ = _run("open", _id("a"), "--print", "--db", db)
+    code, out, err = _run("open", _id("a"), "--print", "--db", db)
 
-    assert code == 2 and "Refusing to open" in out
+    assert code == 2 and "Stage did not open" in err and not out
 
 
 def test_a_damaged_tracker_never_breaks_a_listing(db_path: Path) -> None:
@@ -889,6 +888,30 @@ def test_a_damaged_tracker_never_breaks_a_listing(db_path: Path) -> None:
     assert tracker_path().read_bytes() == before
 
 
+def test_untracked_refuses_when_the_tracker_cannot_be_read(db_path: Path, tmp_path: Path) -> None:
+    db = _store(db_path, _catalogue())
+    _tracker_file().write_bytes(b"garbage" * 200)
+    out = tmp_path / "out.csv"
+
+    listed = _run("list", "--untracked", "--db", db)
+    searched = _run("search", "intern", "--untracked", "--db", db)
+    exported = _run("export", "--format", "csv", "--untracked", "--out", str(out), "--db", db)
+
+    assert [listed[0], searched[0], exported[0]] == [2, 2, 2]
+    assert "--untracked needs your tracker" in exported[2]
+    assert not out.exists()
+
+
+def test_a_repeated_or_empty_tracker_status_is_refused(db_path: Path) -> None:
+    db = _store(db_path, _catalogue())
+
+    twice = _run("tracker", "--status", "saved", "--status", "applied", "--db", db)
+    empty = _run("tracker", "--status", "", "--db", db)
+
+    assert twice[0] == 2 and "--status takes one value" in twice[2]
+    assert empty[0] == 2 and "--status needs a value" in empty[2]
+
+
 def test_purge_leaves_the_tracker_alone(db_path: Path) -> None:
     db = _store(db_path, _catalogue())
     _listed(db)
@@ -899,6 +922,85 @@ def test_purge_leaves_the_tracker_alone(db_path: Path) -> None:
 
     assert result.exit_code == 0
     assert tracker_path().read_bytes() == before
+
+
+def _main_with_copy(db_path: Path) -> None:
+    _store(
+        db_path,
+        [_job("main", hours=24 * 20), _job("copy", source="lever", duplicate_of=_id("main"))],
+    )
+
+
+async def test_a_promoted_copy_inherits_the_record_after_a_crash(db_path: Path) -> None:
+    from stage.services.tracker import follow_recorded
+    from stage.storage import open_repository
+
+    _main_with_copy(db_path)
+    await _record(db_path, [_id("main")], APPLIED)
+    async with open_repository(db_path) as repository:
+        await repository.purge(NOW)
+        await repository.purge(NOW)
+    assert _status_of(_id("main")) is APPLIED
+
+    async with open_repository(db_path) as repository:
+        assert await follow_recorded(repository) == 1
+        assert await repository.pending_heirs() == []
+    assert _status_of(_id("copy", "lever")) is APPLIED
+
+
+async def test_a_busy_tracker_keeps_the_heir_for_the_next_run(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services.maintenance import purge_expired
+    from stage.services.tracker import follow_recorded
+    from stage.storage import open_repository
+
+    _main_with_copy(db_path)
+    await _record(db_path, [_id("main")], APPLIED)
+
+    def busy(_: Path) -> TrackerStore:
+        raise TrackerUnreadableError("database is locked")
+
+    with monkeypatch.context() as patched:
+        patched.setattr(TrackerStore, "connect", busy)
+        async with open_repository(db_path) as repository:
+            assert (await purge_expired(repository, now=NOW)).tracker_busy
+
+    async with open_repository(db_path) as repository:
+        assert await follow_recorded(repository) == 1
+    assert _status_of(_id("copy", "lever")) is APPLIED
+
+
+async def test_heirs_recorded_in_turn_follow_the_chain(db_path: Path) -> None:
+    from stage.services.tracker import follow_recorded
+    from stage.storage import open_repository
+
+    _store(db_path, [_job("c")])
+    for former, heir, stamp in (("a", "b", "2026-10-01"), ("b", "c", "2026-10-02")):
+        _sql(
+            db_path,
+            "INSERT INTO detail_fetches (id, source, fetched_at) VALUES (?, ?, ?)",
+            f"heir:{_id(former)}",
+            _id(heir),
+            stamp,
+        )
+    _seed(_tracked(_id("a"), APPLIED))
+
+    async with open_repository(db_path) as repository:
+        assert await follow_recorded(repository) == 1
+    assert [entry.posting_id for entry in _entries()] == [_id("c")]
+
+
+async def test_a_heir_nobody_could_follow_expires_with_the_quarantine(db_path: Path) -> None:
+    from stage.domain import QUARANTINE_RETENTION_DAYS
+    from stage.storage import open_repository
+
+    _main_with_copy(db_path)
+    async with open_repository(db_path) as repository:
+        await repository.purge(NOW)
+        assert len(await repository.pending_heirs()) == 1
+        await repository.purge(NOW + timedelta(days=QUARANTINE_RETENTION_DAYS + 1))
+        assert await repository.pending_heirs() == []
 
 
 def test_the_read_path_stays_light_with_a_tracker(db_path: Path) -> None:
@@ -919,7 +1021,12 @@ def test_the_read_path_stays_light_with_a_tracker(db_path: Path) -> None:
         "print('LOADED:' + ','.join(loaded), file=sys.stderr)\n"
     )
     result = subprocess.run(
-        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
     )
 
     assert result.stderr.strip().splitlines()[-1] == "LOADED:"
@@ -1014,7 +1121,7 @@ def test_a_tracker_export_that_would_overwrite_is_refused(db_path: Path, tmp_pat
 
     code, _, err = _run("tracker", "--export", "csv", "--out", str(target), "--db", db)
 
-    assert code == 2 and "pass --force to overwrite it" in err
+    assert code == 2 and "already exists. Pass --force" in err
     assert target.read_text(encoding="utf-8") == "keep"
 
 
@@ -1031,7 +1138,7 @@ def test_a_big_batch_lists_twenty_and_counts_the_rest(db_path: Path) -> None:
     assert removed.endswith("...and 5 more")
 
 
-@pytest.mark.skipif(os.name == "nt" or os.geteuid() == 0, reason="POSIX permissions")
+@pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0, reason="POSIX permissions")
 def test_a_tracker_stage_cannot_write_is_explained(db_path: Path) -> None:
     db = _store(db_path, _catalogue())
     _listed(db)
@@ -1043,11 +1150,11 @@ def test_a_tracker_stage_cannot_write_is_explained(db_path: Path) -> None:
         tracker_path().chmod(0o600)
 
     assert code == 1
-    assert "could not use your tracker" in err and "readonly" in err
+    assert "could not use your tracker" in err and "read-only" in err
     assert _status_of(_id("a")) is SAVED
 
 
-@pytest.mark.skipif(os.name == "nt" or os.geteuid() == 0, reason="POSIX permissions")
+@pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0, reason="POSIX permissions")
 def test_a_folder_stage_cannot_write_is_explained(db_path: Path) -> None:
     db = _store(db_path, _catalogue())
     _listed(db)
@@ -1142,7 +1249,7 @@ def test_purging_a_tracked_main_copy_moves_its_tracking_to_the_copy_that_stays(
 
     code, purged, _ = _run("purge", "--db", db)
 
-    assert code == 0 and "1 duplicate promoted" in purged
+    assert code == 0 and "Promoted 1 orphaned duplicate back into view" in purged
     assert [entry.posting_id for entry in _entries()] == [copy]
     assert _status_of(copy) is ApplicationStatus.HIDDEN
     assert "Intern copy" not in _listed(db, "--all"), "a hidden posting must stay hidden"

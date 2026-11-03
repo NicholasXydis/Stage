@@ -120,6 +120,8 @@ def test_the_internship_screen_never_reads_a_description() -> None:
         ("Site Reliability Engineering Intern", RoleCategory.INFRA),
         ("Embedded Software Intern", RoleCategory.EMBEDDED),
         ("Firmware Engineering Intern", RoleCategory.EMBEDDED),
+        ("Flagship Pioneering ML Internship", RoleCategory.ML_AI),
+        ("Intern - Research - Data Sciences - AI", RoleCategory.DATA),
     ],
 )
 def test_role_categorization(title: str, role: RoleCategory) -> None:
@@ -137,6 +139,7 @@ def test_role_categorization(title: str, role: RoleCategory) -> None:
         ("Stagiaire en apprentissage automatique", RoleCategory.ML_AI),
         ("Stagiaire — logiciel embarqué", RoleCategory.EMBEDDED),
         ("Développeur·euse logiciel stagiaire", RoleCategory.SWE),
+        ("Stagiaire en Recherche en IA/ML", RoleCategory.ML_AI),
     ],
 )
 def test_french_role_categorization(title: str, role: RoleCategory) -> None:
@@ -228,6 +231,24 @@ def test_a_discipline_name_never_outranks_the_specialism_beside_it(
 def test_a_discipline_name_loses_even_when_it_is_the_longer_phrase() -> None:
     assert len("computer science") > len("devops"), "the hazard is length, not rarity"
     assert classify_role("Computer Science Intern - DevOps").role is RoleCategory.INFRA
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Application/Software Developer Co-op, Capital Markets Technology", RoleCategory.SWE),
+        (
+            "Business Systems Analyst Co-op (Winter 2027), Capital Markets Technology",
+            RoleCategory.GENERAL_CS,
+        ),
+        ("Insurance Technology & AI Analytics Intern", RoleCategory.DATA),
+        ("Statistical Programming Intern", RoleCategory.DATA),
+        ("Quantitative Developer Intern", RoleCategory.QUANT),
+        ("Gameplay Programming Intern - Undergraduate", RoleCategory.SWE),
+    ],
+)
+def test_a_department_name_never_outranks_the_discipline(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title
 
 
 def test_general_cs_is_a_resolved_discipline_not_a_failed_reading() -> None:
@@ -371,7 +392,13 @@ def test_a_structured_signal_cannot_override_an_explicit_disqualifier() -> None:
 
 
 @pytest.mark.parametrize(
-    "title", ["Stage Manager", "Manager Trainee", "Student Services Coordinator"]
+    "title",
+    [
+        "Stage Manager",
+        "Manager Trainee",
+        "Student Services Coordinator",
+        "Dean of Students, Academy of Math and Programming (AMP)",
+    ],
 )
 def test_a_structured_signal_cannot_revive_a_blocked_title_marker(title: str) -> None:
     assert not screen_internship(title, "Internship").is_internship, title
@@ -797,3 +824,187 @@ def test_a_generic_title_is_still_software_engineering() -> None:
 
     assert classify_role("Software Engineering Intern").role is RoleCategory.SWE
     assert classify_role("Platform Software Engineer Intern").role is RoleCategory.SWE
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "School of Computer Science Teaching Assistant Positions Winter 2027",
+        "Teaching Assistants, Winter 2027, Electrical & Computer Engineering",
+        "Product Builder Returnship Intern",
+        "Returning New Grad Software Engineer I - For Current/Previous HNTB Interns ONLY",
+    ],
+)
+def test_a_posting_that_only_mentions_interns_is_not_an_internship(title: str) -> None:
+    verdict = screen_internship(title, "Internship")
+    assert not verdict.is_internship, title
+    assert verdict.disqualified_by, title
+
+
+def test_a_returning_intern_restriction_keeps_the_internship() -> None:
+    title = "Systems Security Engineer Intern - Summer 2027 (For SNC Summer 2026 Interns Only)"
+    assert screen_internship(title).is_internship, "the title still names an internship"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Asset Analytics Associate Manager",
+        "Cyber Security Risk Index Specialist (Fixed Term Contract)",
+        "Software Engineer Apprentice",
+        "Network and Computer Systems Administrator Apprenticeship",
+    ],
+)
+def test_a_structured_internship_label_cannot_make_a_staff_title_an_internship(
+    title: str,
+) -> None:
+    assert not screen_internship(title, "Internship").is_internship, title
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["Software Engineer", "Associate Cloud Engineer", "Software Engineer Apprentice Intern"],
+)
+def test_a_structured_internship_label_still_counts_without_an_apprentice_word(
+    title: str,
+) -> None:
+    assert screen_internship(title, "Internship").is_internship, title
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Activision 2027 Summer Internshps - Game Engineering (Vancouver)",
+        "SW Development Intership",
+    ],
+)
+def test_a_misspelled_internship_is_still_an_internship(title: str) -> None:
+    assert screen_internship(title).is_internship, title
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Stagiaire - Traitement de la parole", RoleCategory.ML_AI),
+        ("Stagiaire – IA de Confiance", RoleCategory.ML_AI),
+        ("Stagiaire en traitement automatique du langage", RoleCategory.ML_AI),
+        ("Stagiaire en apprentissage machine", RoleCategory.ML_AI),
+        ("Stagiaire en vision artificielle", RoleCategory.ML_AI),
+        ("Stagiaire - Innovation IA - Beenox (Hiver 2027)", RoleCategory.ML_AI),
+        ("Stagiaire - Ingénieur d'outil - Beenox (Hiver 2027)", RoleCategory.SWE),
+        ("Stagiaire en architecture logicielle", RoleCategory.SWE),
+        ("Stagiaire - Intelligence des affaires - Beenox (Hiver 2027)", RoleCategory.DATA),
+        ("Stagiaire, Analyste de Systèmes d'Information (Hiver 2027)", RoleCategory.GENERAL_CS),
+    ],
+)
+def test_quebec_french_titles_reach_the_role_their_english_pair_has(
+    title: str, role: RoleCategory
+) -> None:
+    assert classify_role(title).role is role, title
+
+
+def test_an_ai_and_data_science_track_is_machine_learning() -> None:
+    title = "2027 New York Life Direct Summer Internship Program - AI & DS (Tampa, FL, US)"
+    assert classify_role(title).role is RoleCategory.ML_AI
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        (
+            "Autonomy Engineer Intern, Autonomy Infrastructure, Systems and Tools",
+            RoleCategory.EMBEDDED,
+        ),
+        ("Autonomy Engineering Intern - Summer 2027", RoleCategory.EMBEDDED),
+        ("Droid Autonomy Intern - Summer 2027", RoleCategory.EMBEDDED),
+        ("Autonomous Systems Intern", RoleCategory.EMBEDDED),
+        ("2027 Computer Engineer Intern - Manhattan Beach CA", RoleCategory.GENERAL_CS),
+        ("Computer Engineering Intern", RoleCategory.GENERAL_CS),
+        ("IT Engineering Intern", RoleCategory.GENERAL_CS),
+        ("Business System Analyst Intern/Co-op (Winter 2027)", RoleCategory.GENERAL_CS),
+        ("Year-Round Intern - Business Systems Analysis", RoleCategory.GENERAL_CS),
+        ("SW Engineering (Java/C++) Intern (Summer 2027)", RoleCategory.SWE),
+        ("Tools and Automation SW Dev Co-op/Intern", RoleCategory.SWE),
+        ("SW Tools Development Co-op/Intern", RoleCategory.SWE),
+        ("Engineering Intern - ML Compilers (Spring 2027 Co-op)", RoleCategory.SWE),
+        ("Tools and Compilers Research and Development Intern", RoleCategory.SWE),
+        ("Cloud Applications Development Intern", RoleCategory.SWE),
+        ("Mobile Applications - iOS Intern", RoleCategory.SWE),
+        ("IS Intern, Web Applications", RoleCategory.SWE),
+        ("Activision 2027 Summer Internships - Graphics Engineering", RoleCategory.SWE),
+        ("Year-Round Intern - Automation Testing Frameworks", RoleCategory.SWE),
+        ("Python Intern", RoleCategory.SWE),
+        ("System App Dev & Sustainment Intern, Spring 2027", RoleCategory.SWE),
+        ("Linux Intern", RoleCategory.INFRA),
+        ("Linux Engineering Intern", RoleCategory.INFRA),
+        ("Linux Engineer Intern", RoleCategory.INFRA),
+        ("Cloud Administrator Intern (January 2027 - 12 months)", RoleCategory.INFRA),
+        ("Co-Op – IT – Windows Systems Administration", RoleCategory.INFRA),
+        ("Student Internship - Network and Server Infrastructure", RoleCategory.INFRA),
+        ("Cloud Integration Engineering Intern - Summer 2027", RoleCategory.INFRA),
+        ("AI CyberOps Engineering Co-Op", RoleCategory.SECURITY),
+        ("CyberSOC Co-op - 2027 (US)", RoleCategory.SECURITY),
+        ("CW Security Operation Center Engineer Intern", RoleCategory.SECURITY),
+        ("Security Infrastructure Engineering & Architecture Intern", RoleCategory.SECURITY),
+        ("Security Consulting Engineer I (Intern) - United States", RoleCategory.SECURITY),
+        ("Security Workflow Engineer Intern", RoleCategory.SECURITY),
+        ("2027 Summer Intern, SEAM, Embodied AI", RoleCategory.ML_AI),
+        ("AI and Quantum Scientist Co-op (Winter 2027)", RoleCategory.ML_AI),
+        ("RL Engineer Intern - RL Engineer - Tesla AI", RoleCategory.ML_AI),
+        ("ML Systems Research Engineering Intern", RoleCategory.ML_AI),
+        ("2027 Intern - AI & Architecture", RoleCategory.ML_AI),
+        ("AI Post-Training and Model Alignment Intern", RoleCategory.ML_AI),
+        ("Large Language Models Intern - Research", RoleCategory.ML_AI),
+        ("Verizon Network and Technology: AI Science 2027 Internship", RoleCategory.ML_AI),
+        ("AI Residency Intern", RoleCategory.ML_AI),
+        ("AIOps Forward Deployment Engineer Intern, BS - Summer 2027", RoleCategory.ML_AI),
+        ("Intelligent Automation Intern", RoleCategory.ML_AI),
+        ("Data Platforms Engineer Intern", RoleCategory.DATA),
+        ("Data Integrations Intern", RoleCategory.DATA),
+        ("Data & Integration Internship", RoleCategory.DATA),
+        ("Data Integration Engineer Intern", RoleCategory.DATA),
+        ("Data Automation Intern - Summer 2027", RoleCategory.DATA),
+        ("Summer 2027 - Data and Visualization Intern", RoleCategory.DATA),
+        ("Summer Intern - Data Mesh Platform", RoleCategory.DATA),
+        ("Data BI Analyst Co-op", RoleCategory.DATA),
+        ("Predictive Modeler Intern - Summer 2027", RoleCategory.DATA),
+        ("Data Solution Engineer Intern", RoleCategory.DATA),
+        ("Stage universitaire | Science de la donnée - Hiver 2027", RoleCategory.DATA),
+        ("Systematic Quant Intern", RoleCategory.QUANT),
+        ("Quant Credit Intern - PA - Hybrid - December 2026", RoleCategory.QUANT),
+        ("Quantitative Research Intern", RoleCategory.QUANT),
+        ("Engineering Intern", RoleCategory.UNKNOWN),
+        ("Research Intern", RoleCategory.UNKNOWN),
+    ],
+)
+def test_role_phrases_found_in_the_rejected_titles(title: str, role: RoleCategory) -> None:
+    assert classify_role(title).role is role, title
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("MTS Intern", RoleCategory.SWE),
+        ("[WINTER 2027] AI App & Tool Development Intern 8 Months", RoleCategory.ML_AI),
+        ("Retail Store MTS Associate", RoleCategory.UNKNOWN),
+    ],
+)
+def test_startup_titles_for_technical_staff_and_ai_apps_are_read(
+    title: str, role: RoleCategory
+) -> None:
+    assert classify_role(title, "").role is role
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Systems Engineer Intern", RoleCategory.INFRA),
+        ("Systems Engineering Intern", RoleCategory.INFRA),
+        ("Software Systems Engineering Intern", RoleCategory.SWE),
+        ("Embedded Systems Engineering Intern", RoleCategory.EMBEDDED),
+    ],
+)
+def test_systems_engineer_and_systems_engineering_share_one_label(
+    title: str, role: RoleCategory
+) -> None:
+    assert classify_role(title, "").role is role

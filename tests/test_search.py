@@ -244,7 +244,7 @@ def test_search_is_reachable_from_the_command_line(db_path: Path) -> None:
     )
     repo.close()
 
-    runner = CliRunner()
+    runner = CliRunner(env={"COLUMNS": "120"})
     found = runner.invoke(app, ["search", "developpement", "--db", str(db_path)])
     assert found.exit_code == 0, found.stdout
     assert "Coveo Solutions" in found.stdout
@@ -324,13 +324,15 @@ def test_search_lists_matches_newest_first_however_often_the_word_appears(
 def test_a_date_window_matches_the_text_once_not_per_row(repository: SqliteRepository) -> None:
     from datetime import timedelta
 
+    from stage.storage.postings import _matching
+
     windowed = JobFilters(first_seen_after=NOW - timedelta(days=1))
-    expression, source, params = repository._match("intern", windowed)
+    found = _matching("intern", windowed)
+    assert found is not None
+    source, params = found
     plan = " | ".join(
         str(row[-1])
-        for row in repository._conn.execute(
-            f"EXPLAIN QUERY PLAN SELECT jobs.id {source}", (expression, *params)
-        )
+        for row in repository._conn.execute(f"EXPLAIN QUERY PLAN SELECT jobs.id {source}", params)
     )
 
     assert "LIST SUBQUERY" in plan, f"FTS ran once per dated row (41s for 'a'): {plan}"

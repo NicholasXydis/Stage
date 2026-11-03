@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -88,9 +89,16 @@ async def test_the_self_test_starts_stage_and_lists_its_tools(tmp_path: Path) ->
 @pytest.mark.parametrize(
     ("entry", "said"),
     [
-        (ServerEntry(str(Path("/nonexistent/stage/python")), ("-m", "stage", "mcp")), "No such"),
+        (
+            ServerEntry(str(Path("/nonexistent/stage/python")), ("-m", "stage", "mcp")),
+            "does not exist",
+        ),
         (ServerEntry(sys.executable, ("-c", "import sys; sys.exit('broken install')")), "broken"),
-        (ServerEntry(sys.executable, ("-c", "print('not a server')")), "Stage"),
+        (
+            ServerEntry(sys.executable, ("-c", "raise RuntimeError('broken install')")),
+            "Stage failed to start: broken install.",
+        ),
+        (ServerEntry(sys.executable, ("-c", "print('not a server')")), "in a terminal to see why"),
     ],
 )
 async def test_the_self_test_says_why_stage_did_not_start(entry: ServerEntry, said: str) -> None:
@@ -98,6 +106,7 @@ async def test_the_self_test_says_why_stage_did_not_start(entry: ServerEntry, sa
 
     assert not result.passed
     assert said in result.detail
+    assert not re.search(r"Traceback|[A-Z][a-z]+Error\b", result.detail), result.detail
 
 
 async def test_the_self_test_gives_up_on_a_silent_program(
@@ -109,7 +118,7 @@ async def test_the_self_test_gives_up_on_a_silent_program(
         result = await self_test(entry, timeout=1)
 
     assert not result.passed
-    assert "within 1 seconds" in result.detail
+    assert "within 1 second." in result.detail and "stage doctor" in result.detail
     assert logging.getLogger("mcp").level == logging.NOTSET
 
 

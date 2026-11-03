@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import pytest
+
 from stage.companies import load_companies
 from stage.domain import Company, Platform
 from stage.services.canary import AKAMAI_PLATFORMS, BoardProbe, CanaryReport, select_probes
@@ -130,3 +134,60 @@ def test_a_parse_failure_still_fails_the_canary() -> None:
 def test_an_unreachable_board_is_not_counted_as_empty() -> None:
     probe = BoardProbe(source="lever", company="Acme", error="BreakerOpenError", unreachable=True)
     assert probe.is_unreachable and not probe.is_empty and not probe.is_failure
+
+
+async def test_a_canary_that_runs_out_of_time_keeps_what_finished(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+    from collections.abc import AsyncIterator
+
+    from stage.domain import CompanyFinished, SyncEvent
+    from stage.services import sync as sync_module
+    from stage.services.canary import canary
+    from stage.storage import open_repository
+
+    async def slow(*_: object, **__: object) -> AsyncIterator[SyncEvent]:
+        yield CompanyFinished("greenhouse", "Acme", 3, 1.0)
+        await asyncio.sleep(30)
+        yield CompanyFinished("lever", "Late", 3, 1.0)
+
+    monkeypatch.setattr(sync_module, "sync", slow)
+    async with open_repository(tmp_path / "stage.db") as repository:
+        report = await canary(repository, [_company(Platform.GREENHOUSE, "acme")], timeout=0.05)
+
+    assert report.timed_out and not report.passed
+    assert [(probe.source, probe.company) for probe in report.probes] == [("greenhouse", "Acme")]
+
+
+def test_a_timed_out_canary_still_prints_valid_json(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    from typer.testing import CliRunner
+
+    from stage.cli.app import app
+    from stage.services import canary as canary_module
+
+    async def partial(*_: object, **__: object) -> CanaryReport:
+        return CanaryReport(probes=(BoardProbe("greenhouse", "Acme", fetched=3),), timed_out=True)
+
+    monkeypatch.setattr(canary_module, "canary", partial)
+    result = CliRunner().invoke(
+        app, ["canary", "--json", "--timeout", "1", "--db", str(tmp_path / "stage.db")]
+    )
+
+    payload = json.loads(result.stdout)
+    assert result.exit_code == 1
+    assert payload["timed_out"] is True and payload["passed"] is False
+    assert payload["probes"][0]["company"] == "Acme"
+    assert "Gave up after 1s with 1 board checked" in result.stderr
+
+
+def test_a_probe_note_reads_plainly() -> None:
+    failed = BoardProbe(source="oracle_cloud", company="A", error="ForbiddenError: x returned 403")
+    degraded = BoardProbe(source="lever", company="B", degraded="2 rows skipped")
+    assert failed.note == "x returned 403"
+    assert degraded.note == "2 rows skipped"
+    assert BoardProbe(source="lever", company="C").note == ""

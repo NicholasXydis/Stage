@@ -250,3 +250,26 @@ async def test_an_empty_marker_never_hides_a_page_that_lost_its_rows() -> None:
 async def test_an_html_board_without_a_marker_still_raises_on_an_empty_page() -> None:
     with pytest.raises(PayloadValidationError, match="matched no rows"):
         await _fetch(HTML_BOARD, EMPTY_PAGE)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_a_page_of_markup_is_parsed_off_the_event_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import threading
+
+    import stage.sources.custom_json as module
+
+    parsed_on: list[str] = []
+    parse = module.html_rows
+
+    def recorded(text: str, selector: str) -> object:
+        parsed_on.append(threading.current_thread().name)
+        return parse(text, selector)
+
+    monkeypatch.setattr(module, "html_rows", recorded)
+    result = await _fetch(HTML_BOARD, HTML)
+
+    assert len(result.jobs) == 2
+    assert parsed_on and threading.main_thread().name not in parsed_on

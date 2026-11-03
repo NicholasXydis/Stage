@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -219,7 +220,7 @@ async def test_quick_keys_never_move_a_status_back(db_path: Path) -> None:
 
         assert _entries()[_id("a")].status is ApplicationStatus.INTERVIEWING
         assert _title(screen, 0) == "[I] Intern a"
-        assert _messages(app)[-1].startswith("Nothing to change; already marked interviewing.")
+        assert _messages(app)[-1].startswith("Nothing to change. Already marked interviewing")
 
 
 async def test_the_detail_names_the_status(db_path: Path) -> None:
@@ -448,9 +449,8 @@ async def test_keys_with_nothing_to_act_on_say_so(db_path: Path) -> None:
         await pilot.press("n", "o", "x")
         await pilot.pause()
 
-        assert _messages(app).count("Nothing selected.") == 1, (
-            "a repeat within seconds is shown once"
-        )
+        assert len(_messages(app)) == 1, "a repeat within seconds is shown once"
+        assert _messages(app)[0].startswith("Nothing tracked yet. Press escape, then s")
 
 
 async def test_a_note_that_is_too_long_is_refused(db_path: Path) -> None:
@@ -463,9 +463,12 @@ async def test_a_note_that_is_too_long_is_refused(db_path: Path) -> None:
         screen.query_one("#note", Input).value = "x" * 1_001
         await pilot.press("enter")
         await _settle(app, pilot)
+        kept = screen.query_one("#note", Input).value
+        still_open = screen.query_one("#note-bar").has_class("visible")
 
         assert _entries()[_id("a")].note == ""
         assert any("at most 1,000 characters" in m for m in _messages(app))
+        assert kept == "x" * 1_001 and still_open, "the note stays to be shortened"
 
 
 async def test_no_browser_is_reported(db_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -482,7 +485,7 @@ async def test_no_browser_is_reported(db_path: Path, monkeypatch: pytest.MonkeyP
         assert "No browser available on this machine." in _messages(app)
 
 
-@pytest.mark.skipif(os.name == "nt" or os.geteuid() == 0, reason="POSIX permissions")
+@pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0, reason="POSIX permissions")
 async def test_a_tracker_that_turns_read_only_is_reported_everywhere(db_path: Path) -> None:
     _seed(_entry("a", ApplicationStatus.SAVED))
     app = StageApp(_store(db_path), "")
@@ -522,7 +525,7 @@ async def test_a_posting_removed_since_the_listing_is_reported(db_path: Path) ->
         await pilot.press("s")
         await _settle(app, pilot)
 
-        assert "That posting is no longer stored; press r to reload." in _messages(app)
+        assert "That posting is no longer stored. Press r to reload." in _messages(app)
         assert _entries() == {}
 
 
@@ -533,9 +536,7 @@ async def test_the_quick_keys_need_a_posting(tmp_path: Path) -> None:
         await pilot.press("s", "p", "h")
         await pilot.pause()
 
-        assert _messages(app).count("Nothing selected.") == 1, (
-            "a repeat within seconds is shown once"
-        )
+        assert _messages(app) == ["No postings yet. Press y to sync."], "a repeat shows once"
 
 
 async def test_the_applications_title_column_follows_the_window_width(db_path: Path) -> None:
@@ -558,3 +559,83 @@ async def test_the_applications_title_column_follows_the_window_width(db_path: P
 
         assert title() > narrow + 100 and table.row_count == 3
         assert table.cursor_row == before == 1
+
+
+async def test_a_save_waits_for_a_busy_tracker_without_freezing_the_screen(
+    db_path: Path,
+) -> None:
+    import asyncio
+    import sqlite3
+
+    _seed(_entry("e", ApplicationStatus.SAVED))
+    app = StageApp(_store(db_path), "")
+    async with app.run_test(size=SIZE) as pilot:
+        screen = await _postings(app, pilot)
+        holder = sqlite3.connect(tracker_path(), isolation_level=None)
+        holder.execute("BEGIN IMMEDIATE")
+        clock = asyncio.get_running_loop().time
+        started = clock()
+        await pilot.press("s")
+        await asyncio.sleep(0.05)
+        waited = clock() - started
+        await pilot.press("down")
+        moved = screen.query_one("#results", DataTable).cursor_row
+        holder.execute("ROLLBACK")
+        holder.close()
+        await _settle(app, pilot)
+
+    assert waited < 2 and moved == 1
+    assert _entries()[_id("a")].status is ApplicationStatus.SAVED
+
+
+async def test_a_reload_says_it_is_searching_while_the_tracker_is_locked(
+    db_path: Path,
+) -> None:
+    import asyncio
+    import sqlite3
+
+    _seed(_entry("e", ApplicationStatus.SAVED))
+    app = StageApp(_store(db_path), "")
+    async with app.run_test(size=SIZE) as pilot:
+        screen = await _postings(app, pilot)
+        holder = sqlite3.connect(tracker_path(), isolation_level=None)
+        holder.execute("BEGIN EXCLUSIVE")
+        clock = asyncio.get_running_loop().time
+        started = clock()
+        await pilot.press("r")
+        await asyncio.sleep(0.05)
+        waited = clock() - started
+        shown = _plain(screen.query_one("#chips", Static))
+        holder.execute("ROLLBACK")
+        holder.close()
+        await _settle(app, pilot)
+
+        assert waited < 2 and "searching" in shown
+        assert _title(screen, 4) == "[S] Intern e"
+
+
+async def test_saving_two_rows_in_quick_succession_confirms_both(db_path: Path) -> None:
+    app = StageApp(_store(db_path), "")
+    async with app.run_test(size=SIZE) as pilot:
+        await _postings(app, pilot)
+        await pilot.press("s")
+        await _settle(app, pilot)
+        await pilot.press("down", "s")
+        await _settle(app, pilot)
+
+        assert _messages(app).count("Saved 1 posting. z undoes it.") == 2
+
+
+async def test_keys_behind_the_help_overlay_leave_the_rows_alone(db_path: Path) -> None:
+    app = StageApp(_store(db_path), "")
+    async with app.run_test(size=SIZE) as pilot:
+        screen = await _postings(app, pilot)
+        await pilot.press("question_mark", "h", "s", "space", "z")
+        await _settle(app, pilot)
+        assert screen.query_one("#help").has_class("visible")
+        assert not screen._marked and not tracker_path().exists()
+
+        await pilot.press("question_mark", "h")
+        await _settle(app, pilot)
+
+    assert _entries()[_id("a")].status is ApplicationStatus.HIDDEN

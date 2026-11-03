@@ -101,7 +101,8 @@ def test_open_prints_the_url_without_launching_a_browser(seeded: Path) -> None:
 def test_open_refuses_a_scheme_that_is_not_http(seeded: Path) -> None:
     result = CliRunner().invoke(app, ["open", "greenhouse:coveo:2", "--print", "--db", str(seeded)])
     assert result.exit_code == 2
-    assert "only a plain http or https address" in result.stdout
+    said = " ".join(result.stderr.split())
+    assert "opens only plain http and https links" in said and not result.stdout
 
 
 @pytest.mark.parametrize(
@@ -132,7 +133,7 @@ def test_open_refuses_every_shape_that_is_not_a_plain_web_address(
         app, ["open", "greenhouse:coveo:9", "--print", "--db", str(db_path)]
     )
     assert result.exit_code == 2, result.stdout
-    assert "Refusing to open" in result.stdout
+    assert "Stage did not open" in result.stderr
 
 
 def test_open_launches_through_the_browser_module(

@@ -110,3 +110,35 @@ async def test_a_resting_board_is_skipped_and_reported(
     fetched = {event.company for event in events if isinstance(event, CompanyFinished)}
     assert rested and rested[0].skipped == 1, "the failing board was fetched again anyway"
     assert fetched == {"Beta"}, "resting one board must not stop the healthy ones"
+
+
+@respx.mock
+async def test_failures_stage_s_own_circuit_breaker_caused_never_rest_a_board(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import CompanyVisit
+
+    respx.get(url__regex=r"https://boards-api\.greenhouse\.io/.*").mock(
+        return_value=httpx.Response(200, json={"jobs": []})
+    )
+    monkeypatch.setattr(sync_module, "get_feeds", dict)
+    board = Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")
+    skipped = "BreakerOpenError: workday circuit breaker is open after 6 consecutive failures"
+
+    async with open_repository(db_path) as repository:
+        for _ in range(REST_AFTER_FAILURES + 8):
+            await repository.apply_source_batch(
+                SourceBatch(
+                    source="greenhouse",
+                    run_started_at=NOW,
+                    visits=(CompanyVisit(board="greenhouse:acme", succeeded=False, error=skipped),),
+                )
+            )
+        events = [
+            event
+            async for event in sync_module.sync(
+                repository, [board], sources=["greenhouse"], now_fn=lambda: NOW
+            )
+        ]
+
+    assert {event.company for event in events if isinstance(event, CompanyFinished)} == {"Acme"}

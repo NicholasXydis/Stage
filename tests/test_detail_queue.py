@@ -296,7 +296,7 @@ async def test_a_failed_fetch_is_retried_while_an_answered_one_is_not(db_path: P
 async def test_a_retry_is_bounded_so_a_dead_endpoint_cannot_hold_the_queue(
     db_path: Path,
 ) -> None:
-    from stage.storage.sqlite_repo import MAX_DETAIL_ATTEMPTS
+    from stage.storage.details import MAX_DETAIL_ATTEMPTS
 
     async with open_repository(db_path) as repository:
         await repository.apply_source_batch(

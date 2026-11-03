@@ -5,8 +5,8 @@ import httpx
 import pytest
 import respx
 
-from stage.cli.runlock import AnotherRunInProgressError, single_run
 from stage.http import CEILING_BACKSTOP, profile
+from stage.runlock import AnotherRunInProgressError, single_run
 from stage.services.sync import DAILY_RUNS, _daily_allowance, _reserve_for, _stalest_first
 from stage.sources.workday import WorkdayAdapter
 
@@ -44,21 +44,68 @@ def test_the_conservative_tier_refreshes_less_often_than_the_rest() -> None:
         assert profile(name).refresh_interval_h < conservative
 
 
-def test_every_window_stays_below_the_gap_between_scheduled_runs() -> None:
-    from stage.cli.schedule import MAX_JITTER_S, SYNC_EVERY_HOURS
+def test_every_window_stays_below_the_gap_of_a_six_hour_schedule() -> None:
+    from stage.cli.schedule import MAX_JITTER_S
+    from stage.http import REFRESH_SLACK_H
 
-    shortest_gap_h = SYNC_EVERY_HOURS - MAX_JITTER_S / 3600
+    shortest_gap_h = 6 - MAX_JITTER_S / 3600
     for name in ("standard", "broad", "moderate", "paginated", "workday"):
-        assert profile(name).refresh_interval_h < shortest_gap_h, (
+        assert profile(name).refresh_interval_h - REFRESH_SLACK_H < shortest_gap_h, (
             f"{name}: a window at or above the gap makes scheduled runs skip boards by accident"
         )
 
 
-def test_the_conservative_window_still_allows_two_passes_a_day() -> None:
-    from stage.cli.schedule import MAX_JITTER_S, SYNC_EVERY_HOURS
+def test_a_quiet_board_is_never_read_less_often_than_every_six_hours() -> None:
+    from stage.cli.schedule import JITTER_SHARE, SYNC_EVERY_MINUTES
+    from stage.http import REFRESH_SLACK_H
 
-    gap_h = SYNC_EVERY_HOURS - MAX_JITTER_S / 3600
+    tick_h = SYNC_EVERY_MINUTES / 60
+    jitter_h = tick_h * JITTER_SHARE
+    threshold = profile("standard").refresh_interval_h - REFRESH_SLACK_H
+    ticks = next(count for count in range(1, 100) if count * tick_h - jitter_h >= threshold)
+    assert ticks * tick_h + jitter_h <= 6.0
+
+
+def test_the_conservative_window_still_allows_two_passes_a_day() -> None:
+    from stage.cli.schedule import MAX_JITTER_S
+
+    gap_h = 6 - MAX_JITTER_S / 3600
     assert profile("conservative").refresh_interval_h < 2 * gap_h
+
+
+def test_a_busy_board_is_read_on_the_hourly_tick_of_a_half_hour_schedule() -> None:
+    from stage.cli.schedule import JITTER_SHARE, SYNC_EVERY_MINUTES
+    from stage.http import BUSY_REFRESH_H, REFRESH_SLACK_H
+
+    tick_h = SYNC_EVERY_MINUTES / 60
+    jitter_h = tick_h * JITTER_SHARE
+    assert tick_h + jitter_h < BUSY_REFRESH_H - REFRESH_SLACK_H < 2 * tick_h - jitter_h
+
+
+def test_searches_rest_four_hours_between_reads() -> None:
+    assert profile("searches").refresh_interval_h == 4.0
+    assert profile("jobbank").refresh_interval_h == 4.0
+    assert profile("searches").refresh_interval_h < profile("standard").refresh_interval_h
+
+
+def test_a_boards_window_follows_its_own_new_internships() -> None:
+    standard = profile("standard")
+    windows = [standard.window(month, 0) for month in (0, 1, 2, 3, 5, 11, 40)]
+    assert windows == [5.5, 5.5, 4.0, 3.0, 2.0, 1.0, 1.0]
+    assert standard.window(1, 1) == 1.0, "a new internship this week means hourly"
+    assert standard.window(0, 0, followed=True) == 1.0, "a followed company is hourly"
+
+
+def test_a_fragile_host_is_never_read_faster_than_every_three_hours() -> None:
+    conservative = profile("conservative")
+    assert conservative.window(40, 5) == 3.0
+    assert conservative.window(0, 0) == 10.0
+    assert profile("standard").strictest(conservative).busy_refresh_h == 3.0
+
+
+def test_a_feed_is_read_every_run_whatever_its_activity() -> None:
+    assert profile("feeds").window(0, 0) == 0.0
+    assert profile("feeds").window(9, 9, followed=True) == 0.0
 
 
 def test_feeds_are_never_windowed() -> None:
@@ -121,6 +168,39 @@ def test_the_lock_is_released_even_when_the_run_raises(tmp_path: Path) -> None:
     with pytest.raises(ValueError), single_run("sync", lock):
         raise ValueError("boom")
     with single_run("sync", lock):
+        pass
+
+
+def test_a_waiting_run_starts_once_the_holder_finishes(tmp_path: Path) -> None:
+    from contextlib import ExitStack
+
+    lock = tmp_path / "network.lock"
+    held = ExitStack()
+    held.enter_context(single_run("sync", lock))
+    told: list[str] = []
+    naps: list[float] = []
+
+    def nap(seconds: float) -> None:
+        naps.append(seconds)
+        held.close()
+
+    with single_run("rescreen", lock, wait_s=60, waiting=told.append, sleep=nap):
+        pass
+
+    assert len(naps) == 1
+    assert len(told) == 1 and "stage sync" in told[0]
+
+
+def test_a_waiting_run_gives_up_at_its_deadline(tmp_path: Path) -> None:
+    lock = tmp_path / "network.lock"
+    clock = iter([0.0, 0.0, 5.0, 11.0, 11.0])
+
+    waiting = single_run("purge", lock, wait_s=10, sleep=lambda _: None, clock=lambda: next(clock))
+    with (
+        single_run("sync", lock),
+        pytest.raises(AnotherRunInProgressError, match="already"),
+        waiting,
+    ):
         pass
 
 
@@ -301,9 +381,9 @@ async def test_a_board_the_open_breaker_refused_is_deferred_not_failed(
 
     failed = [event for event in events if isinstance(event, CompanyFailed)]
     deferred = [event for event in events if isinstance(event, CompanyDeferred)]
-    assert failed and all("ConnectError" in event.error for event in failed)
-    assert deferred and all("BreakerOpenError" in event.reason for event in deferred)
-    assert len(visits) == len(failed)
+    assert failed and all("could not connect" in event.error for event in failed)
+    assert deferred and all("circuit breaker" in event.reason for event in deferred)
+    assert not [visit for visit in visits if visit.consecutive_failures]
 
 
 def test_the_daily_cap_spans_every_bucket_a_source_fetches() -> None:
@@ -338,7 +418,7 @@ async def test_more_than_sixteen_runs_in_a_day_still_count(tmp_path: Path) -> No
     from datetime import UTC, datetime, timedelta
 
     from stage.domain import SourceRunStats, SyncOutcome, SyncRun
-    from stage.services.sync import _spent_today
+    from stage.services.sync import _pacing
     from stage.storage import open_repository
 
     now = datetime.now(UTC)
@@ -353,17 +433,17 @@ async def test_more_than_sixteen_runs_in_a_day_still_count(tmp_path: Path) -> No
                     sources=(SourceRunStats(source="greenhouse", requests=10),),
                 )
             )
-        spent, seen = await _spent_today(repository, now - timedelta(hours=24))
+        pacing = await _pacing(repository, now)
 
-    assert seen
-    assert spent["greenhouse"] == 250
+    assert pacing.has_history
+    assert pacing.spent["greenhouse"] == 250
 
 
 async def test_yesterdays_requests_do_not_count_against_today(tmp_path: Path) -> None:
     from datetime import UTC, datetime, timedelta
 
     from stage.domain import SourceRunStats, SyncOutcome, SyncRun
-    from stage.services.sync import _spent_today
+    from stage.services.sync import _pacing
     from stage.storage import open_repository
 
     now = datetime.now(UTC)
@@ -378,6 +458,156 @@ async def test_yesterdays_requests_do_not_count_against_today(tmp_path: Path) ->
                     sources=(SourceRunStats(source="greenhouse", requests=7),),
                 )
             )
-        spent, _ = await _spent_today(repository, now - timedelta(hours=24))
+        pacing = await _pacing(repository, now)
 
-    assert spent["greenhouse"] == 7
+    assert pacing.spent["greenhouse"] == 7
+
+
+async def test_an_unchanged_answer_costs_nothing_and_pushback_is_remembered(
+    tmp_path: Path,
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from stage.domain import SourceRunStats, SyncOutcome, SyncRun
+    from stage.services.sync import _pacing
+    from stage.storage import open_repository
+
+    now = datetime.now(UTC)
+    async with open_repository(tmp_path / "pace.db") as repository:
+        await repository.record_sync_run(
+            SyncRun(
+                started_at=now - timedelta(minutes=5),
+                finished_at=now,
+                outcome=SyncOutcome.SUCCESS,
+                sources=(
+                    SourceRunStats(source="greenhouse", requests=10, not_modified=8),
+                    SourceRunStats(source="workday", requests=10, tightenings=1),
+                    SourceRunStats(source="lever", requests=10, retries=1),
+                ),
+            )
+        )
+        pacing = await _pacing(repository, now)
+
+    assert pacing.spent["greenhouse"] == 2
+    assert pacing.pushback == {"workday", "lever"}
+    assert pacing.pace("greenhouse") == 2
+    assert pacing.pace("workday") == 1
+
+
+def test_a_clean_day_doubles_the_daily_cap_but_never_the_run() -> None:
+    posture = profile("standard")
+    per_run = posture.max_requests_per_run
+    spent = per_run * DAILY_RUNS
+    assert _daily_allowance(posture, spent, True) == 0
+    assert _daily_allowance(posture, spent, True, pace=2) == per_run
+    assert _daily_allowance(posture, 0, True, pace=2) == per_run
+
+
+def test_the_daily_cap_holds_every_quiet_read_of_six_hundred_workday_boards() -> None:
+    posture = profile("workday").sized_for(604, 100)
+    day = round(604 * posture.requests_per_board * 24 / posture.refresh_interval_h * 2.5)
+    assert day == 13178
+    assert _daily_allowance(posture, CEILING_BACKSTOP * 2, True, boards=604) > 0, (
+        "the old 4,000 left runs 5 to 8 of a soak with no Workday requests"
+    )
+    assert _daily_allowance(posture, day - 10, True, boards=604) == 10
+    assert _daily_allowance(posture, day, True, boards=604) == 0
+
+
+def test_pushback_halves_the_board_sized_cap_and_a_clean_day_doubles_it() -> None:
+    posture = profile("workday").sized_for(604, 100)
+    assert _daily_allowance(posture, 14_000, True, boards=604, pace=1) == 0
+    assert _daily_allowance(posture, 14_000, True, boards=604, pace=2) == (
+        posture.max_requests_per_run
+    )
+
+
+def test_a_small_source_keeps_its_run_based_cap() -> None:
+    posture = profile("standard")
+    spent = posture.max_requests_per_run * DAILY_RUNS
+    assert _daily_allowance(posture, spent, True, boards=20) == 0
+    feeds = profile("feeds")
+    assert _daily_allowance(feeds, feeds.max_requests_per_run * DAILY_RUNS, True, boards=5) == 0
+
+
+async def test_a_board_with_a_new_internship_this_week_is_busy(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from stage.domain import Company, Job, Platform
+    from stage.services.sync import _pacing
+    from stage.sources import adapter_for_platform
+    from stage.storage import SourceBatch, open_repository
+
+    now = datetime.now(UTC)
+    backlog_at, news_at = now - timedelta(days=9), now - timedelta(days=2)
+    posting = Job(
+        id="greenhouse:acme:1",
+        source="greenhouse",
+        company="Acme",
+        title_raw="Software Engineering Intern",
+        title_normalized="software engineering intern",
+        apply_url_raw="",
+        description="",
+        first_seen=backlog_at,
+        last_seen=backlog_at,
+    )
+    fresh = replace(posting, id="greenhouse:acme:2", first_seen=news_at, last_seen=news_at)
+    async with open_repository(tmp_path / "busy.db") as repository:
+        for moment, job in ((backlog_at, posting), (news_at, fresh)):
+            await repository.apply_source_batch(
+                SourceBatch(source="greenhouse", run_started_at=moment, jobs=(job,))
+            )
+        pacing = await _pacing(repository, now)
+
+    assert pacing.activity == {"greenhouse:acme": (1, 1)}, "the first batch is backlog"
+    greenhouse = adapter_for_platform(Platform.GREENHOUSE)
+    lever = adapter_for_platform(Platform.LEVER)
+    assert greenhouse is not None and lever is not None
+    acme = Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")
+    assert pacing.window(greenhouse, acme, {}) == 1.0
+    assert pacing.window(lever, replace(acme, platform=Platform.LEVER), {}) == 5.5
+
+
+def test_a_lock_held_by_another_program_is_not_blamed_on_stage(tmp_path: Path) -> None:
+    from stage.runlock import _try_lock
+
+    lock = tmp_path / "network.lock"
+    with lock.open("a+b") as handle:
+        assert _try_lock(handle)
+        with pytest.raises(AnotherRunInProgressError) as caught, single_run("sync", lock):
+            pass
+
+    assert str(caught.value) == (
+        f"Another program holding {lock} is already running. Run stage sync again when it finishes."
+    )
+    assert caught.value.holder == f"another program holding {lock}"
+
+
+def test_a_held_lock_names_its_holder_and_when_it_started(tmp_path: Path) -> None:
+    import re
+
+    lock = tmp_path / "network.lock"
+    with (
+        single_run("sync", lock),
+        pytest.raises(AnotherRunInProgressError) as caught,
+        single_run("purge", lock, busy="press s again when it finishes"),
+    ):
+        pass
+
+    said = str(caught.value)
+    assert re.fullmatch(
+        r"stage sync \(pid \d+, started \d{4}-\d{2}-\d{2} \d{2}:\d{2}\) is already running\. "
+        r"Press s again when it finishes\.",
+        said,
+    ), said
+    assert ";" not in said
+
+
+def test_a_lock_that_cannot_be_opened_says_where_and_what_to_check(tmp_path: Path) -> None:
+    folder = tmp_path / "network.lock"
+    folder.mkdir()
+    with pytest.raises(AnotherRunInProgressError) as caught, single_run("sync", folder):
+        pass
+    said = str(caught.value)
+    assert said.startswith(f"Stage could not open its run lock at {folder} (")
+    assert said.endswith(f"Check that {tmp_path} is writable.")

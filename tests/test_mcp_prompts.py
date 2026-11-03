@@ -121,7 +121,7 @@ async def test_every_prompt_renders_plain_ascii_that_names_only_real_tools(store
     async with _connected(stored) as client:
         for name in PROMPTS:
             said = await _said(client, name, needs.get(name))
-            assert said.isascii() and len(said) < 2_000
+            assert said.isascii() and len(said) < 2_000 and ";" not in said
             named = set(re.findall(r"\b[a-z]+_[a-z_]+\b", said))
             assert named <= TOOL_NAMES, named - TOOL_NAMES
             assert not named & ACTION_NAMES
@@ -308,7 +308,11 @@ async def test_only_prompt_arguments_are_completed(stored: Path) -> None:
         template = ResourceTemplateReference(type="ref/resource", uri="stage://{x}")
         found = await client.complete(template, {"name": "x", "value": ""})
         unknown = await _suggested(client, "colour", "")
+        no_prompt = await _suggested(client, "company", "S", prompt="nope")
+        not_taken = await _suggested(client, "company", "S", prompt="whats_new")
+        taken = await _suggested(client, "company", "S", prompt="prepare_application")
     assert found.completion.values == [] and unknown == []
+    assert no_prompt == [] and not_taken == [] and taken[:2] == ["ShopBack", "Shopify"]
 
 
 def test_prompts_and_their_titles_are_plain_ascii() -> None:
@@ -319,10 +323,11 @@ def test_prompts_and_their_titles_are_plain_ascii() -> None:
 @pytest.mark.parametrize(
     ("name", "arguments", "said"),
     [
-        ("whats_neww", {}, "Stage has no prompt named 'whats_neww'. Did you mean whats_new?"),
-        ("nope", {}, "Stage has no prompt named 'nope'. Stage has: find_matches,"),
-        ("whats_new", {"x": "1"}, "whats_new takes no arguments; 'x' is not one of them."),
-        ("find_matches", {"place": "usa"}, "find_matches takes company, location, role, term;"),
+        ("whats_neww", {}, 'Stage has no prompt named "whats_neww". Did you mean "whats_new"?'),
+        ("nope", {}, 'Stage has no prompt named "nope". Stage has: find_matches,'),
+        ("whats_new", {"x": "1"}, 'There is no argument "x". whats_new takes no arguments.'),
+        ("find_matches", {"place": "usa"}, "find_matches takes company, location, role, term."),
+        ("find_matches", {"rol": "swe"}, 'Did you mean "role"? find_matches takes company,'),
     ],
 )
 async def test_an_unknown_prompt_or_argument_is_refused_plainly(
@@ -346,3 +351,11 @@ def test_a_title_alone_is_searched_rather_than_dropped() -> None:
     from stage.ai.prompts import prepare_application
 
     assert 'words="Software Intern"' in prepare_application(title="Software Intern")
+
+
+def test_an_argument_with_nothing_readable_is_left_out() -> None:
+    from stage.ai.prompts import find_matches, prepare_application
+
+    assert '""' not in find_matches(role="‮​")
+    assert "mine=true" in find_matches(company="⁦⁩")
+    assert prepare_application(company="‮") == prepare_application()

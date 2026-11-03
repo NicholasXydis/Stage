@@ -1,6 +1,6 @@
 import json
 import random
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
@@ -289,11 +289,11 @@ async def test_dry_run_fails_on_a_fault_that_needs_no_network_to_see(
 
 
 async def test_a_source_stream_failure_does_not_stop_other_sources() -> None:
-    async def broken() -> AsyncIterator[SyncEvent]:
+    async def broken() -> AsyncGenerator[SyncEvent]:
         yield SourceStarted(source="broken", companies=0)
         raise RuntimeError("source setup failed")
 
-    async def healthy() -> AsyncIterator[SyncEvent]:
+    async def healthy() -> AsyncGenerator[SyncEvent]:
         yield SourceStarted(source="healthy", companies=0)
         yield SourceFinished(
             source="healthy",
@@ -374,9 +374,9 @@ def test_excluding_an_unknown_source_is_an_error_not_a_silent_no_op() -> None:
     from stage.services.sync import NoSourcesSelectedError, _select
 
     rows = (Company(name="A", platform=Platform.GREENHOUSE, slug="a"),)
-    with pytest.raises(NoSourcesSelectedError, match="'greehnouse' to exclude. Did you mean"):
+    with pytest.raises(NoSourcesSelectedError, match='"greehnouse" to exclude. Did you mean'):
         _select(rows, None, ["greehnouse"])
-    with pytest.raises(NoSourcesSelectedError, match="Unknown source 'nope'. Choose from: "):
+    with pytest.raises(NoSourcesSelectedError, match='no source named "nope". Choose from: '):
         _select(rows, ["nope"])
 
 
@@ -393,12 +393,58 @@ def test_a_partial_run_says_which_kind_of_partial_it_was() -> None:
     from stage.services.sync import _partial_reason
 
     unroutable = [Company(name="Acme", platform=Platform.TEAMTAILOR, slug="acme")]
-    assert _partial_reason([], [], [], ["workday"]) == ("1 source stopped at the host budget"), (
+    assert _partial_reason([], [], [], ["workday"]) == ("1 source left boards for the next sync"), (
         "budget deferral is rotation working, not a failure"
     )
     assert "failed" in _partial_reason(["themuse"], [], [], [])
     assert "blocked" in _partial_reason([], [], ["workable"], [])
-    assert "route" in _partial_reason([], unroutable, [], [])
+    assert "cannot read" in _partial_reason([], unroutable, [], [])
     combined = _partial_reason(["themuse"], [], [], ["workday"])
-    assert combined.count(";") == 1, "every distinct reason must be named, not just the first"
+    assert combined == "1 source failed, 1 source left boards for the next sync", (
+        "every distinct reason must be named, not just the first"
+    )
+    assert ";" not in _partial_reason(["a"], unroutable, ["b"], ["c"])
     assert _partial_reason([], [], [], []) == "", "a clean run needs no explanation"
+
+
+@pytest.mark.parametrize(
+    ("said", "advice"),
+    [
+        ("database or disk is full", "Free some space"),
+        ("database is locked", "The next sync saves them"),
+        ("attempt to write a readonly database", "yours and writable"),
+    ],
+)
+def test_a_source_the_database_could_not_save_says_why_and_what_to_do(
+    said: str, advice: str
+) -> None:
+    import sqlite3
+
+    failed = sync_module.RunLedger().broke("simplify", sqlite3.OperationalError(said))
+
+    assert advice in failed.error and "not saved" in failed.error
+    assert failed.error.endswith(".") and said not in failed.error
+
+
+@respx.mock
+async def test_a_sync_hands_the_interpreter_back_to_its_loop_quickly(
+    db_path: Path, acme: Company, run_time: datetime
+) -> None:
+    import sys
+
+    respx.get(ENDPOINT).mock(return_value=httpx.Response(200, json=_payload()))
+    before = sys.getswitchinterval()
+    during: dict[str, float] = {}
+
+    async with open_repository(db_path) as repository:
+        async for event in sync(
+            repository,
+            [acme],
+            sources=["greenhouse"],
+            now_fn=lambda: run_time,
+            rng=random.Random(1),
+        ):
+            during.setdefault(type(event).__name__, sys.getswitchinterval())
+
+    assert during["CompanyFinished"] <= 0.001 and during["SourceFinished"] <= 0.001
+    assert sys.getswitchinterval() == before

@@ -214,8 +214,8 @@ def test_values_split_on_commas_and_repeats_without_duplicates() -> None:
 @pytest.mark.parametrize(
     ("value", "said"),
     [
-        ("montrael", "Unknown location 'montrael'. Did you mean 'montreal'?"),
-        ("mars", "Unknown location 'mars'. Choose from: montreal, canada, usa"),
+        ("montrael", 'Unknown location "montrael". Did you mean "montreal"?'),
+        ("mars", 'Unknown location "mars". Choose from: montreal, canada, usa'),
         ("unknown", "stage list --mine --location unknown shows them"),
         ("international", "Choose from: montreal, canada, usa"),
     ],
@@ -233,7 +233,7 @@ def test_a_blank_place_clears_the_field() -> None:
 
 @pytest.mark.parametrize(
     ("value", "said"),
-    [("sew", "Did you mean 'swe'?"), ("hardware", "Choose from: swe"), ("designer", "general-cs")],
+    [("sew", 'Did you mean "swe"?'), ("hardware", "Choose from: swe"), ("designer", "general-cs")],
 )
 def test_a_role_outside_the_choices_is_explained(value: str, said: str) -> None:
     with pytest.raises(PreferenceError, match=re.escape(said)):
@@ -357,8 +357,8 @@ def test_one_bad_field_does_not_lose_the_others(tmp_path: Path) -> None:
     assert [e.folded for e in loaded.preferences.follow] == ["shopify", "ubisoft"]
     assert loaded.preferences.locations == ()
     assert (
-        "preferences.json: locations was ignored. Unknown location 'mars'. "
-        "Choose from: montreal, canada, usa"
+        'preferences.json: locations was ignored. Unknown location "mars". '
+        "Choose from: montreal, canada, usa."
     ) in loaded.problems
     assert len(loaded.problems) == 5
     assert not loaded.damaged
@@ -533,10 +533,10 @@ def test_an_empty_value_clears_just_that_field() -> None:
 @pytest.mark.parametrize(
     ("flag", "value", "said"),
     [
-        ("--location", "montrael", "Did you mean 'montreal'?"),
-        ("--role", "hardware", "Unknown role 'hardware'. Choose from: swe"),
-        ("--term", "summer", "--term must look like"),
-        ("--term", "monsoon-2027", "--term must look like"),
+        ("--location", "montrael", 'Did you mean "montreal"?'),
+        ("--role", "hardware", 'Unknown role "hardware". Choose from: swe'),
+        ("--term", "summer", 'Unknown term "summer". Terms look like summer-2027'),
+        ("--term", "monsoon-2027", 'Unknown term "monsoon-2027"'),
         ("--follow", "!!!", "no letters or digits"),
     ],
 )
@@ -618,7 +618,7 @@ def test_the_guided_setup_keeps_changes_clears_and_retries() -> None:
     assert [e.name for e in result.follow] == ["Shopify"]
     assert result.about == ""
     assert len(warnings) == 1
-    assert warnings[0].startswith("Unknown role 'designer'.")
+    assert warnings[0].startswith('Unknown role "designer".')
 
 
 def test_pressing_enter_keeps_a_saved_employer_even_when_the_database_forgot_it() -> None:
@@ -705,7 +705,7 @@ def test_prefs_in_a_terminal_walks_through_each_question(
 
     assert result.exit_code == 0
     assert "Press Enter to keep a value, or type - to clear it." in said
-    assert "Unknown role 'robotics'." in said
+    assert 'Unknown role "robotics".' in said
     assert saved == Preferences(
         locations=(LocationBucket.MONTREAL,),
         roles=(RoleCategory.SWE,),
@@ -718,16 +718,43 @@ def test_following_an_unknown_employer_suggests_a_close_one(db_path: Path) -> No
     _store(db_path, [_job("a", company="Shopify Inc")])
     db = str(db_path)
 
-    result = CliRunner().invoke(app, ["prefs", "--follow", "Shopfy Inc", "--db", db])
     data = CliRunner().invoke(app, ["prefs", "--follow", "Shopfy Inc", "--json", "--db", db])
+    CliRunner().invoke(app, ["prefs", "--clear"])
+    result = CliRunner().invoke(app, ["prefs", "--follow", "Shopfy Inc", "--db", db])
 
     assert result.exit_code == 0
     assert (
-        "Saved 'Shopfy Inc', but Stage has no postings from it yet. Did you mean 'Shopify Inc'?"
+        'Saved "Shopfy Inc", but Stage has no postings from it yet. Did you mean "Shopify Inc"?'
         in _plain(result.stdout)
     )
     assert json.loads(data.stdout)["follow"] == ["Shopfy Inc"]
-    assert "Did you mean 'Shopify Inc'?" in data.stderr
+    assert 'Did you mean "Shopify Inc"?' in data.stderr
+
+
+def test_only_names_being_added_are_warned_about_and_commas_stay_in_a_name(
+    db_path: Path,
+) -> None:
+    db = _store(db_path, [_job("a", company="Shopify")])
+    runner = CliRunner()
+
+    avoided = runner.invoke(app, ["prefs", "--avoid", "Nope", "--db", db])
+    followed = runner.invoke(app, ["prefs", "--follow", "Booz Allen Hamilton, Inc.", "--db", db])
+
+    assert 'Saved "Nope"' in _plain(avoided.stdout)
+    assert "'Nope'" not in _plain(followed.stdout)
+    assert 'Saved "Booz Allen Hamilton, Inc."' in _plain(followed.stdout)
+    assert [e.name for e in load_preferences().preferences.follow] == ["Booz Allen Hamilton, Inc."]
+
+
+def test_clearing_a_list_is_documented_and_never_mixed_with_names() -> None:
+    mixed = CliRunner().invoke(app, ["prefs", "--follow", "", "--follow", "Shopify"])
+    raw = ANSI.sub("", CliRunner().invoke(app, ["prefs", "--help"]).stdout)
+    shown = " ".join(raw.replace("\u2502", " ").split())
+
+    assert mixed.exit_code == 2
+    assert '--follow "" clears the list, so give it on its own.' in _plain(mixed.stderr)
+    assert 'one per flag, "" clears the list' in shown
+    assert load_preferences().preferences.follow == ()
 
 
 def test_follow_takes_the_stored_spelling_and_accents_do_not_matter(db_path: Path) -> None:
@@ -765,9 +792,9 @@ def test_a_save_that_cannot_happen_is_explained_not_raised() -> None:
     cleared = CliRunner().invoke(app, ["prefs", "--clear"])
 
     assert saved.exit_code == 1
-    assert "Could not save" in _plain(saved.stderr)
+    assert "could not save" in _plain(saved.stderr)
     assert cleared.exit_code == 1
-    assert "Could not delete" in _plain(cleared.stderr)
+    assert "could not delete" in _plain(cleared.stderr)
     left = [e.name for e in preferences_path().parent.iterdir() if e.name.startswith(".pref")]
     assert left in ([], [".preferences.json.lock"]), left
 
@@ -867,7 +894,7 @@ def test_a_partly_bad_file_warns_and_keeps_json_clean(db_path: Path) -> None:
     data = runner.invoke(app, ["list", "--mine", "--json", "--db", db])
 
     said = _plain(shown.stdout)
-    assert "preferences.json: roles was ignored. Unknown role 'sorcery'." in said
+    assert 'preferences.json: roles was ignored. Unknown role "sorcery".' in said
     assert "roles was ignored" in data.stderr
     assert {row["location"] for row in json.loads(data.stdout)} == {"canada", "montreal"}
 
@@ -924,6 +951,14 @@ def test_search_mine_names_its_query_in_the_hint(db_path: Path) -> None:
     assert '2 more have no location given: stage search "intern" --mine --location unknown' in shown
 
 
+def test_the_search_hint_repeats_new_and_quotes_only_what_was_searched(db_path: Path) -> None:
+    db = _seeded(db_path)
+
+    said = CliRunner().invoke(app, ["search", '"intern', "--mine", "--new", "--db", db]).stdout
+
+    assert 'stage search "intern" --new --mine --location unknown' in _plain(said)
+
+
 def test_export_mine_writes_newest_first_and_says_what_was_left_out(
     db_path: Path, tmp_path: Path
 ) -> None:
@@ -974,7 +1009,12 @@ def test_list_mine_stays_off_the_lexicon_and_the_renderer_in_json() -> None:
         "print('LOADED:' + ','.join(loaded), file=sys.stderr)\n"
     )
     result = subprocess.run(
-        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
     )
 
     assert result.stderr.strip().splitlines()[-1] == "LOADED:"
@@ -988,7 +1028,7 @@ def test_the_tui_puts_mine_first_and_says_when_nothing_is_saved() -> None:
     assert filter_rows(state)[0][:3] == (
         "mine",
         "on",
-        "Only my preferences (none saved; run stage prefs)",
+        "Only my preferences (stage prefs saves them)",
     )
     assert filter_rows(state, saved=True)[0][:3] == ("mine", "on", "Only my preferences")
 
@@ -1033,8 +1073,8 @@ async def test_the_tui_mine_row_filters_and_explains(db_path: Path) -> None:
         assert "mine" in str(screen.query_one("#chips").render())
         assert _names(screen._jobs) == EXPECTED
         assert messages == [
-            f"{HEADER}. 2 with no location given are left out; "
-            "turn off Only my preferences (f) to see them."
+            f"{HEADER}. 2 with no location given are left out. "
+            "Turn off Only my preferences (f) to see them."
         ]
 
 
@@ -1113,8 +1153,8 @@ async def test_a_refresh_started_before_mine_never_speaks_for_it(
         messages = [str(note.message) for note in app_under_test._notifications]
 
     assert messages == [
-        f"{HEADER}. 2 with no location given are left out; "
-        "turn off Only my preferences (f) to see them."
+        f"{HEADER}. 2 with no location given are left out. "
+        "Turn off Only my preferences (f) to see them."
     ]
 
 
@@ -1185,3 +1225,62 @@ def test_a_followed_employer_named_with_company_keeps_the_follow_rule(db_path: P
     data = CliRunner().invoke(app, ["list", "--mine", "--company", "cisco", "--json", "--db", db])
 
     assert {row["id"].split(":")[-1] for row in json.loads(data.stdout)} == {"followed-usa"}
+
+
+def _interrupted(*_args: object, **_kwargs: object) -> str:
+    import typer
+
+    try:
+        raise KeyboardInterrupt
+    except KeyboardInterrupt:
+        raise typer.Abort() from None
+
+
+def test_ctrl_c_at_a_prefs_question_stops_with_the_interrupt_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import typer
+
+    from stage.cli.commands import preferences as command
+
+    monkeypatch.setattr(command, "_interactive", lambda: True)
+    monkeypatch.setattr(typer, "prompt", _interrupted)
+    result = CliRunner().invoke(app, ["prefs"])
+
+    assert result.exit_code == 130
+    assert "not changed" in _plain(result.stderr) and "Aborted" not in result.output
+
+
+def test_ctrl_d_at_a_prefs_question_saves_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    from stage.cli.commands import preferences as command
+
+    monkeypatch.setattr(command, "_interactive", lambda: True)
+    result = CliRunner().invoke(app, ["prefs"], input="usa\n")
+
+    assert result.exit_code == 1
+    assert "not changed" in _plain(result.stderr) and "Aborted" not in result.output
+    assert load_preferences().preferences.is_empty
+
+
+@pytest.mark.parametrize("damage", ["garbage", "newer"])
+def test_prefs_save_and_show_followed_employers_beside_a_broken_database(
+    tmp_path: Path, damage: str
+) -> None:
+    import sqlite3
+    from contextlib import closing
+
+    broken = tmp_path / "stage.db"
+    if damage == "garbage":
+        broken.write_bytes(b"not a database at all" * 100)
+    else:
+        _store(broken, [_job("a", company="Shopify")])
+        with closing(sqlite3.connect(broken)) as conn, conn:
+            conn.execute("UPDATE schema_migrations SET version = 999")
+    saved = CliRunner().invoke(app, ["prefs", "--follow", "Shopify", "--db", str(broken)])
+    shown = CliRunner().invoke(app, ["prefs", "--show", "--db", str(broken)])
+    data = CliRunner().invoke(app, ["prefs", "--avoid", "Acme", "--json", "--db", str(broken)])
+
+    assert saved.exit_code == shown.exit_code == data.exit_code == 0, saved.output
+    assert [e.name for e in load_preferences().preferences.follow] == ["Shopify"]
+    assert "database" in _plain(saved.stderr) and "Shopify" in _plain(shown.stdout)
+    assert json.loads(data.stdout)["avoid"] == ["Acme"]

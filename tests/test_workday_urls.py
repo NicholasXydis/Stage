@@ -137,3 +137,47 @@ def test_the_avature_grammar_comes_from_avature_dogfooding_its_own_shape() -> No
     assert _identify_url("https://acme.com/en/careers/searchjobs") is None, (
         "a hyphen locale is not the grammar — the underscore is what makes it distinctive"
     )
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        (
+            "https://kla.wd1.myworkdayjobs.com/UR/job/Milpitas-CA/Software-Engineer-Intern_2642721",
+            "https://kla.wd1.myworkdayjobs.com/en-US/search/job/Milpitas-CA/Software-Engineer-Intern_2642721-1",
+        ),
+        (
+            "https://acme.wd5.myworkdayjobs.com/External/job/Toronto/Intern_R0012345",
+            "https://acme.wd5.myworkdayjobs.com/Campus/job/Toronto/Data-Intern_R0012345-2",
+        ),
+    ],
+)
+def test_one_opening_posted_on_two_workday_sites_has_one_link(left: str, right: str) -> None:
+    from stage.normalize import canonical_apply_url
+
+    assert canonical_apply_url(left) == canonical_apply_url(right)
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        (
+            "https://kla.wd1.myworkdayjobs.com/UR/job/Milpitas-CA/Software-Engineer-Intern_2642721",
+            "https://kla.wd1.myworkdayjobs.com/UR/job/Austin-TX/Software-Engineer-Intern_2642721-1",
+        ),
+        (
+            "https://acme.wd5.myworkdayjobs.com/External/job/Toronto/Intern_JR-2026-12",
+            "https://acme.wd5.myworkdayjobs.com/External/job/Toronto/Intern_JR-2026-13",
+        ),
+        (
+            "https://acme.wd5.myworkdayjobs.com/External/job/Toronto/Intern_R0012345",
+            "https://other.wd5.myworkdayjobs.com/External/job/Toronto/Intern_R0012345",
+        ),
+    ],
+)
+def test_other_places_short_ids_and_other_employers_keep_their_own_links(
+    left: str, right: str
+) -> None:
+    from stage.normalize import canonical_apply_url
+
+    assert canonical_apply_url(left) != canonical_apply_url(right)

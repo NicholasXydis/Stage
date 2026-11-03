@@ -155,7 +155,8 @@ async def test_actions_are_listed_only_when_allowed(stored: Path) -> None:
     async with _connected(stored) as client:
         allowed = [tool.name for tool in (await client.list_tools()).tools]
     assert plain == NAMES and allowed == [*NAMES, *ACTION_NAMES]
-    assert "open_postings" in refused
+    assert refused.startswith("open_postings is turned off for this app.")
+    assert "stage connect --allow-actions" in refused
 
 
 async def test_the_action_tools_match_their_snapshot(stored: Path) -> None:
@@ -393,6 +394,18 @@ async def test_export_postings_refuses_a_folder_that_is_gone(
     assert not (tmp_path / "missing").exists()
 
 
+async def test_export_postings_names_a_file_where_the_folder_should_be(
+    stored: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    taken = tmp_path / "taken"
+    taken.write_text("x", encoding="utf-8")
+    monkeypatch.setenv("STAGE_EXPORT_DIR", str(taken))
+    async with _connected(stored) as client:
+        refused = await _refused(client, "export_postings", {})
+    assert "which is not a folder" in refused and "does not exist" not in refused
+    assert taken.read_text(encoding="utf-8") == "x"
+
+
 async def test_export_postings_with_mine_needs_saved_preferences(
     stored: Path, exports: Path
 ) -> None:
@@ -476,7 +489,7 @@ async def test_start_sync_reports_what_happened(
 async def test_start_sync_takes_no_arguments(stored: Path) -> None:
     async with _connected(stored) as client:
         refused = await _refused(client, "start_sync", {"source": "lever"})
-    assert 'There is no argument "source"; this tool takes none.' in refused
+    assert 'There is no argument "source". This tool takes no arguments.' in refused
 
 
 async def test_database_status_shows_a_background_sync(stored: Path) -> None:

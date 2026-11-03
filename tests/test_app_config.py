@@ -1,6 +1,7 @@
 import json
 import os
 import stat
+import sys
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -79,11 +80,21 @@ def test_json_keeps_a_tab_indent() -> None:
         ("[1, 2]", "at the top"),
         ('{"mcpServers": []}', "something other"),
         ('{"mcpServers": "none"}', "something other"),
+        ('{"mcpServers": {}, "zoom": NaN}', "NaN, which JSON does not allow"),
+        ('{"mcpServers": {}, "far": -1e999}', "-1e999, which JSON does not allow"),
     ],
 )
 def test_json_refuses_a_file_it_cannot_edit_safely(text: str, reason: str) -> None:
     with pytest.raises(UnwritableError, match=reason):
         with_entry(text, ConfigFormat.JSON, JSON_KEY, "stage", ENTRY)
+
+
+def test_a_value_json_does_not_allow_is_read_for_status_but_never_written_back() -> None:
+    text = '{"mcpServers": {"stage": {"command": "x"}}, "zoom": Infinity}'
+
+    assert has_entry(text, ConfigFormat.JSON, JSON_KEY, "stage")
+    with pytest.raises(UnwritableError, match="Infinity, which JSON does not allow"):
+        without_entry(text, ConfigFormat.JSON, JSON_KEY, "stage")
 
 
 def test_a_link_inside_a_broken_file_is_not_mistaken_for_a_comment() -> None:
@@ -190,6 +201,46 @@ def test_toml_removal_keeps_the_comment_above_the_next_table() -> None:
     assert "stage" not in tomllib.loads(removed)["mcp_servers"]
     assert "# profiles below\n[profiles.fast]" in removed
     assert removed.startswith("# my codex settings")
+
+
+DECOY = 'notes = """\n[mcp_servers.stage]\ncommand = "/decoy"\n"""\n'
+ACME = '[mcp_servers.acme]\ncommand = "npx"\n'
+
+
+@pytest.mark.parametrize(
+    ("text", "left"),
+    [
+        (
+            '[mcp_servers.stage]\ncommand = "old"\n\n[mcp_servers.stage.env]\nX = "1"\n\n' + ACME,
+            ACME,
+        ),
+        ('model = "o4"\n\n[mcp_servers.stage]\ncommand = "old"\n', 'model = "o4"\n'),
+        ('model = "o4"\n\n\n[mcp_servers.stage]\ncommand = "old"\n', 'model = "o4"\n'),
+        (ACME + '[mcp_servers.stage]\ncommand = "old"\n', ACME),
+        ('[mcp_servers.stage]\ncommand = "old"\n# added by hand\n\n' + ACME, ACME),
+        (DECOY + '\n[mcp_servers.stage]\ncommand = "old"\n', DECOY),
+        ('[mcp_servers.stage]\nargs = [\n  ["a"],\n  "[b]",\n]\n\n' + ACME, ACME),
+        ("[mcp_servers.stage]\nhelp = '''\n[x]\n'''\nwhy = \"\\\"[y]\"\n\n" + ACME, ACME),
+        ('[mcp_servers.stage]\nnote = """a\n[c]""""\n\n' + ACME, ACME),
+        (ACME + '[[mcp_servers.stage.tools]]\nname = "x"\n[mcp_servers.stage]', ACME.rstrip("\n")),
+    ],
+)
+def test_toml_removal_takes_the_whole_entry_and_tidies_around_it(text: str, left: str) -> None:
+    removed = without_entry(text, ConfigFormat.TOML, SERVERS, "stage")
+
+    assert removed == left
+    assert "stage" not in tomllib.loads(removed).get("mcp_servers", {})
+
+
+@pytest.mark.parametrize("original", [CODEX, DECOY, "", ACME.rstrip("\n"), DECOY + ACME])
+def test_toml_disconnect_undoes_connect_exactly(original: str) -> None:
+    added = with_entry(original, ConfigFormat.TOML, SERVERS, "stage", ENTRY)
+    replaced = with_entry(added, ConfigFormat.TOML, SERVERS, "stage", WINDOWS_ENTRY)
+
+    assert tomllib.loads(replaced)["mcp_servers"]["stage"] == WINDOWS_ENTRY
+    assert without_entry(replaced, ConfigFormat.TOML, SERVERS, "stage").rstrip("\n") == (
+        original.rstrip("\n")
+    )
 
 
 HERMES = """# Hermes
@@ -354,6 +405,27 @@ def test_a_read_only_file_is_refused(tmp_path: Path) -> None:
     with pytest.raises(UnwritableError, match="read-only"):
         write_config(read_config(target), '{"a": 1}\n')
     assert target.read_text(encoding="utf-8") == "{}\n"
+
+
+@pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0, reason="POSIX permissions")
+def test_a_folder_stage_cannot_write_in_is_named_in_a_sentence(tmp_path: Path) -> None:
+    folder = tmp_path / "app"
+    folder.mkdir()
+    folder.chmod(0o555)
+    try:
+        with pytest.raises(UnwritableError) as refused:
+            write_config(read_config(folder / "config.json"), "{}\n")
+    finally:
+        folder.chmod(0o755)
+    assert str(refused.value).startswith(
+        f"could not be saved, because Stage cannot write in {folder}"
+    )
+
+
+def test_broken_toml_names_the_line_and_nothing_else() -> None:
+    with pytest.raises(UnwritableError) as refused:
+        with_entry('model = "x"\n[mcp_servers\n', ConfigFormat.TOML, SERVERS, "stage", ENTRY)
+    assert str(refused.value) == "is not valid TOML (line 2)"
 
 
 def test_a_file_changed_by_its_app_meanwhile_is_not_overwritten(tmp_path: Path) -> None:

@@ -52,10 +52,11 @@ async def test_one_denying_tenant_fails_its_board_without_blocking_its_neighbour
         settled = client.rate_state(NOW)
 
     assert route.call_count == 1, "a 403 is a decision, not congestion — never retried"
-    assert len(settled) == 1
-    assert settled[0].consecutive_failures == 1
-    assert settled[0].reason == "HTTP 403"
-    assert settled[0].blocked_until is None, (
+    bucket, tenant = settled
+    assert (bucket.bucket, bucket.consecutive_failures) == ("workday", 0)
+    assert (tenant.bucket, tenant.consecutive_failures) == (HOST, 1)
+    assert tenant.reason == f"{HOST} returned 403 (forbidden)"
+    assert bucket.blocked_until is None and tenant.blocked_until is None, (
         "one dead tenant on a bucket of hundreds is a fact about that tenant, not about our rate"
     )
 
@@ -183,7 +184,7 @@ async def test_a_redirect_to_a_host_outside_the_allow_list_is_refused() -> None:
     )
 
     async with _client() as client:
-        with pytest.raises(RedirectNotAllowedError, match="allow-list"):
+        with pytest.raises(RedirectNotAllowedError, match="registry does not name"):
             await client.get_json(URL)
 
     assert not evil.called
@@ -214,7 +215,7 @@ async def test_a_redirect_within_the_allow_list_is_followed() -> None:
 async def test_a_redirect_loop_terminates() -> None:
     respx.get(URL).mock(return_value=httpx.Response(302, headers={"Location": URL}))
     async with _client() as client:
-        with pytest.raises(RedirectNotAllowedError, match="redirects"):
+        with pytest.raises(RedirectNotAllowedError, match="redirected more than 3 times"):
             await client.get_json(URL)
 
 

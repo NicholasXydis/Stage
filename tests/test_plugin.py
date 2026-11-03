@@ -82,7 +82,7 @@ def test_the_skill_names_only_stage_commands_that_exist() -> None:
 
 def test_every_readme_button_installs_stage_through_uvx() -> None:
     links = _links()
-    assert set(links) == {"cursor.com", "vscode.dev", "lmstudio.ai", "goose-docs.ai"}
+    assert set(links) == {"cursor.com", "vscode.dev"}
 
     cursor = parse_qs(urlsplit(links["cursor.com"]).query)
     assert cursor["name"] == ["Stage"]
@@ -92,12 +92,12 @@ def test_every_readme_button_installs_stage_through_uvx() -> None:
     assert code["name"] == ["Stage"]
     assert json.loads(code["config"][0]) == {"type": "stdio", **UVX}
 
-    studio = parse_qs(urlsplit(links["lmstudio.ai"]).query)
-    assert json.loads(base64.b64decode(studio["config"][0])) == UVX
 
-    goose = parse_qs(urlsplit(links["goose-docs.ai"]).query)
-    assert goose["cmd"] == ["uvx"] and goose["arg"] == UVX["args"]
-    assert goose["name"] == ["Stage"]
+def test_the_two_readme_buttons_match() -> None:
+    text = README.read_text(encoding="utf-8")
+    styles = re.findall(r"\[!\[Install in [^\]]+\]\((https://img\.shields\.io/[^)]+)\)", text)
+    assert len(styles) == 2
+    assert {urlsplit(style).query for style in styles} == {"style=for-the-badge"}
 
 
 def test_the_readme_shows_how_to_install_the_plugin() -> None:

@@ -139,3 +139,23 @@ def test_the_employer_written_bilingual_pair_resolves_identically() -> None:
     assert dated, "no fixture pair carries a resolvable term"
     for pair in dated:
         assert resolve_term(title=pair["en"]).term == resolve_term(title=pair["fr"]).term, pair
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Graduating in Spring 2028 or later, currently pursuing a Bachelor's degree",
+        "Expected graduation date: Fall 2028",
+        "Diplômé en hiver 2028",
+    ],
+)
+def test_a_graduation_date_in_the_body_is_not_the_internship_term(description: str) -> None:
+    resolved = resolve_term(
+        title="Software Engineer, Intern - Campus Recruiting 2027", description=description
+    )
+    assert resolved.term == UNKNOWN_TERM, "a graduation date is not when the internship runs"
+
+
+def test_the_body_still_names_a_term_beside_a_graduation_date() -> None:
+    body = "This is a Summer 2027 internship for students graduating in Spring 2028."
+    assert resolve_term(title="Software Engineer Intern", description=body).term == "summer-2027"

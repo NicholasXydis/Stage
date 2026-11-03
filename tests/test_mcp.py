@@ -187,7 +187,9 @@ async def _ok(client: Client, name: str, arguments: dict[str, Any] | None = None
 async def _refused(client: Client, name: str, arguments: dict[str, Any]) -> str:
     result = await client.call_tool(name, arguments)
     assert result.is_error
-    return _text(result)
+    said = _text(result)
+    assert not said.startswith("Error executing tool"), said
+    return said
 
 
 def _ids(found: dict[str, Any]) -> list[str]:
@@ -252,9 +254,13 @@ def test_find_tools_read_and_only_untrack_undo_and_set_preferences_erase() -> No
 
 
 def test_every_description_and_the_instructions_are_plain_ascii() -> None:
-    for _, title, _, description in CATALOGUE:
-        assert title.isascii() and description.isascii()
-    assert INSTRUCTIONS.isascii()
+    from stage.ai.server import ACTION_INSTRUCTIONS, ACTIONS
+
+    for _, title, _, description in (*CATALOGUE, *ACTIONS):
+        assert title.isascii() and description.isascii() and ";" not in description
+    assert INSTRUCTIONS.isascii() and ";" not in INSTRUCTIONS + ACTION_INSTRUCTIONS
+    for golden in (GOLDEN, GOLDEN.with_name("mcp_action_tools.json")):
+        assert ";" not in golden.read_text(encoding="utf-8")
 
 
 def test_no_tool_accepts_a_url_a_path_or_a_host() -> None:
@@ -470,7 +476,7 @@ async def test_hidden_postings_are_left_out_and_counted(catalogue: Path) -> None
         found = await _ok(client, "search_postings")
         fresh = await _ok(client, "search_postings", {"untracked": True})
     assert _id("a") not in _ids(found) and found["notes"] == [
-        "Left out 1 posting the user hid; get_tracker with status='hidden' shows hidden postings."
+        "Left out 1 posting the user hid. get_tracker with status='hidden' shows them."
     ]
     assert found["postings"][0] == {**found["postings"][0], "id": _id("b"), "tracked": "applied"}
     assert _id("b") not in _ids(fresh) and fresh["total"] == found["total"] - 1
@@ -484,9 +490,9 @@ async def test_an_unknown_employer_gets_the_stored_spelling(catalogue: Path) -> 
     assert "notes" not in found or not found["notes"]
     assert {row["company"] for row in found["postings"]} == {"Jane Street"}
     assert near["notes"] == [
-        "Stage stores no posting from an employer named 'Jane Streat'. Did you mean 'Jane Street'?"
+        'Stage stores no posting from an employer named "Jane Streat". Did you mean "Jane Street"?'
     ]
-    assert nothing["notes"] == ["Stage stores no posting from an employer named 'Nobody At All'."]
+    assert nothing["notes"] == ['Stage stores no posting from an employer named "Nobody At All".']
 
 
 def test_the_cli_names_the_same_stored_employer(catalogue: Path) -> None:
@@ -494,36 +500,134 @@ def test_the_cli_names_the_same_stored_employer(catalogue: Path) -> None:
         result = CliRunner().invoke(app, ["list", "--company", company, "--db", str(catalogue)])
         return " ".join(result.stdout.split())
 
+    near = told("Jane Streat")
     assert "Stage stores no posting" not in told("jane street")
-    assert (
-        "Stage stores no posting from an employer named 'Jane Streat'. Did you mean 'Jane Street'?"
-    ) in told("Jane Streat")
-    assert "Stage stores no posting from an employer named 'Nobody At All'." in told(
-        "Nobody At All"
+    assert "Stage stores no posting from an employer named" in near and "Jane Streat" in near
+    assert "Jane Street" in near.partition("Did you mean")[2]
+    assert "Did you mean" not in told("Nobody At All")
+
+
+HANDSHAKE = (
+    json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "test", "version": "1"},
+            },
+        }
+    ),
+    '{"jsonrpc":"2.0","method":"notifications/initialized"}',
+)
+DEEP = "[" * 5000 + "]" * 5000
+UNREADABLE = (
+    '{"jsonrpc":"2.0","id":10,"method":"ping","params":{"_meta":{"x":"\\ud800"}}}',
+    "not json at all",
+    '{"jsonrpc":"2.0","id":11,"method":"ping","params":{"x":' + DEEP + "}}",
+    '[{"jsonrpc":"2.0","id":12,"method":"ping"}]',
+    '{"jsonrpc":"2.0","id":13,"method":"ping","params":"x"}',
+    "   ",
+    '{"jsonrpc":"2.0","id":14,"method":"prompts/get","params":{"name":"find_matches",'
+    '"arguments":{"role":5}}}',
+    '{"jsonrpc":"2.0","id":15,"method":"ping"}',
+    '{"jsonrpc":"2.0","method":"notifications/progress","params":"half"}',
+)
+
+
+async def _over_stdio(
+    database: Path, lines: tuple[str, ...], replies: int, monkeypatch: pytest.MonkeyPatch
+) -> list[dict[str, Any]]:
+    import anyio
+    from mcp.shared.message import SessionMessage
+    from mcp.types import jsonrpc_message_adapter
+    from pydantic import ValidationError
+
+    from stage.ai import server
+
+    room = len(HANDSHAKE) + len(lines)
+    typed, wire = anyio.create_memory_object_stream[SessionMessage | Exception](room)
+    answers, read = anyio.create_memory_object_stream[SessionMessage](room)
+
+    @asynccontextmanager
+    async def stdio() -> AsyncIterator[tuple[Any, Any]]:
+        yield wire, answers
+
+    monkeypatch.setattr(server, "stdio_server", stdio)
+    with anyio.fail_after(30):
+        async with anyio.create_task_group() as group, typed, read:
+            group.start_soon(server.serve, database)
+            for line in (*HANDSHAKE, *lines):
+                try:
+                    message = jsonrpc_message_adapter.validate_json(line, by_name=False)
+                except ValidationError as exc:
+                    await typed.send(exc)
+                else:
+                    await typed.send(SessionMessage(message))
+            got = [await read.receive() for _ in range(replies)]
+            await typed.aclose()
+            assert [extra async for extra in read] == []
+    return [item.message.model_dump(by_alias=True, exclude_unset=True) for item in got]
+
+
+async def test_a_line_stage_cannot_read_is_answered_instead_of_left_hanging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    replies = await _over_stdio(tmp_path / "stage.db", UNREADABLE, 9, monkeypatch)
+    by_id = {reply["id"]: reply for reply in replies if reply["id"] is not None}
+    errors = [reply["error"] for reply in replies if "error" in reply]
+    unknown = [reply["error"]["code"] for reply in replies if reply["id"] is None]
+    deep = [error["code"] for error in errors if "recursion limit" in error["message"]]
+    assert {1, 10, 13, 14, 15} <= set(by_id) and by_id[15]["result"] == {}
+    assert by_id[10]["error"]["code"] == -32700 and "as JSON" in by_id[10]["error"]["message"]
+    assert by_id[13]["error"]["code"] == -32600
+    assert by_id[14]["error"] == {"code": -32602, "message": "role should be text, not 5."}
+    assert deep == [-32700] and len(errors) == 7 and unknown.count(-32600) == 2
+
+
+async def test_a_request_with_malformed_params_is_named_plainly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lines = (
+        '{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"get_tracker",'
+        '"arguments":"all"}}',
+        '{"jsonrpc":"2.0","id":21,"method":"prompts/get","params":{"name":7}}',
+    )
+    replies = await _over_stdio(tmp_path / "stage.db", lines, 3, monkeypatch)
+    said = {reply["id"]: reply["error"]["message"] for reply in replies if "error" in reply}
+    assert said[20] == 'arguments should be an object, not "all".' and said[21] == (
+        "name should be text, not 7."
     )
 
 
-async def test_serving_runs_the_server_over_stdio(
+async def test_a_protocol_mistake_names_no_python_class(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from mcp.server import MCPServer
-
-    from stage.ai.server import serve
-
-    served: list[str] = []
-
-    async def stdio(server: MCPServer[Any]) -> None:
-        served.append(server.name)
-
-    monkeypatch.setattr(MCPServer, "run_stdio_async", stdio)
-    await serve(tmp_path / "stage.db")
-    assert served == ["stage"]
+    lines = (
+        '{"jsonrpc":"2.0","id":30,"method":"completion/complete","params":{"ref":5,'
+        '"argument":{"name":"role","value":"s"}}}',
+        '{"jsonrpc":"2.0","id":31,"method":"completion/complete","params":{"ref":{"type":"x"},'
+        '"argument":{"name":"role","value":"s"}}}',
+        '{"jsonrpc":"2.0","id":32,"method":"ping","params":{"_meta":{"progressToken":[1]}}}',
+    )
+    replies = await _over_stdio(tmp_path / "stage.db", lines, 4, monkeypatch)
+    said = {reply["id"]: reply["error"]["message"] for reply in replies if "error" in reply}
+    assert said[30] == "ref should be an object, not 5."
+    assert said[31].count("ref[type] should be") == 1 and '"ref/prompt"' in said[31]
+    assert '"ref/resource"' in said[31] and 'not "x".' in said[31]
+    assert said[32] == "_meta[progressToken] should be text or a whole number."
+    assert not any("Reference" in text or "[str]" in text for text in said.values())
 
 
 async def test_words_with_nothing_searchable_say_so(catalogue: Path) -> None:
     async with _connected(catalogue) as client:
         found = await _ok(client, "search_postings", {"words": "!!! ???"})
-    assert found["total"] == 0 and "punctuation is dropped" in found["notes"][0]
+    assert found["total"] == 0
+    assert found["notes"] == [
+        'Stage drops punctuation and symbols, so nothing in "!!! ???" could be searched.'
+    ]
 
 
 async def test_posting_text_reaches_the_ai_cleaned_and_labelled(catalogue: Path) -> None:
@@ -609,8 +713,6 @@ async def test_undo_puts_a_tracked_posting_back_exactly(catalogue: Path) -> None
 async def test_two_changes_at_once_to_one_posting_run_one_after_the_other(
     catalogue: Path,
 ) -> None:
-    import asyncio
-
     async with _connected(catalogue) as client:
         first, second = await asyncio.gather(
             _ok(client, "track_postings", {"ids": [_id("b")], "status": "interviewing"}),
@@ -659,17 +761,48 @@ async def test_undo_after_untracking_reports_the_posting_as_untracked(catalogue:
 async def test_an_undo_that_cannot_answer_changes_nothing_and_keeps_its_token(
     catalogue: Path,
 ) -> None:
-    moved = catalogue.with_name("moved.db")
     async with _connected(catalogue) as client:
         hidden = await _ok(client, "track_postings", {"ids": [_id("e")], "status": "hidden"})
-        catalogue.rename(moved)
+        kept = tracker_path().read_bytes()
+        tracker_path().write_bytes(b"not a database " * 100)
         refused = await _refused(client, "undo_tracking", {"undo": hidden["undo"]})
-        moved.rename(catalogue)
+        tracker_path().write_bytes(kept)
         tracker = await _ok(client, "get_tracker", {"status": "hidden"})
         undone = await _ok(client, "undo_tracking", {"undo": hidden["undo"]})
-    assert "no postings" in refused
+    assert "could not use your tracker" in refused
     assert [row["id"] for row in tracker["postings"]] == [_id("e")]
     assert [row["id"] for row in undone["restored"]] == [_id("e")]
+
+
+@pytest.mark.parametrize("state", ["absent", "corrupt"])
+async def test_the_tracker_works_without_the_database_and_says_what_is_unknown(
+    tmp_path: Path, state: str
+) -> None:
+    database = _seed(tmp_path / "stage.db", [_job(LONG), *(_job(name) for name in "abc")])
+    reference = short(_id(LONG))
+    async with _connected(database) as client:
+        await _ok(client, "track_postings", {"ids": [_id("a"), _id("b")], "status": "saved"})
+        await _ok(client, "track_postings", {"ids": [reference], "status": "applied"})
+    database.rename(tmp_path / "moved.db")
+    if state == "corrupt":
+        database.write_bytes(b"not a database " * 100)
+    async with _connected(database) as client:
+        listed = await _ok(client, "get_tracker")
+        changed = await _ok(client, "track_postings", {"ids": [reference], "status": "offer"})
+        undone = await _ok(client, "undo_tracking", {"undo": changed["undo"]})
+        removed = await _ok(client, "untrack_postings", {"ids": [_id("b")]})
+        new = await _refused(client, "track_postings", {"ids": [_id("c")], "status": "saved"})
+        again = await _ok(client, "get_tracker")
+    reason = "no postings on this computer" if state == "absent" else "is damaged or is not a Stage"
+    synced = "never" if state == "absent" else "unknown"
+    assert listed["total"] == 3 and {row["posting"] for row in listed["postings"]} == {None}
+    assert reason in listed["notes"][0] and "still open is unknown" in listed["notes"][0]
+    assert changed["changed"][0]["before"] == "applied" and reason in changed["notes"][0]
+    assert [row["status"] for row in undone["restored"]] == ["applied"]
+    assert [row["id"] for row in removed["removed"]] == [_id("b")] and reason in removed["notes"][0]
+    assert reason in new and f"no posting with id {_id('c')}. Nothing was changed." in new
+    assert all(answer["last_sync"].startswith(synced) for answer in (listed, changed, removed))
+    assert sorted(_ids(again)) == sorted([_id("a"), reference])
 
 
 @pytest.mark.parametrize(
@@ -677,15 +810,22 @@ async def test_an_undo_that_cannot_answer_changes_nothing_and_keeps_its_token(
     [
         ("search_postings", {"locaton": "montreal"}, 'Did you mean "location"?'),
         ("search_postings", {"limit": 500}, "limit should be at most 100, not 500."),
-        ("search_postings", {"limit": "lots"}, "limit should be a whole number, not 'lots'."),
-        ("search_postings", {"mine": "maybe"}, "mine should be true or false, not 'maybe'."),
+        ("search_postings", {"limit": "lots"}, 'limit should be a whole number, not "lots".'),
+        ("search_postings", {"mine": "maybe"}, 'mine should be true or false, not "maybe".'),
         ("search_postings", {"term": "summer"}, "term should look like summer-2027 or unknown"),
         ("get_postings", {}, "ids is required."),
         ("get_postings", {"ids": [1]}, "ids[0] should be text, not 1."),
         ("track_postings", {"ids": [], "status": "saved"}, "ids should have at least 1 item."),
         ("track_postings", {"ids": ["a"], "status": "saved", "on": "x"}, "like 2026-10-20"),
         ("undo_tracking", {"undo": ""}, "undo should not be empty."),
-        ("database_status", {"verbose": True}, "this tool takes none."),
+        ("set_preferences", {"avoid": ["  "]}, "avoid[0] should not be empty."),
+        ("database_status", {"verbose": True}, "This tool takes no arguments."),
+        ("search_postings", {"location": "montrael"}, 'not "montrael". Did you mean "montreal"?'),
+        ("search_postings", {"location": "Canada"}, 'Did you mean "canada"?'),
+        ("track_postings", {"ids": ["a"], "status": "aplied"}, 'Did you mean "applied"?'),
+        ("review_quarantine", {"reason": "not-internship"}, 'mean "not-an-internship"?'),
+        ("get_postings", {"id": "a"}, 'There is no argument "id". Did you mean "ids"?'),
+        ("search_postings", {"Location": "canada"}, '"Location". Did you mean "location"?'),
     ],
 )
 async def test_a_bad_argument_is_explained_in_one_plain_sentence(
@@ -705,10 +845,9 @@ def test_a_long_value_is_not_echoed_back() -> None:
         model_config = ConfigDict(extra="forbid")
         limit: int
 
-    try:
+    with pytest.raises(ValidationError) as caught:
         Words.model_validate({"limit": "x" * 60})
-    except ValidationError as exc:
-        said = plainly(exc, ["limit"])
+    said = plainly(caught.value, ["limit"])
     assert said == "limit should be a whole number.", said
 
 
@@ -779,8 +918,8 @@ async def test_a_preferences_file_that_cannot_be_written_is_reported(
     async with _connected(catalogue) as client:
         saving = await _refused(client, "set_preferences", {"locations": ["usa"]})
         clearing = await _refused(client, "set_preferences", {"clear": True})
-    assert "Could not save" in saving and saving.endswith("Permission denied.")
-    assert "Could not delete" in clearing
+    assert "could not save" in saving and "(Permission denied)" in saving
+    assert "could not delete" in clearing and "writable" in clearing
 
 
 async def test_a_long_list_of_unknown_ids_is_shortened(catalogue: Path) -> None:
@@ -932,6 +1071,7 @@ async def test_tracking_refuses_what_it_cannot_do_and_changes_nothing(catalogue:
         )
         nothing = await _refused(client, "track_postings", {"ids": [_id("a")]})
         untracked = await _refused(client, "track_postings", {"ids": [_id("a")], "note": "hi"})
+        both = await _refused(client, "track_postings", {"ids": [_id("a"), _id("b")], "note": "x"})
         future = await _refused(
             client, "track_postings", {"ids": [_id("a")], "status": "applied", "on": "2999-01-01"}
         )
@@ -939,7 +1079,9 @@ async def test_tracking_refuses_what_it_cannot_do_and_changes_nothing(catalogue:
         gone = await _refused(client, "untrack_postings", {"ids": ["nope"]})
     assert "No posting with id nope. Nothing was changed." in missing
     assert "Send a status, a note or a date" in nothing
-    assert "not tracked yet" in untracked and "is in the future" in future
+    assert "is not tracked yet" in untracked and "tracking it." in untracked
+    assert "are not tracked yet" in both and "tracking them." in both
+    assert "is in the future" in future
     assert "like 2026-10-20" in shape and "No posting with id nope" in gone
     assert not tracker_path().exists()
 
@@ -993,10 +1135,21 @@ async def test_a_blank_id_and_a_non_latin_search_are_explained(catalogue: Path) 
     async with _connected(catalogue) as client:
         blank = await _refused(client, "get_postings", {"ids": ["   "]})
         foreign = await _ok(client, "search_postings", {"words": "日本語"})
+        mixed = await _ok(client, "search_postings", {"words": "intern 日本語"})
+        emoji = await _ok(client, "search_postings", {"words": "\U0001f600 c++"})
+        accent = await _ok(client, "search_postings", {"words": "cafe\u0301 x\u00b2"})
+        nobody = await _refused(client, "set_preferences", {"follow": ["   "]})
     assert blank.endswith("ids[0] should not be empty.")
     assert foreign["notes"] == [
-        "Stage searches Latin letters and digits, so those words cannot be searched."
+        'Stage searches only Latin letters and digits, so nothing in "日本語" could be searched.'
     ]
+    assert mixed["notes"] == [
+        'Stage searches only Latin letters and digits, so "intern 日本語" was searched as "intern".'
+    ]
+    assert emoji["notes"] == [
+        'Stage drops punctuation and symbols, so "\U0001f600 c++" was searched as "c".'
+    ]
+    assert accent["notes"] == [] and nobody.endswith("follow[0] should not be empty.")
 
 
 async def test_reading_never_creates_the_tracker_or_preferences(catalogue: Path) -> None:
@@ -1028,18 +1181,25 @@ async def test_an_unreadable_database_is_explained_and_preferences_still_work(
         saved = await _ok(client, "set_preferences", {"follow": ["Acme"]})
     async with _connected(newer) as client:
         upgrade = await _refused(client, "database_status", {})
-    assert "could not read its database" in unreadable and "(file is not a database)" in unreadable
-    assert "could not read its database" in tracked
-    assert "last_sync" not in read and saved["follow"][0]["name"] == "Acme"
+    damaged = f"The database at {corrupt} is damaged or is not a Stage database."
+    assert unreadable.startswith(damaged) and "(file is not a database)" not in unreadable
+    assert tracked.startswith(damaged)
+    assert read["last_sync"] == "unknown, because Stage could not read its database"
+    assert saved["follow"] == [{"name": "Acme", "open_postings": None}]
+    assert damaged in saved["notes"][-1]
+    assert "open_postings is null" in saved["notes"][-1]
     assert "Stage could not open its database. The database at" in upgrade
-    assert "upgrade stage-cli" in upgrade
+    assert "upgrade stage-cli" in upgrade and ".." not in upgrade
 
 
 def test_a_busy_database_reads_as_busy() -> None:
     import sqlite3
 
-    busy = toolbox._unreadable(Path("x.db"), sqlite3.OperationalError("database is locked"))
-    assert busy == "Stage's database is busy, most likely with a sync. Try again in a minute."
+    from stage.storage.problems import database_problem
+
+    locked = sqlite3.OperationalError("database is locked")
+    busy = toolbox._unreadable(Path("x.db"), locked)
+    assert busy == database_problem(locked, Path("x.db")) and "busy" in busy
 
 
 async def test_terms_are_read_in_any_case_like_the_cli(catalogue: Path) -> None:
@@ -1083,9 +1243,9 @@ async def test_a_missing_database_is_explained_and_never_created(tmp_path: Path)
     absent = tmp_path / "absent.db"
     async with _connected(absent) as client:
         for name, arguments in EVERY_CALL:
-            if name in ("get_preferences", "set_preferences"):
+            if name in ("get_tracker", "get_preferences", "set_preferences"):
                 found = await _ok(client, name, arguments)
-                assert "last_sync" not in found
+                assert found["last_sync"].startswith("never") and "stage sync" in found["notes"][-1]
                 continue
             assert "stage sync" in await _refused(client, name, arguments)
     assert not absent.exists()
@@ -1105,7 +1265,7 @@ async def test_preferences_change_only_the_fields_sent(catalogue: Path, mode: st
         read = await _ok(client, "get_preferences")
     assert first["follow"] == [{"name": "Jane Street", "open_postings": 1}]
     assert second["locations"] == ["canada"] and second["terms"] == ["summer-2027"]
-    assert second["notes"] == ["Saved 'Nobody Inc', but Stage has no postings from it yet."]
+    assert second["notes"] == ['Saved "Nobody Inc", but Stage has no postings from it yet.']
     assert cleared["roles"] == [] and cleared["about"] == "Likes C"
     assert read["locations"] == ["canada"] and read["terms"] == ["summer-2027"]
     assert read["follow"] == first["follow"] and read["avoid"] == second["avoid"]
@@ -1122,7 +1282,7 @@ async def test_preferences_refuse_what_cli_refuses(catalogue: Path) -> None:
         place = await _refused(client, "set_preferences", {"locations": ["unknown"]})
     assert "cannot be both followed and avoided. Nothing was saved." in both
     assert "Send at least one field" in empty and "send it alone" in mixed
-    assert "like summer-2027" in term and "should be 'montreal', 'canada' or 'usa'" in place
+    assert "like summer-2027" in term and 'should be "montreal", "canada" or "usa"' in place
     assert not preferences_path().exists()
 
 
@@ -1210,7 +1370,7 @@ def test_the_age_of_a_sync_reads_naturally() -> None:
 
 
 def test_stage_mcp_writes_nothing_but_json_rpc_to_stdout(catalogue: Path, tmp_path: Path) -> None:
-    requests: list[dict[str, Any]] = [
+    requests: list[dict[str, Any] | str] = [
         {
             "jsonrpc": "2.0",
             "id": 1,
@@ -1235,6 +1395,7 @@ def test_stage_mcp_writes_nothing_but_json_rpc_to_stdout(catalogue: Path, tmp_pa
             "method": "tools/call",
             "params": {"name": "get_postings", "arguments": {"ids": [_id("trap")]}},
         },
+        '{"jsonrpc":"2.0","id":5,"method":"ping","params":{"_meta":{"x":"\\udfff"}}}',
     ]
     env = dict(
         os.environ,
@@ -1254,7 +1415,8 @@ def test_stage_mcp_writes_nothing_but_json_rpc_to_stdout(catalogue: Path, tmp_pa
             assert process.stdin is not None and process.stdout is not None
             replies: list[dict[str, Any]] = []
             for request in requests:
-                process.stdin.write(json.dumps(request).encode() + b"\n")
+                line = request if isinstance(request, str) else json.dumps(request)
+                process.stdin.write(line.encode() + b"\n")
                 process.stdin.flush()
                 if "id" in request:
                     replies.append(json.loads(process.stdout.readline()))
@@ -1269,8 +1431,9 @@ def test_stage_mcp_writes_nothing_but_json_rpc_to_stdout(catalogue: Path, tmp_pa
                 process.kill()
                 raise
         assert process.wait(timeout=30) == 0 and rest == b""
-    assert [reply["id"] for reply in replies] == [1, 2, 3, 4]
-    assert all(reply["jsonrpc"] == "2.0" and "result" in reply for reply in replies)
+    assert [reply["id"] for reply in replies] == [1, 2, 3, 4, 5]
+    assert all(reply["jsonrpc"] == "2.0" and "result" in reply for reply in replies[:4])
+    assert replies[4]["error"]["code"] == -32700
     assert [tool["name"] for tool in replies[1]["result"]["tools"]] == NAMES
     assert replies[2]["result"]["isError"] is False
     assert "\u202e" not in json.dumps(replies[3], ensure_ascii=False)
@@ -1313,3 +1476,217 @@ def test_the_shared_preference_rules_match_the_cli(tmp_path: Path) -> None:
     revised = revise_preferences(current, {}, locations=["usa"], terms=[])
     assert revised == replace(current, locations=(LocationBucket.USA,), terms=())
     assert revise_preferences(current, {}) == current
+
+
+async def test_a_crash_inside_a_tool_is_reported_plainly(
+    catalogue: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services import health
+
+    async def broken(*_: object, **__: object) -> None:
+        raise RuntimeError("secret detail from inside Stage")
+
+    monkeypatch.setattr(health, "statistics", broken)
+    async with _connected(catalogue) as client:
+        said = await _refused(client, "database_status", {})
+    assert "unexpected problem while running database_status" in said and "stage doctor" in said
+    assert "RuntimeError" not in said and "secret" not in said
+
+
+async def test_a_number_too_big_for_a_whole_number_reads_plainly(catalogue: Path) -> None:
+    async with _connected(catalogue) as client:
+        said = await _refused(client, "search_postings", {"days": 1e300})
+    assert said == "days should be a smaller whole number, not 1e+300."
+
+
+async def test_unreadable_word_lists_are_named_instead_of_a_crash(
+    catalogue: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage import lexicon
+
+    def broken() -> frozenset[str]:
+        raise lexicon.LexiconError("lexicon not found at /nowhere/roles.yaml")
+
+    monkeypatch.setenv("STAGE_LEXICON", "/nowhere")
+    monkeypatch.setattr(lexicon, "feminine_suffixes", broken)
+    async with _connected(catalogue) as client:
+        said = await _refused(client, "search_postings", {"words": "wordlistprobe"})
+    assert said.startswith("Stage could not read its word lists (lexicon not found at /nowhere")
+    assert "unset STAGE_LEXICON" in said and "unexpected" not in said
+
+
+async def test_check_sources_says_when_the_board_list_cannot_be_read(
+    catalogue: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boards = tmp_path / "boards.yaml"
+    boards.write_text("{not: [yaml", encoding="utf-8")
+    monkeypatch.setenv("STAGE_BOARDS", str(boards))
+    async with _connected(catalogue) as client:
+        found = await _ok(client, "check_sources")
+    assert found["notes"][-1].startswith("The user's own board list is ignored until it can be")
+    assert str(boards) in found["notes"][-1] and "\n" not in found["notes"][-1]
+
+
+async def test_an_unknown_tool_is_answered_with_the_closest_one(catalogue: Path) -> None:
+    async with _connected(catalogue) as client:
+        near = await _refused(client, "search_posting", {})
+        far = await _refused(client, "zzz", {})
+    assert near == 'Stage has no tool named "search_posting". Did you mean "search_postings"?'
+    assert far.startswith('Stage has no tool named "zzz". Stage has: search_postings, get_postings')
+
+
+async def test_board_errors_and_block_reasons_reach_the_ai_without_class_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage import companies
+    from stage.domain.visits import CompanyVisit
+
+    blocked = RateState(
+        bucket="boards.example.com",
+        updated_at=NOW,
+        blocked_until=NOW + timedelta(hours=1),
+        reason="BucketBlockedError: 403 from the board",
+    )
+    failed = CompanyVisit("greenhouse:acme", False, "HttpStatusError: acme returned 503", "Acme")
+    database = _seed(tmp_path / "stage.db", [_job("a")], rate_state=(blocked,), visits=(failed,))
+    monkeypatch.setattr(companies, "load_boards", lambda _: ((), None))
+    async with _connected(database) as client:
+        found = await _ok(client, "check_sources", {"include_boards": True})
+    assert found["blocked_hosts"][0]["reason"] == "403 from the board"
+    assert found["boards"][0]["last_error"] == "acme returned 503"
+
+
+async def test_check_sources_reads_the_registry_once_until_it_changes(
+    catalogue: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+
+    from stage import companies
+
+    registry = tmp_path / "registry.yaml"
+    registry.write_text("[]\n", encoding="utf-8")
+    monkeypatch.setenv("STAGE_REGISTRY", str(registry))
+    threads: list[int] = []
+
+    def counted(_: object) -> tuple[tuple[()], None]:
+        threads.append(threading.get_ident())
+        return (), None
+
+    monkeypatch.setattr(companies, "load_boards", counted)
+    async with _connected(catalogue) as client:
+        await _ok(client, "check_sources")
+        await _ok(client, "check_sources")
+        registry.write_text("[]\n\n", encoding="utf-8")
+        await _ok(client, "check_sources")
+    assert len(threads) == 2 and threading.get_ident() not in threads
+
+
+async def test_undo_and_saved_preferences_wait_off_the_event_loop(
+    catalogue: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+    from collections.abc import Iterator
+    from contextlib import contextmanager
+
+    from stage.services import preferences as stored
+    from stage.services import tracker
+
+    threads: list[int] = []
+    restore, lock = tracker.restore_unless_changed, stored.preferences_lock
+
+    def restoring(changes: Any) -> Any:
+        threads.append(threading.get_ident())
+        return restore(changes)
+
+    @contextmanager
+    def locking() -> Iterator[None]:
+        threads.append(threading.get_ident())
+        with lock():
+            yield
+
+    monkeypatch.setattr(tracker, "restore_unless_changed", restoring)
+    monkeypatch.setattr(stored, "preferences_lock", locking)
+    async with _connected(catalogue) as client:
+        hidden = await _ok(client, "track_postings", {"ids": [_id("a")], "status": "hidden"})
+        undone = await _ok(client, "undo_tracking", {"undo": hidden["undo"]})
+        saved = await _ok(client, "set_preferences", {"locations": ["usa"]})
+    assert undone["restored"] and saved["locations"] == ["usa"]
+    assert len(threads) == 2 and threading.get_ident() not in threads
+
+
+async def test_a_cancelled_undo_keeps_its_token(catalogue: Path) -> None:
+    tools = toolbox.Tools(catalogue)
+    hidden = await tools.track_postings([_id("a")], status="hidden")
+    assert hidden.structured_content is not None
+    token = hidden.structured_content["undo"]
+    async with tools._tracking:
+        waiting = asyncio.create_task(tools.undo_tracking(token))
+        await asyncio.sleep(0.05)
+        waiting.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await waiting
+    undone = await tools.undo_tracking(token)
+    assert undone.structured_content is not None
+    assert [row["status"] for row in undone.structured_content["restored"]] == [None]
+
+
+def test_a_failure_without_a_reason_never_names_a_python_class() -> None:
+    import sqlite3
+
+    unreadable = toolbox._unreadable(Path("x.db"), sqlite3.DatabaseError())
+    unsaved = toolbox._could_not("save", Path("p.json"), OSError("quota exceeded"))
+    assert "DatabaseError" not in unreadable and "stage sync" in unreadable
+    assert unsaved.startswith("Stage could not save p.json (quota exceeded).")
+    assert "OSError" not in unsaved
+
+
+async def test_check_sources_still_answers_with_a_broken_registry(
+    catalogue: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broken = tmp_path / "broken.yaml"
+    broken.write_text("{not: [yaml", encoding="utf-8")
+    monkeypatch.setenv("STAGE_REGISTRY", str(broken))
+    async with _connected(catalogue) as client:
+        found = await _ok(client, "check_sources")
+    assert found["blocked_hosts"][0]["host"] == "boards.example.com"
+
+
+async def test_only_the_newest_undo_tokens_are_kept(
+    catalogue: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(toolbox, "MAX_UNDO", 1)
+    async with _connected(catalogue) as client:
+        first = await _ok(client, "track_postings", {"ids": [_id("a")], "status": "saved"})
+        second = await _ok(client, "track_postings", {"ids": [_id("b")], "status": "saved"})
+        old = await _refused(client, "undo_tracking", {"undo": first["undo"]})
+        new = await _ok(client, "undo_tracking", {"undo": second["undo"]})
+    assert "no change with that undo token" in old and new["restored"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="needs a POSIX terminal")
+def test_ctrl_c_stops_stage_mcp_started_by_hand(catalogue: Path) -> None:
+    if sys.platform != "win32":
+        import pty
+        import signal
+
+        terminal, typed_into = pty.openpty()
+        with subprocess.Popen(
+            [sys.executable, "-m", "stage", "mcp", "--db", str(catalogue)],
+            stdin=typed_into,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        ) as process:
+            assert process.stderr is not None and process.stdout is not None
+            try:
+                assert b"Press Ctrl+C to stop" in process.stderr.readline()
+                os.write(terminal, b'{"jsonrpc":"2.0","id":1,"method":"ping"}\n')
+                assert json.loads(process.stdout.readline())["id"] == 1
+                process.send_signal(signal.SIGINT)
+                code = process.wait(timeout=10)
+            finally:
+                process.kill()
+                os.close(terminal)
+                os.close(typed_into)
+            said = process.stderr.read()
+            assert process.stdout.read() == b""
+        assert code == 130 and b"Stage stopped." in said

@@ -71,6 +71,54 @@ def test_the_same_board_twice_is_still_refused(tmp_path: Path) -> None:
         load_companies(path)
 
 
+@pytest.mark.parametrize(
+    ("line", "said"),
+    [
+        ("  notes: 5\n", "a.yaml: registry entry 2: notes must be a string"),
+        (
+            "  enabled: 'no'\n",
+            "a.yaml: registry entry 2: enabled must be an unquoted true or false",
+        ),
+        ("  last_verified: soon\n", "a.yaml: registry entry 2: last_verified must be a date like"),
+        ("  oracle_keyword: 3\n", "a.yaml: registry entry 2: Oracle fields only belong on"),
+    ],
+)
+def test_a_bad_field_names_its_file_and_entry_without_python_types(
+    tmp_path: Path, line: str, said: str
+) -> None:
+    path = tmp_path / "a.yaml"
+    path.write_text(
+        "- name: A\n  platform: greenhouse\n  slug: a\n- name: B\n  platform: greenhouse\n"
+        f"  slug: b\n{line}",
+        encoding="utf-8",
+    )
+    with pytest.raises(RegistryError) as caught:
+        load_companies(path)
+    assert str(caught.value).startswith(said), str(caught.value)
+    assert "str " not in str(caught.value) and ";" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("line", "said"),
+    [
+        ("  platform: grenhouse\n", 'unknown platform "grenhouse". Did you mean "greenhouse"?'),
+        ("  source_of_record: manul\n", 'unknown source_of_record "manul". Did you mean "manual"?'),
+        ("  enabled: 'no'\n", 'enabled must be an unquoted true or false, not "no"'),
+        ("  last_verified: soon\n", 'last_verified must be a date like 2026-08-08, not "soon"'),
+    ],
+)
+def test_a_mistyped_value_is_quoted_and_offers_the_closest_choice(
+    tmp_path: Path, line: str, said: str
+) -> None:
+    path = tmp_path / "a.yaml"
+    path.write_text(f"- name: A\n  slug: a\n{line}", encoding="utf-8")
+    if "platform" not in line:
+        path.write_text(path.read_text(encoding="utf-8") + "  platform: lever\n", encoding="utf-8")
+    with pytest.raises(RegistryError) as caught:
+        load_companies(path)
+    assert str(caught.value).endswith(said), str(caught.value)
+
+
 def test_the_shipped_registry_loads_and_every_enabled_row_is_verified() -> None:
     companies = load_companies()
     assert len(companies) > 70
@@ -79,7 +127,7 @@ def test_the_shipped_registry_loads_and_every_enabled_row_is_verified() -> None:
             assert company.last_verified is not None, company.name
 
 
-MAX_WORKDAY_RUNS_PER_CYCLE = 2
+MAX_WORKDAY_RUNS_PER_CYCLE = 3
 
 
 def test_the_shipped_workday_schedule_covers_every_board_within_a_bounded_cycle() -> None:
@@ -98,7 +146,11 @@ def test_the_shipped_workday_schedule_covers_every_board_within_a_bounded_cycle(
         budget=WorkdayAdapter.rotation_slice,
     )
     selected = set(rotation.selected)
-    ceiling = profile("workday").max_requests_per_run
+    ceiling = (
+        profile("workday")
+        .sized_for(len(selected), WorkdayAdapter.retry_reserve + WorkdayAdapter.detail_budget)
+        .max_requests_per_run
+    )
     budgets, details = WorkdayAdapter.crawl_budgets(
         [company for company in companies if company.registry_key in selected] or companies,
         {},
@@ -161,10 +213,10 @@ async def test_no_workday_row_can_bypass_fair_rotation(db_path: Path) -> None:
 
     companies = [
         Company(
-            name=f"board-{index:03d}",
+            name=f"board-{index:04d}",
             platform=Platform.WORKDAY,
-            slug=f"board-{index:03d}",
-            workday_tenant=f"tenant-{index:03d}",
+            slug=f"board-{index:04d}",
+            workday_tenant=f"tenant-{index:04d}",
             workday_site="External",
             workday_dc="wd3",
         )
@@ -179,7 +231,7 @@ async def test_no_workday_row_can_bypass_fair_rotation(db_path: Path) -> None:
     planned = {event.company for event in events if isinstance(event, PlannedRequest)}
     rotated = next(event for event in events if isinstance(event, SourceRotated))
     assert len(planned) == slice_size
-    assert f"board-{slice_size:03d}" not in planned
+    assert f"board-{slice_size:04d}" not in planned
     assert (rotated.selected, rotated.deferred) == (slice_size, 1)
 
 

@@ -112,7 +112,7 @@ async def test_a_jobs_path_that_is_not_a_list_raises_and_captures(
     monkeypatch.setenv("STAGE_CAPTURE_DIR", str(tmp_path))
     respx.get(URL).mock(return_value=httpx.Response(200, json={"data": {"positions": {}}}))
     async with _client() as client:
-        with pytest.raises(PayloadValidationError, match="is not a list"):
+        with pytest.raises(PayloadValidationError, match="no list of jobs"):
             await CustomJsonAdapter().fetch(_company(), client, NOW)
     assert list(tmp_path.glob("custom_json-*.json"))
 
@@ -137,7 +137,7 @@ def test_the_allowed_hosts_come_from_the_registry_rows() -> None:
 
 def test_a_row_with_no_custom_block_fails_loudly_rather_than_silently() -> None:
     naked = Company(name="Acme", platform=Platform.CUSTOM_JSON, slug="acme")
-    with pytest.raises(PayloadValidationError, match="needs a 'custom' block"):
+    with pytest.raises(PayloadValidationError, match="has no custom block"):
         CustomJsonAdapter().plan(naked)
 
 
@@ -230,7 +230,7 @@ def test_a_custom_block_on_another_platform_is_refused(tmp_path: Path) -> None:
 def test_an_unrecognised_url_offers_a_custom_json_skeleton() -> None:
     from rich.console import Console
 
-    from stage.cli.render import _show_custom_skeleton, registry_slug
+    from stage.cli.render.progress import _show_custom_skeleton, registry_slug
 
     console = Console(width=120, no_color=True, force_terminal=False, record=True)
     _show_custom_skeleton(console, "https://jobs.rbc.com/ca/en/students", "RBC")
@@ -245,7 +245,7 @@ def test_an_unrecognised_url_offers_a_custom_json_skeleton() -> None:
 def test_a_url_that_is_not_a_web_address_gets_no_skeleton() -> None:
     from rich.console import Console
 
-    from stage.cli.render import _show_custom_skeleton
+    from stage.cli.render.progress import _show_custom_skeleton
 
     console = Console(width=120, no_color=True, force_terminal=False, record=True)
     _show_custom_skeleton(console, "javascript:alert(1)", "Nope")
@@ -438,3 +438,110 @@ def test_the_stingray_row_names_its_taxonomy_rather_than_indexing_it() -> None:
     assert "taxonomy=location" in board.mapped("location"), (
         "WordPress orders embedded taxonomies by registration, so the group must be named"
     )
+
+
+@pytest.mark.parametrize("rows", [3, 600])
+@respx.mock
+async def test_a_listing_of_any_length_is_built_on_the_loop(
+    monkeypatch: pytest.MonkeyPatch, rows: int
+) -> None:
+    import threading
+
+    from stage.domain import Job
+    from stage.sources.custom_json import CustomListing
+
+    positions = [
+        {"reqId": f"R-{index}", "name": "Data Science Intern", "office": {"city": "Toronto"}}
+        for index in range(rows)
+    ]
+    respx.get(URL).mock(return_value=httpx.Response(200, json={"data": {"positions": positions}}))
+    threads: set[int] = set()
+    build = CustomJsonAdapter._to_job
+
+    def spy(
+        self: CustomJsonAdapter,
+        company: Company,
+        board: CustomBoard,
+        listing: CustomListing,
+        now: datetime,
+    ) -> Job:
+        threads.add(threading.get_ident())
+        return build(self, company, board, listing, now)
+
+    monkeypatch.setattr(CustomJsonAdapter, "_to_job", spy)
+    async with _client() as client:
+        result = await CustomJsonAdapter().fetch(_company(), client, NOW)
+
+    assert len(result.jobs) == rows
+    assert threads == {threading.get_ident()}, "a build thread fought the loop for the GIL"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_a_board_built_on_the_loop_lets_other_tasks_run_while_it_builds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import asyncio
+
+    rows = [
+        {
+            "reqId": f"R-{number}",
+            "name": "Software Intern",
+            "office": {"city": "Montreal, QC"},
+            "content": "<p>" + "Build things &amp; ship them. " * 200 + "</p>",
+        }
+        for number in range(450)
+    ]
+    respx.get(URL).mock(return_value=httpx.Response(200, json={"data": {"positions": rows}}))
+    ticks = 0
+    seen: list[int] = []
+    building = CustomJsonAdapter._to_job
+
+    def counted(*args: object, **kwargs: object) -> object:
+        seen.append(ticks)
+        return building(*args, **kwargs)  # type: ignore[arg-type]
+
+    async def ticker() -> None:
+        nonlocal ticks
+        while True:
+            ticks += 1
+            await asyncio.sleep(0)
+
+    monkeypatch.setattr(CustomJsonAdapter, "_to_job", counted)
+    running = asyncio.create_task(ticker())
+    try:
+        async with _client() as client:
+            result = await CustomJsonAdapter().fetch(_company(), client, NOW)
+    finally:
+        running.cancel()
+
+    assert len(result.jobs) == 450
+    assert all(seen[number + 50] > seen[number] for number in range(len(seen) - 50))
+
+
+async def test_heavy_parsing_runs_one_job_at_a_time_on_one_build_thread() -> None:
+    import asyncio
+    import threading
+    import time
+
+    from stage.sources.base import off_loop
+
+    running = 0
+    most = 0
+    names: set[str] = set()
+    guard = threading.Lock()
+
+    def work(number: int) -> int:
+        nonlocal running, most
+        with guard:
+            running += 1
+            most = max(most, running)
+            names.add(threading.current_thread().name)
+        time.sleep(0.02)
+        with guard:
+            running -= 1
+        return number
+
+    assert await asyncio.gather(*(off_loop(work, number) for number in range(4))) == [0, 1, 2, 3]
+    assert most == 1 and len(names) == 1
+    assert threading.main_thread().name not in names

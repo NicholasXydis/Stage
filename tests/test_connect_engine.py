@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tomllib
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -32,6 +33,7 @@ from stage.services.connect import (
     Target,
     connect,
     current_system,
+    desired,
     disconnect,
     expand,
     instructions,
@@ -101,7 +103,7 @@ class Recorder:
     ],
 )
 def test_places_expand_for_every_system(system: System, template: str, expected: str) -> None:
-    assert expand(template, Machine(system, Path("/h"), {})) == expected
+    assert Path(expand(template, Machine(system, Path("/h"), {}))) == Path(expected)
 
 
 def test_settings_that_move_a_folder_win_over_the_default() -> None:
@@ -114,13 +116,14 @@ def test_settings_that_move_a_folder_win_over_the_default() -> None:
     assert expand("{env:CODEX_HOME|~/.codex}/config.toml", machine) == "/elsewhere/config.toml"
     assert expand("{config}/goose/config.yaml", machine) == "/xdg/goose/config.yaml"
     assert expand("{appdata}/Zed", machine) == "C:/Roaming/Zed"
-    assert expand("{env:EMPTY|~/x}", Machine(System.LINUX, Path("/h"), {"EMPTY": " "})) == "/h/x"
+    blank = Machine(System.LINUX, Path("/h"), {"EMPTY": " "})
+    assert Path(expand("{env:EMPTY|~/x}", blank)) == Path("/h/x")
 
 
 def test_lm_studio_follows_its_pointer_then_its_old_folder(tmp_path: Path) -> None:
     machine = _machine(tmp_path)
 
-    assert expand("{lmstudio}/mcp.json", machine) == f"{machine.home}/.lmstudio/mcp.json"
+    assert Path(expand("{lmstudio}/mcp.json", machine)) == machine.home / ".lmstudio" / "mcp.json"
     (machine.home / ".cache" / "lm-studio").mkdir(parents=True)
     assert expand("{lmstudio}", machine) == str(machine.home / ".cache" / "lm-studio")
     (machine.home / ".lmstudio-home-pointer").write_text("/custom/lms\n", encoding="utf-8")
@@ -128,11 +131,11 @@ def test_lm_studio_follows_its_pointer_then_its_old_folder(tmp_path: Path) -> No
 
 
 def test_hermes_follows_its_active_profile_but_never_out_of_its_folder(tmp_path: Path) -> None:
-    machine = _machine(tmp_path)
+    machine = replace(_machine(tmp_path), system=System.LINUX)
     root = machine.home / ".hermes"
     root.mkdir()
 
-    assert expand("{hermes}/config.yaml", machine) == f"{root}/config.yaml"
+    assert Path(expand("{hermes}/config.yaml", machine)) == root / "config.yaml"
     (root / "active_profile").write_text("work\n", encoding="utf-8")
     assert expand("{hermes}", machine) == str(root / "profiles" / "work")
     (root / "active_profile").write_text("../../etc", encoding="utf-8")
@@ -365,7 +368,7 @@ def test_an_app_that_rewrites_its_settings_must_be_closed_first(tmp_path: Path) 
     refused = connect(target, ENTRY, running=lambda name: name == "Demo")
     allowed = connect(target, ENTRY, running=lambda _: False)
 
-    assert not refused.changed and "Quit Demo first" in refused.message
+    assert not refused.changed and "Quit Demo, then run stage connect demo" in refused.message
     assert allowed.changed
 
 
@@ -403,6 +406,7 @@ def test_a_held_lock_is_waited_for_and_a_stale_one_is_cleared(
     cleared = connect(target, ENTRY)
 
     assert not held.changed and "being saved" in held.message
+    assert ";" not in held.message and held.message.endswith("Try again in a moment.")
     assert cleared.changed and not lock.exists()
 
 
@@ -478,6 +482,129 @@ def test_a_file_its_app_keeps_rewriting_is_never_edited_directly(tmp_path: Path)
     assert not outcome.changed and "not logged in" in outcome.message
     assert "Run:" in outcome.instructions
     assert target.settings is not None and not target.settings.exists()
+
+
+class FailsOnce(Recorder):
+    def __call__(self, command: Sequence[str]) -> "subprocess.CompletedProcess[str]":
+        self.calls.append(list(command))
+        code = 1 if len(self.calls) == 2 else 0
+        said = self.said or "timed out"
+        return subprocess.CompletedProcess(list(command), code, "", said if code else "")
+
+
+def test_an_entry_removed_before_a_refused_add_is_put_back(tmp_path: Path) -> None:
+    target = _command_target(tmp_path, edits_file=False)
+    assert target.settings is not None
+    target.settings.parent.mkdir(parents=True, exist_ok=True)
+    old = {"mcpServers": {"Stage": {"command": "/old/stage", "args": ["mcp"]}}}
+    target.settings.write_text(json.dumps(old), encoding="utf-8")
+    runner = FailsOnce()
+
+    outcome = connect(target, ENTRY, runner=runner)
+
+    assert [call[2] for call in runner.calls] == ["remove", "add", "add"]
+    assert runner.calls[-1][-2:] == ["/old/stage", "mcp"]
+    assert outcome.failed and "put back the Stage entry" in outcome.message
+
+
+def test_a_refusal_that_ends_a_sentence_is_not_given_a_second_period(tmp_path: Path) -> None:
+    target = _command_target(tmp_path, edits_file=False)
+    assert target.settings is not None
+    target.settings.parent.mkdir(parents=True, exist_ok=True)
+    old = {"mcpServers": {"Stage": {"command": "/old/stage", "args": ["mcp"]}}}
+    target.settings.write_text(json.dumps(old), encoding="utf-8")
+    runner = FailsOnce(0, "timed out.")
+
+    outcome = connect(target, ENTRY, runner=runner)
+
+    assert outcome.message == (
+        "tool refused: timed out. Stage put back the Stage entry it had removed."
+    )
+
+
+def test_a_windows_program_is_named_without_its_extension(tmp_path: Path) -> None:
+    from stage.cli.commands.ai import _how
+
+    target = replace(
+        _command_target(tmp_path, edits_file=False), program=str(tmp_path / "tool.EXE")
+    )
+
+    outcome = connect(target, ENTRY, runner=Recorder(1, "timed out."))
+
+    assert _how(target) == "runs tool mcp"
+    assert outcome.message == "tool refused: timed out."
+
+
+def test_a_file_that_changes_under_stage_reads_as_whole_sentences(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services import app_config
+    from stage.services import connect as engine
+
+    target = _target(tmp_path)
+    assert target.settings is not None
+    target.settings.parent.mkdir(parents=True, exist_ok=True)
+    target.settings.write_text('{"mcpServers": {"Stage": {"command": "x"}}}\n', encoding="utf-8")
+
+    def changed(current: app_config.ConfigText, _: str) -> None:
+        raise app_config.UnwritableError(
+            f"{current.path} changed while Stage was editing it. Close the app that uses it "
+            "and try again."
+        )
+
+    monkeypatch.setattr(engine, "write_config", changed)
+    added = connect(target, replace(ENTRY, command="/new/stage"))
+    removed = disconnect(target, ENTRY)
+
+    assert ".." not in added.message and added.message.endswith("try again.")
+    assert ".." not in removed.message
+    assert removed.message.endswith(
+        "try again. Delete the Stage entry under mcpServers in that file yourself."
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "mode", "said"),
+    [
+        ('{\n  // mine\n  "mcpServers": {"Stage": {"command": "x"}}\n}\n', 0o600, "has comments"),
+        ('{"mcpServers": {"Stage": {"command": "x"}}}\n', 0o000, "cannot be read"),
+    ],
+)
+def test_a_settings_file_stage_cannot_use_is_named_with_what_to_do(
+    tmp_path: Path, text: str, mode: int, said: str
+) -> None:
+    if mode == 0 and (sys.platform == "win32" or os.geteuid() == 0):
+        pytest.skip("POSIX permission bits for a user other than root")
+    target = _target(tmp_path)
+    assert target.settings is not None
+    target.settings.parent.mkdir(parents=True, exist_ok=True)
+    target.settings.write_text(text, encoding="utf-8")
+    target.settings.chmod(mode)
+    try:
+        added = connect(target, ENTRY)
+        removed = disconnect(target, ENTRY)
+    finally:
+        target.settings.chmod(0o600)
+
+    assert added.status is Status.UNREADABLE and not added.changed
+    assert said in added.message and added.message.endswith(".")
+    assert f"Add this to {target.settings}:" in added.instructions
+    assert said in removed.message and removed.message.endswith("in that file yourself.")
+    assert target.settings.read_text(encoding="utf-8") == text
+
+
+def test_updating_an_entry_keeps_the_settings_the_user_added(tmp_path: Path) -> None:
+    target = _target(tmp_path)
+    assert target.settings is not None
+    target.settings.parent.mkdir(parents=True, exist_ok=True)
+    old = {"command": "/old/stage", "args": ["mcp"], "env": {"X": "1"}, "timeout": 120}
+    target.settings.write_text(json.dumps({"mcpServers": {"Stage": old}}), encoding="utf-8")
+
+    assert connect(target, ENTRY).changed
+
+    found = json.loads(target.settings.read_text(encoding="utf-8"))["mcpServers"]["Stage"]
+    assert found == {**desired(target, ENTRY), "timeout": 120}
+    assert read_status(target, ENTRY).status is Status.CONNECTED
 
 
 def test_a_command_with_no_way_to_pass_settings_is_not_used(tmp_path: Path) -> None:
@@ -801,3 +928,12 @@ def test_the_actions_flag_is_added_once_and_removed_cleanly() -> None:
     assert with_actions(on, True) == on and with_actions(on, False) == script
     assert with_actions(script, False) == script
     assert with_actions(python, True).args == ("-m", "stage", "mcp", ACTIONS_FLAG)
+
+
+def test_a_filled_command_keeps_its_name_after_the_variables() -> None:
+    from stage.services.connect import fill
+
+    filled = fill(("add", "{env}", "{name}", "{json}"), "-e", ENTRY, "stage")
+
+    assert filled[:4] == ["add", "-e", "STAGE_DB=/data/stage.db", "stage"]
+    assert json.loads(filled[4])["name"] == "stage"

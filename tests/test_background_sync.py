@@ -10,7 +10,6 @@ from typer.testing import CliRunner
 
 from stage.cli.app import app
 from stage.cli.options import _lock_path
-from stage.cli.runlock import single_run
 from stage.domain import (
     Company,
     CompanyFinished,
@@ -20,6 +19,7 @@ from stage.domain import (
     SyncOutcome,
     SyncStarted,
 )
+from stage.runlock import single_run
 from stage.services import background
 from stage.services.background import (
     log_path,
@@ -132,13 +132,20 @@ def test_a_sync_already_held_by_another_run_is_not_started(
 ) -> None:
     _fake_launch(monkeypatch, _Child(2), phase="blocked", error="stage sync is already running")
     launched = _quick(database)
-    assert not launched.started and launched.detail == "stage sync is already running"
+    assert not launched.started and launched.detail == "stage sync is already running."
+
+
+def test_a_sync_without_internet_says_so(database: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    said = "No internet connection, so nothing was synced and no board was marked as failing."
+    _fake_launch(monkeypatch, _Child(0), phase="offline", error=said)
+    launched = _quick(database)
+    assert not launched.started and launched.detail == said
 
 
 def test_a_sync_that_cannot_run_says_why(database: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _fake_launch(monkeypatch, _Child(2), phase="finished", outcome="failure", error="bad registry")
     launched = _quick(database)
-    assert not launched.started and launched.detail == "bad registry"
+    assert not launched.started and launched.detail == "bad registry."
 
 
 def test_a_sync_that_finishes_at_once_says_so(
@@ -156,6 +163,25 @@ def test_a_sync_that_dies_before_writing_progress_shows_its_output(
     log_path(database).write_text("Traceback\n  boom: no module named x\n", encoding="utf-8")
     launched = _quick(database)
     assert not launched.started and "boom: no module named x" in launched.detail
+
+
+def test_a_sync_that_crashes_at_once_gives_the_error_without_the_traceback(
+    database: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fake_launch(monkeypatch, _Child(1))
+    log_path(database).write_text(
+        'Traceback (most recent call last):\n  File "x.py", line 1, in <module>\n'
+        "ModuleNotFoundError: No module named 'x'\n",
+        encoding="utf-8",
+    )
+    launched = _quick(database)
+    assert launched.detail == "The sync stopped at once: No module named 'x'."
+
+
+def test_a_stored_sync_error_is_shown_without_a_class_name(database: Path) -> None:
+    _write(database, phase="finished", outcome="failure", error="RuntimeError: disk on fire")
+    found = sync_progress(database)
+    assert found is not None and found["state"] == "failed" and found["error"] == "disk on fire"
 
 
 def test_a_slow_starting_sync_is_reported_as_starting(
@@ -341,6 +367,27 @@ def test_stage_sync_records_a_crash_as_a_failure(
     assert (
         found is not None and found["state"] == "failed" and "disk on fire" in str(found["error"])
     )
+    assert "RuntimeError" not in str(found["error"])
+
+
+def test_stage_sync_records_ctrl_c_as_stopped(
+    database: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def interrupted(*_: Any, **__: Any) -> AsyncIterator[SyncEvent]:
+        before: list[SyncEvent] = []
+        for event in before:
+            yield event
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr("stage.services.sync.sync", interrupted)
+    result = CliRunner().invoke(
+        app, ["sync", "--db", str(database), "--progress-file", str(progress_path(database))]
+    )
+
+    found = sync_progress(database)
+    assert result.exit_code == 130 and "Sync stopped." in result.stderr
+    assert found is not None and found["state"] == "failed"
+    assert "stopped before it finished" in str(found["error"])
 
 
 def test_a_dry_run_writes_no_progress(database: Path) -> None:
@@ -353,4 +400,55 @@ def test_a_sync_that_dies_without_a_log_says_so(
 ) -> None:
     _fake_launch(monkeypatch, _Child(1))
     launched = _quick(database)
-    assert not launched.started and launched.detail == "The sync stopped at once: no output"
+    assert not launched.started and "without saying why" in launched.detail
+    assert launched.detail.endswith("Run stage sync in a terminal to see why.")
+
+
+def test_the_first_sync_after_an_upgrade_checks_stored_postings_once(
+    database: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import Job, JobStatus, LocationBucket
+    from stage.storage.repository import SourceBatch
+    from stage.storage.sqlite_repo import SqliteRepository
+
+    store = SqliteRepository.connect(database)
+    store.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=NOW,
+            jobs=(
+                Job(
+                    id="workday:td:1",
+                    source="workday",
+                    company="TD Bank",
+                    title_raw="Personal Banking Associate Trainee",
+                    title_normalized="personal banking associate trainee",
+                    apply_url_raw="https://boards.example.test/1",
+                    description="",
+                    first_seen=NOW,
+                    last_seen=NOW,
+                    location_raw="Montreal, QC",
+                    location=LocationBucket.MONTREAL,
+                    status=JobStatus.OPEN,
+                ),
+            ),
+        )
+    )
+    store.mark_screened(0)
+    store.close()
+    finished = SyncFinished(
+        outcome=SyncOutcome.SUCCESS,
+        added=0,
+        updated=0,
+        closed=0,
+        failed_sources=(),
+        elapsed_ms=1.0,
+    )
+    monkeypatch.setattr("stage.services.sync.sync", _fake_sync((finished,)))
+
+    first = CliRunner().invoke(app, ["sync", "--db", str(database)])
+    second = CliRunner().invoke(app, ["sync", "--db", str(database)])
+
+    said = " ".join(first.output.split())
+    assert "checked the ones already stored: 1 posting now rejected" in said
+    assert "already stored" not in second.output

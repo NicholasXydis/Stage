@@ -124,13 +124,19 @@ def test_a_large_resumable_board_gets_enough_budget_to_finish_on_the_second_sync
     ]
     adapter = WorkdayAdapter()
     large = companies[0]
+    facet = WorkdayFacet(tenant="tenant0", site="career", parameter="timeType", facet_ids=("i",))
     crawl = WorkdayCrawl(
         board=adapter.board_key(large),
         next_offset=100,
         total=1773,
+        facet_parameter=facet.parameter,
+        facet_ids=facet.facet_ids,
     )
     budgets, details = adapter.crawl_budgets(
-        companies, {adapter.board_key(large): crawl}, {}, posture.max_requests_per_run
+        companies,
+        {adapter.board_key(large): crawl},
+        {("tenant0", "career"): facet},
+        posture.max_requests_per_run,
     )
     assert budgets[large.registry_key] == 85
     assert budgets[large.registry_key] <= MAX_CRAWL_PAGES
@@ -141,17 +147,61 @@ def test_spare_pages_finish_the_nearest_crawl_before_feeding_a_giant() -> None:
     adapter = WorkdayAdapter()
     small = _company(name="Small", slug="small", workday_tenant="small")
     large = _company(name="Large", slug="large", workday_tenant="large")
+    facets = {
+        (tenant, "career"): WorkdayFacet(
+            tenant=tenant, site="career", parameter="timeType", facet_ids=("i",)
+        )
+        for tenant in ("small", "large")
+    }
     crawls = {
         adapter.board_key(small): WorkdayCrawl(
-            board=adapter.board_key(small), next_offset=20, total=60
+            board=adapter.board_key(small),
+            next_offset=20,
+            total=60,
+            facet_parameter="timeType",
+            facet_ids=("i",),
         ),
         adapter.board_key(large): WorkdayCrawl(
-            board=adapter.board_key(large), next_offset=100, total=1773
+            board=adapter.board_key(large),
+            next_offset=100,
+            total=1773,
+            facet_parameter="timeType",
+            facet_ids=("i",),
         ),
     }
-    budgets, _ = adapter.crawl_budgets([small, large], crawls, {}, adapter.retry_reserve + 12)
+    budgets, _ = adapter.crawl_budgets([small, large], crawls, facets, adapter.retry_reserve + 12)
     assert budgets[small.registry_key] == 3
     assert budgets[large.registry_key] == 9
+
+
+def test_an_unfiltered_giant_crawl_gets_no_pages_beyond_its_quick_look() -> None:
+    adapter = WorkdayAdapter()
+    giant = _company(name="Giant", slug="giant", workday_tenant="giant")
+    crawls = {
+        adapter.board_key(giant): WorkdayCrawl(
+            board=adapter.board_key(giant), next_offset=100, total=1773
+        )
+    }
+    budgets, _ = adapter.crawl_budgets([giant], crawls, {}, 500)
+    assert budgets[giant.registry_key] == adapter.crawl_page_cap
+
+
+def test_a_weekly_full_read_takes_only_what_is_left_after_checks() -> None:
+    adapter = WorkdayAdapter()
+    boards = [
+        _company(name=f"Board {index}", slug=f"b{index}", workday_tenant=f"b{index}")
+        for index in range(3)
+    ]
+    ceiling = adapter.retry_reserve + 3 * adapter.crawl_page_cap + 60 + 30 + 150
+    budgets, details = adapter.crawl_budgets(
+        boards, {}, {}, ceiling, full_reads=[boards[2].registry_key, boards[0].registry_key]
+    )
+    assert details == adapter.detail_budget
+    assert budgets[boards[2].registry_key] == MAX_CRAWL_PAGES, "the oldest read goes first"
+    assert budgets[boards[0].registry_key] == adapter.crawl_page_cap + 56
+    assert budgets[boards[1].registry_key] == adapter.crawl_page_cap
+    used = sum(budgets.values()) + details + adapter.retry_reserve + adapter.check_reserve
+    assert used == ceiling
 
 
 def test_a_cached_facet_keeps_a_resumable_board_on_the_two_sync_budget() -> None:
@@ -317,6 +367,27 @@ async def test_two_requisitions_under_one_title_stay_two_jobs() -> None:
     assert len({job.id for job in result.jobs}) == 2
 
 
+@pytest.mark.parametrize(
+    ("bullets", "expected"),
+    [
+        (["R00042"], "R00042"),
+        (["JR-2026-7"], "JR-2026-7"),
+        (["Kentucky"], "R777"),
+        (["HYBRID - Quebec City, Canada", "R1"], "R777"),
+        ([], "R777"),
+    ],
+)
+def test_a_place_in_the_first_bullet_is_never_taken_for_the_requisition(
+    bullets: list[str], expected: str
+) -> None:
+    from stage.sources.workday import WorkdayPosting
+
+    posting = WorkdayPosting(
+        title="Intern", externalPath="/job/Columbus/Intern_R777", bulletFields=bullets
+    )
+    assert posting.requisition() == expected
+
+
 @respx.mock
 async def test_pagination_walks_offsets_and_stops_on_the_reported_total() -> None:
     pages = [
@@ -410,7 +481,7 @@ async def test_a_changed_total_retains_resumable_crawl_progress() -> None:
         "one-page allocations advance instead of consuming their only page on overlap"
     )
     assert not result.authoritative
-    assert "progress was retained" in result.degraded
+    assert "kept its progress" in result.degraded
 
 
 @respx.mock
@@ -569,7 +640,7 @@ async def test_an_unfinished_resume_is_discarded_after_the_second_workday_pass(
         assert await repository.load_workday_crawls() == {}
 
     finished = next(event for event in events if isinstance(event, CompanyFinished))
-    assert "resumed once and still incomplete" in finished.degraded
+    assert "resumed this crawl once and it is still incomplete" in finished.degraded
 
 
 @respx.mock
@@ -1094,6 +1165,42 @@ async def test_one_malformed_posting_is_dropped_captured_and_costs_the_page_auth
 
 
 @respx.mock
+async def test_a_hidden_posting_with_only_a_requisition_still_lets_the_read_close() -> None:
+    from stage.paths import capture_dir
+
+    before = set(capture_dir().glob("workday-posting-*.json"))
+    hidden = {"bulletFields": ["R1052755", "0"]}
+    respx.post(CXS).mock(
+        return_value=httpx.Response(
+            200,
+            json={"total": 4, "jobPostings": [_posting(1), hidden, _posting(2)], "facets": []},
+        )
+    )
+
+    async with _client() as client:
+        result = await WorkdayAdapter().fetch(_company(), client, NOW)
+
+    assert len(result.jobs) == 2
+    assert result.authoritative, "Unum and Truist send one of these on every page"
+    assert "failed validation" not in result.degraded
+    assert set(capture_dir().glob("workday-posting-*.json")) == before
+
+
+@respx.mock
+async def test_a_page_of_nothing_but_hidden_postings_closes_nothing() -> None:
+    hidden = [{"bulletFields": [f"R{index}"]} for index in range(3)]
+    respx.post(CXS).mock(
+        return_value=httpx.Response(200, json={"total": 3, "jobPostings": hidden, "facets": []})
+    )
+
+    async with _client() as client:
+        result = await WorkdayAdapter().fetch(_company(), client, NOW)
+
+    assert not result.jobs
+    assert not result.authoritative
+
+
+@respx.mock
 async def test_a_broken_page_shape_still_fails_loudly() -> None:
     respx.post(CXS).mock(return_value=httpx.Response(200, json={"total": 1}))
     async with _client() as client:
@@ -1519,7 +1626,8 @@ def test_the_shipped_ceiling_covers_the_shipped_rotation_slice() -> None:
         _company(name=f"Company {index}", slug=f"company-{index}", workday_tenant=f"tenant{index}")
         for index in range(WorkdayAdapter.rotation_slice)
     ]
-    ceiling = profile("workday").max_requests_per_run
+    reserve = WorkdayAdapter.retry_reserve + WorkdayAdapter.detail_budget
+    ceiling = profile("workday").sized_for(len(companies), reserve).max_requests_per_run
     budgets, details = WorkdayAdapter.crawl_budgets(companies, {}, {}, ceiling)
     assert sum(budgets.values()) + details + WorkdayAdapter.retry_reserve <= ceiling
     assert min(budgets.values()) >= 1, "a selected board must always get at least one request"

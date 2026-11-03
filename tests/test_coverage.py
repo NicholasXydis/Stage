@@ -474,3 +474,42 @@ async def test_apply_urls_returns_only_the_companies_asked_for(tmp_path: Path) -
     assert set(urls) == {"Acme"}
     assert "https://acme.example/1" in urls["Acme"]
     assert "https://acme.example/2" in urls["Acme"]
+
+
+def test_rejection_reasons_are_read_through_the_reason_index(tmp_path: Path) -> None:
+    from stage.domain import QuarantinedJob, RejectionReason
+
+    rejected = tuple(
+        QuarantinedJob(
+            id=f"greenhouse:acme:{number}",
+            source="greenhouse",
+            company="Acme",
+            title_raw="Engineer",
+            reason=reason,
+            first_seen=NOW,
+            last_seen=NOW,
+        )
+        for number, reason in enumerate(
+            (RejectionReason.NOT_A_CS_ROLE, RejectionReason.NOT_AN_INTERNSHIP)
+        )
+    )
+    repository = SqliteRepository.connect(tmp_path / "reasons.db")
+    statements: list[str] = []
+    try:
+        repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, quarantined=rejected)
+        )
+        connection = repository._conn
+        connection.set_trace_callback(statements.append)
+        found = repository.quarantine_company_reasons(("not-a-cs-role",))
+        connection.set_trace_callback(None)
+        plans = [
+            " ".join(str(row[3]) for row in connection.execute(f"EXPLAIN QUERY PLAN {sql}"))
+            for sql in statements
+            if "quarantine" in sql
+        ]
+    finally:
+        repository.close()
+
+    assert found == {"Acme": {"not-a-cs-role": 1}}
+    assert plans and all("idx_quarantine_reason_first_seen" in plan for plan in plans), plans

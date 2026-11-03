@@ -6,6 +6,9 @@ from pathlib import Path
 import pytest
 
 from stage.domain import Company, Platform
+from stage.services import liveness
+
+LIVE_PROBE = liveness._probe
 
 
 @pytest.fixture
@@ -39,6 +42,15 @@ def db_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def empty_db(tmp_path: Path) -> Path:
+    from stage.storage.sqlite_repo import SqliteRepository
+
+    path = tmp_path / "empty.db"
+    SqliteRepository.connect(path).close()
+    return path
+
+
+@pytest.fixture
 def run_time() -> datetime:
     return datetime(2026, 7, 31, 12, 0, tzinfo=UTC)
 
@@ -55,9 +67,14 @@ def isolated_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterat
     from stage import paths
 
     home = tmp_path / "home"
+    for name in ("STAGE_BOARDS", "STAGE_REGISTRY", "STAGE_LEXICON", "STAGE_EXPORT_DIR"):
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("STAGE_DB", str(tmp_path / "env-stage.db"))
     monkeypatch.setenv("STAGE_CAPTURE_DIR", str(tmp_path / "captured"))
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("APPDATA", str(home / "AppData" / "Roaming"))
+    monkeypatch.setenv("LOCALAPPDATA", str(home / "AppData" / "Local"))
     monkeypatch.setenv("XDG_DATA_HOME", str(home / ".local" / "share"))
     monkeypatch.setenv("XDG_CONFIG_HOME", str(home / ".config"))
     monkeypatch.setattr(
@@ -65,4 +82,18 @@ def isolated_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterat
         "_DIRS",
         SimpleNamespace(user_data_dir=str(home / "data"), user_config_dir=str(home / "config")),
     )
+    monkeypatch.setattr("stage.http.network._resolves", lambda _host: True)
     yield
+
+
+@pytest.fixture(autouse=True)
+def no_posting_checks(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def unchecked(*_: object, **__: object) -> liveness.Probe:
+        return liveness.Probe()
+
+    monkeypatch.setattr(liveness, "_probe", unchecked)
+
+
+@pytest.fixture
+def live_checks(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(liveness, "_probe", LIVE_PROBE)

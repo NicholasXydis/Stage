@@ -93,7 +93,7 @@ def test_a_source_blocked_on_every_run_is_a_throttle_not_a_drop() -> None:
     history = [VolumePoint(stored=0, blocked=True, requests=4)] * 4
     signal = assess_volume("workday", history)
     assert signal.verdict is VolumeVerdict.UNPROVEN
-    assert "throttle" in signal.detail
+    assert "held back" in signal.detail
 
 
 def test_a_run_that_was_all_cache_hits_still_counts_as_having_run() -> None:
@@ -193,7 +193,9 @@ async def test_doctor_names_the_source_whose_volume_collapsed(db_path: Path) -> 
         report = await doctor(repository, now=NOW)
 
     assert [source.source for source in report.volume_alerts] == ["lever"]
-    assert not report.is_healthy, "a collapsed source is an error, not a warning"
+    assert report.is_healthy and report.warnings == 1, (
+        "a source storing less is worth a look, not a failed scheduled run"
+    )
 
 
 async def test_doctor_treats_a_failing_board_as_a_warning_not_an_error(db_path: Path) -> None:
@@ -366,3 +368,50 @@ async def test_doctor_forgets_a_board_the_registry_no_longer_names(db_path: Path
         report = await doctor(repository, now=NOW, companies=(moved,))
 
     assert report.failing_boards == ()
+
+
+def test_a_stored_board_error_reads_plainly_and_keeps_the_breaker_flag() -> None:
+    from stage.services.health import BoardHealth
+
+    board = BoardHealth(
+        source="workday",
+        board="workday:leidos",
+        label="Leidos",
+        state=VisitState.FAILING,
+        last_success_at=None,
+        consecutive_failures=11,
+        last_error="BreakerOpenError: workday circuit breaker is open after 6 consecutive failures",
+    )
+    assert board.error == "workday circuit breaker is open after 6 consecutive failures"
+    assert board.breaker_open
+    quiet = BoardHealth("lever", "lever:a", "A", VisitState.HEALTHY, None, 0, "")
+    assert quiet.error == "" and not quiet.breaker_open
+
+
+async def test_doctor_json_shows_stored_errors_without_class_names(db_path: Path) -> None:
+    import json
+
+    from stage.cli.serialize import health_to_json
+    from stage.domain import CompanyVisit
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=NOW,
+                visits=(
+                    CompanyVisit(
+                        board="greenhouse:dead",
+                        succeeded=False,
+                        error="HttpStatusError: boards-api.greenhouse.io returned 404; gone",
+                        label="AeroSpike",
+                    ),
+                ),
+            )
+        )
+        report = await doctor(repository, now=NOW)
+
+    text = health_to_json(report)
+    assert "HttpStatusError" not in text and "; gone" not in text
+    assert "boards-api.greenhouse.io returned 404, gone" in text
+    assert json.loads(text)["healthy"] is True

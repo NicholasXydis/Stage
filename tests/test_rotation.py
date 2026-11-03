@@ -686,3 +686,37 @@ async def test_a_daily_source_refreshes_again_once_the_window_has_passed(
     assert counts == [len(companies), len(companies)], (
         "a daily source must come back on its own once the refresh window has elapsed"
     )
+
+
+def test_a_conservative_feed_row_slows_only_its_own_host_not_a_board_sharing_another() -> None:
+    from stage.domain import CustomBoard
+    from stage.services.sync import _bucket_postures, _select
+
+    def custom(name: str, url: str, rate: str | None = None) -> Company:
+        board = CustomBoard(url=url, jobs_path="jobs", fields={"title": "title", "id": "id"})
+        return Company(
+            name=name,
+            platform=Platform.CUSTOM_JSON,
+            slug=name.lower(),
+            custom=board,
+            rate_profile=rate,
+        )
+
+    boards = [
+        Company(name=f"gh{index}", platform=Platform.GREENHOUSE, slug=f"gh{index}")
+        for index in range(400)
+    ]
+    boards += [
+        custom("Wandb", "https://boards-api.greenhouse.io/v1/boards/wandb/jobs"),
+        custom("Slow", "https://jobs.dayforcehcm.com/api/slow", rate="conservative"),
+    ]
+    grouped, feeds, _ = _select(boards, ["greenhouse", "custom_json"])
+    postures = _bucket_postures(grouped, feeds)
+
+    shared = postures["boards-api.greenhouse.io"]
+    assert shared.max_requests_per_run >= 800, "a feed row on the host must not cap the board"
+    assert shared.refresh_interval_h == profile("broad").refresh_interval_h
+    assert (
+        postures["jobs.dayforcehcm.com"].refresh_interval_h
+        == profile("conservative").refresh_interval_h
+    )

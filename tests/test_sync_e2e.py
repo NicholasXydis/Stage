@@ -316,3 +316,138 @@ async def test_a_source_streams_its_events_instead_of_batching_them() -> None:
 
     assert first is not None
     assert first < 0.20
+
+
+def _boards() -> list[Company]:
+    from stage.domain import Platform
+
+    return [
+        Company(name=name, platform=Platform.GREENHOUSE, slug=name.lower())
+        for name in ("Acme", "Beta")
+    ]
+
+
+async def _failures(repository: AsyncRepository) -> dict[str, int]:
+    return {visit.board: visit.consecutive_failures for visit in await repository.all_visits()}
+
+
+@respx.mock
+async def test_a_lost_connection_counts_against_no_board_and_blocks_no_host(
+    db_path: Path, run_time: datetime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.http import client as http_client
+
+    monkeypatch.setattr(http_client, "wait_exponential_jitter", lambda **_: lambda _: 0)
+    for slug in ("acme", "beta"):
+        respx.get(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs").mock(
+            side_effect=httpx.ConnectError("nodename nor servname provided")
+        )
+
+    async with open_repository(db_path) as repository:
+        await _run_sync(repository, _boards(), run_time)
+        failures = await _failures(repository)
+        states = await repository.load_rate_state()
+
+    assert not any(failures.values())
+    assert all(state.blocked_until is None for state in states.values())
+
+
+LOGIN = "http://login.hotel.example/portal?continue=1"
+
+
+@respx.mock
+async def test_a_wifi_login_page_counts_against_no_board_and_rests_none(
+    db_path: Path, run_time: datetime
+) -> None:
+    from stage.domain import Platform
+
+    boards = [
+        Company(name=name, platform=Platform.GREENHOUSE, slug=name.lower())
+        for name in ("Acme", "Beta", "Gamma", "Delta", "Echo")
+    ]
+    respx.get(url__startswith="https://boards-api.greenhouse.io/").mock(
+        return_value=httpx.Response(302, headers={"location": LOGIN})
+    )
+
+    async with open_repository(db_path) as repository:
+        events = await _run_sync(repository, boards, run_time)
+        failures = await _failures(repository)
+        states = await repository.load_rate_state()
+
+    assert len([event for event in events if isinstance(event, CompanyFailed)]) == 5
+    assert not any(failures.values()), "the network was at fault, not the boards"
+    assert all(state.blocked_until is None for state in states.values())
+
+
+@respx.mock
+async def test_a_board_sent_off_the_list_still_counts_when_others_answer(
+    db_path: Path, run_time: datetime
+) -> None:
+    respx.get(ENDPOINT).mock(return_value=httpx.Response(200, json=_payload()))
+    respx.get("https://boards-api.greenhouse.io/v1/boards/beta/jobs").mock(
+        return_value=httpx.Response(302, headers={"location": LOGIN})
+    )
+
+    async with open_repository(db_path) as repository:
+        await _run_sync(repository, _boards(), run_time)
+        failures = await _failures(repository)
+
+    assert failures["greenhouse:beta"] == 1
+    assert failures["greenhouse:acme"] == 0
+
+
+@respx.mock
+async def test_a_broken_board_still_counts_when_others_answer(
+    db_path: Path, run_time: datetime
+) -> None:
+    respx.get(ENDPOINT).mock(return_value=httpx.Response(200, json=_payload()))
+    respx.get("https://boards-api.greenhouse.io/v1/boards/beta/jobs").mock(
+        return_value=httpx.Response(404)
+    )
+
+    async with open_repository(db_path) as repository:
+        await _run_sync(repository, _boards(), run_time)
+        failures = await _failures(repository)
+
+    assert failures["greenhouse:beta"] == 1
+    assert failures["greenhouse:acme"] == 0
+
+
+def test_a_scheduled_sync_waits_for_the_network_then_skips_quietly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from typer.testing import CliRunner
+
+    from stage.cli import app as cli_app
+    from stage.cli.commands import pipeline
+    from stage.cli.schedule_state import read_state_path
+
+    monkeypatch.setattr("stage.http.network._resolves", lambda _host: False)
+    monkeypatch.setattr(pipeline, "OFFLINE_PATIENCE_SECONDS", 0.0)
+    state = tmp_path / "sync-state.json"
+    database = tmp_path / "stage.db"
+
+    scheduled = CliRunner().invoke(
+        cli_app.app, ["sync", "--scheduled-progress", str(state), "--db", str(database)]
+    )
+    manual = CliRunner().invoke(cli_app.app, ["sync", "--db", str(database)])
+
+    recorded = read_state_path(state)
+    assert scheduled.exit_code == 0
+    assert recorded is not None and recorded["phase"] == "offline"
+    assert manual.exit_code == 1
+    assert "No internet connection" in manual.stderr
+    assert not database.exists()
+
+
+def test_waiting_for_the_network_retries_until_it_answers() -> None:
+    from stage.http import wait_until_online
+
+    answers = iter([False, False, True])
+    naps: list[float] = []
+    clock = iter([0.0, 0.0, 10.0, 20.0])
+
+    assert wait_until_online(
+        120, check=lambda: next(answers), sleep=naps.append, clock=lambda: next(clock)
+    )
+    assert naps == [10.0, 10.0]

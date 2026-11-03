@@ -58,10 +58,9 @@ async def test_a_page_two_304_ends_the_walk_without_authority_and_says_so() -> N
 async def test_the_page_cap_costs_authority_too() -> None:
     from stage.sources.smartrecruiters import MAX_PAGES, SmartRecruitersAdapter
 
-    for page in range(MAX_PAGES + 1):
-        respx.get(_sr_url(page * 100)).mock(
-            return_value=httpx.Response(200, json=_sr_page(list(range(100)), 999_999))
-        )
+    route = respx.get(url__startswith=_sr_url(0).split("?")[0]).mock(
+        return_value=httpx.Response(200, json=_sr_page(list(range(100)), 999_999))
+    )
 
     async with HttpClient(
         allowed_hosts=frozenset({"api.smartrecruiters.com"}), posture=UNPACED, jitter=False
@@ -70,10 +69,11 @@ async def test_the_page_cap_costs_authority_too() -> None:
 
     assert not result.authoritative
     assert "cap" in result.degraded
+    assert route.call_count == 1 + 2 * MAX_PAGES
 
 
 @respx.mock
-async def test_a_workday_facet_fallback_costs_authority() -> None:
+async def test_a_whole_workday_listing_without_an_internship_facet_closes() -> None:
     from stage.sources.workday import WorkdayAdapter
 
     company = Company(
@@ -110,7 +110,7 @@ async def test_a_workday_facet_fallback_costs_authority() -> None:
 
     assert result.jobs, "the postings are real and kept"
     assert "no internship facet" in result.degraded
-    assert not result.authoritative, "a fallback listing must close nothing"
+    assert result.authoritative, "a whole unfiltered listing is still the whole board"
 
 
 async def test_a_non_authoritative_result_closes_nothing(db_path: Path) -> None:

@@ -125,8 +125,8 @@ async def test_a_board_with_nothing_queued_still_sends_its_validator(
 async def test_an_empty_page_stops_paging(acme_sr: Company, run_time: datetime) -> None:
     respx.get(ENDPOINT).mock(
         side_effect=[
-            httpx.Response(200, json=_page(9999, 0, 2)),
-            httpx.Response(200, json={"totalFound": 9999, "content": []}),
+            httpx.Response(200, json=_page(150, 0, 2)),
+            httpx.Response(200, json={"totalFound": 150, "content": []}),
         ]
     )
     adapter = get_adapter("smartrecruiters")
@@ -140,13 +140,83 @@ async def test_an_empty_page_stops_paging(acme_sr: Company, run_time: datetime) 
 async def test_a_server_ignoring_offset_hits_the_hard_stop(
     acme_sr: Company, run_time: datetime
 ) -> None:
-    respx.get(ENDPOINT).mock(return_value=httpx.Response(200, json=_page(10**6, 0, PAGE_SIZE)))
+    route = respx.get(ENDPOINT).mock(
+        return_value=httpx.Response(200, json=_page(10**6, 0, PAGE_SIZE))
+    )
     adapter = get_adapter("smartrecruiters")
     async with _client() as client:
         result = await adapter.fetch(acme_sr, client, run_time)
 
-    assert len(result.jobs) == MAX_PAGES * PAGE_SIZE
+    assert route.call_count == 1 + 2 * MAX_PAGES
     assert "page cap" in result.degraded
+
+
+@respx.mock
+async def test_a_board_too_big_to_read_keeps_to_canada_and_the_us(
+    acme_sr: Company, run_time: datetime
+) -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        country = request.url.params.get("country")
+        if country == "us":
+            return httpx.Response(200, json=_page(3, 100, 3))
+        if country == "ca":
+            return httpx.Response(200, json=_page(1, 200, 1))
+        return httpx.Response(200, json=_page(MAX_PAGES * PAGE_SIZE + 1, 0, PAGE_SIZE))
+
+    route = respx.get(ENDPOINT).mock(side_effect=answer)
+    adapter = get_adapter("smartrecruiters")
+    async with _client() as client:
+        result = await adapter.fetch(acme_sr, client, run_time)
+
+    assert route.call_count == 3
+    assert sorted(job.id.rsplit(":", 1)[-1] for job in result.jobs) == ["100", "101", "102", "200"]
+    assert not result.degraded
+
+
+@respx.mock
+async def test_a_scoped_read_closes_nothing_it_could_not_see(
+    acme_sr: Company, run_time: datetime
+) -> None:
+    unscoped = _page(MAX_PAGES * PAGE_SIZE + 1, 0, PAGE_SIZE)
+    unscoped["content"] = [{"id": "remote-1", "name": "Intern", "location": {"remote": True}}]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if request.url.params.get("country"):
+            return httpx.Response(200, json=_page(1, 100, 1))
+        return httpx.Response(200, json=unscoped)
+
+    respx.get(ENDPOINT).mock(side_effect=answer)
+    adapter = get_adapter("smartrecruiters")
+    async with _client() as client:
+        result = await adapter.fetch(acme_sr, client, run_time)
+
+    assert "remote-1" not in {job.id.rsplit(":", 1)[-1] for job in result.jobs}
+    assert not result.authoritative, "a posting with no country is in neither scope"
+
+
+@respx.mock
+async def test_a_scoped_page_is_always_read_in_full(acme_sr: Company, run_time: datetime) -> None:
+    unscoped = _page(MAX_PAGES * PAGE_SIZE + 1, 0, PAGE_SIZE)
+    asked: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if not request.url.params.get("country"):
+            return httpx.Response(200, json=unscoped, headers={"ETag": '"all"'})
+        asked.append(request)
+        if request.headers.get("if-none-match"):
+            return httpx.Response(304)
+        return httpx.Response(200, json=_page(1, 100, 1), headers={"ETag": '"scope"'})
+
+    respx.get(ENDPOINT).mock(side_effect=answer)
+    adapter = get_adapter("smartrecruiters")
+    async with _client() as client:
+        await adapter.fetch(acme_sr, client, run_time)
+        asked.clear()
+        result = await adapter.fetch(acme_sr, client, run_time)
+
+    assert asked and not any(request.headers.get("if-none-match") for request in asked)
+    assert result.jobs, "a country's postings are kept even when its page did not change"
+    assert "304" not in result.degraded
 
 
 @respx.mock

@@ -126,7 +126,7 @@ async def test_a_non_list_payload_is_drift_not_an_empty_board(
     respx.get(ENDPOINT).mock(return_value=httpx.Response(200, json={"postings": []}))
     adapter = get_adapter("lever")
     async with _client() as client:
-        with pytest.raises(PayloadValidationError, match="expected a JSON list"):
+        with pytest.raises(PayloadValidationError, match="other than a JSON list of postings"):
             await adapter.fetch(acme_lever, client, run_time)
 
 

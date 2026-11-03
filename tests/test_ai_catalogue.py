@@ -35,7 +35,7 @@ def test_every_place_expands_completely(app: AiApp, system: System) -> None:
     for template in filter(None, templates):
         expanded = expand(template.replace("{user}", "/u"), machine, "/u")
         assert not LEFTOVER.search(expanded), expanded
-        assert expanded.startswith(("/", "C:/"))
+        assert expanded.replace("\\", "/").startswith(("/", "C:/"))
 
 
 @pytest.mark.parametrize(
@@ -89,3 +89,14 @@ def test_editors_expand_on_every_system() -> None:
 
 def test_docs_are_links() -> None:
     assert all(app.docs.startswith("https://") for app in APPS if app.docs)
+
+
+def test_every_app_reads_the_same_way() -> None:
+    names = {app.key.removesuffix("-legacy"): app.name for app in APPS}
+    assert len(set(names.values())) == len(names), "one name per app"
+    for app in APPS:
+        assert ";" not in app.name + app.note + app.screens, app.key
+        assert not app.note or app.note.endswith("."), app.key
+        steps = app.screens.split("\n", 1)[0]
+        assert not steps or steps.endswith(":"), app.key
+        assert not steps.startswith(("In ", "On ")) or re.match(r"\w+ [^,]+, ", steps), app.key

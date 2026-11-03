@@ -1,5 +1,7 @@
 import json
+import os
 import re
+import sys
 import tomllib
 from pathlib import Path
 
@@ -100,7 +102,7 @@ def test_named_apps_are_connected_and_their_notes_shown(home: Path) -> None:
         ]
     )
     assert "Alpha reads it on its next start." in said
-    assert "~/.alpha/mcp.json" in said
+    assert str(Path("~/.alpha/mcp.json")) in said
     assert "connected" in _run("connect", "--status")[1]
 
 
@@ -124,8 +126,8 @@ def test_a_misspelt_app_gets_a_suggestion_and_a_missing_one_says_so(home: Path) 
     misspelt = _run("connect", "alhpa")
     missing = _run("connect", "delta")
 
-    assert misspelt[0] == 2 and "Did you mean alpha?" in misspelt[1]
-    assert missing[0] == 2 and "did not find delta" in missing[1]
+    assert misspelt[0] == 2 and 'Did you mean "alpha"?' in misspelt[1]
+    assert missing[0] == 2 and 'did not find "delta"' in missing[1]
 
 
 def test_connecting_twice_changes_nothing_the_second_time(home: Path) -> None:
@@ -182,8 +184,8 @@ def test_a_misspelled_app_is_named_even_when_no_app_is_installed(
     code, said = _run("connect", "nosuchapp")
     absent, missing = _run("disconnect", DELTA.key)
 
-    assert code == 2 and "does not know an app called nosuchapp" in said
-    assert absent == 2 and f"did not find {DELTA.key} on this computer" in missing
+    assert code == 2 and 'does not know an app called "nosuchapp"' in said
+    assert absent == 2 and f'did not find "{DELTA.key}" on this computer' in missing
 
 
 def test_another_name_finds_the_app_that_is_installed(
@@ -222,7 +224,12 @@ def test_a_chosen_database_is_written_into_the_entry(home: Path, tmp_path: Path)
 
 @pytest.mark.parametrize(
     ("answer", "chosen"),
-    [("1 3", ["alpha", "gamma"]), ("all", ["alpha", "beta-app", "gamma"]), ("2,2", ["beta-app"])],
+    [
+        ("1 3", ["alpha", "gamma"]),
+        ("all", ["alpha", "beta-app", "gamma"]),
+        ("2,2", ["beta-app"]),
+        ("ALL all", ["alpha", "beta-app", "gamma"]),
+    ],
 )
 def test_choosing_by_number(home: Path, answer: str, chosen: list[str]) -> None:
     from stage.cli.commands.ai import _picked
@@ -275,27 +282,26 @@ def test_the_self_test_is_skipped_when_nothing_changed(
     assert len(calls) == 1
 
 
-def test_doctor_names_connected_apps_and_how_to_fix_a_stale_one(home: Path, tmp_path: Path) -> None:
+def test_doctor_names_connected_apps_and_how_to_fix_a_stale_one(
+    home: Path, tmp_path: Path, empty_db: Path
+) -> None:
     _run("connect", "alpha", "beta-app")
     stale = home / ".beta" / "config.toml"
     text = stale.read_text(encoding="utf-8")
     stale.write_text(text.replace('args = ["mcp"]', 'args = ["mcp", "--old"]'), encoding="utf-8")
 
-    said = _run("doctor", "--db", str(tmp_path / "d.db"))[1]
+    said = _run("doctor", "--db", str(empty_db))[1]
     payload = json.loads(
-        CliRunner().invoke(app, ["doctor", "--json", "--db", str(tmp_path / "d.db")]).stdout
+        CliRunner().invoke(app, ["doctor", "--json", "--db", str(empty_db)]).stdout
     )
 
     assert "AI apps" in said and "Alpha connected" in said
-    assert "Beta App outdated" in said and "run stage connect beta-app" in said
+    assert "Beta App outdated" in said and "Run stage connect beta-app" in said
     assert [entry["status"] for entry in payload["ai_apps"]] == ["connected", "outdated"]
 
 
-def test_doctor_says_when_no_app_is_connected(home: Path, tmp_path: Path) -> None:
-    assert (
-        "none connected; stage connect sets one up"
-        in _run("doctor", "--db", str(tmp_path / "d.db"))[1]
-    )
+def test_doctor_says_when_no_app_is_connected(home: Path, tmp_path: Path, empty_db: Path) -> None:
+    assert "none connected (stage connect sets one up)" in _run("doctor", "--db", str(empty_db))[1]
 
 
 def test_a_file_stage_cannot_edit_on_the_way_out_says_what_to_delete(home: Path) -> None:
@@ -313,7 +319,14 @@ def test_a_file_stage_cannot_edit_on_the_way_out_says_what_to_delete(home: Path)
 def test_every_without_status_is_refused_instead_of_ignored(home: Path) -> None:
     code, said = _run("connect", "--every", "alpha")
 
-    assert code == 2 and "--every lists apps with --status" in said
+    assert code == 2 and "--every goes with --status" in said
+    assert not (home / ".alpha" / "mcp.json").exists()
+
+
+def test_naming_apps_with_all_is_refused_instead_of_changing_every_app(home: Path) -> None:
+    for verb in ("connect", "disconnect"):
+        code, said = _run(verb, "alpha", "--all")
+        assert code == 2 and "not both" in said
     assert not (home / ".alpha" / "mcp.json").exists()
 
 
@@ -370,6 +383,36 @@ def test_actions_reach_a_toml_app_and_a_pasted_snippet(home: Path) -> None:
     assert '"--allow-actions"' in said and "Actions are on: Beta App, Gamma" in said
 
 
+def test_both_action_flags_at_once_are_refused(home: Path) -> None:
+    code, said = _run("connect", "alpha", "--allow-actions", "--no-actions")
+
+    assert code == 2 and "--allow-actions or --no-actions, not both" in said
+    assert not (home / ".alpha" / "mcp.json").exists()
+
+
+def test_disconnect_leaves_out_what_to_do_after_connecting(home: Path) -> None:
+    _run("connect", "alpha")
+    code, said = _run("disconnect", "alpha")
+
+    assert code == 0 and "removed Stage" in said and "next start" not in said
+
+
+@pytest.mark.skipif(sys.platform == "win32" or os.geteuid() == 0, reason="POSIX permissions")
+def test_an_app_folder_stage_cannot_open_spoils_only_that_app(home: Path) -> None:
+    (home / ".alpha" / "mcp.json").write_text("{}\n", encoding="utf-8")
+    (home / ".alpha").chmod(0)
+    try:
+        listed = _run("connect", "--status")
+        connected = _run("connect", "beta-app")
+        both = _run("connect", "alpha", "beta-app")
+    finally:
+        (home / ".alpha").chmod(0o755)
+
+    assert listed[0] == 0 and "Alpha unreadable" in listed[1]
+    assert connected[0] == 0 and "Beta App: added Stage" in connected[1]
+    assert both[0] == 1 and "cannot be read with your permissions" in both[1]
+
+
 def test_status_takes_no_action_flag(home: Path) -> None:
     for flag in ("--allow-actions", "--no-actions"):
         code, said = _run("connect", "--status", flag)
@@ -409,13 +452,13 @@ def test_the_self_test_starts_stage_with_actions_when_they_were_turned_on(
     assert entries[0].args[-1] == "--allow-actions" and "--allow-actions" not in entries[1].args
 
 
-def test_doctor_reports_which_apps_have_actions(home: Path, tmp_path: Path) -> None:
+def test_doctor_reports_which_apps_have_actions(home: Path, tmp_path: Path, empty_db: Path) -> None:
     _run("connect", "alpha", "--allow-actions")
     _run("connect", "beta-app")
 
-    said = _run("doctor", "--db", str(tmp_path / "d.db"))[1]
+    said = _run("doctor", "--db", str(empty_db))[1]
     payload = json.loads(
-        CliRunner().invoke(app, ["doctor", "--json", "--db", str(tmp_path / "d.db")]).stdout
+        CliRunner().invoke(app, ["doctor", "--json", "--db", str(empty_db)]).stdout
     )
 
     assert "Alpha connected, actions on" in said and "Beta App connected" in said
@@ -425,7 +468,9 @@ def test_doctor_reports_which_apps_have_actions(home: Path, tmp_path: Path) -> N
     ]
 
 
-def test_an_entry_from_a_readme_button_is_named_as_uvx(home: Path, tmp_path: Path) -> None:
+def test_an_entry_from_a_readme_button_is_named_as_uvx(
+    home: Path, tmp_path: Path, empty_db: Path
+) -> None:
     uvx = tmp_path / "uvx"
     uvx.write_text("", encoding="utf-8")
     button = {"command": str(uvx), "args": ["--from", "stage-cli", "stage", "mcp"]}
@@ -433,7 +478,7 @@ def test_an_entry_from_a_readme_button_is_named_as_uvx(home: Path, tmp_path: Pat
         json.dumps({"mcpServers": {"Stage": button}}), encoding="utf-8"
     )
     payload = json.loads(
-        CliRunner().invoke(app, ["doctor", "--json", "--db", str(tmp_path / "d.db")]).stdout
+        CliRunner().invoke(app, ["doctor", "--json", "--db", str(empty_db)]).stdout
     )
 
     assert payload["ai_apps"][0]["status"] == "outdated"
@@ -523,3 +568,28 @@ def test_an_older_editor_is_still_connected_through_its_own_command(
     (found,) = [target for target in targets(Machine.here()) if target.app.key == "editor"]
 
     assert found.settings is not None and "Editor" in _run("connect", "--status")[1]
+
+
+def test_ctrl_c_at_the_app_question_changes_nothing(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+
+    import typer
+
+    from stage.cli.commands import ai as command
+
+    def interrupted(*_args: object, **_kwargs: object) -> str:
+        try:
+            raise KeyboardInterrupt
+        except KeyboardInterrupt:
+            raise typer.Abort() from None
+
+    terminal = SimpleNamespace(isatty=lambda: True)
+    monkeypatch.setattr(command, "sys", SimpleNamespace(stdin=terminal, stdout=terminal))
+    monkeypatch.setattr(typer, "prompt", interrupted)
+    result = CliRunner().invoke(app, ["connect"])
+
+    assert result.exit_code == 130
+    assert "no app was changed" in result.stderr and "Aborted" not in result.output
+    assert not (home / ".alpha" / "mcp.json").exists()

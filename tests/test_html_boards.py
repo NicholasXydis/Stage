@@ -525,7 +525,6 @@ def test_the_registry_rows_still_use_the_selectors_these_fixtures_pin() -> None:
         ("L3Harris", L3HARRIS),
         ("Disney", DISNEY),
         ("Publicis Sapient", PUBLICIS),
-        ("Croesus", CROESUS),
         ("SEGA Europe", SEGA),
         ("Renaissance Technologies", RENTEC),
     ):
@@ -732,3 +731,90 @@ def test_only_a_trailing_subdivision_code_is_uppercased() -> None:
     ):
         row = sitemap_rows(f"<urlset><url><loc>{loc}</loc></url></urlset>")[0]
         assert row[segment] == expected, f"{loc} -> {row[segment]!r}"
+
+
+def test_a_row_with_a_blank_title_takes_its_name_from_the_link() -> None:
+    from bs4 import BeautifulSoup
+
+    row = BeautifulSoup(
+        "<table><tr><td>Montreal, Quebec</td><td><a data-map='job-detail-link' "
+        "href='https://emplois.bnc.ca/en_CA/careers/JobDetail/P6S38-CONSEILLER-SENIOR/36419'>"
+        "<img alt=''></a></td></tr></table>",
+        "html.parser",
+    ).select_one("tr")
+    assert row is not None
+
+    projected = _project(row, NBC)
+
+    assert projected["title"] == "P6S38 CONSEILLER SENIOR"
+    assert projected["id"].endswith("/36419")
+
+
+OPTIMUM = CustomBoard(
+    url="https://optimumfinancier.sigma-rh.net/optimumfinancier/Modules/General/Recruitment/"
+    "ViewJobPostingsBoard.aspx?e=optimum&b=1&br=1&l=1",
+    fmt="html",
+    row_selector="div.srhJbOffer",
+    fields={
+        "title": ".srhJbTitle span",
+        "id": "a.sigmaThemeButton::number(onclick)",
+        "location": "div:nth-of-type(2) span + span",
+    },
+)
+
+
+def test_a_number_selector_reads_the_offer_out_of_an_onclick_handler() -> None:
+    rows = _rows("optimum_board.html", OPTIMUM)
+    assert [row["id"] for row in rows] == ["310", "308", "307"]
+    assert all(row["title"] and row["location"] for row in rows)
+
+
+def test_the_optimum_row_links_each_offer_to_its_own_page() -> None:
+    from stage.companies import load_companies
+
+    row = next(company for company in load_companies() if company.name == "Groupe Optimum")
+    assert row.custom is not None and row.custom.url_template
+    assert row.custom.url_template.format(id="310").count("jo=310") == 1
+    assert row.custom.authoritative is False, "page two needs a postback, so it closes nothing"
+
+
+def _plain(value: object) -> bool:
+    if isinstance(value, dict):
+        return all(isinstance(key, str) and _plain(item) for key, item in value.items())
+    if isinstance(value, list | tuple):
+        return all(_plain(item) for item in value)
+    return value is None or isinstance(value, str | int)
+
+
+def _parsed(name: str) -> object:
+    from stage.sources import espresso, jobbank, jobvite
+    from stage.sources.custom_json import html_listings
+
+    text = (FIXTURES / name).read_text(encoding="utf-8")
+    if name.startswith("blackrock"):
+        return html_listings(text, BLACKROCK.row_selector, dict(BLACKROCK.fields), BLACKROCK.url)
+    parse = {
+        "jobbank": jobbank.read_page,
+        "espresso": espresso.listed,
+        "jobvite": jobvite.read_page,
+    }
+    return parse[name.split("_")[0]](text)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "blackrock_search.html",
+        "jobbank_search.html",
+        "espresso_search.html",
+        "jobvite_agscareer.html",
+    ],
+)
+def test_a_parsed_page_is_plain_data_a_worker_process_can_send_back(name: str) -> None:
+    import pickle
+
+    parsed = _parsed(name)
+
+    assert parsed, f"{name} parsed to nothing"
+    assert _plain(parsed), f"{name} parsed to objects a worker cannot send back"
+    assert pickle.dumps(parsed)

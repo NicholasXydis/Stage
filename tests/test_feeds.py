@@ -88,7 +88,7 @@ async def test_a_non_list_payload_is_a_shape_change_and_fails_loudly(
     from stage.sources.base import PayloadValidationError
 
     async with _client(feed) as client:
-        with pytest.raises(PayloadValidationError, match="expected a JSON list"):
+        with pytest.raises(PayloadValidationError, match="other than a JSON list of listings"):
             await feed.fetch(client, run_time)
 
 
@@ -133,6 +133,14 @@ def test_locale_segments_collapse_to_one_canonical_url() -> None:
     english = canonical_apply_url("https://acme.com/en-CA/jobs/12345")
     assert french == english == "https://acme.com/jobs/12345"
     assert canonical_apply_url("https://acme.com/fr/jobs/12345") == "https://acme.com/jobs/12345"
+
+
+def test_a_short_link_that_spells_a_language_keeps_its_code() -> None:
+    assert canonical_apply_url("https://go.vansh.nyc/Cs") == "https://go.vansh.nyc/Cs"
+    assert canonical_apply_url("https://go.vansh.nyc/fr") != canonical_apply_url(
+        "https://go.vansh.nyc/de"
+    ), "two short links must never share one canonical URL"
+    assert canonical_apply_url("https://acme.com/de/jobs/7") == "https://acme.com/jobs/7"
 
 
 @pytest.mark.parametrize("segment", ["it", "hr", "id", "us", "ca", "uk", "co", "no"])
@@ -257,7 +265,38 @@ class _FlakyFeed:
 
         if self.outcome == "boom":
             raise RuntimeError("network blip")
+        if self.outcome == "refused":
+            from stage.http import BucketBlockedError
+
+            raise BucketBlockedError("raw.githubusercontent.com asked to be left alone")
         return FetchResult(jobs=(), degraded="partial page")
+
+
+async def test_a_feed_the_client_held_back_is_deferred_not_failed(
+    db_path: Path, run_time: datetime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.domain import CompanyDeferred, CompanyFailed, SyncFinished
+    from stage.services import sync as sync_module
+    from stage.storage import open_repository
+
+    monkeypatch.setattr(sync_module, "get_feeds", lambda: {"flaky": _FlakyFeed("refused")})
+    async with open_repository(db_path) as repository:
+        events = [
+            event
+            async for event in sync_module.sync(
+                repository, [], sources=["flaky"], now_fn=lambda: run_time
+            )
+        ]
+        visits = await repository.all_visits()
+
+    finished = events[-1]
+    assert isinstance(finished, SyncFinished)
+    assert [
+        type(event) for event in events if isinstance(event, CompanyDeferred | CompanyFailed)
+    ] == [CompanyDeferred]
+    assert finished.failed_sources == ()
+    assert "left boards for the next sync" in finished.partial_reason
+    assert visits == [], "a read that was never sent is not a failed visit"
 
 
 @pytest.mark.parametrize("outcome", ["boom", "degraded"])
@@ -338,6 +377,29 @@ async def test_a_community_feed_missing_a_file_closes_nothing(run_time: datetime
 
     assert result.jobs
     assert result.authoritative, "a feed that read every file it planned is complete"
+
+
+async def test_a_community_feed_whose_files_were_all_held_back_raises_the_refusal(
+    run_time: datetime,
+) -> None:
+    from stage.domain import RateState
+    from stage.http import BucketBlockedError
+    from stage.sources.community_feeds import VanshFeed
+
+    feed = VanshFeed()
+    host = "raw.githubusercontent.com"
+    blocked = RateState(
+        bucket=host, updated_at=run_time, blocked_until=run_time + timedelta(hours=1)
+    )
+    async with HttpClient(
+        allowed_hosts=feed.hosts,
+        posture=profile(feed.rate_profile),
+        jitter=False,
+        rate_state={host: blocked},
+        now=run_time,
+    ) as client:
+        with pytest.raises(BucketBlockedError):
+            await feed.fetch(client, run_time)
 
 
 @respx.mock

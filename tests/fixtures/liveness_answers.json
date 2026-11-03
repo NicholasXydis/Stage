@@ -1,0 +1,460 @@
+{
+ "greenhouse_job": {
+  "url": "https://boards-api.greenhouse.io/v1/boards/andurilindustries/jobs/5268689007",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+   "absolute_url": "https://boards.greenhouse.io/andurilindustries/jobs/5268689007?gh_jid=5268689007",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "education": "education_required",
+   "internal_job_id": 4695256007,
+   "location": {
+    "name": "Costa Mesa, California, United States; Quincy, Massachusetts"
+   },
+   "metadata": [
+    {
+     "id": 5980679007,
+     "name": "External Department Name for Job Board",
+     "value": "Internships",
+     "value_type": "single_select"
+    }
+   ],
+   "id": 5268689007,
+   "updated_at": "2026-10-30T21:04:22-04:00",
+   "requisition_id": "15662",
+   "title": "2027 Field Test Engineer Intern",
+   "company_name": "Anduril Industries",
+   "first_published": "2026-10-19T15:14:00-04:00",
+   "language": "en",
+   "application_deadline": null,
+   "content": "&lt;div class=&quot;content-intro&quot;&gt;&lt;p&gt;Anduril ",
+   "departments": [
+    {
+     "id": 4050925007,
+     "name": "Templates : Intern",
+     "child_ids": [],
+     "parent_id": 4039396007
+    }
+   ],
+   "offices": [
+    {
+     "id": 4021360007,
+     "name": "Costa Mesa, CA (OC-00)",
+     "location": "Costa Mesa, California, United States",
+     "child_ids": [],
+     "parent_id": 4062709007
+    }
+   ],
+   "ai_disclaimer": null,
+   "include_ai_disclaimer": null,
+   "ai_opt_out_request_url": null
+  }
+ },
+ "greenhouse_job_missing": {
+  "url": "https://boards-api.greenhouse.io/v1/boards/axontalentcommunity/jobs/8037922003",
+  "status": 404,
+  "content_type": "application/json",
+  "body": {
+   "status": 404,
+   "error": "Job not found"
+  }
+ },
+ "greenhouse_board": {
+  "url": "https://boards-api.greenhouse.io/v1/boards/axontalentcommunity",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+   "name": "Join Our Talent Community",
+   "content": "<p><img src=\"https://go.axon.com/l/636291/2024-07-01/4hqxqk/"
+  }
+ },
+ "greenhouse_board_missing": {
+  "url": "https://boards-api.greenhouse.io/v1/boards/stagenosuchboardzz",
+  "status": 404,
+  "content_type": "application/json",
+  "body": {
+   "status": 404,
+   "error": "Job board not found"
+  }
+ },
+ "lever_posting": {
+  "url": "https://api.lever.co/v0/postings/cfsenergy/da8cc185-70d0-4a8e-b484-9866c71b593e",
+  "status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "body": {
+   "additionalPlain": "#LI-Onsite\n\n\nAt CFS, we excel in fast-paced environments, dr",
+   "additional": "<div><span style=\"font-size: 10px;\">#LI-Onsite</span></div><",
+   "categories": {
+    "commitment": "Internship",
+    "location": "Devens, MA",
+    "team": "Internships",
+    "allLocations": [
+     "Devens, MA"
+    ]
+   },
+   "createdAt": 1792697107904,
+   "descriptionPlain": "About Commonwealth Fusion Systems:\u00a0\n\u00a0\nCommonwealth Fusion Sy",
+   "description": "<div><strong style=\"font-size: 16px;\">About Commonwealth Fus",
+   "id": "da8cc185-70d0-4a8e-b484-9866c71b593e",
+   "lists": [
+    {
+     "text": "Program Details:",
+     "content": "\n<li><strong>13-18 week internship</strong></li>\n<li>40-50 h"
+    }
+   ],
+   "salaryRange": {
+    "min": 25,
+    "max": 38,
+    "currency": "USD",
+    "interval": "per-hour-wage"
+   },
+   "salaryDescription": "<div><span style=\"font-size: 15px;\">Rates are aligned to you",
+   "salaryDescriptionPlain": "Rates are aligned to your current year in school, ensuring e",
+   "text": "Intern - Materials Test Engineer - Summer 2027",
+   "country": "US",
+   "workplaceType": "onsite",
+   "opening": "<div><strong style=\"font-size: 16px;\">About Commonwealth Fus",
+   "openingPlain": "About Commonwealth Fusion Systems:\u00a0\n\u00a0\nCommonwealth Fusion Sy",
+   "descriptionBody": "<div><strong style=\"font-size: 16px;\">Join the power movemen",
+   "descriptionBodyPlain": "Join the power movement as a Materials Test Engineering Inte",
+   "hostedUrl": "https://jobs.lever.co/cfsenergy/da8cc185-70d0-4a8e-b484-9866c71b593e",
+   "applyUrl": "https://jobs.lever.co/cfsenergy/da8cc185-70d0-4a8e-b484-9866c71b593e/apply"
+  }
+ },
+ "lever_posting_missing": {
+  "url": "https://api.lever.co/v0/postings/cfsenergy/00000000-0000-4000-8000-000000000000",
+  "status": 404,
+  "content_type": "application/json; charset=utf-8",
+  "body": {
+   "ok": false,
+   "error": "Document not found"
+  }
+ },
+ "lever_board": {
+  "url": "https://api.lever.co/v0/postings/cfsenergy?mode=json&limit=1",
+  "status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "body": [
+   {
+    "additionalPlain": "#LI-Hybrid\n\n\nAt CFS, we excel in fast-paced environments, dr",
+    "additional": "<div><span style=\"font-size: 10px;\">#LI-Hybrid</span></div><",
+    "categories": {
+     "commitment": "Full-time",
+     "department": "Finance",
+     "location": "Devens, MA",
+     "team": "Accounting",
+     "allLocations": [
+      "Devens, MA"
+     ]
+    },
+    "createdAt": 1792668903791,
+    "descriptionPlain": "About Commonwealth Fusion Systems:\u00a0\n\u00a0\nCommonwealth Fusion Sy",
+    "description": "<div><strong style=\"font-size: 16px;\">About Commonwealth Fus",
+    "id": "7d5255cb-38ca-4ce3-be34-891e48cfe8c1",
+    "lists": [
+     {
+      "text": "What you'll do:",
+      "content": "\n<li>\n<p><span style=\"text-decoration: underline;\"><strong>I"
+     }
+    ],
+    "salaryRange": {
+     "max": 60,
+     "currency": "USD",
+     "interval": "per-hour-wage",
+     "min": 40
+    },
+    "salaryDescription": "<div><span style=\"font-size: 16px;\">Salary range for this fu",
+    "salaryDescriptionPlain": "Salary range for this full-time position + equity + benefits",
+    "text": "Accounts Payable Specialist",
+    "country": "US",
+    "workplaceType": "hybrid",
+    "opening": "<div><strong style=\"font-size: 16px;\">About Commonwealth Fus",
+    "openingPlain": "About Commonwealth Fusion Systems:\u00a0\n\u00a0\nCommonwealth Fusion Sy",
+    "descriptionBody": "<div><strong style=\"font-size: 16px;\">Join the power movemen",
+    "descriptionBodyPlain": "Join the power movement as\u00a0an Accounts Payable Specialist\n\u00a0\n",
+    "hostedUrl": "https://jobs.lever.co/cfsenergy/7d5255cb-38ca-4ce3-be34-891e48cfe8c1",
+    "applyUrl": "https://jobs.lever.co/cfsenergy/7d5255cb-38ca-4ce3-be34-891e48cfe8c1/apply"
+   }
+  ]
+ },
+ "lever_board_missing": {
+  "url": "https://api.lever.co/v0/postings/stagenosuchboardzz?mode=json&limit=1",
+  "status": 404,
+  "content_type": "application/json; charset=utf-8",
+  "body": {
+   "ok": false,
+   "error": "Document not found"
+  }
+ },
+ "smartrecruiters_posting": {
+  "url": "https://api.smartrecruiters.com/v1/companies/abbvie/postings/3743990016416916",
+  "status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "body": {
+   "id": "3743990016416916",
+   "name": "2027 Product Development, Science, and Technology Intern (Un",
+   "uuid": "1049b6a3-8ed6-4a49-a52e-83a9de9c0430",
+   "jobId": "703ce2ed-daa0-493f-8ede-bc5e708e4638",
+   "jobAdId": "97a91fc8-4955-4fc8-84d0-e973db573222",
+   "defaultJobAd": true,
+   "refNumber": "R00152596",
+   "company": {
+    "name": "AbbVie",
+    "identifier": "AbbVie"
+   },
+   "location": {
+    "city": "North Chicago",
+    "region": "IL",
+    "country": "us",
+    "remote": false,
+    "hybrid": true,
+    "latitude": "42.325578",
+    "longitude": "-87.8411818",
+    "fullLocation": "North Chicago, IL, United States"
+   },
+   "customField": [
+    {
+     "fieldId": "65806674cbfd1911c2f5d15b",
+     "fieldLabel": "Hiring Manager",
+     "valueId": "00000000",
+     "valueLabel": "A. Person (00000000)"
+    }
+   ],
+   "releasedDate": "2026-10-26T20:22:30.340Z",
+   "creator": {
+    "name": "",
+    "avatarUrl": ""
+   },
+   "postingUrl": "https://jobs.smartrecruiters.com/AbbVie/3743990016416916-2027-product-development-science-and-technology-intern-undergraduate-",
+   "applyUrl": "https://jobs.smartrecruiters.com/AbbVie/3743990016416916-2027-product-development-science-and-technology-intern-undergraduate-?oga=true",
+   "referralUrl": "https://jobs.smartrecruiters.com/external-referrals/company/AbbVie/publication/1049b6a3-8ed6-4a49-a52e-83a9de9c0430?dcr_ci=AbbVie",
+   "jobAd": {
+    "sections": {
+     "companyDescription": {
+      "title": "Company Description",
+      "text": "<p><strong>About AbbVie</strong></p><p>AbbVie's mission is t"
+     },
+     "jobDescription": {
+      "title": "Job Description",
+      "text": "<p>Envision spending your summer working with energetic coll"
+     },
+     "qualifications": {
+      "title": "Qualifications",
+      "text": "<p><strong>Minimum\u202fQualifications\u202f&#xa0;</strong></p><ul><li"
+     },
+     "additionalInformation": {
+      "title": "Additional Information",
+      "text": "<p><strong>Benefits and Amenities:</strong><br>\n<br>\nCompeti"
+     }
+    }
+   },
+   "compensation": {
+    "min": 21,
+    "max": 37.8,
+    "currency": "USD",
+    "period": "HOURLY"
+   },
+   "active": true,
+   "visibility": "PUBLIC",
+   "industry": {
+    "id": "pharmaceuticals",
+    "label": "Pharmaceuticals"
+   },
+   "function": {
+    "id": "science",
+    "label": "Science"
+   },
+   "experienceLevel": {
+    "id": "internship",
+    "label": "Internship"
+   },
+   "typeOfEmployment": {
+    "id": "intern",
+    "label": "Intern"
+   },
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  }
+ },
+ "smartrecruiters_posting_missing": {
+  "url": "https://api.smartrecruiters.com/v1/companies/abbvie/postings/3743990000000001",
+  "status": 404,
+  "content_type": "application/json; charset=utf-8",
+  "body": {
+   "id": "597a7f2b-5e3b-41b5-8ba5-8d8782c56e67",
+   "httpCode": 404,
+   "code": "RESOURCE_NOT_FOUND",
+   "message": "[MDC: ppa-43e7f7b9-90de-498a-b8cf-8fae13a3848c] Response cod"
+  }
+ },
+ "smartrecruiters_board": {
+  "url": "https://api.smartrecruiters.com/v1/companies/abbvie/postings?limit=1",
+  "status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "body": {
+   "offset": 0,
+   "limit": 1,
+   "totalFound": 1968,
+   "content": [
+    {
+     "id": "3743990016546436",
+     "name": "Clinical Operation Manager, SSU",
+     "uuid": "2f5ac556-b9f8-42d2-8b12-b01295c82b4f",
+     "jobAdId": "084bae87-57be-4b39-a07e-169b26b11d64",
+     "defaultJobAd": true,
+     "refNumber": "R00152745",
+     "company": {
+      "identifier": "AbbVie",
+      "name": "AbbVie"
+     },
+     "releasedDate": "2026-11-02T02:44:13.077Z",
+     "location": {
+      "city": "Shanghai",
+      "region": "Shanghai",
+      "country": "cn",
+      "remote": true,
+      "hybrid": false,
+      "latitude": "31.230416",
+      "longitude": "121.473701",
+      "fullLocation": "Shanghai, Shanghai, China"
+     },
+     "industry": {
+      "id": "pharmaceuticals",
+      "label": "Pharmaceuticals"
+     },
+     "department": {},
+     "function": {
+      "id": "research",
+      "label": "Research"
+     },
+     "typeOfEmployment": {
+      "id": "permanent",
+      "label": "Full-time"
+     },
+     "experienceLevel": {
+      "id": "associate",
+      "label": "Associate"
+     },
+     "customField": [
+      {
+       "fieldId": "65807663cbfd1911c2f5d15f",
+       "fieldLabel": "Workday Function",
+       "valueId": "FUNCTION_RDDO",
+       "valueLabel": "RDDO RDDO Clinical Development Operations (CDO)"
+      }
+     ],
+     "visibility": "PUBLIC",
+     "ref": "https://api.smartrecruiters.com/v1/companies/abbvie/postings/3743990016546436",
+     "language": {
+      "code": "en",
+      "label": "English",
+      "labelNative": "English (US)"
+     }
+    }
+   ]
+  }
+ },
+ "smartrecruiters_board_unknown": {
+  "url": "https://api.smartrecruiters.com/v1/companies/stagenosuchboardzz/postings?limit=1",
+  "status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "body": {
+   "offset": 0,
+   "limit": 1,
+   "totalFound": 0,
+   "content": []
+  }
+ },
+ "workday_posting": {
+  "url": "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/job/Milpitas-California-USA/AI-Robotics-Intern--Fall-2026_JR00044846",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+   "jobPostingInfo": {
+    "id": "fc4c2ac18c6a10015f4a82099adf0000",
+    "title": "AI Robotics Intern- Fall 2026",
+    "jobDescription": "<p>At ABB, we help industries outrun - leaner and cleaner. H",
+    "location": "Milpitas, California, USA",
+    "postedOn": "Posted 4 Days Ago",
+    "startDate": "2026-10-28",
+    "timeType": "Full time",
+    "jobReqId": "JR00044846",
+    "jobPostingId": "AI-Robotics-Intern--Fall-2026_JR00044846",
+    "jobPostingSiteId": "External_Career_Page",
+    "country": {
+     "descriptor": "United States of America",
+     "id": "bc33aa3152ec42d4995f4791a106ed09"
+    },
+    "canApply": true,
+    "posted": true,
+    "includeResumeParsing": true,
+    "jobRequisitionLocation": {
+     "descriptor": "Milpitas, California, USA",
+     "country": {
+      "descriptor": "United States of America",
+      "id": "bc33aa3152ec42d4995f4791a106ed09",
+      "alpha2Code": "US"
+     }
+    },
+    "externalUrl": "https://abb.wd3.myworkdayjobs.com/External_Career_Page/job/Milpitas-California-USA/AI-Robotics-Intern--Fall-2026_JR00044846",
+    "questionnaireId": "7f66b0e3e8c010018e197d4e4b1e0000",
+    "timeLeftToApply": "9 days left to apply",
+    "endDate": "2026-11-11",
+    "jobPostingEndDateAsText": "End Date: November 11, 2026"
+   },
+   "hiringOrganization": {
+    "name": "USRBT ABB Robotics LLC",
+    "url": ""
+   },
+   "similarJobs": [
+    {
+     "title": "Robot Programming Intern(Lab Automation)",
+     "externalPath": "/job/Shanghai-Shanghai-China/Robot-Commissioning-Intern_JR00",
+     "timeType": "Full time",
+     "locationsText": "Shanghai, Shanghai, China",
+     "postedOn": "Posted 10 Days Ago",
+     "startDate": "2026-10-22",
+     "timeLeftToApply": "17 days left to apply",
+     "jobPostingEndDateAsText": "End Date: November 20, 2026"
+    }
+   ],
+   "userAuthenticated": false
+  }
+ },
+ "workday_anchor_not_found": {
+  "url": "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/job/Milpitas-California-USA/AI-Robotics-Intern--Fall-2026_JR00000001",
+  "status": 404,
+  "content_type": "application/json;charset=ISO-8859-1",
+  "body": {
+   "errorCode": "S21",
+   "errorCaseId": "3895DEMVYNSU1E",
+   "httpStatus": 404,
+   "message": "not found: Job_Posting_Anchor_ID=AI-Robotics-Intern--Fall-2026_JR00000001",
+   "messageParams": {}
+  }
+ },
+ "workday_posting_removed": {
+  "url": "https://globalfoundries.wd1.myworkdayjobs.com/wday/cxs/globalfoundries/external/job/USA---California---Santa-Clara/Digital-Design-Backend-Engineering-Intern--3D-and-AI-Flows_JR-2604355",
+  "status": 403,
+  "content_type": "application/json;charset=ISO-8859-1",
+  "body": {
+   "errorCode": "S22",
+   "errorCaseId": "F9209DMVYNT0S5",
+   "httpStatus": 403,
+   "message": "permission denied",
+   "messageParams": {}
+  }
+ }
+}

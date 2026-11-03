@@ -1,7 +1,7 @@
 import pytest
 
 from stage.domain import LocationBucket, RemoteScope
-from stage.normalize import resolve_location
+from stage.normalize import resolve_listing, resolve_location
 
 
 @pytest.mark.parametrize(
@@ -294,7 +294,7 @@ def test_a_foreign_subdivision_makes_the_next_code_a_country(raw: str, why: str)
         ("GBR-London-5 Canada Square", LocationBucket.INTERNATIONAL, "a street in London"),
         ("CHN - DALIAN", LocationBucket.INTERNATIONAL, "a country code, then a city"),
         ("IND-BLR-Divyasree Technopolis", LocationBucket.INTERNATIONAL, "Bangalore"),
-        ("DE-BY-NORDLINGEN-010 ~ BLDG 10", LocationBucket.UNKNOWN, "Germany or Delaware"),
+        ("DE-BY-NORDLINGEN-010 ~ BLDG 10", LocationBucket.INTERNATIONAL, "BY is no US state"),
         ("US-IA-CEDAR RAPIDS-124 ~ 400 Collins Rd NE", LocationBucket.USA, "the US prefix"),
         ("USA - AZ - Goodyear - PHX1", LocationBucket.USA, "the USA prefix"),
         ("CA-QC-LONGUEUIL-J01 ~ 1000 Blvd Marie-Victorin", LocationBucket.MONTREAL, "Quebec"),
@@ -553,3 +553,471 @@ def test_a_us_state_code_names_the_us_town_with_a_canadian_name(
     raw: str, bucket: LocationBucket
 ) -> None:
     assert resolve_location(raw).bucket is bucket
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Xyzville, MH, IND", LocationBucket.INTERNATIONAL),
+        ("Xyzville, FR", LocationBucket.INTERNATIONAL),
+        ("Xyzville, Fr", LocationBucket.UNKNOWN),
+        ("Xyzville, ind", LocationBucket.UNKNOWN),
+        ("Xyzville, IN", LocationBucket.USA),
+        ("Xyzville, CAN", LocationBucket.CANADA),
+        ("Toronto, ON, CAN", LocationBucket.CANADA),
+    ],
+)
+def test_a_trailing_country_code_counts_only_when_nothing_else_placed_it(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket
+
+
+@pytest.mark.parametrize(
+    ("place", "stored", "bucket"),
+    [
+        ("Kentucky", "Kentucky", LocationBucket.USA),
+        ("Ohio---Columbus", "Ohio - Columbus", LocationBucket.USA),
+        ("Montral", "Montréal", LocationBucket.MONTREAL),
+        ("Ratingen-Germany", "Ratingen Germany", LocationBucket.INTERNATIONAL),
+        ("Remote", "", LocationBucket.UNKNOWN),
+        ("Xyzzy", "", LocationBucket.UNKNOWN),
+    ],
+)
+def test_a_workday_posting_with_no_place_takes_the_one_in_its_link(
+    place: str, stored: str, bucket: LocationBucket
+) -> None:
+    from stage.normalize import listed_place
+
+    found = listed_place("", WORKDAY.format(place))
+
+    assert found == stored
+    assert resolve_location(found).bucket is bucket
+    assert listed_place(found, WORKDAY.format(place)) == found
+    assert listed_place("", "https://boards.greenhouse.io/acme/jobs/1") == ""
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Ehningen, DE", LocationBucket.INTERNATIONAL),
+        ("Saint Nazaire Area", LocationBucket.INTERNATIONAL),
+        ("Aix-en-Provence Les Milles", LocationBucket.INTERNATIONAL),
+        ("VALBONNE (Sophia)", LocationBucket.INTERNATIONAL),
+        ("Spittal A.D. Drau", LocationBucket.INTERNATIONAL),
+        ("Canary Wharf, 1 Churchill Place", LocationBucket.INTERNATIONAL),
+        ("Tianjin (Teda)", LocationBucket.INTERNATIONAL),
+        ("CRETEIL - CRE1", LocationBucket.INTERNATIONAL),
+        ("Queretaro", LocationBucket.INTERNATIONAL),
+        ("Wilmington, DE", LocationBucket.USA),
+        ("Newark, DE", LocationBucket.USA),
+    ],
+)
+def test_foreign_sites_kept_as_unknown_on_real_data_now_resolve(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Sophia Antipolis, Alpes-Maritimes, France, FR", LocationBucket.INTERNATIONAL),
+        ("Blainville-sur-Orne, Normandie, France", LocationBucket.INTERNATIONAL),
+        ("Portage la Prairie, MB", LocationBucket.CANADA),
+        ("La Prairie, QC", LocationBucket.MONTREAL),
+        ("Casalecchio di Reno", LocationBucket.INTERNATIONAL),
+        ("Stockton-on-Tees", LocationBucket.INTERNATIONAL),
+        ("Melbourne, Florida", LocationBucket.USA),
+    ],
+)
+def test_the_longest_place_name_decides_the_country(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Paris, Texas", LocationBucket.USA),
+        ("Dublin, Ohio", LocationBucket.USA),
+        ("Athens, Georgia", LocationBucket.USA),
+        ("London, Kentucky", LocationBucket.USA),
+        ("Dublin, Leinster, Ireland", LocationBucket.INTERNATIONAL),
+        ("Tbilisi, Georgia", LocationBucket.INTERNATIONAL),
+        ("Paris", LocationBucket.INTERNATIONAL),
+    ],
+)
+def test_a_state_name_places_a_city_two_countries_share(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket", "scope"),
+    [
+        ("Virtual, CAN", LocationBucket.CANADA, RemoteScope.CANADA),
+        ("CAN - Remote", LocationBucket.CANADA, RemoteScope.CANADA),
+        ("KOHO (CAN)", LocationBucket.CANADA, None),
+        ("London, ON, CAN", LocationBucket.CANADA, None),
+        ("Can be remote", LocationBucket.UNKNOWN, RemoteScope.UNSPECIFIED),
+    ],
+)
+def test_a_bare_can_field_is_canada(raw: str, bucket: LocationBucket, scope: RemoteScope) -> None:
+    resolved = resolve_location(raw)
+    assert resolved.bucket is bucket, raw
+    assert resolved.remote_scope is scope, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Reading, GBR, RG6 1PT", LocationBucket.INTERNATIONAL),
+        ("Kingston 5, JM", LocationBucket.INTERNATIONAL),
+        ("Xyzville, NI, DE", LocationBucket.INTERNATIONAL),
+        ("Leuna, ST, DE, 06237", LocationBucket.INTERNATIONAL),
+        ("San Isidro, LIM, PE", LocationBucket.INTERNATIONAL),
+        ("Saharanpur, UP, IN", LocationBucket.INTERNATIONAL),
+        ("Xyzville-MAX, CO", LocationBucket.UNKNOWN),
+    ],
+)
+def test_a_trailing_country_skips_postcodes_and_follows_a_foreign_region(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("VN-HO CHI MINH-285 CACH MANG THANG TAM STREET", LocationBucket.INTERNATIONAL),
+        ("OM-MUSCAT-2ND FL AL RAID HOUSE QURUM BUS CTR", LocationBucket.INTERNATIONAL),
+        ("GY-Demerara-Georgetown-Tract X", LocationBucket.INTERNATIONAL),
+        ("MX, Baja", LocationBucket.INTERNATIONAL),
+        ("SG, 048583", LocationBucket.INTERNATIONAL),
+        ("AUS > Whitby > South Western Hwy", LocationBucket.INTERNATIONAL),
+        ("DEU > Penig > Am Zeisig 9", LocationBucket.INTERNATIONAL),
+        ("OC-JPN-Iwakuni", LocationBucket.INTERNATIONAL),
+        ("GBDER01 - Derby - Plot 5", LocationBucket.INTERNATIONAL),
+        ("ZAJNB19 - Johannesburg - Randjespark, Denver", LocationBucket.INTERNATIONAL),
+        ("PT-Tucson", LocationBucket.UNKNOWN),
+        ("TO, ON", LocationBucket.UNKNOWN),
+        ("KW, Toronto, Winnipeg, Vancouver, or Remote Canada", LocationBucket.CANADA),
+        ("OC - Irvine", LocationBucket.USA),
+        ("USHOU19 - The Woodlands - 8770 New Trails Drive", LocationBucket.USA),
+        ("INFKN01 - Farukh Nagar - SY Logistic Park", LocationBucket.INTERNATIONAL),
+        ("CRSJO01 - San Jose - Epic Corporate Center", LocationBucket.INTERNATIONAL),
+        ("CAN > QC > St. Laurent > Poirier", LocationBucket.MONTREAL),
+        ("IN-Indianapolis", LocationBucket.USA),
+    ],
+)
+def test_a_leading_country_code_or_site_code_decides_the_country(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Monterrey, ON, CA", LocationBucket.CANADA),
+        ("Vernon, BC, CA, V1T4Y6", LocationBucket.CANADA),
+        ("Monterrey, NL, Mexico", LocationBucket.INTERNATIONAL),
+    ],
+)
+def test_a_province_code_then_ca_is_a_canadian_address(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("St-Laurent, Québec, CA, H4R 1K2", LocationBucket.MONTREAL),
+        ("Saint-Leonard, QC", LocationBucket.MONTREAL),
+        ("Saint-Leonard, NB, Canada", LocationBucket.CANADA),
+        ("Kirkland, QC, Canada", LocationBucket.MONTREAL),
+        ("Kirkland Lake, ON", LocationBucket.CANADA),
+        ("Kirkland, WA", LocationBucket.USA),
+        ("Rosemère, Canada", LocationBucket.MONTREAL),
+        ("Mascouche", LocationBucket.MONTREAL),
+        ("Varennes, QC", LocationBucket.MONTREAL),
+        ("Varennes", LocationBucket.UNKNOWN),
+        ("Laval", LocationBucket.UNKNOWN),
+        ("Saint-Étienne-des-Grès, QC, CA", LocationBucket.CANADA),
+        ("St Laurent du Var", LocationBucket.INTERNATIONAL),
+    ],
+)
+def test_montreal_area_towns_need_quebec_when_the_name_travels(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Jamaica, NY", LocationBucket.USA),
+        ("Malta, NY", LocationBucket.USA),
+        ("Lebanon, PA", LocationBucket.USA),
+        ("South Jordan, UT", LocationBucket.USA),
+        ("North Wales, PA", LocationBucket.USA),
+        ("New England", LocationBucket.USA),
+        ("Jamaica", LocationBucket.INTERNATIONAL),
+        ("Glasgow", LocationBucket.INTERNATIONAL),
+        ("Glasgow, KY", LocationBucket.USA),
+        ("Lund, BC", LocationBucket.CANADA),
+        ("Warrington, PA", LocationBucket.USA),
+        ("Washington", LocationBucket.USA),
+        ("OCONUS-Guam", LocationBucket.USA),
+    ],
+)
+def test_a_town_named_after_a_foreign_place_keeps_its_country(
+    raw: str, bucket: LocationBucket
+) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "place", "stored", "bucket"),
+    [
+        ("", "Guyancourt", "Guyancourt", LocationBucket.INTERNATIONAL),
+        ("2 Locations", "Guyancourt", "2 Locations", LocationBucket.UNKNOWN),
+        ("2 Locations", "Needham", "Needham / 1 more", LocationBucket.USA),
+        ("", "Remote---CAN", "Remote - CAN", LocationBucket.CANADA),
+        ("", "St-Jrme-QC", "St Jérôme QC", LocationBucket.CANADA),
+    ],
+)
+def test_a_workday_link_place_uses_the_wider_lexicon(
+    raw: str, place: str, stored: str, bucket: LocationBucket
+) -> None:
+    from stage.normalize import listed_place
+
+    found = listed_place(raw, WORKDAY.format(place))
+
+    assert found == stored
+    assert resolve_location(found).bucket is bucket
+
+
+@pytest.mark.parametrize(
+    ("title", "stored", "bucket"),
+    [
+        ("2027 | APEJ | Singapore | Engineering | Summer Analyst", "Singapore", "international"),
+        ("2027 | Americas | New York City | Risk | Summer Analyst", "New York City", "usa"),
+        ("2027 | EMEA | Birmingham | Legal | New Analyst", "Birmingham, EMEA", "international"),
+        ("2027 | Americas | Birmingham | Legal | New Analyst", "", "unknown"),
+        ("2027| EMEA Frankfurt Investment Banking| New Analyst", "", "unknown"),
+        ("Software Engineer Intern | Toronto | 2027", "", "unknown"),
+    ],
+)
+def test_a_blank_place_takes_the_city_from_a_year_region_city_title(
+    title: str, stored: str, bucket: str
+) -> None:
+    from stage.normalize import listed_place
+
+    found = listed_place("", "https://higher.gs.com/roles/150859_GS_CAMPUS", title)
+
+    assert found == stored
+    assert resolve_location(found).bucket.value == bucket
+    assert listed_place("Paris, France", "", title) == "Paris, France"
+
+
+def test_screening_reads_the_title_when_the_place_is_blank() -> None:
+    from datetime import UTC, datetime
+
+    from stage.domain import Job
+    from stage.services.screening import normalize_batch
+
+    when = datetime(2026, 8, 3, tzinfo=UTC)
+    posting = Job(
+        id="custom_json:goldman:1",
+        source="custom_json",
+        company="Goldman Sachs",
+        title_raw="2027 | APEJ | Singapore | Engineering | Summer Analyst",
+        title_normalized="summer analyst",
+        apply_url_raw="https://higher.gs.com/roles/150859_GS_CAMPUS",
+        description="",
+        location_raw="",
+        first_seen=when,
+        last_seen=when,
+    )
+
+    kept, rejected = normalize_batch([posting])
+
+    assert not kept and rejected[0].location is LocationBucket.INTERNATIONAL
+    assert rejected[0].location_raw == "Singapore"
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Ontario, New York", LocationBucket.USA),
+        ("Ontario, NY", LocationBucket.USA),
+        ("Ontario, California", LocationBucket.USA),
+        ("Toronto, Ontario", LocationBucket.CANADA),
+        ("Ontario, Canada", LocationBucket.CANADA),
+    ],
+)
+def test_the_us_towns_named_ontario_stay_in_the_us(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Concord, Ontario, CA", LocationBucket.CANADA),
+        ("Ontario, CA", LocationBucket.USA),
+        ("Ontario, , United States", LocationBucket.USA),
+        ("2003 West Fourth St, Ontario, OH", LocationBucket.USA),
+        ("Burlington Massachusetts", LocationBucket.USA),
+        ("Oakville, California", LocationBucket.USA),
+        ("Scarborough, Maine, USA", LocationBucket.USA),
+        ("410 GEORGIA ST W, FLOOR 3:VANCOUVER", LocationBucket.CANADA),
+        ("Boston, MA Headquarters - (NB)", LocationBucket.USA),
+        ("Moncton, NB", LocationBucket.CANADA),
+        ("CA, N5A6S9", LocationBucket.CANADA),
+        ("Toronto, Bay Wellington Tower L47", LocationBucket.CANADA),
+        ("NS Sydney", LocationBucket.CANADA),
+        ("Lebanon, IN", LocationBucket.USA),
+        ("Warsaw, IN", LocationBucket.USA),
+        ("WV, Ghent", LocationBucket.USA),
+        ("Danbury, CT - Global", LocationBucket.USA),
+        ("Austin TX, Chicago IL, London UK", LocationBucket.USA),
+        ("Maryland HQ + Boston Office + Ireland - Office - Dublin", LocationBucket.USA),
+    ],
+)
+def test_a_state_beats_a_shared_name(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Lasalle, ON, CA, N9H1R9", LocationBucket.CANADA),
+        ("Lasalle, Ontario, Canada", LocationBucket.CANADA),
+        ("Laval, QC, Canada", LocationBucket.MONTREAL),
+        ("Vaudreuil, CA-QC, Canada", LocationBucket.MONTREAL),
+        ("Canada - Quebec - Kirkland", LocationBucket.MONTREAL),
+        ("Lachine", LocationBucket.MONTREAL),
+        ("Lachine, CA", LocationBucket.MONTREAL),
+    ],
+)
+def test_a_montreal_suburb_needs_quebec(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Temuco, AR, CL", LocationBucket.INTERNATIONAL),
+        ("Lagos, LA, NG", LocationBucket.INTERNATIONAL),
+        ("Mumbai, MH, IN / TN,IN / KA,IN", LocationBucket.INTERNATIONAL),
+        ("Rijen, NB, NL / Sliedrecht, ZH, NL", LocationBucket.INTERNATIONAL),
+        ("Joure, FR, NL, 8501 XC", LocationBucket.INTERNATIONAL),
+        ("D.C., MD, VA", LocationBucket.USA),
+        ("Charleston-WV---5701-MacCorkle-Avenue-SE", LocationBucket.USA),
+        ("Schwaebisch Gmuend, DE", LocationBucket.INTERNATIONAL),
+        ("Wilmington, DE", LocationBucket.USA),
+        ("DE - Berlin", LocationBucket.INTERNATIONAL),
+        ("PE - Lima", LocationBucket.INTERNATIONAL),
+        ("IN, Delhi, New Delhi", LocationBucket.INTERNATIONAL),
+        ("AL Paris HO - Digital & IT", LocationBucket.INTERNATIONAL),
+        ("AU-Adelaide", LocationBucket.INTERNATIONAL),
+        ("POL, Remote", LocationBucket.INTERNATIONAL),
+        ("SG", LocationBucket.INTERNATIONAL),
+        ("DE", LocationBucket.UNKNOWN),
+        ("DE Remote", LocationBucket.UNKNOWN),
+        (
+            "DE / Courbevoie, Île-de-France, FR / NL / FR / Munich, BY, DE / Berlin, Berlin, DE",
+            LocationBucket.INTERNATIONAL,
+        ),
+        (
+            "Tel Aviv-Yafo, Tel Aviv District, IL / Ra'anana, Center District, IL"
+            " / Yokne'am Illit, North District, IL",
+            LocationBucket.INTERNATIONAL,
+        ),
+    ],
+)
+def test_a_code_that_names_a_country_is_not_a_state(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("London OR Dublin", LocationBucket.INTERNATIONAL),
+        ("Dublin, London OR Berlin", LocationBucket.INTERNATIONAL),
+        ("Wilsonville OR", LocationBucket.USA),
+        ("Woodburn, OR Retail", LocationBucket.USA),
+        ("San Jose, San Jose, Costa Rica", LocationBucket.INTERNATIONAL),
+        ("Baku / Almaty / Georgia / CIS", LocationBucket.INTERNATIONAL),
+        ("Georgia", LocationBucket.USA),
+        ("Atlanta / Georgia", LocationBucket.USA),
+    ],
+)
+def test_a_list_reads_its_words_in_context(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket, raw
+
+
+@pytest.mark.parametrize(
+    ("place", "title", "bucket"),
+    [
+        ("Laval", "STAGE - Ingénieur Systèmes Embarqués F/H", LocationBucket.INTERNATIONAL),
+        ("Laval", "Analyste TI", LocationBucket.UNKNOWN),
+        (
+            "2 Locations",
+            "Praktikant:in Quantitative Investments (m/w/d)",
+            LocationBucket.INTERNATIONAL,
+        ),
+        ("", "ゲームAIリサーチインターン｜Game AI Research Intern", LocationBucket.INTERNATIONAL),
+        (
+            "3 Locations",
+            "Red Team Intern - Summer 2027 (Remote, GBR)",
+            LocationBucket.INTERNATIONAL,
+        ),
+        ("", "CS27 BAC+2 Développeur Web (H/F)", LocationBucket.INTERNATIONAL),
+        ("TPIN-GGN", "Customer Data Analyst Intern", LocationBucket.INTERNATIONAL),
+        ("Gentilly", "stage 6 mois - data analyst audit interne", LocationBucket.INTERNATIONAL),
+        ("2 Locations", "stage 4 à 6 mois documentation", LocationBucket.INTERNATIONAL),
+        ("", "Stage de 4 mois en développement logiciel", LocationBucket.UNKNOWN),
+        ("Tan Uyen", "Automation Engineer Internship", LocationBucket.INTERNATIONAL),
+        ("Vitry-sur-Seine", "Data Intern", LocationBucket.INTERNATIONAL),
+        ("19F The Globe Tower", "MLOps Engineer Intern - EDS", LocationBucket.INTERNATIONAL),
+        ("Globe Life Field, Arlington, TX", "Data Intern", LocationBucket.USA),
+        (
+            "Mch CAMP",
+            "Working Student - Full-stack development (f/m/div)",
+            LocationBucket.INTERNATIONAL,
+        ),
+        ("2 Locations", "APAC Ecommerce Backend Intern - 2027", LocationBucket.INTERNATIONAL),
+        ("", "Quantitative Research Analyst Intern Bs Ms Europe 2", LocationBucket.INTERNATIONAL),
+        ("", "Software Engineer Intern Asia", LocationBucket.INTERNATIONAL),
+        ("New York, NY", "EMEA Markets Technology Intern", LocationBucket.USA),
+        ("Montreal", "Coordinateur de projets (F/H)", LocationBucket.MONTREAL),
+        ("Remote", "Industrial Placement (London)", LocationBucket.UNKNOWN),
+        ("Remote", "Software Engineer Intern (Remote, US)", LocationBucket.UNKNOWN),
+        (
+            "Birmingham",
+            "2027 | EMEA | Birmingham | Engineering | Summer Analyst",
+            LocationBucket.INTERNATIONAL,
+        ),
+        (
+            "Toronto",
+            "2027 | Americas | Toronto | Engineering | Summer Analyst",
+            LocationBucket.CANADA,
+        ),
+        (
+            "",
+            "Stage - Développeur- se Java Fullstack - Services Financiers - Niort",
+            LocationBucket.INTERNATIONAL,
+        ),
+        ("", "Software Developer Intern - London", LocationBucket.UNKNOWN),
+        (
+            "Flexible / Remote",
+            "Summer 2027 Intern - Forward Deployed Engineer - Global Public Sector",
+            LocationBucket.UNKNOWN,
+        ),
+        ("", "Data Engineer Intern - Summer 2027", LocationBucket.UNKNOWN),
+    ],
+)
+def test_a_title_marks_an_unknown_place_abroad(
+    place: str, title: str, bucket: LocationBucket
+) -> None:
+    assert resolve_listing(place, title).bucket is bucket, title

@@ -2,7 +2,7 @@
   {
     "name": "search_postings",
     "title": "Search postings",
-    "description": "Find open internship postings, newest first. Without words it lists postings first seen in the last 14 days; with words it searches titles, employers and descriptions across every stored posting. Filters combine. Postings the user hid are always left out. Returns 25 by default and up to 100; all_matches returns compact rows, 250 per page. Every answer has the total, a next_cursor when more remain, and when Stage last synced.",
+    "description": "Find open internship postings, newest first. Without words it lists postings first seen in the last 14 days. With words it searches titles, employers and descriptions across every stored posting. Filters combine. Postings the user hid are always left out. Returns 25 by default and up to 100, or 250 compact rows per page with all_matches. Every answer has the total, a next_cursor when more remain, and when Stage last synced.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,
@@ -135,7 +135,7 @@
             }
           ],
           "default": null,
-          "description": "Only postings first seen in the last N days; 0 means any age. Without words the default is 14; with words it is any age.",
+          "description": "Only postings first seen in the last N days, where 0 means any age. Without words the default is 14, and with words it is any age.",
           "title": "Days"
         },
         "limit": {
@@ -148,7 +148,7 @@
         },
         "all_matches": {
           "default": false,
-          "description": "Return up to 250 matches per page as compact rows instead of full ones; limit is ignored",
+          "description": "Return up to 250 matches per page as compact rows instead of full ones, ignoring limit",
           "title": "All Matches",
           "type": "boolean"
         },
@@ -163,7 +163,7 @@
             }
           ],
           "default": null,
-          "description": "next_cursor from the previous page; send the same other arguments with it",
+          "description": "next_cursor from the previous page, sent with the same other arguments",
           "title": "Cursor"
         }
       },
@@ -308,7 +308,7 @@
             }
           ],
           "default": null,
-          "description": "next_cursor from the previous page; send the same other arguments with it",
+          "description": "next_cursor from the previous page, sent with the same other arguments",
           "title": "Cursor"
         }
       },
@@ -331,7 +331,7 @@
   {
     "name": "check_sources",
     "title": "Check sources",
-    "description": "Health of the job boards and feeds Stage reads: open rows per source (a posting two sources list counts in both), errors, volume drops, blocked hosts, and failing or stale boards. Read-only; it changes nothing.",
+    "description": "Health of the job boards and feeds Stage reads: open rows per source (a posting two sources list counts in both), errors, volume drops, blocked hosts, and failing or stale boards. It only reads and changes nothing.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,
@@ -398,7 +398,7 @@
             }
           ],
           "default": null,
-          "description": "The new status. saved and applied never move a posting back, so an applied posting stays applied; set override to move it back on purpose.",
+          "description": "The new status. saved and applied never move a posting back, so an applied posting stays applied. Set override to move it back on purpose.",
           "title": "Status"
         },
         "note": {
@@ -412,7 +412,7 @@
             }
           ],
           "default": null,
-          "description": "A short note; an empty string clears it",
+          "description": "A short note, or an empty string to clear it",
           "title": "Note"
         },
         "on": {
@@ -426,7 +426,7 @@
             }
           ],
           "default": null,
-          "description": "The day it happened, like 2026-10-20; today by default",
+          "description": "The day it happened, like 2026-10-20 (today by default)",
           "title": "On"
         },
         "override": {
@@ -457,7 +457,7 @@
       "additionalProperties": false,
       "properties": {
         "ids": {
-          "description": "Posting ids to stop tracking; hidden ones show again",
+          "description": "Posting ids to stop tracking. Hidden ones show in searches again",
           "items": {
             "maxLength": 2000,
             "minLength": 1,
@@ -543,7 +543,7 @@
             }
           ],
           "default": null,
-          "description": "Only this status; hidden postings show only when asked for",
+          "description": "Only this status. Hidden postings show only when asked for",
           "title": "Status"
         },
         "limit": {
@@ -565,7 +565,7 @@
             }
           ],
           "default": null,
-          "description": "next_cursor from the previous page; send the same other arguments with it",
+          "description": "next_cursor from the previous page, sent with the same other arguments",
           "title": "Cursor"
         }
       },
@@ -612,7 +612,7 @@
   {
     "name": "set_preferences",
     "title": "Set preferences",
-    "description": "Save the user's preferences, which mine uses to narrow searches. Each field sent replaces what was saved; fields left out stay as they are, and an empty list clears one. Use only when the user asks.",
+    "description": "Save the user's preferences, which mine uses to narrow searches. Each field sent replaces what was saved, fields left out stay as they are, and an empty list clears one. Use only when the user asks.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,
@@ -636,7 +636,7 @@
             }
           ],
           "default": null,
-          "description": "Places to keep; canada includes montreal",
+          "description": "Places to keep (canada includes montreal)",
           "title": "Locations"
         },
         "roles": {
@@ -738,7 +738,7 @@
         },
         "clear": {
           "default": false,
-          "description": "Delete every saved preference; send it alone",
+          "description": "Delete every saved preference. Send it alone",
           "title": "Clear",
           "type": "boolean"
         }

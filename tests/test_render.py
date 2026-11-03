@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from rich.console import Console
 
-from stage.cli.render import (
+from stage.cli.render.health import (
     render_board_health,
     render_canary,
     render_doctor,
@@ -343,7 +343,7 @@ async def test_sync_lines_carry_a_running_count() -> None:
 
     from rich.console import Console
 
-    from stage.cli.render import render_sync
+    from stage.cli.render.progress import render_sync
     from stage.domain import (
         CompanyFinished,
         SourceStarted,
@@ -423,9 +423,261 @@ def test_a_feed_that_declares_itself_empty_reads_as_none_listed() -> None:
 
 
 def test_the_empty_state_offers_a_wider_window_only_below_the_default() -> None:
-    from stage.cli.render import _empty_state
+    from stage.cli.render.postings import _empty_state
 
     now = datetime(2026, 10, 20, tzinfo=UTC)
     assert "--last" in _empty_state(3, now, now)
     assert "--last" not in _empty_state(14, now, now)
     assert "--last" not in _empty_state(None, now, now)
+
+
+def test_one_integrity_finding_reads_as_a_count_not_a_plural() -> None:
+    finding = IntegrityFinding(
+        check="open postings with no first_seen", count=1, detail="first_seen is the sort key"
+    )
+
+    output = _paint(render_doctor, _report(integrity=(finding,)), NOW)
+
+    assert "open postings with no first_seen: 1. first_seen is the sort key" in output
+    assert "1 open postings" not in output
+
+
+def test_stats_keeps_every_number_on_one_line_at_40_columns() -> None:
+    from stage.domain import SourceRunStats, SyncOutcome, SyncRun
+
+    run = SyncRun(
+        started_at=NOW - timedelta(minutes=16),
+        finished_at=NOW - timedelta(hours=5),
+        outcome=SyncOutcome.PARTIAL,
+        sources=(SourceRunStats("greenhouse", added=3368, closed=48, quarantined=51837),),
+    )
+    composition = {"source": {"vanshb03": 941_000, "simplify": 714}}
+
+    output = _paint(render_stats, _stats(runs=(run,), composition=composition), NOW, width=40)
+    rows = output.splitlines()
+
+    assert max(len(row) for row in rows) <= 40
+    assert any("3,368" in row and "48" in row for row in rows)
+    assert any("vanshb03" in row and "941,000" in row and "%" in row for row in rows)
+
+
+def test_coverage_counts_carry_thousands_separators() -> None:
+    from stage.cli.render.health import render_coverage
+    from stage.domain import CoverageState
+    from stage.domain.coverage import CoverageRow
+    from stage.services.coverage import CoverageReport
+
+    rows = tuple(
+        CoverageRow(
+            f"Co {index}", "greenhouse", f"greenhouse:co{index}", CoverageState.EMPTY, 0, NOW, 0, ""
+        )
+        for index in range(1197)
+    )
+    report = CoverageReport(rows, (), (), (), enabled=1197, disabled=0, stale_after_days=7)
+
+    output = _paint(render_coverage, report, NOW)
+
+    assert "1,197 empty" in output and "(1,197)" in output and "1,167 more" in output
+
+
+def test_the_list_footer_only_offers_rows_that_exist() -> None:
+    from stage.cli.render.postings import render_jobs
+    from stage.domain import Job, LocationBucket
+
+    jobs = [
+        Job(
+            id=f"greenhouse:acme:{index}",
+            source="greenhouse",
+            company="Acme",
+            title_raw="Intern",
+            title_normalized="intern",
+            apply_url_raw="https://example.com",
+            description="",
+            first_seen=NOW,
+            last_seen=NOW,
+            location_raw="Montreal",
+            location=LocationBucket.MONTREAL,
+        )
+        for index in range(3)
+    ]
+
+    output = _paint(render_jobs, jobs, total_matching=3, window_days=14, last_sync_at=NOW, now=NOW)
+
+    assert "stage open 1-3 acts" in output and "1-5" not in output
+
+
+def test_a_long_query_that_matches_nothing_is_shown_short() -> None:
+    from stage.cli.render.postings import render_search
+    from stage.services.query import JobListing
+
+    query = " ".join(["intern"] * 20_000)
+    listing = JobListing(
+        jobs=(),
+        total_matching=0,
+        window_days=None,
+        last_sync_at=NOW,
+        query=query,
+        terms=tuple(query.split()),
+    )
+
+    output = _paint(render_search, listing)
+
+    assert 'No posting matches "intern intern' in output and len(output) < 400
+
+
+STORED_ERRORS = (
+    "PayloadValidationError: custom_json/croesus: selector matched no rows; captured at /x.json",
+    "BreakerOpenError: workday circuit breaker is open after 6 consecutive failures",
+    "BucketBlockedError: api.example asked to be left alone; nothing further is sent this run",
+)
+
+
+@pytest.mark.parametrize("error", STORED_ERRORS)
+def test_a_stored_board_error_reads_as_a_plain_sentence(error: str) -> None:
+    report = _report(sources=(_source(boards=(_board(VisitState.FAILING, error),)),))
+
+    for verbose in (False, True):
+        board = _paint(render_doctor, report, NOW, width=200, verbose=verbose)
+        line = next(line for line in board.splitlines() if line.startswith("  Acme"))
+        table = _paint(render_board_health, (report.sources[0],), NOW, width=200, verbose=verbose)
+        assert "Error" not in line + table and ";" not in line + table
+        assert line.startswith("  Acme (greenhouse) failed 4 fetches in a row: ")
+
+
+def test_a_board_without_an_error_says_so_in_words() -> None:
+    report = _report(sources=(_source(boards=(_board(VisitState.FAILING),)),))
+
+    assert "failed 4 fetches in a row, with no error recorded" in _paint(render_doctor, report, NOW)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [STORED_ERRORS[1], "workday circuit breaker is open after 6 consecutive failures"],
+)
+def test_boards_the_breaker_skipped_are_told_apart_with_or_without_a_class_name(
+    error: str,
+) -> None:
+    boards = (_board(VisitState.FAILING, error), _board(VisitState.FAILING, "404"))
+
+    said = " ".join(_paint(render_doctor, _report(sources=(_source(boards=boards),)), NOW).split())
+
+    assert "1 of these were skipped by Stage's circuit breaker" in said
+
+
+def test_a_rate_state_reason_drops_class_names_and_semicolons() -> None:
+    state = RateState(
+        bucket="zshah101.github.io",
+        consecutive_failures=2,
+        reason="ConnectTimeout: CancelledError: Cancelled via cancel scope; reason: deadline",
+        updated_at=NOW,
+    )
+
+    said = _paint(render_rate_state, (state,), NOW, width=200, verbose=True)
+
+    assert "the connection timed out: the request was cancelled" in said
+    assert "Error" not in said and ";" not in said
+
+
+def _cells(count: int) -> list[list[Any]]:
+    from stage.cli.render import Cell
+
+    titles = ("Intern, Ottawa", "Stagiaire en génie logiciel", "東京 インターン", "a" * 90, "")
+    return [
+        [
+            Cell(str(index), "dim"),
+            Cell(titles[index % len(titles)], "bold green", f"https://example.test/{index}"),
+            Cell("Montréal" if index % 2 else "-", "yellow"),
+        ]
+        for index in range(count)
+    ]
+
+
+@pytest.mark.parametrize("width", [20, 40, 80, 120])
+@pytest.mark.parametrize("styled", [False, True])
+def test_the_fast_grid_prints_what_a_rich_table_prints(width: int, styled: bool) -> None:
+    import re
+
+    from stage.cli.render import Column, _table, grid
+
+    columns = [Column("#", 3, right=True, crop=False), Column("Title", 30), Column("Where", 10)]
+    rows = _cells(12)
+
+    def painted(draw: Callable[[Console], None]) -> str:
+        buffer = io.StringIO()
+        console = Console(file=buffer, width=width, force_terminal=styled, color_system=None)
+        if styled:
+            console = Console(
+                file=buffer, width=width, force_terminal=True, color_system="truecolor"
+            )
+        draw(console)
+        return re.sub(r"\x1b\[[0-9;]*m|\x1b\]8;[^\x1b]*\x1b\\", "", buffer.getvalue())
+
+    fast = painted(lambda console: grid(console, columns, rows))
+    rich = painted(lambda console: console.print(_table(columns, rows)))
+
+    assert fast == rich
+
+
+def test_a_link_in_the_fast_grid_survives_only_in_a_terminal() -> None:
+    from stage.cli.render import Cell, Column, grid
+
+    rows = [[Cell("Apply here", "dim", "https://example.test/1")]]
+    buffer = io.StringIO()
+    grid(
+        Console(file=buffer, width=40, force_terminal=True, legacy_windows=False),
+        [Column("Title", 20)],
+        rows,
+    )
+    piped = _paint(grid, [Column("Title", 20)], rows)
+
+    assert "\x1b]8;" in buffer.getvalue() and "https://example.test/1" in buffer.getvalue()
+    assert piped == "Title               \nApply here          \n"
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["plain ascii", "a" * 80, "tab\there", "ctl\x07x", "Montréal", "東京 インターン", "", " pad "],
+)
+@pytest.mark.parametrize("width", [0, 3, 10, 40])
+def test_the_fast_cut_matches_the_shared_truncate(value: str, width: int) -> None:
+    from stage.cli.render import cut
+    from stage.domain.text import truncate
+
+    assert cut(value, width) == truncate(value, width)
+
+
+def test_every_rejected_posting_renders_without_a_rich_table(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from rich import table
+
+    from stage.cli.render.health import render_quarantine
+    from stage.domain import QuarantinedJob, RejectionReason
+
+    entries = [
+        QuarantinedJob(
+            id=f"greenhouse:acme:{index}",
+            source="greenhouse",
+            company="Acme",
+            title_raw=f"Senior Engineer {index}",
+            reason=RejectionReason.NOT_AN_INTERNSHIP,
+            first_seen=NOW,
+            last_seen=NOW,
+            matched_phrase="senior",
+        )
+        for index in range(5_000)
+    ]
+
+    def refuse(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("a Rich table renders every cell one by one")
+
+    monkeypatch.setattr(table.Table, "__rich_console__", refuse)
+    said = _paint(
+        render_quarantine,
+        entries,
+        total_matching=5_000,
+        reason_counts={"not-an-internship": 5_000},
+        width=120,
+    )
+
+    assert len(said.splitlines()) == 5_004 and "5,000 rejected postings." in said

@@ -282,8 +282,28 @@ def test_a_pdf_the_renderer_refuses_becomes_an_actionable_export_error(
         raise ValueError("The row with index 1 is too high")
 
     monkeypatch.setattr(export_module, "_render_pdf", explode)
-    with pytest.raises(ExportError, match="csv, json or md"):
+    with pytest.raises(ExportError, match="csv, json or md") as caught:
         write_pdf([_job("greenhouse:acme:1", "Intern")], tmp_path / "x.pdf", generated_at=NOW)
+    assert "ValueError" not in str(caught.value)
+    assert "too high" in str(caught.value)
+
+
+def test_a_missing_pdf_font_is_not_blamed_on_the_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services import export as export_module
+
+    def missing() -> Path:
+        raise FileNotFoundError(f"{tmp_path / 'DejaVuSans.ttf'} is missing")
+
+    monkeypatch.setattr(export_module, "font_path", missing)
+    with pytest.raises(ExportError) as caught:
+        write_pdf([_job("greenhouse:acme:1", "Intern")], tmp_path / "x.pdf", generated_at=NOW)
+
+    said = str(caught.value)
+    assert "could not read the PDF font" in said and "DejaVuSans.ttf is missing" in said
+    assert "writable" not in said and ";" not in said
+    assert not (tmp_path / "x.pdf").exists()
 
 
 def test_a_glyph_the_font_cannot_draw_is_reported_rather_than_dropped_silently(
@@ -349,7 +369,7 @@ def test_the_export_path_is_never_parsed_as_markup() -> None:
 
     from rich.console import Console
 
-    from stage.cli.render import render_export
+    from stage.cli.render.postings import render_export
 
     hostile = ExportResult(
         path=Path("[link=https://evil.example]click[/link].csv"),
@@ -465,3 +485,73 @@ def test_a_write_failure_without_an_error_code_still_says_why() -> None:
     said = _write_failure(Path("x.csv"), OSError("the share went away"))
 
     assert "could not write x.csv (the share went away)" in said
+
+
+@pytest.mark.skipif(__import__("os").name == "nt", reason="POSIX permission bits")
+def test_an_export_file_is_readable_by_its_owner_only(tmp_path: Path) -> None:
+    from stage.services.export import _create
+
+    target = tmp_path / "stage-export.csv"
+    _create(target)
+
+    assert target.stat().st_mode & 0o077 == 0
+
+
+async def test_cancelling_a_pdf_export_stops_the_writer_and_leaves_no_file(
+    db_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import asyncio
+    import threading
+
+    from stage.services import export as export_module
+
+    repository = SqliteRepository.connect(db_path)
+    repository.apply_source_batch(
+        SourceBatch(
+            source="greenhouse",
+            run_started_at=NOW,
+            jobs=(_job("greenhouse:acme:1", "Intern"),),
+        )
+    )
+    repository.close()
+    started, finished = threading.Event(), threading.Event()
+
+    def slow(*_: object, stop: threading.Event, **__: object) -> bytes:
+        started.set()
+        stop.wait(5)
+        finished.set()
+        return b"%PDF-1.3 too late"
+
+    monkeypatch.setattr(export_module, "_render_pdf", slow)
+    folder = tmp_path / "exports"
+    folder.mkdir()
+    async with open_repository(db_path) as repo:
+        writing = asyncio.create_task(
+            export_jobs(
+                repo,
+                JobFilters(limit=10),
+                fmt=ExportFormat.PDF,
+                destination=folder / "x.pdf",
+                window_days=None,
+                now=NOW,
+            )
+        )
+        assert await asyncio.to_thread(started.wait, 5)
+        writing.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await writing
+        assert await asyncio.to_thread(finished.wait, 5)
+
+    assert list(folder.iterdir()) == []
+
+
+def test_a_stopped_pdf_renderer_gives_up_at_the_next_cell() -> None:
+    from threading import Event
+
+    from stage.services.export import _render_pdf
+
+    stop = Event()
+    stop.set()
+
+    with pytest.raises(ExportError, match="cancelled"):
+        _render_pdf([_job("greenhouse:acme:1", "Intern")], generated_at=NOW, stop=stop)

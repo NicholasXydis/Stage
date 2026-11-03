@@ -23,6 +23,7 @@ from stage.sources.platforms import (
         ("https://jobs.ashbyhq.com/mistral.ai", Platform.ASHBY, "mistral.ai"),
         ("https://careers.smartrecruiters.com/Ubisoft", Platform.SMARTRECRUITERS, "ubisoft"),
         ("https://apply.workable.com/genetec/", Platform.WORKABLE, "genetec"),
+        ("https://apply.workable.com/jet/j/ABC123/", Platform.WORKABLE, "jet"),
         ("https://acme.recruitee.com/o/intern", Platform.RECRUITEE, "acme"),
         ("https://acme.bamboohr.com/careers/list", Platform.BAMBOOHR, "acme"),
         ("https://acme.breezy.hr/p/xyz", Platform.BREEZY, "acme"),
@@ -39,6 +40,13 @@ def test_careers_urls_resolve_to_a_platform_and_token(
     assert candidate is not None
     assert candidate.platform is platform
     assert candidate.slug == slug
+
+
+@pytest.mark.parametrize(
+    "url", ["https://apply.workable.com/j/7F3A2B1C9D", "https://apply.workable.com/j"]
+)
+def test_a_workable_short_link_names_no_account(url: str) -> None:
+    assert identify_url(url) is None
 
 
 def test_workday_needs_four_fields_and_only_a_url_can_supply_them() -> None:
@@ -174,3 +182,40 @@ def test_the_number_in_a_cornerstone_path_is_not_the_search_site_id() -> None:
     assert candidate.slug == "cn360", (
         "the path number is the career site page, not a slug, so it must never become the tenant"
     )
+
+
+@pytest.mark.parametrize(
+    ("url", "site"),
+    [
+        ("https://acme.wd1.myworkdayjobs.com/jobs/job/Toronto/Intern_R1", "jobs"),
+        ("https://acme.wd1.myworkdayjobs.com/en-US/Jobs", "Jobs"),
+        ("https://acme.wd1.myworkdayjobs.com/wday/cxs/acme/jobs/jobs", "jobs"),
+        ("https://acme.wd1.myworkdayjobs.com/en-US/job/Toronto/Intern_R1", None),
+    ],
+)
+def test_a_workday_site_named_jobs_is_a_site(url: str, site: str | None) -> None:
+    candidate = identify_url(url)
+    assert candidate is not None
+    assert candidate.workday_site == site
+
+
+def test_a_dotted_lever_board_resolves_and_probes() -> None:
+    from stage.sources.lever import LeverAdapter
+
+    candidate = identify_url("https://jobs.lever.co/Sonder.Inc/abc-123")
+    assert candidate is not None
+    assert (candidate.platform, candidate.slug) == (Platform.LEVER, "Sonder.Inc")
+    probe = PROBES_BY_PLATFORM[Platform.LEVER]
+    assert probe.url_for("Sonder.Inc") == "https://api.lever.co/v0/postings/Sonder.Inc"
+    company = Company(name="Sonder", platform=Platform.LEVER, slug="sonder.inc")
+    assert LeverAdapter().url_for(company).endswith("/postings/sonder.inc")
+
+
+@pytest.mark.parametrize(
+    "hostile", ["..", "a..b", ".acme", "acme.", "acme/../x", "acme/x", "acme?x", "a b", "a" * 64]
+)
+def test_a_lever_slug_still_refuses_anything_path_like(hostile: str) -> None:
+    from stage.sources.platforms import safe_cased_slug
+
+    with pytest.raises(SlugRejectedError):
+        safe_cased_slug(hostile)

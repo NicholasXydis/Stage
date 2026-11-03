@@ -280,7 +280,7 @@ def test_the_muse_raises_when_the_response_loses_its_carrier() -> None:
         async with _client(TheMuseFeed.hosts) as client:
             await TheMuseFeed().fetch(client, NOW)
 
-    with pytest.raises(PayloadValidationError, match="validation"):
+    with pytest.raises(PayloadValidationError, match='no "results" field'):
         asyncio.run(run())
 
 
@@ -367,6 +367,28 @@ def test_espresso_treats_a_later_page_404_as_the_end_of_that_walk() -> None:
         assert "404" in result.degraded, result.degraded
 
     asyncio.run(run())
+
+
+@respx.mock
+def test_espresso_keeps_what_it_read_when_the_request_ceiling_stops_it() -> None:
+    from stage.sources.espresso import SEARCH as ESPRESSO_SEARCH
+    from stage.sources.espresso import EspressoJobsFeed
+
+    page = _page(_espresso_row("111", "dev-stage-acme", "Stagiaire dev", "Acme Inc", "Stage"))
+    respx.get(url__startswith=ESPRESSO_SEARCH).mock(return_value=httpx.Response(200, text=page))
+    posture = RatePosture(min_interval_s=0.0, max_requests_per_run=2)
+
+    async def run() -> FetchResult:
+        hosts = EspressoJobsFeed.hosts
+        async with HttpClient(
+            allowed_hosts=hosts, posture=posture, cache=ValidatorCache()
+        ) as client:
+            return await EspressoJobsFeed().fetch(client, NOW)
+
+    result = asyncio.run(run())
+
+    assert [job.title_raw for job in result.jobs] == ["Stagiaire dev"]
+    assert "request ceiling" in result.degraded, result.degraded
 
 
 @respx.mock

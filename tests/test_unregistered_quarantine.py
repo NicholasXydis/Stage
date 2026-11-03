@@ -119,6 +119,16 @@ async def test_apply_urls_are_read_from_quarantine_as_well_as_kept_rows(tmp_path
     assert urls["Roleblocked"], "a board token on a rejected posting is still the employer's own"
 
 
+@pytest.mark.asyncio
+async def test_adopting_reads_only_links_from_kept_postings(tmp_path: Path) -> None:
+    db = tmp_path / "stage.db"
+    await _seed(db)
+    async with open_repository(db) as repository:
+        urls = await repository.company_apply_urls(("Roleblocked", "Keeper"), kept_only=True)
+
+    assert "Roleblocked" not in urls and urls["Keeper"]
+
+
 def test_the_limit_counts_probeable_employers_not_queue_position() -> None:
     ranked = ["NoBoard1", "NoBoard2", "HasBoard"]
     apply_urls = {"HasBoard": ("https://job-boards.greenhouse.io/hasboard/jobs/1",)}

@@ -18,6 +18,8 @@ VARIANTS = [
     ("Coveo", "coveo"),
     ("Pratt & Whitney", "Pratt and Whitney"),
     ("Développeur SA", "Developpeur SA"),
+    ("HP", "HP Inc."),
+    ("KLA", "KLA Corporation"),
 ]
 
 

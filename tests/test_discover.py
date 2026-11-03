@@ -1,4 +1,7 @@
 from collections.abc import AsyncIterator, Callable
+from dataclasses import replace
+from datetime import date
+from pathlib import Path
 
 import httpx
 import pytest
@@ -12,6 +15,7 @@ from stage.domain import (
     Platform,
     PlatformCandidate,
     PlatformProbed,
+    ProbeResult,
     ProbeVerdict,
     RequestLogged,
     UrlResolved,
@@ -111,13 +115,54 @@ def test_direct_apply_urls_keep_the_exact_detected_board_token() -> None:
                 "https://boards.greenhouse.io/acme/jobs/123",
                 "https://jobs.lever.co/acme/456",
             ),
-            "Needs Manual Review": ("https://cae.wd3.myworkdayjobs.com/en-US/careers",),
+            "CAE": ("https://cae.wd3.myworkdayjobs.com/en-US/careers",),
+            "No Site": ("https://nosite.wd3.myworkdayjobs.com/en-US/job/Montreal/Intern_R1",),
         }
     )
 
-    assert [(row.name, row.platform, row.slug) for row in rows] == [
-        ("Acme", Platform.GREENHOUSE, "acme"),
+    assert [(row.name, row.platform, row.slug, row.workday_site) for row in rows] == [
+        ("Acme", Platform.GREENHOUSE, "acme", None),
+        ("CAE", Platform.WORKDAY, "cae", "careers"),
     ]
+
+
+def test_direct_apply_urls_recognise_oracle_and_jobvite_boards() -> None:
+    rows = direct_companies_from_apply_urls(
+        {
+            "Qux": (
+                "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/7",
+            ),
+            "Anthology": ("https://jobs.jobvite.com/anthology/job/o1",),
+            "Bad Site": ("https://bad.wd3.myworkdayjobs.com/Bad.Site/job/x",),
+        }
+    )
+    assert [(row.name, row.platform, row.oracle_site) for row in rows] == [
+        ("Qux", Platform.ORACLE_CLOUD, "CX_1"),
+        ("Anthology", Platform.JOBVITE, None),
+    ]
+
+
+def test_direct_apply_urls_honour_platform_choices_for_board_checks() -> None:
+    urls = {
+        "CAE": ("https://cae.wd3.myworkdayjobs.com/en-US/careers",),
+        "Acme": ("https://boards.greenhouse.io/acme/jobs/123",),
+    }
+    only = direct_companies_from_apply_urls(urls, platforms=[Platform.WORKDAY])
+    assert [row.name for row in only] == ["CAE"]
+    skipped = direct_companies_from_apply_urls(urls, excluded=[Platform.WORKDAY])
+    assert [row.name for row in skipped] == ["Acme"]
+
+
+def test_a_greenhouse_link_outranks_a_workday_link_for_one_employer() -> None:
+    rows = direct_companies_from_apply_urls(
+        {
+            "Acme": (
+                "https://acme.wd3.myworkdayjobs.com/en-US/External",
+                "https://boards.greenhouse.io/acme/jobs/123",
+            ),
+        }
+    )
+    assert [row.platform for row in rows] == [Platform.GREENHOUSE]
 
 
 def test_direct_apply_urls_exclude_a_named_platform() -> None:
@@ -189,7 +234,7 @@ def _client_factory(handler: Handler) -> ClientFactory:
     def factory(hosts: frozenset[str], posture: RatePosture) -> HttpClient:
         return HttpClient(
             allowed_hosts=hosts,
-            posture=posture,
+            posture=replace(posture, min_interval_s=0.0),
             cache=ValidatorCache(),
             transport=httpx.MockTransport(handler),
             jitter=False,
@@ -273,7 +318,7 @@ async def test_an_implausible_job_count_is_rejected_for_the_stated_size() -> Non
     finished = events[-1]
     assert isinstance(finished, DiscoveryFinished)
     assert finished.matched == ()
-    assert "plausible ceiling" in finished.rejected[0].detail
+    assert "too many for a startup" in finished.rejected[0].detail
 
 
 async def test_a_platform_serving_html_for_an_unknown_token_is_a_miss_not_an_error() -> None:
@@ -487,82 +532,76 @@ def test_concatenation_does_not_reopen_the_substring_hole() -> None:
     assert not name_matches("Ubi", "Ubisoft")
 
 
-def test_an_acquisition_named_row_is_not_disabled_by_the_name_gate() -> None:
+async def test_an_acquisition_named_row_is_not_disabled_by_the_name_gate() -> None:
     from stage.domain import Company, Platform
-    from stage.services.discover import _acquisition_named
+    from stage.services.discover import verify_registry
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/jobs"):
+            return httpx.Response(200, json={"jobs": [{"id": 1}], "meta": {"total": 1}})
+        return httpx.Response(200, json={"name": "LifeWorks"})
 
     exempt = Company(
-        name="TELUS Health",
-        platform=Platform.WORKDAY,
-        slug="lifeworks",
-        name_gate_exempt=True,
+        name="TELUS Health", platform=Platform.GREENHOUSE, slug="lifeworks", name_gate_exempt=True
     )
-    ordinary = Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")
-
-    assert _acquisition_named(exempt)
-    assert not _acquisition_named(ordinary)
-    assert not _acquisition_named(ordinary), "the default must never be an exemption"
+    ordinary = Company(name="Acme", platform=Platform.GREENHOUSE, slug="lifeworks2")
+    events = await _collect(
+        verify_registry((exempt, ordinary), client_factory=_client_factory(handler))
+    )
+    verdicts = {
+        event.result.company: event.result.verdict
+        for event in events
+        if isinstance(event, PlatformProbed)
+    }
+    assert verdicts == {"TELUS Health": ProbeVerdict.UNVERIFIED, "Acme": ProbeVerdict.REJECTED}
 
 
 def test_every_acquisition_named_row_in_the_shipped_registry_carries_the_marker() -> None:
     from stage.companies import load_companies
-    from stage.services.discover import _acquisition_named
 
     rows = {row.slug: row for row in load_companies(None)}
     for slug in ("lifeworks", "globalhr"):
         assert slug in rows, slug
-        assert _acquisition_named(rows[slug]), slug
+        assert rows[slug].name_gate_exempt, slug
 
-    exempt = [row for row in load_companies(None) if _acquisition_named(row)]
+    exempt = [row for row in load_companies(None) if row.name_gate_exempt]
     assert len(exempt) >= 3
-    assert all(row.name_gate_exempt for row in exempt), "exemption is a field, never prose"
     assert any(row.enabled for row in exempt), "a live board is what the exemption protects"
 
 
-def test_apply_can_actually_disable_a_row_that_fails(tmp_path: "object") -> None:
-    from datetime import date
-    from pathlib import Path
-
-    from stage.companies import load_companies, write_registry
-    from stage.domain import (
-        Company,
-        DiscoveryFinished,
-        Platform,
-        PlatformCandidate,
-        ProbeResult,
-        ProbeVerdict,
+def _probed(
+    company: Company,
+    verdict: ProbeVerdict,
+    *,
+    status: int | None = None,
+    detail: str = "",
+) -> ProbeResult:
+    return ProbeResult(
+        company=company.name,
+        candidate=PlatformCandidate(company.platform, company.slug),
+        verdict=verdict,
+        url=f"https://boards.example.test/{company.slug}",
+        detail=detail,
+        status=status,
     )
+
+
+def test_apply_can_actually_disable_a_row_that_fails(tmp_path: Path) -> None:
+    from stage.companies import load_companies, write_registry
     from stage.services.discover import apply_verification
 
     live = Company(name="Live", platform=Platform.GREENHOUSE, slug="live")
     dead = Company(name="Dead", platform=Platform.GREENHOUSE, slug="dead")
+    results = [_probed(live, ProbeVerdict.MATCH), _probed(dead, ProbeVerdict.REJECTED)]
+    updated, report = apply_verification([live, dead], results, date(2026, 8, 4))
 
-    def result(company: Company, verdict: ProbeVerdict) -> ProbeResult:
-        return ProbeResult(
-            company=company.name,
-            candidate=PlatformCandidate(Platform.GREENHOUSE, company.slug),
-            url=f"https://boards-api.greenhouse.io/v1/boards/{company.slug}/jobs",
-            verdict=verdict,
-        )
-
-    outcome = DiscoveryFinished(
-        matched=(result(live, ProbeVerdict.MATCH),),
-        unverified=(),
-        rejected=(result(dead, ProbeVerdict.REJECTED),),
-        missed=0,
-        errors=0,
-        requests=2,
-        elapsed_ms=0.0,
-    )
-    updated, ok, off = apply_verification([live, dead], outcome, date(2026, 8, 4))
-
-    assert ok == 1 and off == 1, "the disable path must be reachable, not merely untriggered"
+    assert (report.verified, report.disabled) == (1, 1)
     by_slug = {row.slug: row for row in updated}
     assert by_slug["live"].last_verified == date(2026, 8, 4)
     assert by_slug["dead"].enabled is False
     assert len(updated) == 2, "a failing row is switched off, never deleted"
 
-    target = Path(str(tmp_path)) / "companies.yaml"
+    target = tmp_path / "companies.yaml"
     write_registry(updated, target)
     assert {row.slug for row in load_companies(target)} == {"live", "dead"}
 
@@ -584,103 +623,182 @@ def test_an_omitted_enabled_key_defaults_to_polled(tmp_path: "object") -> None:
 
 
 def test_applying_a_rejection_records_why_the_row_was_disabled() -> None:
-    from datetime import date
-
-    from stage.domain import ProbeResult
     from stage.services.discover import apply_verification
 
-    rejected = ProbeResult(
-        company="Coveo (FR)",
-        candidate=PlatformCandidate(platform=Platform.GREENHOUSE, slug="coveofr"),
-        verdict=ProbeVerdict.REJECTED,
-        url="https://boards.example.test/coveofr",
-        board_name="Coveo Solutions",
-        job_count=12,
-        detail="board is named 'Coveo Solutions', which does not contain 'Coveo (FR)'",
-    )
-    outcome = DiscoveryFinished(
-        matched=(),
-        unverified=(),
-        rejected=(rejected,),
-        missed=0,
-        errors=0,
-        requests=1,
-        elapsed_ms=1.0,
-    )
-    row = Company(name="Coveo (FR)", platform=Platform.GREENHOUSE, slug="coveofr")
+    row = Company(name="Coveo (FR)", platform=Platform.GREENHOUSE, slug="coveofr", notes="kept")
+    detail = "board is named 'Coveo Solutions', which does not contain 'Coveo (FR)'"
+    results = [_probed(row, ProbeVerdict.REJECTED, detail=detail)]
 
-    updated, verified, disabled = apply_verification((row,), outcome, date(2026, 8, 8))
-    assert (verified, disabled) == (0, 1)
+    updated, report = apply_verification((row,), results, date(2026, 8, 8))
+    assert (report.verified, report.disabled) == (0, 1)
     assert updated[0].enabled is False
-    assert updated[0].notes is not None
-    assert updated[0].notes.startswith("2026-08-08: ")
-    assert "Coveo Solutions" in updated[0].notes
+    assert updated[0].notes == (
+        "kept\n2026-08-08: switched off by stage discover --verify, " + detail
+    )
 
 
-def test_re_enabling_a_row_clears_the_reason_it_was_disabled_for() -> None:
-    from datetime import date
-
-    from stage.domain import ProbeResult
+def test_a_404_is_gone_in_the_registry_as_on_your_own_list() -> None:
     from stage.services.discover import apply_verification
 
-    matched = ProbeResult(
-        company="Coveo",
-        candidate=PlatformCandidate(platform=Platform.GREENHOUSE, slug="coveo"),
-        verdict=ProbeVerdict.MATCH,
-        url="https://boards.example.test/coveo",
-        board_name="Coveo Solutions",
-        job_count=12,
+    rows = [
+        Company(name=name, platform=Platform.GREENHOUSE, slug=name.lower())
+        for name in ("Missing", "Ended", "Flaky", "Odd")
+    ]
+    results = [
+        _probed(rows[0], ProbeVerdict.MISS, status=404),
+        _probed(rows[1], ProbeVerdict.MISS, status=410),
+        _probed(rows[2], ProbeVerdict.ERROR, status=503),
+        _probed(rows[3], ProbeVerdict.MISS, detail="ValueError: not JSON"),
+    ]
+    updated, report = apply_verification(rows, results, date(2026, 8, 8))
+
+    assert report.disabled == 2
+    assert [row.enabled for row in updated] == [False, False, True, True]
+    assert (
+        updated[0].notes
+        == "2026-08-08: switched off by stage discover --verify, the board answered 404"
     )
-    outcome = DiscoveryFinished(
-        matched=(matched,),
-        unverified=(),
-        rejected=(),
-        missed=0,
-        errors=0,
-        requests=1,
-        elapsed_ms=1.0,
-    )
-    stale = Company(
+
+
+def test_only_a_row_verify_switched_off_comes_back_when_it_answers() -> None:
+    from stage.services.discover import apply_verification
+
+    struck = Company(
         name="Coveo",
         platform=Platform.GREENHOUSE,
         slug="coveo",
         enabled=False,
-        notes="2026-01-01: name-gate rejection",
+        notes="2026-01-01: seen in feeds\n2026-08-01: switched off by stage discover --verify, x",
     )
-    updated, _, _ = apply_verification((stale,), outcome, date(2026, 8, 8))
-    assert updated[0].enabled is True
-    assert updated[0].notes is None, "a disable reason is a claim about a moment that has passed"
+    legacy = Company(
+        name="Old",
+        platform=Platform.GREENHOUSE,
+        slug="old",
+        enabled=False,
+        notes="2026-02-01: board is named 'Else', which does not contain 'Old'",
+    )
+    policy = [
+        Company(
+            name=name, platform=Platform.GREENHOUSE, slug=name.lower(), enabled=False, notes=note
+        )
+        for name, note in (
+            ("Google", "2026-08-21: google.com/robots.txt disallows /jobs"),
+            ("Tesla", "2026-08-20: closed for good, Akamai answers 403"),
+            ("Quiet", None),
+            ("Back", "2026-08-01: switched off by stage discover --verify, x\n2026-08-02: parked"),
+        )
+    ]
+    rows = [struck, legacy, *policy]
+    updated, report = apply_verification(
+        rows, [_probed(row, ProbeVerdict.MATCH) for row in rows], date(2026, 8, 8)
+    )
+
+    assert [row.enabled for row in updated] == [True, True, False, False, False, False]
+    assert updated[0].notes == "2026-01-01: seen in feeds"
+    assert updated[1].notes is None and updated[1].last_verified == date(2026, 8, 8)
+    assert [row.notes for row in updated[2:]] == [row.notes for row in policy]
+    assert (report.verified, report.held) == (2, ("Google", "Tesla", "Quiet", "Back"))
+
+
+def test_a_gone_row_already_off_keeps_its_note() -> None:
+    from stage.services.discover import apply_verification
+
+    off = Company(
+        name="Meta", platform=Platform.GREENHOUSE, slug="meta", enabled=False, notes="robots.txt"
+    )
+    updated, report = apply_verification(
+        (off,), [_probed(off, ProbeVerdict.MISS, status=404)], date(2026, 8, 8)
+    )
+    assert updated == (off,) and report.disabled == 0
+
+
+def test_a_matching_live_row_keeps_its_notes() -> None:
+    from stage.services.discover import apply_verification
+
+    row = Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme", notes="quirk")
+    updated, _ = apply_verification((row,), [_probed(row, ProbeVerdict.MATCH)], date(2026, 8, 8))
+    assert updated[0].notes == "quirk" and updated[0].last_verified == date(2026, 8, 8)
 
 
 def test_apply_never_enables_a_board_that_exposes_no_name() -> None:
-    from datetime import date
-
-    from stage.domain import ProbeResult
     from stage.services.discover import apply_verification
 
-    unverified = ProbeResult(
-        company="Acme",
-        candidate=PlatformCandidate(platform=Platform.LEVER, slug="acme"),
-        verdict=ProbeVerdict.UNVERIFIED,
-        url="https://api.lever.co/v0/postings/acme",
-        board_name="",
-        job_count=12,
-        detail="lever exposes no board name",
-    )
-    outcome = DiscoveryFinished(
-        matched=(),
-        unverified=(unverified,),
-        rejected=(),
-        missed=0,
-        errors=0,
-        requests=1,
-        elapsed_ms=1.0,
-    )
     off = Company(name="Acme", platform=Platform.LEVER, slug="acme", enabled=False)
-    updated, verified, disabled = apply_verification((off,), outcome, date(2026, 8, 8))
-    assert (verified, disabled) == (0, 0)
+    unverified = [_probed(off, ProbeVerdict.UNVERIFIED, detail="lever exposes no board name")]
+    updated, report = apply_verification((off,), unverified, date(2026, 8, 8))
+    assert (report.verified, report.disabled) == (0, 0)
     assert updated[0].enabled is False, "a 200 with jobs is not evidence of the right company"
 
     on = Company(name="Acme", platform=Platform.LEVER, slug="acme", enabled=True)
-    kept, _, _ = apply_verification((on,), outcome, date(2026, 8, 8))
+    kept, _ = apply_verification((on,), unverified, date(2026, 8, 8))
     assert kept[0].enabled is True, "an already-enabled row must not be switched off either"
+
+
+def test_a_mixed_case_lever_board_is_probed_as_sync_reads_it() -> None:
+    from stage.domain import Platform
+    from stage.sources.platforms import PROBES_BY_PLATFORM
+
+    probe = PROBES_BY_PLATFORM[Platform.LEVER]
+    assert probe.url_for("CesiumAstro") == "https://api.lever.co/v0/postings/CesiumAstro"
+
+
+async def test_unregistered_discovery_writes_its_request_log(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import io
+    import json
+    from datetime import date
+
+    from rich.console import Console
+
+    from stage.cli.commands import discovery
+    from stage.domain import RequestLogged
+    from stage.services import discover as discover_module
+
+    async def probes(*_args: object, **_kwargs: object) -> AsyncIterator[object]:
+        yield RequestLogged(
+            source="discover",
+            method="GET",
+            url="https://api.lever.co/v0/postings/acme",
+            status=404,
+            elapsed_ms=1.0,
+            attempt=1,
+        )
+
+    monkeypatch.setattr(discover_module, "select_unregistered", lambda *_a, **_k: ([], ["Acme"]))
+    monkeypatch.setattr(discover_module, "probe_companies", probes)
+    log = io.StringIO()
+    await discovery._adopt_unregistered(
+        Console(file=io.StringIO()),
+        registry=None,
+        db=tmp_path / "stage.db",
+        platforms=None,
+        excluded=None,
+        size=None,
+        limit=1,
+        direct_only=False,
+        adopt_unnamed=False,
+        apply_rows=False,
+        today=date(2026, 11, 1),
+        stream=log,
+        progress=None,
+    )
+
+    assert json.loads(log.getvalue())["url"] == "https://api.lever.co/v0/postings/acme"
+
+
+async def test_a_platform_named_twice_is_probed_once() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404)
+
+    events = await _collect(
+        probe_companies(
+            ["Zyxwv"],
+            platforms=[Platform.LEVER, Platform.LEVER],
+            client_factory=_client_factory(handler),
+        )
+    )
+    started = events[0]
+    assert isinstance(started, DiscoveryStarted)
+    assert started.platforms == ("lever",)
+    assert sum(isinstance(event, PlatformProbed) for event in events) == started.probes_planned

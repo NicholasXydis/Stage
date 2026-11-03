@@ -1,8 +1,11 @@
 import asyncio
 import io
 import json
+import os
+import signal
 import subprocess
 import sys
+import time
 from collections.abc import AsyncIterator, Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -12,7 +15,7 @@ import pytest
 from rich.console import Console
 
 from stage.cli import schedule
-from stage.cli.render import render_discovery, render_sync
+from stage.cli.render.progress import render_discovery, render_sync
 from stage.cli.schedule_state import ScheduleStateWriter, read_state_path, state_for_status
 from stage.domain import (
     CompanyFinished,
@@ -63,7 +66,10 @@ def test_scheduled_run_records_wait_start_and_completion(
     assert state["sync_exit_code"] == 0
     assert state["doctor_exit_code"] == 0
     assert waited == pytest.approx([1.0, 1.0, 0.4])
-    assert calls == [(("sync",), tmp_path / "sync.json"), (("doctor",), None)]
+    assert calls == [
+        (("sync",), tmp_path / "sync.json"),
+        (("doctor", "--skip-file-check"), None),
+    ]
     log = (tmp_path / "scheduled-sync.log").read_text(encoding="utf-8")
     assert "Triggered:" in log
     assert "Waiting 2s before work starts." in log
@@ -79,7 +85,11 @@ def test_scheduled_child_uses_explicit_log_handles_and_heartbeats(
     waits = 0
     heartbeats = 0
 
+    contained: list[int] = []
+
     class Process:
+        pid = 4321
+
         def wait(self, *, timeout: float) -> int:
             nonlocal waits
             waits += 1
@@ -96,6 +106,7 @@ def test_scheduled_child_uses_explicit_log_handles_and_heartbeats(
         heartbeats += 1
 
     monkeypatch.setattr(subprocess, "Popen", popen)
+    monkeypatch.setattr(schedule, "_contain", contained.append)
     with (tmp_path / "scheduled.log").open("w", encoding="utf-8") as stream:
         assert (
             schedule._invoke_cli(
@@ -113,6 +124,7 @@ def test_scheduled_child_uses_explicit_log_handles_and_heartbeats(
     assert kwargs["stderr"] is subprocess.STDOUT
     assert kwargs["stdout"] is not None
     assert heartbeats == 1
+    assert contained == ([4321] if sys.platform == "win32" else [])
 
 
 def test_windows_command_uses_pythonw_when_available(
@@ -206,6 +218,18 @@ def test_stale_heartbeat_is_unresponsive_without_claiming_interruption() -> None
     assert state_for_status({"phase": "syncing"}, now=now) == {"phase": "syncing"}
 
 
+@pytest.mark.parametrize("interval", [float("inf"), float("nan"), 10**400, True])
+def test_a_garbled_heartbeat_interval_is_ignored(interval: object) -> None:
+    now = datetime(2026, 8, 21, tzinfo=UTC)
+    payload = {
+        "phase": "syncing",
+        "heartbeat_at": (now - timedelta(seconds=4)).isoformat(),
+        "heartbeat_interval_seconds": interval,
+    }
+
+    assert state_for_status(payload, now=now) == payload
+
+
 def test_state_reader_retries_when_another_process_holds_the_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -297,6 +321,134 @@ def test_state_writer_does_not_interrupt_work_when_state_storage_fails(
     assert not target.exists()
 
 
+def test_a_heartbeat_from_a_stale_copy_keeps_what_the_child_wrote(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "sync.json"
+    runner = ScheduleStateWriter.start("sync", tmp_path / "scheduled.log", destination=target)
+    runner.started("syncing")
+    monkeypatch.setattr(runner, "_reload", lambda: None)
+    child = ScheduleStateWriter.open(target, "sync")
+    child.sync_event(
+        SyncFinished(
+            outcome=SyncOutcome.PARTIAL,
+            added=1,
+            updated=0,
+            closed=0,
+            failed_sources=("x",),
+            elapsed_ms=1.0,
+        )
+    )
+    child.blocked("another Stage sync is already running")
+
+    runner.heartbeat()
+
+    state = read_state_path(target)
+    assert state is not None
+    assert (state["phase"], state["sync_outcome"]) == ("blocked", "partial")
+    assert state["heartbeat_at"] != state["triggered_at"]
+
+
+STOPPABLE = """
+import subprocess, sys
+from pathlib import Path
+from stage.cli import schedule
+
+folder = Path(sys.argv[1])
+real = subprocess.Popen
+script = "import os, sys, time; open(sys.argv[1], 'w').write(str(os.getpid())); time.sleep(60)"
+
+
+def child(command, **kwargs):
+    return real([sys.executable, "-c", script, str(folder / "child.pid")], **kwargs)
+
+
+schedule.subprocess.Popen = child
+schedule.state_path = lambda _: folder / "sync.json"
+schedule._log_dir = lambda: folder
+raise SystemExit(schedule.run_scheduled("sync", jitter_seconds=float(sys.argv[2])))
+"""
+
+
+def _runner(tmp_path: Path, jitter: float) -> "subprocess.Popen[bytes]":
+    runner = subprocess.Popen([sys.executable, "-c", STOPPABLE, str(tmp_path), str(jitter)])
+    ready = tmp_path / ("sync.json" if jitter else "child.pid")
+    deadline = time.monotonic() + 30
+    while not (ready.exists() and ready.stat().st_size) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    return runner
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX signals")
+@pytest.mark.parametrize("jitter", [0.0, 30.0])
+def test_a_stopped_runner_stops_its_sync_and_says_so(tmp_path: Path, jitter: float) -> None:
+    runner = _runner(tmp_path, jitter)
+
+    runner.send_signal(signal.SIGTERM)
+
+    assert runner.wait(timeout=30) == 128 + signal.SIGTERM
+    state = read_state_path(tmp_path / "sync.json")
+    assert state is not None
+    assert (state["phase"], state["outcome"]) == ("finished", "failure")
+    assert "SIGTERM" in str(state["error"])
+    assert "Stopped by SIGTERM" in (tmp_path / "scheduled-sync.log").read_text(encoding="utf-8")
+    pid_file = tmp_path / "child.pid"
+    if pid_file.exists():
+        with pytest.raises(ProcessLookupError):
+            os.kill(int(pid_file.read_text(encoding="utf-8")), 0)
+    else:
+        assert jitter, "the sync starts only after the wait"
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows job objects")
+def test_ending_the_runner_task_ends_its_sync(tmp_path: Path) -> None:
+    runner = _runner(tmp_path, 0.0)
+    child = (tmp_path / "child.pid").read_text(encoding="utf-8")
+
+    runner.kill()
+    runner.wait(timeout=30)
+
+    tasklist = Path(os.environ.get("SYSTEMROOT", "C:/Windows")) / "System32" / "tasklist.exe"
+    deadline = time.monotonic() + 15
+    listed = child
+    while child in listed and time.monotonic() < deadline:
+        time.sleep(0.2)
+        listed = subprocess.run(
+            [str(tasklist), "/FI", f"PID eq {child}", "/NH"], capture_output=True, text=True
+        ).stdout
+    assert child not in listed
+
+
+def test_the_job_limits_match_the_windows_layout() -> None:
+    import ctypes
+
+    limits = schedule._job_limits()
+    basic = type(limits().BasicLimitInformation)
+    flags = basic.LimitFlags
+    wide = ctypes.sizeof(ctypes.c_void_p) == 8
+
+    assert ctypes.sizeof(basic) == (64 if wide else 48)
+    assert ctypes.sizeof(limits) == (144 if wide else 112)
+    assert (flags.offset, flags.size) == (16, 4)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows job objects")
+def test_closing_the_job_ends_the_child_it_holds() -> None:
+    if sys.platform == "win32":
+        import ctypes
+
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        try:
+            schedule._contain(child.pid)
+            assert schedule._JOBS, "the child was not put in a kill-on-close job"
+            began = time.monotonic()
+            ctypes.windll.kernel32.CloseHandle(ctypes.c_void_p(schedule._JOBS.pop()))
+            child.wait(timeout=15)
+            assert time.monotonic() - began < 15, "the job did not end the child"
+        finally:
+            child.kill()
+
+
 def test_a_doctor_warning_marks_a_clean_sync_for_attention_but_not_as_failed() -> None:
     from stage.cli.schedule_state import _outcome
 
@@ -317,11 +469,11 @@ def test_schedule_status_prints_board_text_as_text() -> None:
 
     from rich.console import Console
 
-    from stage.cli.options import _render_scheduled_run
+    from stage.cli.render.schedule import render_scheduled_run
 
     buffer = io.StringIO()
     console = Console(file=buffer, width=200, emoji=False)
-    _render_scheduled_run(
+    render_scheduled_run(
         console,
         {
             "phase": "finished",
@@ -336,7 +488,7 @@ def test_schedule_status_prints_board_text_as_text() -> None:
             },
         },
     )
-    _render_scheduled_run(console, {"phase": "blocked", "error": "[link=file:///x]held[/link]"})
+    render_scheduled_run(console, {"phase": "blocked", "error": "[link=file:///x]held[/link]"})
     said = buffer.getvalue()
 
     assert "Evil [/bold] Corp" in said and "[bold" in said

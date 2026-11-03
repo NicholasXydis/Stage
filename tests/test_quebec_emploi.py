@@ -73,3 +73,13 @@ async def test_quebec_emploi_never_closes_source_after_its_public_page_cap(
 
     assert not result.authoritative
     assert "page public-search cap" in result.degraded
+
+
+def test_a_default_sync_skips_the_paused_feed_and_a_named_one_still_runs_it() -> None:
+    from stage.services.sync import _select
+
+    _, default_feeds, _ = _select([], None)
+    _, named, _ = _select([], ["quebec-emploi"])
+
+    assert "quebec-emploi" not in default_feeds
+    assert list(named) == ["quebec-emploi"]

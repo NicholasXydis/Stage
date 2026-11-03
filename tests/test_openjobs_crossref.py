@@ -15,6 +15,7 @@ from stage.bootstrap.openjobs import (
     main,
     match_key,
     mine_country,
+    mined_registry_rows,
     to_registry_rows,
 )
 from stage.domain import Platform
@@ -218,6 +219,34 @@ def test_country_mining_finds_companies_the_seed_list_never_named() -> None:
     )
     found = mine_country(entries, "Canada", frozenset({"ashby/coveo"}))
     assert [entry.name for entry, _ in found] == ["Unlisted Montreal Studio"]
+
+
+def test_mined_rows_are_enabled_openjobs_rows_that_keep_workday_coordinates() -> None:
+    import yaml
+
+    entries = (
+        DatasetEntry(
+            name="Zyx Systems",
+            ats_links=("https://zyx.wd3.myworkdayjobs.com/en-US/Careers",),
+            countries=("Canada",),
+        ),
+        DatasetEntry(
+            name="Studio", ats_links=("https://studio.jobs.personio.de/",), countries=("Canada",)
+        ),
+    )
+    rows = yaml.safe_load(mined_registry_rows(mine_country(entries, "Canada")))
+    assert [(row["name"], row.get("enabled", True)) for row in rows] == [
+        ("Studio", False),
+        ("Zyx Systems", True),
+    ]
+    zyx = rows[1]
+    assert zyx["source_of_record"] == "openjobs"
+    assert (zyx["workday_tenant"], zyx["workday_site"], zyx["workday_dc"]) == (
+        "zyx",
+        "Careers",
+        "wd3",
+    )
+    assert mined_registry_rows([]) == ""
 
 
 def test_country_mining_reports_its_count(

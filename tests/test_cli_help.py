@@ -176,7 +176,7 @@ def test_commands_are_grouped_by_how_often_they_are_used() -> None:
 def test_browsing_commands_sit_in_the_everyday_panel() -> None:
     result = CliRunner().invoke(app, ["--help"])
     output = ANSI_ESCAPE.sub("", result.stdout)
-    everyday = output.split("Everyday")[1].split("╰")[0]
+    everyday = output.split("Everyday")[1].split("Applications")[0]
 
     for command in ("tui", "list", "search", "show", "open", "export"):
         assert command in everyday
@@ -185,7 +185,7 @@ def test_browsing_commands_sit_in_the_everyday_panel() -> None:
 def test_maintenance_commands_are_not_in_the_everyday_panel() -> None:
     result = CliRunner().invoke(app, ["--help"])
     output = ANSI_ESCAPE.sub("", result.stdout)
-    everyday = output.split("Everyday")[1].split("╰")[0]
+    everyday = output.split("Everyday")[1].split("Applications")[0]
 
     for command in ("discover", "classify", "canary", "purge", "rescreen"):
         assert command not in everyday
@@ -429,3 +429,13 @@ def test_the_window_never_promises_more_than_stage_keeps() -> None:
         text = readme.read_text(encoding="utf-8")
         assert "--last 0" not in text
         assert "cannot reach further back" in text
+
+
+def test_help_explains_a_subcommand() -> None:
+    result = CliRunner().invoke(app, ["help", "schedule", "status"])
+    nested = CliRunner().invoke(app, ["help", "sync", "status"])
+
+    assert result.exit_code == 0
+    assert "schedule status" in ANSI_ESCAPE.sub("", result.stdout)
+    assert "--watch" in result.stdout
+    assert nested.exit_code == 2 and "stage sync has no subcommands" in nested.stderr

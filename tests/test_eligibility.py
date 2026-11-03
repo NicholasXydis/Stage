@@ -130,6 +130,9 @@ def test_a_vehicle_software_engineer_is_not_rejected_as_a_ui_role() -> None:
         "Environmental Engineering Intern",
         "Construction Management Intern",
         "Investor Relations Intern",
+        "Claims Intern",
+        "Underwriting Data Analyst Intern",
+        "Stage 6 mois juriste protection des données personnelles",
     ],
 )
 def test_a_named_non_cs_discipline_is_labelled_rather_than_left_unknown(title: str) -> None:
@@ -145,6 +148,7 @@ def test_a_named_non_cs_discipline_is_labelled_rather_than_left_unknown(title: s
         "Software Engineer Intern - Logistics",
         "Staff Software Developer Manufacturing Engineering",
         "System Design Engineer - AI Cluster Software Engineer",
+        "Claims Lab Developer Intern - Summer 2027",
     ],
 )
 def test_a_cs_role_in_a_non_cs_domain_is_still_accepted(title: str) -> None:
@@ -421,6 +425,17 @@ def test_a_fullstack_vehicle_ui_engineer_is_not_rejected_as_a_ui_role() -> None:
         "Current PhD (or MSc) studies in machine learning and robotics",
         "Currently pursuing a Master's degree in Computer Science",
         "The ideal candidate is currently pursuing a Master's or PhD in Engineering",
+        "Pursuing MS or PhD in Computer Science, Electrical Engineering, or Statistics",
+        "What You Bring: Pursuing Masters, or PhD in Computer Science",
+        "Graduating class of 2029 pursuing a Masters or Doctorate degree in CS",
+        "We are looking for a master's or PhD student to join our team",
+        "Currently enrolled in or recently graduated from a Master's or PhD program",
+        "You will graduate in spring 2028 with a Master's or PhD degree in Statistics",
+        "Current MS or PhD student or recent graduate in Computational Biology",
+        "Currently enrolled in or will receive a Master's in Computer Science",
+        "Qualifications: Master's degree or above in Computer Science",
+        "Basic Requirements: Current graduate student in Computer Science",
+        "Candidate must be enrolled in a Ph.D. and/or graduate programs in Statistics",
     ],
 )
 def test_a_posting_offering_no_bachelor_option_is_out_of_scope(description: str) -> None:
@@ -442,6 +457,9 @@ def test_a_posting_offering_no_bachelor_option_is_out_of_scope(description: str)
         "Enrolled in your last year of a Bachelor's degree",
         "PhD is a plus",
         "You will work alongside scientists who hold PhDs",
+        "Currently pursuing a BS, MS, or PhD in Computer Science",
+        "Open to a current graduate student or to undergraduates in their final year",
+        "Enrolled in a Bachelor's program; a master's or PhD student may also apply",
         "",
     ],
 )
@@ -577,3 +595,82 @@ def test_a_screened_location_records_where_it_was() -> None:
 
     assert verdict is not None
     assert verdict.matched_phrase == "Singapore"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "2027 | Americas | Toronto | Engineering | Summer Analyst",
+        "Summer Analyst, Engineering",
+        "IT Engineer Intern (Early Careers Summer 2027)",
+        "IT Business Analyst– 4-month Internship/Coop (Winter 2027)",
+        "Business Systems Analyst, Winter 2027 Co-op",
+        "Summer Intern 2027 - Business Technology",
+        "Technology Analyst Intern, Production Support",
+        "Applied Science Intern - Multiple Teams",
+        "Perception Intern (Summer 2027)",
+        "Cloud Network Engineering Internship Opportunities",
+        "Stage universitaire | Technologies numériques - Développement - Hiver 2027",
+        "Stage universitaire | Administration des systèmes et des infrastructures TI",
+        "Database Analyst, Winter 2027 (Co-op/Internship) - 8 months",
+        "Data Architecture and Engineering Intern",
+        "ML Ops Intern",
+        "GenAI and Digital Workplace Intern (Winter 2027)",
+        "AI Co-op (Winter 2027)",
+        "AI Solution Architect - Undergraduate Intern",
+        "Security Intern, Threat Operations - Winter 2027",
+        "Network Operations Intern",
+        "Intern - IT Cloud Enablement - Summer - 2027",
+        "Information Technology - Development and Infrastructure Internship (hybrid)",
+        "Enterprise Architecture Co-Op",
+        "Early Careers - Identify & Access Management (IAM) Intern",
+        "College to Corporate IT Internship-Risk & Security Engineer (PA)",
+        "Systems Developer, Project Management Office, Student Intern (Winter 2027 - 8 Months)",
+        "Finance AI Engineering Intern",
+        "2027 Finance Data Analyst Intern",
+        "2027 Institutional Equity Quantitative Finance Off-Cycle Internship - Derivatives",
+        "Web Marketing Intern - Front-end Developer",
+    ],
+)
+def test_titles_reviewed_on_real_data_are_kept(title: str) -> None:
+    assert screen_is_cs_role(_job(title)) is None
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Hardware Development Engineer Intern",
+        "Presales Systems Engineer - Summer 2027 Internship",
+        "Tax Technology Intern - Summer 2027",
+        "Electrical Test Engineer Intern",
+        "Hardware Test Engineer Intern",
+        "Analyst - IT Audit & Assurance - Co-op/Intern - 2027",
+        "Intern- Information Technology (End User Support- OIT)",
+        "2027 Future Talent Program – Pharmaceutical Analysis and Digital Technology",
+        "GE Vernova - Energy Technology Analyst Intern - Summer 2027",
+        "Intern, IT Infrastructure Support",
+        "SkillBridge Intern DoD: Information System Security Officer (ISSO)",
+        "Geographic Information Systems Intern/Co-op",
+        "Stage collégial | Technologies numériques - Service aux utilisateurs (TI)",
+        "Presale Systems Engineer - Summer 2027 Internship",
+        "Tax & Data Analytics Intern",
+        "Federal Tax Policy Intern",
+        "Economics Intern - Structural IO",
+        "Applied Scientist (Economics) Intern",
+        "Finance Co-op",
+        "Fund Finance Infrastructure Intern - December 2026 | MTL",
+        "Project Coordinator Co-op (Winter 2027), Capital Markets Technology",
+        "AI Consulting Associate Program Product Owner Intern",
+        "Software and Go-To-Market Strategy Summer Intern",
+        "Intern - Sales Strategy & Analytics",
+        "Sales and Application Engineering Co-op",
+        "Quality Control Strategy and Science Co-op",
+        "2027 Summer Intern Quality Assurance - Compliance & Quality Systems (IOPS)",
+        "Technical Writer Intern, Developer Experience (Summer 2027)",
+        "Technical Content Author Intern - Technical Content Analytics",
+    ],
+)
+def test_titles_reviewed_on_real_data_are_rejected(title: str) -> None:
+    rejection = screen_is_cs_role(_job(title))
+    assert rejection is not None
+    assert rejection.reason is RejectionReason.NOT_A_CS_ROLE

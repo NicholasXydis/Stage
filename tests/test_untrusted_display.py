@@ -6,11 +6,8 @@ from rich.console import Console
 from typer.testing import CliRunner
 
 from stage.cli.app import app
-from stage.cli.render import (
-    render_jobs,
-    render_posting,
-    render_quarantine,
-)
+from stage.cli.render.health import render_quarantine
+from stage.cli.render.postings import render_jobs, render_posting
 from stage.domain import (
     Job,
     LocationBucket,
@@ -163,6 +160,47 @@ def test_a_hostile_description_renders_as_text_in_show() -> None:
     assert "\x1b" not in output
 
 
+def test_hostile_ids_of_linked_copies_render_as_text() -> None:
+    console = _console()
+    copy = _job("greenhouse:acme:[bold]2")
+    detail = PostingDetail(job=_job(), duplicates=(copy,), canonical=copy)
+
+    render_posting(console, detail, now=NOW)
+
+    assert _rendered(console).count("greenhouse:acme:[bold]2") == 2
+
+
+def test_an_export_note_is_escaped_once() -> None:
+    from stage.cli.render.postings import render_export
+    from stage.domain import ExportFormat
+    from stage.services.export import ExportResult
+
+    console = _console()
+    result = ExportResult(Path("out.csv"), ExportFormat.CSV, 1, 1, notes=("kept [red]x[/red]",))
+
+    render_export(console, result)
+
+    assert "  kept [red]x[/red]" in _rendered(console).splitlines()
+
+
+def test_a_matched_phrase_with_brackets_shows_no_backslash() -> None:
+    console = _console()
+    entry = QuarantinedJob(
+        id="greenhouse:acme:9",
+        source="greenhouse",
+        company="Acme",
+        title_raw="Lead",
+        reason=RejectionReason.NOT_A_CS_ROLE,
+        first_seen=NOW,
+        last_seen=NOW,
+        matched_phrase="[lead]",
+    )
+
+    render_quarantine(console, [entry], total_matching=1, reason_counts={})
+
+    assert "not-a-cs-role ([lead])" in _rendered(console)
+
+
 def test_a_hostile_quarantine_row_renders_as_text() -> None:
     console = _console()
     render_quarantine(
@@ -219,7 +257,7 @@ def test_every_read_command_survives_hostile_stored_text(
 def test_a_hostile_search_query_is_echoed_literally(hostile_db: Path) -> None:
     result = CliRunner().invoke(app, ["search", "[/]", "--db", str(hostile_db)])
     assert result.exit_code == 0, result.stdout
-    assert "Nothing searchable in '[/]'" in result.stdout
+    assert 'Nothing searchable in "[/]"' in result.stdout
 
 
 def test_a_query_that_folds_to_a_word_still_searches(hostile_db: Path) -> None:
@@ -265,3 +303,36 @@ async def test_a_hostile_employer_name_survives_being_filtered_on(
         await pilot.pause()
 
         assert screen.state.values.get("company") == "[/bold]evil"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://user:pass@evil.example/login",
+        "https://token@evil.example/",
+        "http://127.0.0.1:8080/admin",
+        "http://localhost/",
+        "https://router.localhost/",
+        "http://192.168.1.1/",
+        "http://10.0.0.7/",
+        "http://[::1]/",
+        "http://2130706433/",
+    ],
+)
+def test_a_link_that_carries_credentials_or_points_inside_the_network_is_refused(
+    url: str,
+) -> None:
+    from stage.domain import web_url
+
+    assert web_url(url) is None
+
+
+def test_ordinary_employer_links_still_open() -> None:
+    from stage.domain import web_url
+
+    for url in (
+        "https://boards.greenhouse.io/acme/jobs/1",
+        "http://careers.example.com/job?id=7",
+        "https://8.8.8.8/jobs",
+    ):
+        assert web_url(url) == url

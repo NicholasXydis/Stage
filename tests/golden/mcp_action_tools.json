@@ -182,7 +182,7 @@
             }
           ],
           "default": null,
-          "description": "Only postings first seen in the last N days; 0 means any age. Without words the default is 14; with words it is any age.",
+          "description": "Only postings first seen in the last N days, where 0 means any age. Without words the default is 14, and with words it is any age.",
           "title": "Days"
         }
       },
@@ -206,7 +206,7 @@
   {
     "name": "start_sync",
     "title": "Start a sync",
-    "description": "Start collecting new postings from the job boards in the background, like stage sync in a terminal. It takes several minutes and only one runs at a time; database_status shows its progress. Use only when the user asks for a sync.",
+    "description": "Start collecting new postings from the job boards in the background, like stage sync in a terminal. It takes several minutes and only one runs at a time. database_status shows its progress. Use only when the user asks for a sync.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,

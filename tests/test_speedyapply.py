@@ -1,11 +1,11 @@
-import base64
 from datetime import datetime, timedelta
 
 import httpx
 import pytest
 import respx
 
-from stage.http import HttpClient, profile
+from stage.domain import RateState
+from stage.http import BucketBlockedError, HttpClient, profile
 from stage.sources import get_feeds
 from stage.sources.base import PayloadValidationError
 from stage.sources.speedyapply import SpeedyApplyFeed, SpeedyApplyListing
@@ -13,13 +13,6 @@ from stage.sources.speedyapply import SpeedyApplyFeed, SpeedyApplyListing
 
 def _client(feed: SpeedyApplyFeed) -> HttpClient:
     return HttpClient(allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False)
-
-
-def _payload(table: str) -> dict[str, str]:
-    return {
-        "encoding": "base64",
-        "content": base64.b64encode(table.encode("utf-8")).decode("ascii"),
-    }
 
 
 def _table(company: str, title: str, location: str, url: str, age: str = "2d") -> str:
@@ -72,7 +65,7 @@ async def test_internship_tables_map_to_jobs_and_keep_source_dates(run_time: dat
         respx.get(url).mock(
             return_value=httpx.Response(
                 200,
-                json=_payload(
+                text=(
                     _table(
                         f"Acme {index}",
                         "Software Engineer Intern",
@@ -104,7 +97,7 @@ async def test_a_missing_table_keeps_arrived_jobs_but_cannot_close_the_feed(
             respx.get(url).mock(
                 return_value=httpx.Response(
                     200,
-                    json=_payload(
+                    text=(
                         _table(
                             f"Acme {index}",
                             "Machine Learning Engineer Intern",
@@ -127,11 +120,53 @@ async def test_a_missing_table_keeps_arrived_jobs_but_cannot_close_the_feed(
 async def test_a_markup_shape_change_fails_loudly(run_time: datetime) -> None:
     feed = SpeedyApplyFeed()
     url = feed.plan(run_time)[0]
-    respx.get(url).mock(return_value=httpx.Response(200, json=_payload("not an internship table")))
+    respx.get(url).mock(return_value=httpx.Response(200, text="not an internship table"))
 
     async with _client(feed) as client:
         with pytest.raises(PayloadValidationError, match="no internship table rows"):
             await feed.fetch(client, run_time)
+
+
+def test_the_tables_come_from_raw_files_not_the_rate_limited_contents_api(
+    run_time: datetime,
+) -> None:
+    feed = SpeedyApplyFeed()
+
+    assert feed.hosts == frozenset({"raw.githubusercontent.com"})
+    assert all(
+        url.startswith("https://raw.githubusercontent.com/speedyapply/")
+        for url in feed.plan(run_time)
+    )
+
+
+@respx.mock
+async def test_files_the_client_refused_to_send_defer_the_feed_rather_than_fail_it(
+    run_time: datetime,
+) -> None:
+    feed = SpeedyApplyFeed()
+    routes = [
+        respx.get(url).mock(return_value=httpx.Response(200, text=""))
+        for url in feed.plan(run_time)
+    ]
+    blocked = {
+        "raw.githubusercontent.com": RateState(
+            bucket="raw.githubusercontent.com",
+            updated_at=run_time,
+            blocked_until=run_time + timedelta(hours=1),
+            reason="Retry-After: 3600s",
+        )
+    }
+    async with HttpClient(
+        allowed_hosts=feed.hosts,
+        posture=profile(feed.rate_profile),
+        jitter=False,
+        rate_state=blocked,
+        now=run_time,
+    ) as client:
+        with pytest.raises(BucketBlockedError):
+            await feed.fetch(client, run_time)
+
+    assert not any(route.called for route in routes)
 
 
 @pytest.mark.parametrize(

@@ -72,6 +72,8 @@ def _heavy_after(imports: str) -> str:
         [sys.executable, "-c", probe],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=True,
     )
     return result.stdout.strip()
@@ -104,7 +106,12 @@ def test_the_read_path_does_not_load_the_lexicon_or_yaml() -> None:
         "print('LOADED:' + ','.join(loaded), file=sys.stderr)\n"
     )
     result = subprocess.run(
-        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
     )
     assert result.stderr.strip().splitlines()[-1] == "LOADED:", (
         "list reads only SQLite; the lexicon pulls yaml in behind it"
@@ -124,7 +131,12 @@ def test_only_stage_mcp_loads_the_mcp_sdk() -> None:
         "print('LOADED:' + ','.join(loaded), file=sys.stderr)\n"
     )
     result = subprocess.run(
-        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
     )
     assert result.stderr.strip().splitlines()[-1] == "LOADED:"
 
@@ -288,7 +300,12 @@ def test_the_json_path_never_loads_the_renderer() -> None:
         "print('rich.console' in sys.modules)\n"
     )
     result = subprocess.run(
-        [sys.executable, "-c", probe], capture_output=True, text=True, check=True
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
     )
     assert result.stdout.strip().endswith("False"), (
         "--json is the scripting path; the renderer is pure cost there"

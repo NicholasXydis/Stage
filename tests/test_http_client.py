@@ -8,7 +8,7 @@ import pytest
 import respx
 
 from stage.http import HostBudgetExceededError, HttpClient, RatePosture
-from stage.http.client import USER_AGENT, _describe, _tls12_context
+from stage.http.client import USER_AGENT, _described, _tls12_context
 
 ENDPOINT = "https://boards-api.greenhouse.io/v1/boards/acme/jobs"
 
@@ -184,7 +184,7 @@ async def test_an_oversized_body_is_refused_before_it_is_held() -> None:
     async with HttpClient(
         allowed_hosts=frozenset({"boards-api.greenhouse.io"}), jitter=False
     ) as client:
-        with pytest.raises(ResponseTooLargeError, match="mid-transfer"):
+        with pytest.raises(ResponseTooLargeError, match="sent more than Stage's 64 MB limit"):
             await client.get_json(ENDPOINT)
 
     assert chunks_pulled <= MAX_RESPONSE_BYTES // (1024 * 1024) + 2, (
@@ -362,11 +362,117 @@ def test_an_empty_error_reports_its_underlying_cause() -> None:
         except OSError as inner:
             raise httpx.ConnectError("") from inner
     except httpx.ConnectError as exc:
-        described = _describe(exc)
-    assert described == "ConnectError: ConnectionResetError: [Errno 54] Connection reset by peer"
+        described = _described(exc)
+    assert described == [
+        "ConnectError",
+        "ConnectionResetError",
+        "[Errno 54] Connection reset by peer",
+    ]
 
 
 def test_an_error_that_speaks_for_itself_is_unchanged() -> None:
-    assert _describe(httpx.ConnectError("all attempts failed")) == (
-        "ConnectError: all attempts failed"
+    assert _described(httpx.ConnectError("all attempts failed")) == [
+        "ConnectError",
+        "all attempts failed",
+    ]
+
+
+PORTAL = "http://login.hotel.example/portal?continue=1"
+PORTAL_PAGE = "<html><title>Hotel Wi-Fi</title><body>Accept the terms to go online</body></html>"
+
+
+def _portal_client(*hosts: str) -> HttpClient:
+    return HttpClient(
+        allowed_hosts=frozenset(hosts),
+        posture=RatePosture(concurrency=1, min_interval_s=0.0),
+        jitter=False,
     )
+
+
+@respx.mock
+async def test_one_board_sent_off_the_list_is_that_boards_own_failure() -> None:
+    from stage.http import RedirectNotAllowedError, is_disconnected
+
+    respx.get(ENDPOINT).mock(return_value=httpx.Response(302, headers={"location": PORTAL}))
+
+    async with _portal_client("boards-api.greenhouse.io") as client:
+        with pytest.raises(RedirectNotAllowedError) as raised:
+            await client.get_json(ENDPOINT)
+
+    assert not is_disconnected(raised.value)
+
+
+@respx.mock
+async def test_a_second_board_sent_to_the_same_login_page_is_a_captive_portal() -> None:
+    from stage.http import CaptivePortalError, RedirectNotAllowedError, is_disconnected
+
+    respx.get(url__startswith=ENDPOINT.rsplit("/", 2)[0]).mock(
+        return_value=httpx.Response(302, headers={"location": PORTAL})
+    )
+
+    async with _portal_client("boards-api.greenhouse.io") as client:
+        with pytest.raises(RedirectNotAllowedError):
+            await client.get_json(ENDPOINT)
+        with pytest.raises(CaptivePortalError) as raised:
+            await client.get_json(ENDPOINT.replace("acme", "beta"))
+
+    assert is_disconnected(raised.value), "a login page is the network, not the board"
+
+
+@respx.mock
+async def test_the_same_page_from_two_sites_is_a_captive_portal() -> None:
+    from stage.http import CaptivePortalError, UnreadablePayloadError
+
+    respx.get("https://jobs.one.test/api").mock(return_value=httpx.Response(200, text=PORTAL_PAGE))
+    respx.get("https://careers.two.test/").mock(return_value=httpx.Response(200, text=PORTAL_PAGE))
+
+    async with _portal_client("jobs.one.test", "careers.two.test") as client:
+        with pytest.raises(UnreadablePayloadError):
+            await client.get_json("https://jobs.one.test/api")
+        with pytest.raises(CaptivePortalError):
+            await client.get_text("https://careers.two.test/")
+
+
+@respx.mock
+async def test_the_same_page_from_one_platform_stays_a_platform_failure() -> None:
+    from stage.http import UnreadablePayloadError
+
+    respx.get(url__regex=r"https://\w+\.bamboohr\.com/careers/list").mock(
+        return_value=httpx.Response(200, text=PORTAL_PAGE)
+    )
+
+    async with _portal_client("acme.bamboohr.com", "beta.bamboohr.com") as client:
+        for slug in ("acme", "beta", "acme"):
+            with pytest.raises(UnreadablePayloadError):
+                await client.get_json(f"https://{slug}.bamboohr.com/careers/list")
+
+
+@respx.mock
+async def test_a_platform_sending_every_board_to_its_own_site_is_not_a_portal() -> None:
+    from stage.http import RedirectNotAllowedError
+
+    respx.get(url__startswith=ENDPOINT.rsplit("/", 2)[0]).mock(
+        return_value=httpx.Response(302, headers={"location": "https://www.greenhouse.io/"})
+    )
+
+    async with _portal_client("boards-api.greenhouse.io") as client:
+        for slug in ("acme", "beta", "gamma"):
+            with pytest.raises(RedirectNotAllowedError):
+                await client.get_json(ENDPOINT.replace("acme", slug))
+
+
+@respx.mock
+async def test_a_page_that_asks_for_a_network_login_is_a_captive_portal() -> None:
+    from stage.http import CaptivePortalError
+
+    respx.get(ENDPOINT).mock(return_value=httpx.Response(511, text=PORTAL_PAGE))
+
+    async with _portal_client("boards-api.greenhouse.io") as client:
+        with pytest.raises(CaptivePortalError):
+            await client.get_json(ENDPOINT)
+
+
+def test_a_proxy_that_refuses_the_tunnel_is_a_lost_connection() -> None:
+    from stage.http import is_disconnected
+
+    assert is_disconnected(httpx.ProxyError("302 Found")), "a login proxy blocks every board"

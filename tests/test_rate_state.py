@@ -402,6 +402,40 @@ def test_the_clear_is_reachable_from_the_command_line(db_path: Path) -> None:
     assert state.rotation_cursor == "globex"
 
 
+def test_a_misspelt_bucket_resets_nothing_and_names_the_closest(
+    db_path: Path, empty_db: Path
+) -> None:
+    from typer.testing import CliRunner
+
+    from stage.cli.app import app
+    from stage.storage.sqlite_repo import SqliteRepository
+
+    now = datetime.now(UTC)
+    repository = SqliteRepository.connect(db_path)
+    repository.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=now,
+            rate_state=(
+                RateState(bucket="workday", updated_at=now, blocked_until=now + timedelta(days=1)),
+            ),
+        )
+    )
+    repository.close()
+
+    said = CliRunner().invoke(
+        app, ["sources", "--reset-rate-limit", "wokday", "--db", str(db_path)]
+    )
+
+    shown = " ".join(said.stdout.split())
+    nothing = CliRunner().invoke(app, ["sources", "--reset-all", "--db", str(empty_db)])
+    assert 'No stored rate state for host bucket "wokday". Did you mean "workday"?' in shown
+    assert "No host bucket had stored rate state." in " ".join(nothing.stdout.split())
+    repository = SqliteRepository.connect(db_path)
+    assert repository.load_rate_state()["workday"].blocked_until is not None
+    repository.close()
+
+
 def test_one_bucket_paces_as_well_as_counts_across_its_hosts() -> None:
     hosts = frozenset({"acme.wd1.myworkdayjobs.com", "globex.wd3.myworkdayjobs.com"})
     client = HttpClient(allowed_hosts=hosts, posture=profile("workday"), bucket_key="workday")
@@ -570,7 +604,7 @@ def test_an_expired_block_renders_distinctly_from_a_live_one(db_path: Path) -> N
 
     from rich.console import Console
 
-    from stage.cli.render import render_rate_state
+    from stage.cli.render.health import render_rate_state
 
     now = datetime.now(UTC)
     expired = RateState(

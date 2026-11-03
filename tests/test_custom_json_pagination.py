@@ -82,6 +82,62 @@ def test_the_page_cap_makes_the_result_non_authoritative() -> None:
     assert not result.authoritative, "a truncated listing must never close what it did not see"
 
 
+def test_a_second_page_repeating_the_first_means_the_server_ignores_paging() -> None:
+    company = _company(page_param="start", page_size=10)
+    client = _Client([_rows(10), _rows(10)])
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert len(result.jobs) == 10
+    assert not result.authoritative
+    assert 'ignores the "start" page setting' in result.degraded
+
+
+def test_a_later_page_repeating_the_last_one_is_the_end_of_the_list() -> None:
+    company = _company(page_param="start", page_size=10)
+    client = _Client([_rows(10), _rows(10, 10), _rows(10, 10)])
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert len(client.urls) == 3, "the repeat ends the walk"
+    assert len(result.jobs) == 20
+    assert not result.authoritative, "with no stated total the repeat proves nothing"
+    assert "states no total" in result.degraded
+
+
+def _cofomo_page(count: int, offset: int, total: int) -> dict[str, Any]:
+    return {"positions": _rows(count, offset), "meta": {"pagination": {"total": total}}}
+
+
+def test_a_clamped_end_that_reached_the_stated_total_may_close() -> None:
+    company = _company(page_param="page", page_size=10, page_start=1, page_step=1)
+    pages = [_cofomo_page(10, offset, 30) for offset in (0, 10, 20, 20)]
+    client = _Client(pages)
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert len(client.urls) == 4, "a clamped page number answers the last page again"
+    assert len(result.jobs) == 30
+    assert result.authoritative, "every posting the board counts was read"
+    assert not result.degraded
+
+
+def test_a_clamped_end_short_of_the_stated_total_closes_nothing() -> None:
+    company = _company(page_param="page", page_size=10, page_start=1, page_step=1)
+    pages = [_cofomo_page(10, offset, 45) for offset in (0, 10, 20, 20)]
+    client = _Client(pages)
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert len(result.jobs) == 30
+    assert not result.authoritative, "15 postings the board counts were never seen"
+    assert "30 of the 45" in result.degraded
+
+
 def test_a_304_on_a_later_page_does_not_end_the_list_authoritatively() -> None:
     company = _company(page_param="start", page_size=10)
     client = _Client([_rows(10), None])

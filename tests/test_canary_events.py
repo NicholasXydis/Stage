@@ -88,3 +88,17 @@ async def test_a_declared_empty_feed_and_a_refused_board_pass_the_canary(
     assert not keyed["Acme"].is_empty
     assert keyed["Beta"].is_unreachable
     assert report.passed
+
+
+async def test_a_canary_reads_boards_a_sync_just_refreshed(monkeypatch: pytest.MonkeyPatch) -> None:
+    asked: list[dict[str, Any]] = []
+    fake = _fake_sync(EVENTS)
+
+    def recording(repository: Any, companies: Sequence[Company], **kwargs: Any) -> Any:
+        asked.append(kwargs)
+        return fake(repository, companies, **kwargs)
+
+    monkeypatch.setattr("stage.services.sync.sync", recording)
+    await canary_module.canary(None, _companies())  # type: ignore[arg-type]
+
+    assert asked and asked[0]["force_refresh"] is True

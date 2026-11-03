@@ -89,3 +89,20 @@ def test_a_change_to_one_row_leaves_every_other_shard_untouched(tmp_path: Path) 
 
     assert other.read_bytes() == before
     assert "enabled: false" in (tmp_path / "a.yaml").read_text(encoding="utf-8")
+
+
+def test_hidden_files_beside_the_shards_are_ignored(tmp_path: Path) -> None:
+    folder = tmp_path / "registry"
+    folder.mkdir()
+    (folder / "a.yaml").write_text("- name: Acme\n  platform: greenhouse\n  slug: acme\n", "utf-8")
+    (folder / "._a.yaml").write_bytes(b"\x00\x05\x16\x07\x00\x02\x00\x00Mac OS X        ")
+
+    assert [company.name for company in load_companies(folder)] == ["Acme"]
+
+
+def test_every_shard_keeps_its_rows_in_name_order() -> None:
+    for shard in sorted(registry_path().glob("*.yaml")):
+        names = [row["name"] for row in yaml.safe_load(shard.read_text(encoding="utf-8")) or []]
+        pairs = zip(names, names[1:], strict=False)
+        unordered = [(a, b) for a, b in pairs if a.lower() > b.lower()]
+        assert unordered == [], f"{shard.name}: {unordered[:3]}"

@@ -95,6 +95,8 @@ def test_only_search_pays_the_lexicon_so_its_wider_budget_is_earned(
         [sys.executable, "-c", LEXICON_PROBE],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         env=budget_env,
         check=False,
     )

@@ -1,8 +1,10 @@
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -40,7 +42,7 @@ def test_the_token_never_appears_in_full() -> None:
     redacted = notify.redact("https://discord.com/api/webhooks/123/SUPERSECRETTOKEN")
 
     assert "SUPERSECRETTOKEN" not in redacted
-    assert "discord.com" in redacted
+    assert urlsplit(redacted).hostname == "discord.com"
 
 
 def test_a_redacted_url_never_shows_a_name_or_password() -> None:
@@ -60,6 +62,7 @@ def test_a_stored_webhook_round_trips(tmp_path: Path) -> None:
     assert notify.read(target) == ""
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits")
 def test_a_stored_webhook_is_not_world_readable(tmp_path: Path) -> None:
     target = tmp_path / "notify.json"
     notify.remember("https://discord.com/api/webhooks/1/tok", target)
@@ -128,8 +131,8 @@ def test_a_long_run_lists_what_fits_and_counts_the_rest() -> None:
 
     assert 8 < len(links) <= notify.MAX_LISTED
     assert description.count("[") == description.count("]")
-    assert description.splitlines()[-1].startswith("…and")
-    assert "stage list --new" in description
+    assert description.splitlines()[-1].startswith("...and")
+    assert "Run `stage list` to see them all." in description
 
 
 def test_nothing_is_cut_in_the_middle_of_a_link() -> None:
@@ -193,8 +196,25 @@ def test_discord_errors_are_reported_without_a_traceback(monkeypatch: pytest.Mon
 
     monkeypatch.setattr(notify, "urlopen", explode)
 
-    with pytest.raises(notify.NotifyError, match="Could not reach Discord"):
+    with pytest.raises(notify.NotifyError, match="could not reach Discord") as caught:
         notify.post("https://discord.com/api/webhooks/1/tok", {"content": "hi"})
+
+    assert str(caught.value) == "Stage could not reach Discord (no route to host)."
+
+
+def test_an_offline_machine_hears_the_same_words_as_sync(monkeypatch: pytest.MonkeyPatch) -> None:
+    import socket
+    from urllib.error import URLError
+
+    def offline(request: object, timeout: object = None) -> None:
+        raise URLError(socket.gaierror(8, "nodename nor servname provided, or not known"))
+
+    monkeypatch.setattr(notify, "urlopen", offline)
+
+    with pytest.raises(notify.NotifyError) as caught:
+        notify.post("https://discord.com/api/webhooks/1/tok", {"content": "hi"})
+
+    assert str(caught.value) == "No internet connection, so Stage could not reach Discord."
 
 
 def test_a_deleted_webhook_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -328,6 +348,112 @@ async def test_a_new_posting_reaches_discord(
     assert "https://example.com/1" in sent[0]["embeds"][0]["description"]
 
 
+async def _seed_one_new_posting(db: Path) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from stage.domain import Job, JobStatus, SyncOutcome, SyncRun
+    from stage.storage import open_repository
+    from stage.storage.repository import SourceBatch
+
+    now = datetime.now(UTC)
+    async with open_repository(db) as repository:
+        for minutes in (90, 30):
+            await repository.record_sync_run(
+                SyncRun(
+                    started_at=now - timedelta(minutes=minutes + 5),
+                    finished_at=now - timedelta(minutes=minutes),
+                    outcome=SyncOutcome.SUCCESS,
+                )
+            )
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=now,
+                jobs=(
+                    Job(
+                        id="greenhouse:acme:7",
+                        source="greenhouse",
+                        company="Acme",
+                        title_raw="Software Engineering Intern",
+                        title_normalized="software engineering intern",
+                        apply_url_raw="https://example.com/7",
+                        description="",
+                        first_seen=now,
+                        last_seen=now,
+                        location_raw="Montreal, QC",
+                        status=JobStatus.OPEN,
+                    ),
+                ),
+                closable_boards=("greenhouse:acme",),
+            )
+        )
+
+
+async def test_a_failed_post_is_sent_again_and_a_sent_one_never_twice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from urllib.error import URLError
+
+    db = tmp_path / "retry.db"
+    webhook = "https://discord.com/api/webhooks/1/tok"
+    await _seed_one_new_posting(db)
+
+    def down(*_: object, **__: object) -> object:
+        raise URLError("offline")
+
+    with monkeypatch.context() as offline:
+        offline.setattr(notify, "urlopen", down)
+        offline.setattr(notify, "read", lambda *_, **__: webhook)
+        from stage.cli.commands.pipeline import _announce_new_postings
+        from stage.storage import open_repository
+
+        class _Console:
+            def print(self, *_: object, **__: object) -> None:
+                return None
+
+        async with open_repository(db) as repository:
+            await _announce_new_postings(repository, _Console())
+    assert notify.announced_until() is None
+
+    first = await _announce(db, webhook, monkeypatch)
+    again = await _announce(db, webhook, monkeypatch)
+
+    assert len(first) == 1 and "https://example.com/7" in first[0]["embeds"][0]["description"]
+    assert again == []
+    assert notify.announced_until() is not None
+
+
+def test_links_and_text_cannot_break_the_message_or_ping_anyone() -> None:
+    posting = notify.Posting(
+        company="Acme *Inc*",
+        title="SWE [Remote] Intern_2027 @everyone",
+        location="Montreal, QC",
+        url="https://example.com/job/(123)",
+    )
+    payload = notify.compose([posting], 1)
+    description = payload["embeds"][0]["description"]  # type: ignore[index]
+
+    assert payload["allowed_mentions"] == {"parse": []}
+    assert "(https://example.com/job/%28123%29)" in description
+    assert "Acme \\*Inc\\*" in description
+    assert "Intern\\_2027" in description
+
+
+def test_setting_a_webhook_starts_from_now_instead_of_a_backlog(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import UTC, datetime
+
+    before = datetime.now(UTC)
+    result = _invoke(
+        ["schedule", "notify", "https://discord.com/api/webhooks/123/TOKEN"], tmp_path, monkeypatch
+    )
+
+    marker = notify.announced_until()
+    assert result.exit_code == 0  # type: ignore[attr-defined]
+    assert marker is not None and marker >= before
+
+
 def _invoke(args: list[str], home: Path, monkeypatch: pytest.MonkeyPatch) -> object:
     from typer.testing import CliRunner
 
@@ -440,7 +566,7 @@ def test_a_discord_outage_is_reported_not_raised(
     result = _invoke(["schedule", "test-notify"], tmp_path, monkeypatch)
 
     assert result.exit_code == 1  # type: ignore[attr-defined]
-    assert "Could not reach Discord" in result.output  # type: ignore[attr-defined]
+    assert "could not reach Discord" in result.output  # type: ignore[attr-defined]
 
 
 @pytest.mark.parametrize("code", [400, 401, 403, 404, 429, 500, 503])
@@ -497,6 +623,7 @@ def test_a_lookalike_host_is_refused() -> None:
         notify.validate("https://discord.com.evil.example/api/webhooks/1/tok")
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits")
 def test_a_webhook_is_never_world_readable_even_briefly(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -607,3 +734,36 @@ def test_the_search_debounce_stays_under_a_quarter_second() -> None:
     from stage.tui.state import DEBOUNCE_SECONDS
 
     assert 0.1 <= DEBOUNCE_SECONDS <= 0.25
+
+
+def test_roles_sort_software_quant_ml_general_data_security_infra_then_embedded() -> None:
+    roles = ["embedded", "infra", "security", "data", "general-cs", "ml-ai", "quant", "swe"]
+    rows = [_ranked("montreal", role) for role in roles]
+
+    order = [row.role.value for row in sorted(rows, key=notify.rank)]
+
+    assert order == list(reversed(roles))
+
+
+def test_follow_up_messages_name_every_posting_up_to_four_messages() -> None:
+    sixty = notify.messages(_many(60), total=60)
+    named = [line for page in sixty for line in page["embeds"][0]["description"].split("\n\n")]  # type: ignore[index]
+
+    assert 1 < len(sixty) <= notify.MAX_MESSAGES
+    assert len(named) == 60 and "more" not in named[-1]
+    assert sixty[0]["embeds"][0]["title"] == f"60 new postings (1 of {len(sixty)})"  # type: ignore[index]
+
+
+def test_postings_past_four_messages_are_counted_on_the_last_one() -> None:
+    pages = notify.messages(_many(500), total=500)
+    last = pages[-1]["embeds"][0]["description"]  # type: ignore[index]
+
+    assert len(pages) == notify.MAX_MESSAGES
+    assert last.endswith("Run `stage list` to see them all.")
+    assert all(len(page["embeds"][0]["description"]) <= notify.DESCRIPTION_LIMIT for page in pages)  # type: ignore[index]
+
+
+def test_a_batch_that_fits_one_message_has_a_plain_title() -> None:
+    pages = notify.messages(_many(3), total=3)
+
+    assert len(pages) == 1 and pages[0]["embeds"][0]["title"] == "3 new postings"  # type: ignore[index]

@@ -523,3 +523,54 @@ def test_purge_leaves_a_correctly_ordered_link_alone(db_path: Path) -> None:
     ).fetchone()
     assert row["duplicate_of"] == "greenhouse:acme:1", "a correct link must not be flipped"
     repository.close()
+
+
+async def test_a_list_dropping_its_main_copy_leaves_the_other_list_copy_showing(
+    db_path: Path,
+) -> None:
+    later = NOW + timedelta(hours=1)
+    main = job("simplify:acme:1", source="simplify")
+    copy = job("vanshb03:acme:2", source="vanshb03")
+    async with open_repository(db_path) as repository:
+        for posting in (main, copy):
+            await repository.apply_source_batch(
+                SourceBatch(
+                    source=posting.source,
+                    run_started_at=NOW,
+                    jobs=(posting,),
+                    resolve_duplicates=resolve_duplicates,
+                )
+            )
+        assert await repository.count_duplicates() == 1
+
+        dropped = await repository.apply_source_batch(
+            SourceBatch(source="simplify", run_started_at=later, closes_whole_source=True)
+        )
+        shown = await repository.get_job(copy.id)
+
+    assert dropped.closed == 1 and dropped.successors == ((main.id, copy.id),)
+    assert shown is not None and shown.duplicate_of is None
+
+
+async def test_a_new_copy_never_hides_behind_a_closed_main(db_path: Path) -> None:
+    later = NOW + timedelta(hours=1)
+    main = job("simplify:acme:1", source="simplify")
+    copy = job("vanshb03:acme:2", source="vanshb03", seen=later)
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="simplify", run_started_at=NOW, jobs=(main,))
+        )
+        await repository.apply_source_batch(
+            SourceBatch(source="simplify", run_started_at=later, closes_whole_source=True)
+        )
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="vanshb03",
+                run_started_at=later,
+                jobs=(copy,),
+                resolve_duplicates=resolve_duplicates,
+            )
+        )
+        shown = await repository.get_job(copy.id)
+
+    assert shown is not None and shown.duplicate_of is None

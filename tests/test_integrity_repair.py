@@ -94,6 +94,18 @@ async def test_a_same_board_merge_is_undone(db_path: Path) -> None:
         )
 
 
+async def test_one_workday_opening_named_twice_on_a_board_is_not_a_finding(db_path: Path) -> None:
+    opening = "https://acme.wd3.myworkdayjobs.com/job/toronto-on/2642721"
+    async with open_repository(db_path) as repository:
+        first = _job("a", apply_url_canonical=opening)
+        await _store(repository, [first, _job("b", apply_url_canonical=opening, duplicate_of="a")])
+        assert (await _counts(repository))["same-board merges"] == 0
+
+        await repair_integrity(repository)
+        kept = await repository.get_job("b")
+        assert kept is not None and kept.duplicate_of == "a", "one opening is one posting"
+
+
 async def test_repair_reports_nothing_when_there_is_nothing_to_repair(db_path: Path) -> None:
     async with open_repository(db_path) as repository:
         await _store(repository, [_job("a"), _job("b", source="lever", duplicate_of="a")])
@@ -154,3 +166,30 @@ async def test_no_known_boards_closes_nothing(db_path: Path) -> None:
         assert await repository.close_orphan_boards(["greenhouse"], []) == 0, (
             "an empty registry is a loading failure, not proof every board is gone"
         )
+
+
+def test_doctor_reads_the_whole_file_unless_the_schedule_asks_it_not_to(db_path: Path) -> None:
+    import json
+    import struct
+
+    from typer.testing import CliRunner
+
+    from stage.cli.app import app
+    from stage.storage.sqlite_repo import SqliteRepository
+
+    SqliteRepository.connect(db_path).close()
+    with db_path.open("r+b") as handle:
+        handle.seek(36)
+        handle.write(struct.pack(">I", 7))
+
+    shown = CliRunner().invoke(app, ["doctor", "--db", str(db_path)])
+    payload = json.loads(CliRunner().invoke(app, ["doctor", "--json", "--db", str(db_path)]).stdout)
+    quick = CliRunner().invoke(app, ["doctor", "--skip-file-check", "--db", str(db_path)])
+
+    said = " ".join(shown.output.split()).lower()
+    assert shown.exit_code == 1, shown.output
+    assert "damaged database pages: 1. sqlite's quick_check says" in said
+    assert "freelist: size is 0 but should be 7" in said
+    assert payload["integrity"][0]["check"] == "damaged database pages"
+    assert payload["healthy"] is False
+    assert "all 6 checks clean" in quick.output and "not read for damage" in quick.output

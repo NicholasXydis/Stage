@@ -91,9 +91,9 @@ async def test_a_missing_jobs_key_is_a_shape_change_and_fails_loudly(
         with pytest.raises(PayloadValidationError) as caught:
             await get_adapter("greenhouse").fetch(acme, client, run_time)
 
-    message = str(caught.value)
-    assert "jobs" in message
-    captured = Path(message.split("captured at ")[1])
+    assert '"jobs"' in str(caught.value)
+    captured = Path(caught.value.captured)
+    assert str(captured) in str(caught.value)
     assert captured.exists()
     captured.unlink()
 
@@ -142,3 +142,40 @@ async def test_a_non_json_body_stays_loud_on_the_adapter_path(
     async with _client() as client:
         with pytest.raises(ValueError):
             await adapter.fetch(acme, client, run_time)
+
+
+@pytest.mark.parametrize(("descriptions", "on_loop"), [(1, True), (400, False)])
+@respx.mock
+async def test_a_huge_board_is_built_off_the_event_loop(
+    acme: Company,
+    run_time: datetime,
+    monkeypatch: pytest.MonkeyPatch,
+    descriptions: int,
+    on_loop: bool,
+) -> None:
+    import threading
+
+    from stage.sources.greenhouse import GreenhouseAdapter
+
+    payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    template = payload["jobs"][0]
+    payload["jobs"] = [
+        {**template, "id": index, "content": "&lt;p&gt;" + "x" * 4000 + "&lt;/p&gt;"}
+        for index in range(descriptions)
+    ]
+    respx.get(ENDPOINT).mock(return_value=httpx.Response(200, json=payload))
+    threads: set[int] = set()
+    build = GreenhouseAdapter.to_job
+
+    def spy(self: GreenhouseAdapter, company: Company, row: object, now: datetime) -> object:
+        threads.add(threading.get_ident())
+        return build(self, company, row, now)
+
+    monkeypatch.setattr(GreenhouseAdapter, "to_job", spy)
+    async with _client() as client:
+        result = await get_adapter("greenhouse").fetch(acme, client, run_time)
+
+    assert len(result.jobs) == descriptions
+    assert (threads == {threading.get_ident()}) is on_loop, (
+        "Anduril's 13.6 MB held the loop for 180 ms"
+    )

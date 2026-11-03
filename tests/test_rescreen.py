@@ -214,11 +214,11 @@ def test_rescreen_is_reachable_from_the_command_line(seeded: Path) -> None:
 
     result = CliRunner().invoke(app, ["rescreen", "--db", str(seeded)])
     assert result.exit_code == 0, result.stdout
-    assert "moved to quarantine" in result.stdout
+    assert "1 newly rejected" in result.stdout
 
     again = CliRunner().invoke(app, ["rescreen", "--db", str(seeded)])
     assert again.exit_code == 0, again.stdout
-    assert "agrees with every one" in again.stdout
+    assert "None changed." in again.stdout
 
 
 @pytest.mark.asyncio
@@ -315,7 +315,7 @@ async def test_rescreen_converges_when_quarantining_a_canonical_promotes_a_follo
         findings = await target.integrity_findings()
 
     assert result.quarantined == 2, (
-        "quarantining a canonical promotes its follower, so one pass cannot converge"
+        "a canonical rejected on its degree takes its description-less follower with it"
     )
     assert not remaining, "no PhD-restricted posting may survive as a promoted canonical"
     assert {entry.id for entry in held} == {canonical.id, follower.id}
@@ -442,3 +442,196 @@ async def test_a_correct_quarantine_location_is_left_alone(db_path: Path) -> Non
         result = await rescreen(repository, now=NOW)
 
     assert result.relocated == 0, "a bucket that already agrees must not be rewritten"
+
+
+@pytest.mark.parametrize("command", [["rescreen"], ["purge"]])
+def test_maintenance_waits_for_a_running_sync_and_then_gives_up_plainly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: list[str]
+) -> None:
+    from typer.testing import CliRunner
+
+    from stage.cli import app as cli_app
+    from stage.cli.commands import pipeline
+    from stage.runlock import run_lock_path, single_run
+
+    database = tmp_path / "stage.db"
+    monkeypatch.setattr(pipeline, "MAINTENANCE_WAIT_SECONDS", 0.0)
+
+    with single_run("sync", run_lock_path(database)):
+        result = CliRunner().invoke(cli_app.app, [*command, "--db", str(database)])
+
+    said = " ".join(result.stderr.split())
+    assert result.exit_code == 2
+    assert f"run stage {command[0]} again when it finishes" in said.lower()
+    assert not database.exists()
+
+
+@pytest.mark.asyncio
+async def test_a_quarantined_place_is_read_from_its_link_and_title_when_the_text_says_nothing(
+    db_path: Path,
+) -> None:
+    from stage.classify.scope import Rejection, to_quarantined
+
+    linked = replace(
+        _job("workday:truist:1", "Teller"),
+        location_raw="2 Locations",
+        apply_url_raw="https://truist.wd1.myworkdayjobs.com/en-US/Careers/job/Charlotte-NC/Teller_R1",
+        location=LocationBucket.UNKNOWN,
+    )
+    titled = replace(
+        _job("workday:thales:2", "STAGE - Ingenieur logiciel F/H"),
+        location_raw="Saint-Heand",
+        location=LocationBucket.UNKNOWN,
+    )
+    rejection = Rejection(reason=RejectionReason.NOT_AN_INTERNSHIP, matched_phrase="x")
+    store = SqliteRepository.connect(db_path)
+    store.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=NOW,
+            quarantined=tuple(to_quarantined(job, rejection) for job in (linked, titled)),
+        )
+    )
+    store.close()
+
+    async with open_repository(db_path) as repository:
+        await rescreen(repository, now=NOW)
+        entries = {
+            entry.id: entry.location
+            for entry in await repository.list_quarantined(QuarantineFilters(limit=10))
+        }
+
+    assert entries["workday:truist:1"] is LocationBucket.USA
+    assert entries["workday:thales:2"] is LocationBucket.INTERNATIONAL
+
+
+@pytest.mark.asyncio
+async def test_rescreen_links_copies_an_older_stage_left_apart(db_path: Path) -> None:
+    from stage.normalize import canonical_apply_url
+
+    site = "https://kla.wd1.myworkdayjobs.com"
+    board = replace(
+        _job("workday:kla-ur:1", "Software Engineer Intern"),
+        company="KLA",
+        apply_url_raw=f"{site}/UR/job/Milpitas-CA/Software-Engineer-Intern_2642721",
+    )
+    listed = replace(
+        board,
+        id="simplify:kla:2",
+        source="simplify",
+        company="KLA Corporation",
+        apply_url_raw=f"{site}/search/job/Milpitas-CA/Software-Engineer-Intern_2642721-1",
+    )
+    store = SqliteRepository.connect(db_path)
+    for job in (board, listed):
+        stored = replace(job, apply_url_canonical=job.apply_url_raw)
+        store.apply_source_batch(SourceBatch(source=job.source, run_started_at=NOW, jobs=(stored,)))
+    assert store.count_duplicates() == 0
+    store.close()
+
+    async with open_repository(db_path) as repository:
+        result = await rescreen(repository, now=NOW)
+        assert await repository.count_duplicates() == 1
+        again = await rescreen(repository, now=NOW)
+
+    assert canonical_apply_url(board.apply_url_raw) == canonical_apply_url(listed.apply_url_raw)
+    assert result.relinked == 1 and again.relinked == 0
+
+
+async def test_rescreen_re_reads_a_copy_that_is_already_linked(db_path: Path) -> None:
+    board = replace(
+        _job("greenhouse:bss:1", "Software Engineering Intern"),
+        source="greenhouse",
+        company="Benchmark Space Systems",
+        location_raw="Burlington, VT",
+        location=LocationBucket.USA,
+    )
+    copy = replace(
+        board,
+        id="speedyapply:bss:2",
+        source="speedyapply",
+        location=LocationBucket.CANADA,
+        duplicate_of=board.id,
+    )
+    store = SqliteRepository.connect(db_path)
+    for job in (board, copy):
+        store.apply_source_batch(SourceBatch(source=job.source, run_started_at=NOW, jobs=(job,)))
+    store.close()
+
+    async with open_repository(db_path) as repository:
+        await rescreen(repository, now=NOW)
+        kept = await repository.get_job(copy.id)
+
+    assert kept is not None and kept.location is LocationBucket.USA
+
+
+async def test_rescreen_undoes_a_link_between_two_cities_an_older_stage_made(
+    db_path: Path,
+) -> None:
+    first = replace(
+        _job("greenhouse:ice:1", "Software Engineering Intern"),
+        source="greenhouse",
+        company="ICE",
+        location_raw="Atlanta, GA",
+        location=LocationBucket.USA,
+    )
+    second = replace(
+        first,
+        id="simplify:ice:2",
+        source="simplify",
+        location_raw="New York, NY",
+        apply_url_raw="https://boards.example.test/ice-ny",
+        duplicate_of=first.id,
+    )
+    store = SqliteRepository.connect(db_path)
+    for job in (first, second):
+        store.apply_source_batch(SourceBatch(source=job.source, run_started_at=NOW, jobs=(job,)))
+    assert store.count_duplicates() == 1
+    store.close()
+
+    async with open_repository(db_path) as repository:
+        await rescreen(repository, now=NOW)
+        assert await repository.count_duplicates() == 0
+
+
+async def test_a_database_from_an_older_stage_is_checked_once_on_its_first_sync(
+    seeded: Path,
+) -> None:
+    from stage.services.maintenance import rescreen_after_upgrade
+
+    store = SqliteRepository.connect(seeded)
+    store.mark_screened(0)
+    store.close()
+
+    async with open_repository(seeded) as repository:
+        first = await rescreen_after_upgrade(repository, now=NOW)
+        second = await rescreen_after_upgrade(repository, now=NOW)
+
+    assert first is not None and first.quarantined == 1 and second is None
+
+
+def test_a_new_database_starts_out_screened_by_this_version(db_path: Path) -> None:
+    from stage.paths import rules_stamp
+
+    store = SqliteRepository.connect(db_path)
+    try:
+        assert store.screened_with() == rules_stamp()
+    finally:
+        store.close()
+
+
+def test_a_changed_word_list_asks_for_a_new_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    from stage.paths import lexicon_dir, rules_stamp
+
+    before = rules_stamp()
+    copy = tmp_path / "lexicon"
+    shutil.copytree(lexicon_dir(), copy)
+    roles = copy / "roles.yaml"
+    roles.write_text(roles.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    monkeypatch.setenv("STAGE_LEXICON", str(copy))
+
+    assert rules_stamp() != before

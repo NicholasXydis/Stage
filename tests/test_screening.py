@@ -1,7 +1,9 @@
 import asyncio
 import multiprocessing
+import os
 import pickle
 import random
+import signal
 import socket
 import subprocess
 import sys
@@ -9,6 +11,7 @@ import time
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from concurrent.futures.process import BrokenProcessPool
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +19,7 @@ import httpx
 import pytest
 import respx
 
-from stage.domain import Company, Job, SourceFinished
+from stage.domain import Company, CustomBoard, Job, Platform, SourceFinished
 from stage.http import RatePosture
 from stage.services import screening
 from stage.services import sync as sync_module
@@ -26,6 +29,7 @@ from stage.storage import open_repository
 
 NOW = datetime(2026, 7, 31, 12, 0, tzinfo=UTC)
 ENDPOINT = "https://boards-api.greenhouse.io/v1/boards/acme/jobs"
+PAGE = "https://jobs.example.test/careers"
 TITLES = (
     "Software Engineering Intern",
     "Senior Staff Engineer",
@@ -97,6 +101,9 @@ class _Refusing:
     def map(self, *_: object) -> list[object]:
         type(self).calls += 1
         raise type(self).error
+
+    def submit(self, *_: object) -> object:
+        return self.map()
 
     def shutdown(self, **_: object) -> None:
         pass
@@ -181,6 +188,59 @@ async def test_a_pool_that_fails_falls_back_to_a_thread_for_good(
     assert refusing.calls == 1
 
 
+async def test_a_page_parses_in_a_worker_process() -> None:
+    screener = Screener()
+    try:
+        assert await screener.parse(os.getpid) != os.getpid()
+    finally:
+        screener.close()
+    assert not screener.broken
+    assert await _settled()
+
+
+async def test_a_parse_error_reaches_the_caller_and_keeps_the_workers() -> None:
+    screener = Screener()
+    try:
+        with pytest.raises(ValueError, match="invalid literal"):
+            await screener.parse(partial(int, "page"))
+        assert not screener.broken
+        assert await screener.parse(partial(int, "7")) == 7
+    finally:
+        screener.close()
+    assert await _settled()
+
+
+async def test_a_parse_falls_back_to_a_thread_when_the_pool_fails(
+    refusing: type[_Refusing],
+) -> None:
+    screener = Screener()
+
+    assert await screener.parse(partial(str.upper, "page")) == "PAGE"
+    assert screener.broken
+    assert await screener.parse(partial(str.upper, "next")) == "NEXT"
+    assert refusing.calls == 1
+
+
+async def test_only_a_large_page_goes_to_the_page_parser() -> None:
+    from stage.sources.base import PROCESS_PARSE_CHARS, parse_page, parse_pages_with
+
+    sent: list[Callable[[], object]] = []
+
+    async def parser(call: Callable[[], object]) -> object:
+        sent.append(call)
+        return call()
+
+    parse_pages_with(parser)
+    try:
+        assert await parse_page(len, "x" * PROCESS_PARSE_CHARS) == PROCESS_PARSE_CHARS
+        assert await parse_page(len, "small") == 5
+    finally:
+        parse_pages_with(None)
+    assert len(sent) == 1
+    assert await parse_page(len, "x" * PROCESS_PARSE_CHARS) == PROCESS_PARSE_CHARS
+    assert len(sent) == 1
+
+
 class _InProcess:
     def __init__(self, **_: object) -> None:
         pass
@@ -237,7 +297,13 @@ async def main():
 asyncio.run(main())
 """
     run = subprocess.run(
-        [sys.executable, "-c", script], capture_output=True, text=True, timeout=120, check=False
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=120,
+        check=False,
     )
     assert run.stdout.split() == ["False", "True"], run.stderr[-400:]
 
@@ -275,6 +341,58 @@ async def test_a_sync_screens_a_large_board_in_workers_and_closes_them(
     assert finished[0].fetched == 600
     assert finished[0].added > 0
     assert len(closings) == 1
+    assert await _settled()
+
+
+def _page(count: int) -> str:
+    rows = "".join(
+        f'<li class="job"><a href="{PAGE}/{n}">{TITLES[n % len(TITLES)]}</a>'
+        f'<span class="place">{PLACES[n % len(PLACES)] or "Remote"}</span><p>{BODY}</p></li>'
+        for n in range(count)
+    )
+    return f"<html><body><ul>{rows}</ul></body></html>"
+
+
+@respx.mock
+@pytest.mark.usefixtures("unpaced")
+async def test_a_sync_parses_a_large_page_in_its_workers(
+    db_path: Path, closings: list[Screener], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    board = CustomBoard(
+        url=PAGE,
+        fmt="html",
+        row_selector="li.job",
+        fields={"title": "a", "url": "a::attr(href)", "location": "span.place"},
+    )
+    company = Company(name="Acme", platform=Platform.CUSTOM_JSON, slug="acme", custom=board)
+    respx.get(PAGE).mock(
+        return_value=httpx.Response(200, text=_page(400), headers={"Content-Type": "text/html"})
+    )
+    started: list[Screener] = []
+    original = Screener._started
+
+    def recording(self: Screener) -> object:
+        started.append(self)
+        return original(self)
+
+    monkeypatch.setattr(Screener, "_started", recording)
+    async with open_repository(db_path) as repository:
+        events = [
+            event
+            async for event in sync(
+                repository,
+                [company],
+                sources=["custom_json"],
+                now_fn=lambda: NOW,
+                rng=random.Random(1),
+            )
+        ]
+    (finished,) = [event for event in events if isinstance(event, SourceFinished)]
+    assert finished.fetched == 400
+    assert finished.added > 0
+    assert len(started) == 1
+    assert len(closings) == 1
+    assert not closings[0].broken
     assert await _settled()
 
 
@@ -396,3 +514,16 @@ async def test_connections_keep_flowing_while_a_large_batch_screens() -> None:
     finally:
         screener.close()
     assert in_workers > in_thread * 10
+
+
+if sys.platform != "win32":
+
+    def test_workers_start_with_ctrl_c_held_so_a_starting_worker_never_dies_loudly() -> None:
+        from stage.services.screening import _interrupts_held
+
+        with _interrupts_held():
+            held = signal.pthread_sigmask(signal.SIG_BLOCK, [])
+        after = signal.pthread_sigmask(signal.SIG_BLOCK, [])
+
+        assert signal.SIGINT in held
+        assert signal.SIGINT not in after

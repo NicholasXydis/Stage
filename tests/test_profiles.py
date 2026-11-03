@@ -13,7 +13,9 @@ def test_the_documented_tiers_exist() -> None:
         "conservative",
         "workday",
         "feeds",
+        "searches",
         "jobbank",
+        "patient",
         "discovery",
     }
 
@@ -55,9 +57,15 @@ def test_workday_pacing_is_the_control_that_must_not_drift() -> None:
 
 
 def test_the_workday_ceiling_can_cover_a_whole_rotation_slice() -> None:
+    from stage.services.sync import _reserve_for
     from stage.sources.workday import WorkdayAdapter
 
-    ceiling = profile("workday").max_requests_per_run
+    slice_size = WorkdayAdapter.rotation_slice
+    ceiling = (
+        profile("workday")
+        .sized_for(slice_size, _reserve_for(WorkdayAdapter()))
+        .max_requests_per_run
+    )
     needed = WorkdayAdapter.rotation_slice + WorkdayAdapter.retry_reserve
     assert ceiling >= needed, (
         f"ceiling {ceiling} starves a slice of {WorkdayAdapter.rotation_slice}: its tail is skipped"
@@ -76,7 +84,7 @@ def test_an_override_can_only_tighten_never_loosen() -> None:
     loosened = resolve("conservative", ["standard"])
     assert loosened.concurrency == 1
     assert loosened.min_interval_s == 1.0
-    assert loosened.max_requests_per_run == 80
+    assert loosened.max_requests_per_run == profile("conservative").max_requests_per_run
 
 
 def test_the_strictest_field_wins_across_several_overrides() -> None:
@@ -145,3 +153,24 @@ def test_the_job_bank_tier_honours_the_crawl_delay_its_robots_file_asks_for() ->
         "jobbank.gc.ca publishes Crawl-delay: 5, and that interval is why we may crawl it"
     )
     assert posture.concurrency == 1, "a crawl delay means one request at a time, not two in flight"
+
+
+def test_every_jibe_job_hub_honours_its_five_second_crawl_delay() -> None:
+    from stage.companies import load_companies
+
+    hubs = [
+        company
+        for company in load_companies()
+        if company.custom is not None
+        and (
+            "jibeapply.com" in company.custom.url
+            or "Jibe" in (company.notes or "")
+            or "/api/jobs?limit=100" in company.custom.url
+        )
+        and company.enabled
+    ]
+    assert len(hubs) >= 20
+    slow = [company.name for company in hubs if company.rate_profile != "patient"]
+    assert slow == [] or set(slow) <= {"Snap", "Aurora"}, slow
+    assert profile("patient").min_interval_s >= 5.0
+    assert profile("patient").concurrency == 1

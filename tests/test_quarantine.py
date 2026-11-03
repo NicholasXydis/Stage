@@ -325,7 +325,33 @@ async def test_a_first_seen_from_a_clock_that_ran_ahead_is_pulled_back(
             )
         stored = await repository.get_job("keep")
 
-    assert stored is not None and stored.first_seen == run_time
+    assert stored is not None
+    assert stored.first_seen == run_time - timedelta(microseconds=1), "just before, not at, the run"
+
+
+@pytest.mark.parametrize("whole_source", [False, True])
+async def test_a_posting_last_seen_by_a_clock_that_ran_ahead_still_closes(
+    db_path: Path, run_time: datetime, whole_source: bool
+) -> None:
+    from stage.domain import JobStatus
+
+    ahead = run_time + timedelta(days=7)
+    gone, kept = "greenhouse:acme:1", "greenhouse:acme:2"
+    async with open_repository(db_path) as repository:
+        for when, ids in ((ahead, (gone, kept)), (run_time, (kept,))):
+            jobs, _ = normalize_batch([_job(ident, "Toronto, ON", when) for ident in ids])
+            await repository.apply_source_batch(
+                SourceBatch(
+                    source="greenhouse",
+                    run_started_at=when,
+                    jobs=jobs,
+                    closable_boards=() if whole_source else ("greenhouse:acme",),
+                    closes_whole_source=whole_source,
+                )
+            )
+        states = await repository.posting_states([gone, kept])
+
+    assert states == {gone: JobStatus.CLOSED, kept: JobStatus.OPEN}
 
 
 async def test_purge_drops_only_rejections_no_board_lists_any_more(db_path: Path) -> None:
