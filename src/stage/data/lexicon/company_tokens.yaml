@@ -156,11 +156,14 @@ division_qualifiers:
   - aviation
   - bank
   - banking
+  - campus
   - canada
   - capital
+  - careers
   - cloud
   - commercial
   - communications
+  - company
   - components
   - consulting
   - consumer
@@ -169,6 +172,8 @@ division_qualifiers:
   - defense
   - devices
   - digital
+  - early
+  - eightfold
   - electronics
   - energy
   - engineering
@@ -190,6 +195,8 @@ division_qualifiers:
   - insurance
   - interactive
   - international
+  - internship
+  - internships
   - laboratories
   - labs
   - logistics
@@ -205,8 +212,12 @@ division_qualifiers:
   - network
   - networks
   - partners
+  - phenom
   - pictures
+  - program
+  - programs
   - quebec
+  - recruiting
   - research
   - retail
   - robotics
@@ -216,13 +227,32 @@ division_qualifiers:
   - services
   - software
   - solutions
+  - students
   - studio
   - studios
   - systems
+  - talent
   - technologies
   - technology
   - toronto
+  - university
   - usa
-  - ventures
   - vancouver
+  - ventures
   - wealth
+
+employer_aliases:
+  Booz Allen:
+    - booz allen hamilton
+  Carnegie Mellon University:
+    - carnegie mellon software engineering institute
+    - carnegie mellon university software engineering institute
+  Cook Group:
+    - cook medical
+  SK hynix:
+    - sk hynix memory solution
+    - sk hynix memory solutions
+    - sk hynix memory solutions america
+  Toshiba Global Commerce:
+    - toshiba global commerce solutions
+    - toshiba commerce solutions

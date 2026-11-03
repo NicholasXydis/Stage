@@ -3,6 +3,9 @@ markers:
   - interns
   - internship
   - internships
+  - intership
+  - internshps
+  - internhsip
   - co-op
   - coop
   - co-ops
@@ -129,6 +132,11 @@ blocked_bigrams:
   - customer experience trainee
   - sales trainee
   - management trainee
+  - teaching assistant
+  - teaching assistants
+  - returnship intern
+  - returnship internship
+  - interns only
   - student barista
   - students welcome
   - students and second
@@ -140,6 +148,7 @@ blocked_bigrams:
   - student life
   - student success
   - student engagement
+  - dean of students
   - new grad
   - new graduate
   - recent graduate
@@ -180,8 +189,12 @@ structured_only_blocked:
   - director
   - head of
   - vice president
+  - manager
+  - fixed term contract
   - staff software engineer
   - member of technical staff 2
   - member of technical staff 3
   - member of technical staff 4
   - member of technical staff 5
+  - apprentice
+  - apprenticeship

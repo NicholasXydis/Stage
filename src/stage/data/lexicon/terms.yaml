@@ -31,6 +31,17 @@ spring:
   - session du printemps
   - stage du printemps
 
+graduation_words:
+  - graduating
+  - graduation
+  - graduate
+  - graduates
+  - graduated
+  - grad
+  - diplomation
+  - diplome
+  - diplomee
+
 fillers:
   - of
   - de

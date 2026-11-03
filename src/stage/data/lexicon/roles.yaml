@@ -1,7 +1,8 @@
 swe:
   - application engineering
-  - systems engineering
-  - system engineering
+  - software systems engineering
+  - software system engineering
+  - software systems engineer
   - software engineer
   - software engineering
   - software developer
@@ -19,6 +20,7 @@ swe:
   - frontend
   - front end
   - web developer
+  - web developper
   - mobile developer
   - ios developer
   - android developer
@@ -90,9 +92,15 @@ swe:
   - kernel optimization
   - kernel architecture
   - performance engineer
+  - ai performance engineering
+  - ml performance engineering
   - distributed systems engineer
   - game engine engineer
   - tools engineer
+  - ingenieur d outil
+  - ingenieure d outil
+  - architecture logicielle
+  - software architecture
   - automation engineer
   - tooling engineer
   - blockchain engineer
@@ -444,6 +452,7 @@ swe:
   - algorithm
   - compiler
   - member of technical staff
+  - mts intern
   - web app
   - web application
   - application web
@@ -459,6 +468,21 @@ swe:
   - qa automation
   - mobile engineer
   - mobile engineering
+  - engineering summer analyst
+  - summer analyst engineering
+  - engineering seasonal off cycle internship
+  - sw engineering
+  - sw dev
+  - sw tools
+  - compilers
+  - applications development
+  - app dev
+  - mobile applications
+  - web applications
+  - game engineering
+  - graphics engineering
+  - automation testing
+  - python intern
 security:
   - security engineer
   - security engineering
@@ -737,6 +761,16 @@ security:
   - plateforme infonuagique sécurisée
   - it security
   - cyber
+  - threat operations
+  - information system security
+  - access management
+  - iam
+  - cyberops
+  - cybersoc
+  - security operation center
+  - security infrastructure
+  - security consulting engineer
+  - security workflow
 data:
   - analytics
   - visualization engineer
@@ -744,6 +778,7 @@ data:
   - cyber analytics
   - insights and analytics
   - data science
+  - data sciences
   - data scientist
   - data engineer
   - data analysis
@@ -786,6 +821,7 @@ data:
   - analyse de données
   - donnees
   - intelligence d'affaires
+  - intelligence des affaires
   - entrepôt de données
   - data developer
   - data development
@@ -854,6 +890,7 @@ data:
   - business intelligence developer
   - decision science
   - statistical modeling
+  - statistical programming
   - computational science
   - bioinformatics
   - computational biology
@@ -953,7 +990,28 @@ data:
   - chimie computationnelle
   - chemoinformatique
   - ingenierie d attribution
+  - database
+  - database analyst
+  - database administration
+  - data systems
+  - data architecture
+  - enterprise data management
+  - data platforms
+  - data integrations
+  - data and integration
+  - data automation
+  - data and visualization
+  - data mesh
+  - bi analyst
+  - predictive modeler
+  - data solution engineer
+  - science de la donnee
 ml-ai:
+  - ml intern
+  - ml internship
+  - ia ml
+  - ml and security
+  - ml solution architect
   - foundation model
   - ai operations
   - ai foundation model
@@ -999,6 +1057,9 @@ ml-ai:
   - ai product engineer
   - ai solutions engineer
   - multimodal algorithm
+  - multimodal ai
+  - ai and ds
+  - ai and automation it intern
   - algorithme multimodal
   - ingénieur r d ia
   - ingénieure r d ia
@@ -1072,6 +1133,15 @@ ml-ai:
   - ia générative
   - intelligence artificielle générative
   - reconnaissance vocale
+  - traitement de la parole
+  - speech processing
+  - traitement automatique du langage
+  - traitement automatique des langues
+  - traitement de la langue naturelle
+  - apprentissage machine
+  - vision artificielle
+  - stagiaire ia
+  - stagiaire en ia
   - technologie de la parole
   - systèmes de recommandation
   - recherche en intelligence artificielle
@@ -1159,11 +1229,14 @@ ml-ai:
   - ingenieure medias generatifs
   - ai applications
   - ai application
+  - ai app
+  - ai apps
   - ai system
   - ai systems
   - ai model
   - ai models
   - ai innovation
+  - innovation ia
   - ai data
   - ai compute
   - ai applied
@@ -1209,6 +1282,7 @@ ml-ai:
   - evaluation ia
   - qualite des modeles
   - ia digne de confiance
+  - ia de confiance
   - ia responsable
   - optimisation de modeles
   - knowledge graph engineer
@@ -1256,6 +1330,31 @@ ml-ai:
   - ai automation
   - ai and automation engineering
   - ai and digital
+  - ai software
+  - ai sw
+  - ai solution architect
+  - ai platform
+  - ai architect
+  - agentic
+  - ai co op
+  - genai
+  - gen ai
+  - ml ops
+  - applied science
+  - perception
+  - embodied ai
+  - ai and quantum scientist
+  - rl engineer
+  - ml systems
+  - ai and architecture
+  - ai post training
+  - large language models
+  - ai science
+  - ai residency
+  - ai resident
+  - aiops
+  - it intern ai
+  - intelligent automation
 quant:
   - quantitative
   - quantitative researcher
@@ -1315,7 +1414,6 @@ quant:
   - risk technology
   - financial data science
   - financial engineering
-  - capital markets technology
   - investment technology
   - blockchain developer
   - web3 developer
@@ -1334,7 +1432,6 @@ quant:
   - fraud analytics engineer
   - financial risk modeling
   - treasury technology
-  - insurance technology
   - insurtech software
   - actuarial technology
   - credit risk technology
@@ -1469,11 +1566,13 @@ quant:
   - recherche algorithmique
   - quant risk
   - risque quantitatif
+  - quant
 infra:
   - cloud services
   - cloud operations
   - infrastructure engineer
   - infrastructure intern
+  - cloud intern
   - site reliability
   - sre
   - devops
@@ -1482,6 +1581,8 @@ infra:
   - cloud engineer
   - cloud infrastructure
   - systems engineer
+  - systems engineering
+  - system engineering
   - network engineer
   - kubernetes
   - observability
@@ -1770,7 +1871,26 @@ infra:
   - solution infonuagique
   - ai infra
   - infrastructure ia
+  - cloud network
+  - cloud platform
+  - cloud platforms
+  - cloud admin
+  - cloud enablement
+  - network engineering
+  - network operations
+  - network administration
+  - infrastructure deployment
+  - virtual network
+  - linux intern
+  - linux engineering
+  - cloud administrator
+  - systems administration
+  - server infrastructure
+  - cloud integration
 embedded:
+  - embedded systems engineering
+  - embedded system engineering
+  - embedded systems engineer
   - controls engineering
   - automation and controls
   - controls co op
@@ -1981,6 +2101,10 @@ embedded:
   - ai for functional avionics
   - ia pour l avionique fonctionnelle
   - robotics
+  - robot manipulation
+  - autonomy engineer
+  - autonomy engineering
+  - autonomy intern
 general-cs:
   - computer science
   - computer engineering
@@ -1994,11 +2118,42 @@ general-cs:
   - technology intern
   - technology internship
   - technology co op
-  - technical intern
-  - technical internship
-  - technical co op
-  - stage technique
-  - stagiaire technique
+  - information technology development
+  - it engineer
+  - it operations
+  - it systems
+  - it infrastructure
+  - it development
+  - it business systems
+  - it business analyst
+  - it applications
+  - it application
+  - it app
+  - it data
+  - it cloud
+  - it admin
+  - it administrator
+  - it automation
+  - it architecture
+  - information systems
+  - systemes d information
+  - infrastructures ti
+  - systemes ti
+  - technologies numeriques
+  - technology analyst
+  - business technology
+  - digital technology
+  - technology consulting
+  - enterprise architecture
+  - technology development program
+  - business systems analyst
+  - technical systems analyst
+  - computer engineer
+  - business system analyst
+  - business systems analysis
+  - it engineering
+  - capital markets technology
+  - insurance technology
 
 source_categories:
   swe:

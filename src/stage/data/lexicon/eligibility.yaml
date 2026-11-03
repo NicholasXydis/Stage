@@ -30,6 +30,19 @@ degree_required:
     - final year of a master
     - enrolled in your last year of a master
     - graduate degree required
+    - pursuing ms or phd
+    - pursuing an ms or phd
+    - pursuing masters or phd
+    - pursuing a masters or phd
+    - pursuing a master's or phd
+    - pursuing a masters or doctorate
+    - current ms or phd student
+    - a master's or phd student
+    - from a master's or phd program
+    - with a master's or phd degree
+    - or will receive a master's
+    - master's degree or above
+    - current graduate student
     - maitrise requise
     - maitrise exigee
     - maitrise obligatoire
@@ -98,6 +111,9 @@ phd_required:
   - doctorat obligatoire
   - inscrit e au doctorat
   - etudes doctorales requises
+  - must be enrolled in a ph.d.
+  - pursuing a phd
+  - phd student
 
 phd_title_tokens:
   - phd
@@ -116,6 +132,7 @@ phd_title_tokens:
   - stagiaire doctoral
   - stagiaire doctorale
   - etudes doctorales
+  - post doc
 
 degree_list_tokens:
   - bachelor
@@ -205,6 +222,7 @@ non_cs:
   - real estate agent
   - social worker
   - paralegal
+  - juriste
   - court clerk
   - welder
   - millwright
@@ -279,6 +297,11 @@ non_cs:
   - people partner
   - people experience
   - people operations
+  - front-end innovation
+
+non_cs_exceptions:
+  - claims lab developer
+
 excluded_titles:
   - process engineering
   - category management
@@ -303,11 +326,13 @@ excluded_titles:
   - service desk
   - support technician
   - project manager
+  - project coordinator
   - project management
   - technical project manager
   - program manager
   - product manager
   - product management
+  - product owner
   - ux designer
   - ui designer
   - ux researcher
@@ -394,6 +419,135 @@ excluded_titles:
   - technical sales
   - account manager
   - relationship manager
+  - presales
+  - presale
+  - sales strategy
+  - sales and application engineering
+  - go to market
+  - hardware development engineer
+  - electrical test engineer
+  - hardware test engineer
+  - geographic information systems
+  - it audit
+  - technology audit
+  - audit et assurance ti
+  - service aux utilisateurs
+  - end user support
+  - user support
+  - field services
+  - gestion de projets
+  - tax technology
+  - tax
+  - economics
+  - finance intern
+  - finance internship
+  - finance co-op
+  - fund finance
+  - pharmaceutical analysis
+  - database coordinator
+  - energy technology
+  - infrastructure support
+  - project support
+  - skillbridge
+  - process excellence
+  - process development engineer
+  - strategic systems engineering
+  - downstream purification
+  - product development engineer
+  - materials application engineer
+  - materials test engineer
+  - racing performance engineer
+  - power system engineer
+  - power systems engineer
+  - electrical system engineering
+  - building systems engineering
+  - mechanical packaging
+  - hardware engineering
+  - hardware design
+  - hardware test engineering
+  - hardware and test engineer
+  - embedded hardware
+  - design for test
+  - quality control
+  - quality assurance and compliance
+  - compliance and quality systems
+  - validation and qualification
+  - technical writer
+  - content author
+  - hr analytics
+  - people analytics
+  - talent analytics
+  - hr business partner
+  - hr systems
+  - partenariat d affaires rh
+  - finance analytics
+  - finance and business analytics
+  - finance reporting
+  - pricing
+  - audit analytics
+  - sourcing analytics
+  - supply chain analytics
+  - legal operations
+  - sales excellence
+  - revenue operations
+  - consumer analytics
+  - consumer insights
+  - commercial analytics
+  - market access
+  - venue analytics
+  - analytics strategy
+  - project analytics
+  - product allocation
+  - third party risk
+  - customer experience analytics
+  - customer experience insights
+  - customer experience and analytics
+  - social impact
+  - responsible investing
+  - content research
+  - portfolio strategy
+  - data center infrastructure
+  - electronic reliability
+  - customer reliability
+  - atomistic
+  - rf systems engineer
+  - asic systems engineer
+  - acoustic systems engineering
+  - propulsion systems engineering
+  - micro grid systems engineering
+  - plant systems engineering
+  - manufacturing systems engineering
+  - field test engineer
+  - reliability test engineer
+  - product assurance test engineer
+  - rf systems test engineer
+  - test development engineer
+  - product development test engineer
+  - field application engineering
+  - design application engineering
+  - controls application engineering
+  - cst application engineer
+  - ra qa
+  - sports trader
+  - market design
+  - dmfi
+  - capitalization
+  - certification engineer
+  - imaging product engineer
+  - technical artist
+  - digital growth intern
+  - ai product intern
+  - electric transmission
+  - hardware characterization
+  - cybersecurity policy
+  - sales training
+  - people development
+  - finance and ai
+  - commercial intern
+  - science and technology
+  - research and technology
+  - product technology internship
+  - programming intern
 technical_title_exceptions:
   - vehicle software engineer diagnostic user interface
   - fullstack c engineer intern vehicle user interface
@@ -428,6 +582,35 @@ technical_title_exceptions:
   - data analysis
   - tool development
   - developpement d outils
+  - computer engineering
+  - security engineer
+  - systems developer
+  - information technology intern data engineering
+  - information technology intern software
+  - information technology intern security
+  - information technology intern artificial intelligence
+  - artificial intelligence information technology intern
+  - it intern artificial intelligence
+  - enterprise architecture information technology intern
+  - cybersecurity it intern
+  - cybersecurity it internship
+  - ai and automation it intern
+  - firmware engineer
+  - web development
+  - marketing developer
+  - it co op cloud platforms
+  - it intern ai
+  - ai it intern
+  - it intern manufacturing ai
+  - it intern analyst manufacturing ai
+  - it intern analyst data and ai
+  - it intern enterprise data
+  - data analytics it intern
+  - tools programming
+  - gameplay programming
+  - ui programming
+  - java programming
+  - statistical programming
 undergraduate_tokens:
   - bachelor
   - bachelors
@@ -438,6 +621,8 @@ undergraduate_tokens:
   - b eng
   - undergraduate
   - undergrad
+  - undergraduates
+  - undergrads
   - ug
   - licence
   - baccalaureat
@@ -459,3 +644,18 @@ graduate_title_tokens:
   - etudiant a la maitrise
   - memoire de maitrise
   - graduate research assistant
+  - graduate
+  - grad
+  - high school
+  - associate's degree
+  - associate's degrees
+  - associates degree
+  - associates degrees
+  - stage collegial
+graduate_by_convention:
+  - summer associate
+  - research scientist intern
+  - research scientist internship
+  - applied scientist intern
+  - applied science intern
+  - applied science internship

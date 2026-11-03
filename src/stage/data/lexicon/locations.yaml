@@ -33,18 +33,94 @@ montreal:
   - Vaudreuil-Dorion
   - Greater Montreal
   - Grand Montréal
+  - Mascouche
+  - Rosemère
+  - Candiac
+  - McMasterville
+  - Mont-Saint-Hilaire
+  - Côte-Saint-Luc
+  - Pointe-aux-Trembles
+  - Lachenaie
+  - Fabreville
+  - Chomedey
+  - Sainte-Anne-des-Plaines
+  - Beauharnois
+  - Châteauguay
+  - L'Île-Perrot
+  - Pincourt
+  - Deux-Montagnes
+  - Baie-D'Urfé
+  - Sainte-Anne-de-Bellevue
+  - Côte-des-Neiges
+  - Notre-Dame-de-Grâce
+  - Outremont
+  - Ahuntsic
+  - Rivière-des-Prairies
+  - Saint-Mathieu-de-Beloeil
+  - St-Bruno
+  - St-Hubert
+  - Ville St-Laurent
+  - St-Laurent QC
+  - St-Laurent Québec
+  - QC St-Laurent
+  - Saint-Léonard QC
+  - Saint-Léonard Québec
+  - St-Léonard QC
+  - St-Léonard Québec
+  - Saint-Lambert QC
+  - Saint-Lambert Québec
+  - Kirkland QC
+  - Kirkland Québec
+  - Sainte-Thérèse QC
+  - Sainte-Thérèse Québec
+  - Saint-Eustache QC
+  - Saint-Eustache Québec
+  - St-Eustache QC
+  - St-Eustache Québec
+  - L'Assomption QC
+  - L'Assomption Québec
+  - McGill College
+  - Strathcona Anat
+  - Leacock Building
+  - MacDonald Harrington
+  - Burnside Hall
+  - Currie Gymnasium
+  - Birks Building
+  - Morrice Hall
+  - Duff Medical
+  - McIntyre Medical
+  - Maass Chemistry
+  - Rutherford Physics
+  - Trottier Building
+  - Hosmer House
+  - MUHC
+  - Jewish General
+  - Mtl
+  - YUL
+  - Lachine
+  - Quebec Kirkland
+  - Kirkland Canada
 
 montreal_ambiguous:
   - Laval
   - Verdun
   - Anjou
-  - Lachine
   - LaSalle
   - Beaconsfield
   - Saint-Laurent
   - Mirabel
   - Terrebonne
   - Ville-Marie
+  - Varennes
+  - Chambly
+  - Beloeil
+  - Carignan
+  - Sainte-Julie
+  - Saint-Constant
+  - Pierrefonds
+  - La Prairie
+  - Vaudreuil
+  - Oka
 
 canada_cities:
   - Saint-Anselme
@@ -99,6 +175,110 @@ canada_cities:
   - Brantford
   - Cambridge Ontario
   - Kanata
+  - Bromont
+  - Nepean
+  - Barrhaven
+  - Stittsville
+  - Rouyn-Noranda
+  - Port-Cartier
+  - Disraëli
+  - La Sarre
+  - La Tuque
+  - Gracefield
+  - Chibougamau
+  - Maniwaki
+  - Mont-Joli
+  - Sept-Îles
+  - Thetford Mines
+  - Saint-Hyacinthe
+  - Mashteuiatsh
+  - Témiscaming
+  - Mont-Laurier
+  - Rivière-du-Loup
+  - Victoriaville
+  - Shawinigan
+  - Joliette
+  - Val-d'Or
+  - Baie-Comeau
+  - Gaspé
+  - Matane
+  - Cowansville
+  - Chicoutimi
+  - Jonquière
+  - Lebourgneuf
+  - Bagotville
+  - Roberval
+  - Dolbeau-Mistassini
+  - Saint-Félicien
+  - Sorel-Tracy
+  - Salaberry-de-Valleyfield
+  - Saint-Jérôme
+  - Lachute
+  - Bécancour
+  - Plessisville
+  - Lac-Mégantic
+  - Baie-Saint-Paul
+  - La Pocatière
+  - Montmagny
+  - Pont-Rouge
+  - Ormstown
+  - Val-des-Sources
+  - Rivière-Rouge
+  - Berthierville
+  - Grande-Rivière
+  - Paspébiac
+  - L'Isle-Verte
+  - La Malbaie
+  - Coaticook
+  - Napierville
+  - Sainte-Agathe-des-Monts
+  - Sainte-Anne-des-Monts
+  - Saint-Apollinaire
+  - Saint-Germain-de-Grantham
+  - Saint-Roch-de-l'Achigan
+  - Sainte-Julienne
+  - Saint-Lambert-de-Lauzon
+  - Sainte-Thérèse-de-Gaspé
+  - Saint-Étienne-des-Grès
+  - Saint-Laurent-de-l'Île-d'Orléans
+  - Portage la Prairie
+  - Pembina Valley
+  - Kirkland Lake
+  - Ancaster
+  - Casselman
+  - Fort McMurray
+  - Grande Prairie
+  - Medicine Hat
+  - Airdrie
+  - Lloydminster
+  - Kamloops
+  - Chilliwack
+  - Penticton
+  - Prince Albert
+  - Moose Jaw
+  - Edmundston
+  - Campbellton
+  - Richibucto
+  - Shippagan
+  - Tracadie-Sheila
+  - Miramichi
+  - Shediac
+  - Caraquet
+  - Saint John New Brunswick
+  - St. Catharines
+  - Perth Ontario
+  - Perth ON
+  - YWG
+  - YOW
+  - YYZ
+  - YVR
+  - YYC
+  - YEG
+  - Caisse Desjardins
+  - Caisse populaire Desjardins
+  - L'Étang-du-Nord
+  - L'Islet
+  - Bay Wellington
 
 canada_ambiguous:
   - London
@@ -127,6 +307,11 @@ canada_ambiguous:
   - Lethbridge
   - Saint John
   - St. John's
+  - Richmond Hill
+  - Sault Ste. Marie
+  - Sydney
+  - Saint-Denis
+  - Saint-Étienne
 
 canada_regions:
   - Alberta
@@ -188,6 +373,59 @@ usa_ambiguous:
   - Paris
   - Rome
   - Vienna
+  - Melbourne
+  - Vernon
+  - Uxbridge
+  - Wellington
+  - Leeds
+  - Bremen
+  - Warsaw
+  - Belgrade
+  - Potsdam
+  - Brisbane
+  - Glasgow
+  - Aberdeen
+  - Newcastle
+  - Valencia
+  - Edinburgh
+  - Lisbon
+  - Heidelberg
+  - Sheffield
+  - Nottingham
+  - Leicester
+  - Liverpool
+  - Coventry
+  - Dundee
+  - Cardiff
+  - Swansea
+  - Limerick
+  - Abingdon
+  - Amesbury
+  - Northampton
+  - Broughton
+  - Derby
+  - Parma
+  - Ravenna
+  - Salamanca
+  - Bergen
+  - Munster
+  - Saint Petersburg
+  - Dunedin
+  - Abbeville
+  - Calais
+  - Versailles
+  - Angers
+  - Nantes
+  - Lund
+  - Genoa
+  - Hobart
+  - Warrington
+  - Charleroi
+  - Oviedo
+  - Buc
+  - La Paz
+  - Rio Bravo
+  - Ghent
 
 usa_cities:
   - Evendale
@@ -322,6 +560,238 @@ usa_cities:
   - Ames
   - Anaheim
   - Albany
+  - Dearborn
+  - Allen Park
+  - Long Beach
+  - Scotts Valley
+  - San Mateo
+  - Louisville
+  - Aiken
+  - Mankato
+  - Livonia
+  - La Jolla
+  - Lehi
+  - Rensselaer
+  - Tarrytown
+  - Sleepy Hollow
+  - Carmel
+  - Trenton
+  - Needham
+  - Peachtree City
+  - Canonsburg
+  - Bothell
+  - Middletown
+  - Foster City
+  - Redford
+  - Schenectady
+  - Avon Lake
+  - Boxborough
+  - Brook Park
+  - Olathe
+  - Waltham
+  - Grayslake
+  - Savannah
+  - El Segundo
+  - Longmont
+  - Hooksett
+  - Ypsilanti
+  - McAllen
+  - Sharonville
+  - Exton
+  - Findlay
+  - Wichita
+  - Morrisville
+  - Allentown
+  - Buffalo
+  - Clearwater
+  - Greer
+  - Woodhaven
+  - Fontana
+  - Leander
+  - Loves Park
+  - Muskegon
+  - Newark
+  - Akron
+  - Americus
+  - Blue Bell
+  - Essex Junction
+  - Niskayuna
+  - Littlestown
+  - Hicksville
+  - Beavercreek
+  - Bentonville
+  - Oakbrook Terrace
+  - Parsippany
+  - North Charleston
+  - Romulus
+  - Romeoville
+  - Shawnee
+  - South Bend
+  - Fremont
+  - Fresno
+  - Duluth
+  - Livermore
+  - Los Gatos
+  - Memphis
+  - Pensacola
+  - Reno
+  - Rockford
+  - San Leandro
+  - San Bruno
+  - Sioux Falls
+  - Shreveport
+  - Syracuse
+  - Tulare
+  - Tacoma
+  - Renton
+  - Kennewick
+  - Lynnwood
+  - Everett
+  - Tukwila
+  - SeaTac
+  - Mukilteo
+  - Woodinville
+  - Spokane
+  - Yakima
+  - West Lafayette
+  - Albuquerque
+  - Las Cruces
+  - McDonough
+  - Madison
+  - Winston-Salem
+  - Staten Island
+  - Bronx
+  - Scranton
+  - Wilkes-Barre
+  - Harrisburg
+  - Grand Junction
+  - Twin Falls
+  - Wake Forest
+  - Keene
+  - Palm Coast
+  - Folsom
+  - Provo
+  - Peoria
+  - Mishawaka
+  - Morristown
+  - Newport Beach
+  - Mira Loma
+  - Asheville
+  - Atlantic City
+  - Armonk
+  - Tulsa
+  - Schaumburg
+  - Victorville
+  - West Chester
+  - Bellingham
+  - Orange County
+  - Kokomo
+  - Cedar Rapids
+  - Beaverton
+  - Fargo
+  - Grand Forks
+  - Claycomo
+  - Glendale
+  - Monroe
+  - Gilbert
+  - WPAFB
+  - Lewis-McChord
+  - Aberdeen Proving Ground
+  - Granada Hills
+  - New Bern
+  - Silicon Valley
+  - SoCal
+  - NorCal
+  - PacNW
+  - Chicagoland
+  - Inland Empire
+  - Twin Cities
+  - Research Triangle
+  - Hampton Roads
+  - Lehigh Valley
+  - Jamaica NY
+  - Jamaica New York
+  - Jamaica Queens
+  - Malta NY
+  - Malta New York
+  - Ontario NY
+  - Ontario New York
+  - Ontario Oregon
+  - Ontario California
+  - South Jordan
+  - West Jordan
+  - West Lebanon
+  - Lebanon PA
+  - Lebanon Pennsylvania
+  - Lebanon NH
+  - Lebanon New Hampshire
+  - Lebanon OH
+  - Lebanon Ohio
+  - Lebanon Indiana
+  - Lebanon TN
+  - Lebanon Tennessee
+  - Lebanon MO
+  - Lebanon Missouri
+  - New Egypt
+  - Bermuda Run
+  - North Wales
+  - Lake Wales
+  - Melbourne FL
+  - Mount Vernon
+  - Vernon Hills
+  - Panama City Beach
+  - Panama City FL
+  - Panama City Florida
+  - Warsaw Indiana
+  - Poland OH
+  - Poland Ohio
+  - Poland NY
+  - Bergen County
+  - Saipan
+  - Glen Burnie
+  - Watford City
+  - Palestine TX
+  - Palestine Texas
+  - West Melbourne FL
+  - West Melbourne Florida
+  - Novi
+  - Flat Rock
+  - Golden Valley
+  - Wayne
+  - Kalamazoo
+  - Poughkeepsie
+  - Kennett Square
+  - Boca Raton
+  - Mpls
+  - DFW
+  - West Palm Beach
+  - Auburn Hills
+  - Greensburg
+  - New Oxford
+  - Erlanger
+  - Stennis
+  - Wittmann
+  - Mi Wuk Village
+  - Marshall
+  - McMinnville
+  - Walterboro
+  - Orangeburg
+  - Summerville
+  - Surfside Beach
+  - McKinney
+  - King of Prussia
+  - Bryn Mawr
+  - Whippany
+  - Petaluma
+  - Aguadilla
+  - St. Louis
+  - Lebanon IN
+  - Warsaw IN
+  - Angola IN
+  - Ontario OH
+  - Ontario Ohio
+  - Italy Texas
+  - Italy TX
 
 canada_overrides:
   - Ontario California
@@ -340,6 +810,7 @@ canada_overrides:
   - Waterloo Iowa
   - Waterloo IA
   - Waterloo Belgium
+  - Ontario United States
 
 usa_regions:
   - Alabama
@@ -393,6 +864,10 @@ usa_regions:
   - Wisconsin
   - Wyoming
   - Puerto Rico
+  - Washington
+  - New England
+  - Guam
+  - Northern Mariana Islands
 
 usa_codes:
   - "AL"
@@ -457,6 +932,7 @@ usa_country:
   - U.S.A.
   - États-Unis
   - Etats-Unis
+  - Unitedstates
 
 international:
   - Botswana
@@ -629,6 +1105,319 @@ international:
   - Africa
   - Oceania
   - South America
+  - Libya
+  - Bahamas
+  - Antarctica
+  - Kosovo
+  - South Sudan
+  - Curaçao
+  - Djibouti
+  - Guinea
+  - Equatorial Guinea
+  - Papua New Guinea
+  - Suriname
+  - Guyana
+  - Belize
+  - Barbados
+  - Trinidad and Tobago
+  - Haiti
+  - Rwanda
+  - Zambia
+  - Mali
+  - Namibia
+  - Mozambique
+  - Madagascar
+  - Malawi
+  - Congo
+  - Democratic Republic of the Congo
+  - Liberia
+  - Sierra Leone
+  - Burkina Faso
+  - Sudan
+  - Eritrea
+  - Somalia
+  - Yemen
+  - Syria
+  - Brunei
+  - Laos
+  - Lao Peoples Democratic Republic
+  - Bhutan
+  - Maldives
+  - Fiji
+  - Tonga
+  - New Caledonia
+  - Nouvelle-Calédonie
+  - French Polynesia
+  - Polynésie française
+  - Martinique
+  - Montenegro
+  - North Macedonia
+  - Liechtenstein
+  - Andorra
+  - San Marino
+  - Gibraltar
+  - Guernsey
+  - Isle of Man
+  - Faroe Islands
+  - Greenland
+  - Palestine
+  - Turkmenistan
+  - Tajikistan
+  - Mauritania
+  - Lesotho
+  - Eswatini
+  - Seychelles
+  - Cape Verde
+  - Macau
+  - Macao
+  - Viet Nam
+  - Nederland
+  - België
+  - Belgique
+  - Schweiz
+  - Österreich
+  - Danmark
+  - Norge
+  - Suomi
+  - Česko
+  - British Indian Ocean Territory
+  - Diego Garcia
+  - European Union
+  - EU
+  - KSA
+  - JAPAC
+  - APJ
+  - MENA
+  - Scandinavia
+  - Balkans
+  - Baltics
+  - Central America
+  - Central Europe
+  - Eastern Europe
+  - Western Europe
+  - North Africa
+  - West Africa
+  - East Africa
+  - South Asia
+  - East Asia
+  - Greater China
+  - Georgia GE
+  - Karnataka
+  - Maharashtra
+  - Telangana
+  - Tamil Nadu
+  - Kerala
+  - Gujarat
+  - Haryana
+  - Uttar Pradesh
+  - West Bengal
+  - Rajasthan
+  - Andhra Pradesh
+  - Madhya Pradesh
+  - Punjab
+  - Odisha
+  - Bihar
+  - Jharkhand
+  - Uttarakhand
+  - Chhattisgarh
+  - Jiangsu
+  - Guangdong
+  - Shandong
+  - Sichuan
+  - Hubei
+  - Hunan
+  - Henan
+  - Hebei
+  - Fujian
+  - Anhui
+  - Shaanxi
+  - Shanxi
+  - Liaoning
+  - Jilin
+  - Heilongjiang
+  - Yunnan
+  - Guizhou
+  - Guangxi
+  - Hainan
+  - Jiangxi
+  - Inner Mongolia
+  - Xinjiang
+  - Saitama
+  - Aichi
+  - Hokkaido
+  - Hyogo
+  - Gyeonggi
+  - Gyeonggi-do
+  - Bavaria
+  - Bayern
+  - Baden-Württemberg
+  - Nordrhein-Westfalen
+  - North Rhine-Westphalia
+  - Niedersachsen
+  - Lower Saxony
+  - Hessen
+  - Thüringen
+  - Thuringia
+  - Rheinland-Pfalz
+  - Schleswig-Holstein
+  - Brandenburg
+  - Mecklenburg
+  - Île-de-France
+  - Auvergne-Rhône-Alpes
+  - Occitanie
+  - Nouvelle-Aquitaine
+  - Provence-Alpes-Côte d'Azur
+  - PACA
+  - Hauts-de-France
+  - Grand Est
+  - Bretagne
+  - Normandie
+  - Pays de la Loire
+  - Centre-Val de Loire
+  - Bourgogne-Franche-Comté
+  - Alpes-Maritimes
+  - Isère
+  - Haute-Garonne
+  - Gironde
+  - Bouches-du-Rhône
+  - Yvelines
+  - Hauts-de-Seine
+  - Essonne
+  - Val-d'Oise
+  - Seine-Saint-Denis
+  - Val-de-Marne
+  - Finistère
+  - Alsace
+  - Catalonia
+  - Cataluña
+  - Catalunya
+  - Andalusia
+  - Andalucía
+  - Comunidad de Madrid
+  - Community of Madrid
+  - Basque Country
+  - País Vasco
+  - Castilla y León
+  - Castilla-La Mancha
+  - Lombardy
+  - Lombardia
+  - Piemonte
+  - Emilia-Romagna
+  - Lazio
+  - Veneto
+  - Toscana
+  - Tuscany
+  - Campania
+  - Sicilia
+  - Sicily
+  - Sardegna
+  - Sardinia
+  - Liguria
+  - Puglia
+  - Apulia
+  - Calabria
+  - Warwickshire
+  - Wiltshire
+  - Yorkshire
+  - North Yorkshire
+  - West Midlands
+  - Greater Manchester
+  - Merseyside
+  - Lancashire
+  - Cumbria
+  - Tyne and Wear
+  - County Durham
+  - Oxfordshire
+  - Buckinghamshire
+  - Hertfordshire
+  - Gloucestershire
+  - Staffordshire
+  - Derbyshire
+  - Nottinghamshire
+  - Leicestershire
+  - Northamptonshire
+  - Cambridgeshire
+  - Bedfordshire
+  - West Sussex
+  - East Sussex
+  - Isle of Bute
+  - Aberdeenshire
+  - Lanarkshire
+  - Glamorgan
+  - Wensleydale
+  - New South Wales
+  - Queensland
+  - Western Australia
+  - South Australia
+  - Tasmania
+  - Northern Territory
+  - Australian Capital Territory
+  - NSW
+  - QLD
+  - Minas Gerais
+  - Paraná
+  - Rio Grande do Sul
+  - Bahia
+  - Pernambuco
+  - Goiás
+  - Ceará
+  - Espírito Santo
+  - Nuevo León
+  - Jalisco
+  - Coahuila
+  - Chihuahua
+  - Querétaro
+  - Guanajuato
+  - Baja California
+  - Baja California Sur
+  - Tamaulipas
+  - Estado de México
+  - Yucatán
+  - Quintana Roo
+  - Sinaloa
+  - Tabasco
+  - Chiapas
+  - Michoacán
+  - Morelos
+  - Nayarit
+  - CDMX
+  - Ciudad de México
+  - Selangor
+  - Sabah
+  - Sarawak
+  - Johor
+  - Kedah
+  - Gauteng
+  - KwaZulu-Natal
+  - Rogaland
+  - Vestfold
+  - Dalarna
+  - Skåne
+  - Silesia
+  - Śląskie
+  - Mazowieckie
+  - Masovian
+  - Pomeranian
+  - Wielkopolska
+  - Małopolska
+  - APEJ
+  - VIC
+  - Hesse
+  - Cundinamarca
+  - Cudinamarca
+  - Campeche
+  - Provence
+  - Marshall Islands
+  - Grenadines
+  - East Kalimantan
+  - North Sumatra
+  - South Kalimantan
+  - DE Berlin
+  - DE Hamburg
+  - IN Delhi
+  - PE Lima
+  - AL Paris
+  - Riau
 
 international_cities:
   - St. Leon-Rot
@@ -793,6 +1582,7 @@ international_cities:
   - Geneva
   - Gurgaon
   - Gurugram
+  - TPIN
   - Hamburg
   - Helsinki
   - Ho Chi Minh City
@@ -880,6 +1670,1520 @@ international_cities:
   - Zagreb
   - Zurich
   - Zürich
+  - Aix-en-Provence
+  - Amiens
+  - Basel
+  - Belfort
+  - Buc
+  - Canary Wharf
+  - Créteil
+  - Da Nang
+  - Ehningen
+  - Gdańsk
+  - Getafe
+  - Hengelo
+  - Illescas
+  - Kanagawa
+  - Knutsford
+  - Melaka
+  - Méaulte
+  - Montoir-de-Bretagne
+  - Nantes
+  - Nijmegen
+  - Pozzuoli
+  - Querétaro
+  - Rennes
+  - Rochefort
+  - Saint-Nazaire
+  - Samut Prakan
+  - Schwalbach am Taunus
+  - Seongnam
+  - Sibiu
+  - Sophia Antipolis
+  - Spittal
+  - The Hague
+  - Tianjin
+  - Valbonne
+  - Villach
+  - Villeurbanne
+  - Wuxi
+  - Yerevan
+  - Gennevilliers
+  - Élancourt
+  - Brest
+  - Limours
+  - Cholet
+  - Vélizy-Villacoublay
+  - Vélizy
+  - Bordeaux
+  - Cannes
+  - Cergy
+  - Gémenos
+  - Meudon
+  - Valence
+  - Lille
+  - La Ferté-Saint-Aubin
+  - Grenoble
+  - La Ciotat
+  - Moirans
+  - Palaiseau
+  - Carquefou
+  - Châtellerault
+  - Pont-Audemer
+  - Meyreuil
+  - Brive-la-Gaillarde
+  - Rouen
+  - Colombes
+  - Bobigny
+  - Noisy-le-Sec
+  - Pantin
+  - Étaples
+  - Annemasse
+  - Trappes
+  - Suresnes
+  - Rueil-Malmaison
+  - Asnières-sur-Seine
+  - Montpellier
+  - Reims
+  - Nogent-le-Rotrou
+  - Aix-les-Bains
+  - Guyancourt
+  - Douai
+  - Boulogne-Billancourt
+  - Le Havre
+  - Le Mans
+  - Puiseux-Pontoise
+  - Aubevoye
+  - Le Plessis-Robinson
+  - Heudebouville
+  - Strasbourg
+  - Cesson-Sévigné
+  - Massy
+  - Rungis
+  - Caen
+  - Mérignac
+  - Puteaux
+  - Sotteville-lès-Rouen
+  - Issoire
+  - L'Isle-d'Abeau
+  - Ajaccio
+  - Annecy
+  - Mulhouse
+  - Nîmes
+  - Pessac
+  - Saint-Priest
+  - Vendôme
+  - Compiègne
+  - Avignon
+  - Beaucaire
+  - Besançon
+  - Blois
+  - Bastia
+  - Chambéry
+  - Chaponnay
+  - Déols
+  - Dijon
+  - Évreux
+  - Limoges
+  - Metz
+  - Montigny-le-Bretonneux
+  - Saint-Herblain
+  - Tigery
+  - Arpajon
+  - Mazamet
+  - Geispolsheim
+  - Longjumeau
+  - Nevers
+  - Noyarey
+  - Colmar
+  - Béziers
+  - Fréjus
+  - Éragny
+  - Guipavas
+  - Arras
+  - Bourogne
+  - Decize
+  - Vallauris
+  - Venelles
+  - Narbonne
+  - Fécamp
+  - Mondeville
+  - Missillac
+  - Achères
+  - Carrières-sous-Poissy
+  - Cayeux-sur-Mer
+  - Le Crotoy
+  - Grand-Quevilly
+  - Ferrières-en-Brie
+  - Bagneux
+  - Nanterre
+  - Courbevoie
+  - Blagnac
+  - Toulon
+  - Saclay
+  - Orsay
+  - Évry
+  - Melun
+  - Saint-Quentin-en-Yvelines
+  - Levallois-Perret
+  - La Défense
+  - Montrouge
+  - Antibes
+  - Mougins
+  - Le Haillan
+  - Lorient
+  - Vannes
+  - Quimper
+  - Lannion
+  - Saint-Malo
+  - Châteauroux
+  - Bourges
+  - Poitiers
+  - Niort
+  - La Rochelle
+  - Angoulême
+  - Le Creusot
+  - Valenciennes
+  - Dunkerque
+  - Cherbourg
+  - Montbonnot-Saint-Martin
+  - Échirolles
+  - Crolles
+  - Voiron
+  - Thonon
+  - Ferney-Voltaire
+  - Marne-la-Vallée
+  - Poissy
+  - Saint-Germain-en-Laye
+  - Meung-sur-Loire
+  - Saint-Lô
+  - Salaunes
+  - Airvault
+  - Étrelles
+  - Bessé-sur-Braye
+  - Six-Fours
+  - Les Pennes-Mirabeau
+  - Bouc-Bel-Air
+  - Éguilles
+  - Pont-à-Mousson
+  - Verneuil-en-Halatte
+  - Sainte-Florine
+  - Saint-Laurent-du-Var
+  - Vitry-sur-Seine
+  - Val-de-Reuil
+  - Ambarès
+  - Les Sorinières
+  - La Roche-sur-Yon
+  - Wasquehal
+  - Lesquin
+  - Niedermodern
+  - Ostwald
+  - Entzheim
+  - Plouzané
+  - Saint-Jean-de-Védas
+  - Montlieu-la-Garde
+  - Cugnaux
+  - Méroux
+  - Blainville-sur-Orne
+  - Friedrichshafen
+  - Bietigheim-Bissingen
+  - Ruhstorf
+  - Gütersloh
+  - Donauwörth
+  - Wemding
+  - Dahlewitz
+  - Regensburg
+  - Oberursel
+  - Warstein
+  - Burglengenfeld
+  - Oelde
+  - Ludwigsburg
+  - Lehrte
+  - Ennigerloh
+  - Friedrichsdorf
+  - Penig
+  - Wiesbaden
+  - Willich
+  - Aalen
+  - Ettlingen
+  - Garching
+  - Leipzig
+  - Erlangen
+  - Freiburg
+  - Koblenz
+  - Bad Homburg
+  - Dettelbach
+  - Elchingen
+  - Geseke
+  - Kleinmachnow
+  - Ludwigshafen
+  - Mönchengladbach
+  - Offenbach
+  - Schelklingen
+  - Würzburg
+  - Eppelheim
+  - Laußnitz
+  - Trier
+  - Altötting
+  - Altoetting
+  - Bochum
+  - Düren
+  - Eggenstein-Leopoldshafen
+  - Heilbronn
+  - Kalkar
+  - Kronach
+  - Lingenfeld
+  - Nordenham
+  - Saalfeld
+  - Salzbergen
+  - Schwandorf
+  - Waghäusel
+  - Haßmersheim
+  - Bad Rodach
+  - Arnstadt
+  - Demmin
+  - Duisburg
+  - Fürth
+  - Fuerth
+  - Hattingen
+  - Ilmenau
+  - Konstanz
+  - Lohr am Main
+  - Marburg
+  - Mannheim
+  - Muenchen
+  - Recklinghausen
+  - Rheinstetten
+  - Rostock
+  - Rüsselsheim
+  - Unterhaching
+  - Unterschleißheim
+  - Zwickau
+  - Bad Nauheim
+  - Gaertringen
+  - Gärtringen
+  - Gunzenhausen
+  - Langenhagen
+  - Neu-Isenburg
+  - Osnabrück
+  - Ravensburg
+  - Kronberg
+  - Wolfsburg
+  - Sindelfingen
+  - Darmstadt
+  - Kaiserslautern
+  - Oldenburg
+  - Bielefeld
+  - Paderborn
+  - Wuppertal
+  - Krefeld
+  - Chemnitz
+  - Lübeck
+  - Flensburg
+  - Bremerhaven
+  - Bamberg
+  - Bayreuth
+  - Passau
+  - Rosenheim
+  - Tübingen
+  - Reutlingen
+  - Pforzheim
+  - Schweinfurt
+  - Aschaffenburg
+  - Gelsenkirchen
+  - Oberhausen
+  - Eindhoven
+  - Waregem
+  - Den Haag
+  - Dordrecht
+  - Enschede
+  - Rijswijk
+  - Veghel
+  - Drachten
+  - Hoofddorp
+  - Arnhem
+  - Alkmaar
+  - Vianen
+  - Deventer
+  - Delft
+  - Breda
+  - "'s-Hertogenbosch"
+  - Den Bosch
+  - Alphen aan den Rijn
+  - Zoetermeer
+  - Tilburg
+  - Maastricht
+  - Venlo
+  - Helmond
+  - Amersfoort
+  - Winterswijk
+  - Leeuwarden
+  - Groningen
+  - Zwolle
+  - Haarlem
+  - Leiden
+  - Schiphol
+  - Antwerp
+  - Antwerpen
+  - Machelen
+  - Kontich
+  - Lummen
+  - Gosselies
+  - Herstal
+  - Charleroi
+  - Liège
+  - Leuven
+  - Louvain-la-Neuve
+  - Gullegem
+  - Roeselare
+  - Zaventem
+  - Turnhout
+  - Oostende
+  - Sint-Truiden
+  - Willebroek
+  - Mechelen
+  - Hasselt
+  - Kortrijk
+  - Namur
+  - Diegem
+  - Bruxelles
+  - Brussel
+  - Filton
+  - Stevenage
+  - Weybridge
+  - Farnborough
+  - Slough
+  - Keighley
+  - Solihull
+  - Woking
+  - Warrington
+  - Bracknell
+  - Gateshead
+  - Redditch
+  - Winsford
+  - Inchinnan
+  - Greenford
+  - Heybridge
+  - Salfords
+  - Brize Norton
+  - Davidstow
+  - Llantrisant
+  - Cwmbran
+  - Loughborough
+  - Rotherham
+  - Whiteley
+  - Swindon
+  - Harlow
+  - Crawley
+  - East Grinstead
+  - Dagenham
+  - Stockley Park
+  - Chalfont St Giles
+  - Lisburn
+  - Bournemouth
+  - Newcastle upon Tyne
+  - Milton Keynes
+  - Nuneaton
+  - Luton
+  - Watford
+  - Hemel Hempstead
+  - Maidenhead
+  - High Wycombe
+  - Didcot
+  - Harwell
+  - Wokingham
+  - Egham
+  - Staines
+  - Feltham
+  - Heathrow
+  - Croydon
+  - Leatherhead
+  - Camberley
+  - Aldershot
+  - Stockport
+  - Crewe
+  - Macclesfield
+  - Doncaster
+  - Barnsley
+  - Harrogate
+  - Stockton-on-Tees
+  - Sunderland
+  - Blackpool
+  - Blackburn
+  - Wigan
+  - Telford
+  - Stoke-on-Trent
+  - Wolverhampton
+  - Walsall
+  - Hereford
+  - Basildon
+  - Maidstone
+  - Folkestone
+  - Eastbourne
+  - Worthing
+  - Chichester
+  - Yeovil
+  - Chippenham
+  - Cirencester
+  - Tewkesbury
+  - Wrexham
+  - Bridgend
+  - Falkirk
+  - Dunfermline
+  - Kilmarnock
+  - Prestwick
+  - Rosyth
+  - Saint Peter Port
+  - St. Peter Port
+  - St. Helier
+  - Gorgonzola
+  - Napoli
+  - Firenze
+  - Torino
+  - Turin
+  - Genoa
+  - Genova
+  - Padova
+  - Padua
+  - Palermo
+  - Catania
+  - Cagliari
+  - Sassari
+  - Bolzano
+  - Livorno
+  - Monza
+  - Brescia
+  - Brindisi
+  - Carrara
+  - Mestre
+  - Venezia
+  - Bologna
+  - Rimini
+  - Reggio Emilia
+  - Pistoia
+  - Imola
+  - Siena
+  - Trento
+  - Trieste
+  - Mondovì
+  - Sondrio
+  - Settimo Torinese
+  - Rivalta di Torino
+  - Pianezza
+  - Rubano
+  - Bregnano
+  - Cadrezzate
+  - Santena
+  - Agrate Brianza
+  - Casalecchio di Reno
+  - Casoria
+  - Pomigliano d'Arco
+  - Colognola ai Colli
+  - Pescara
+  - Bari
+  - Lecce
+  - Taranto
+  - Ancona
+  - Modena
+  - Piacenza
+  - Ferrara
+  - Vicenza
+  - Treviso
+  - Udine
+  - Bergamo
+  - Varese
+  - Novara
+  - Ivrea
+  - Salerno
+  - Caserta
+  - Messina
+  - Ispra
+  - Martos
+  - Alcobendas
+  - Fuenlabrada
+  - Tarragona
+  - Valladolid
+  - Bilbao
+  - Castellón
+  - Lleida
+  - Alicante
+  - Córdoba
+  - Granada
+  - Sevilla
+  - Seville
+  - Zaragoza
+  - Vigo
+  - Girona
+  - Santander
+  - Almería
+  - A Coruña
+  - Abrera
+  - Manlleu
+  - Mataró
+  - Jijona
+  - Palma de Mallorca
+  - Murcia
+  - Oviedo
+  - Avilés
+  - Pamplona
+  - Vitoria-Gasteiz
+  - Burgos
+  - Cartagena
+  - Elche
+  - Terrassa
+  - Sabadell
+  - Badalona
+  - Sant Cugat
+  - Castelldefels
+  - Zamudio
+  - Aveiro
+  - Braga
+  - Coimbra
+  - Vila do Conde
+  - Setúbal
+  - Funchal
+  - Klagenfurt
+  - Graz
+  - Linz
+  - Salzburg
+  - Innsbruck
+  - Spittal an der Drau
+  - Gratkorn
+  - Vöcklamarkt
+  - Voecklamarkt
+  - Wels
+  - Leoben
+  - Dornbirn
+  - Bregenz
+  - Bern
+  - Genève
+  - Lausanne
+  - Horgen
+  - Schlieren
+  - Glattbrugg
+  - Rapperswil
+  - Brüttisellen
+  - Oberentfelden
+  - Kaiseraugst
+  - Adliswil
+  - Langenthal
+  - Pratteln
+  - Winterthur
+  - Luzern
+  - Lucerne
+  - St. Gallen
+  - Lugano
+  - Fribourg
+  - Dübendorf
+  - Wallisellen
+  - Kloten
+  - Rotkreuz
+  - Schaffhausen
+  - Malmö
+  - Aarhus
+  - Århus
+  - Trondheim
+  - Kista
+  - Espoo
+  - Hyvinkää
+  - Årsta
+  - Ballerup
+  - Herlev
+  - Søborg
+  - Soeborg
+  - Lysaker
+  - Drammen
+  - Sandefjord
+  - Karlskrona
+  - Västerås
+  - Örebro
+  - Mölndal
+  - Borlänge
+  - Gällivare
+  - Luleå
+  - Norrköping
+  - Karlstad
+  - Uppsala
+  - Tampere
+  - Vantaa
+  - Tromsø
+  - Stavanger
+  - Göteborg
+  - Linköping
+  - Jönköping
+  - Umeå
+  - Södertälje
+  - Solna
+  - Sundbyberg
+  - Oulu
+  - Turku
+  - Odense
+  - Aalborg
+  - Kolding
+  - Esbjerg
+  - Billund
+  - Roskilde
+  - Lyngby
+  - Värnamo
+  - Svendborg
+  - Czechowice
+  - Skawina
+  - Lodz
+  - Łódź
+  - Gdynia
+  - Poznan
+  - Katowice
+  - Ketrzyn
+  - Jastrowie
+  - Bydgoszcz
+  - Radom
+  - Opole
+  - Koszalin
+  - Dąbrowa Górnicza
+  - Bielsko-Biała
+  - Bielsko-Biala
+  - Piotrków Trybunalski
+  - Grodków
+  - Białystok
+  - Będzin
+  - Lublin
+  - Kielce
+  - Toruń
+  - Olsztyn
+  - Gliwice
+  - Tychy
+  - Częstochowa
+  - Rakovník
+  - Plzeň
+  - Pilsen
+  - Žebrák
+  - Podbořany
+  - Humpolec
+  - Ústí nad Labem
+  - České Budějovice
+  - Olomouc
+  - Ostrava
+  - Banská Bystrica
+  - Prešov
+  - Košice
+  - Žilina
+  - Nitra
+  - Trnava
+  - Szentendre
+  - Veszprém
+  - Cegléd
+  - Csomor
+  - Veresegyház
+  - Debrecen
+  - Szeged
+  - Győr
+  - Miskolc
+  - Székesfehérvár
+  - Kecskemét
+  - Brașov
+  - Iași
+  - Timișoara
+  - Cluj-Napoca
+  - Craiova
+  - Pitești
+  - Mioveni
+  - Ploiești
+  - Constanța
+  - Oradea
+  - Giarmata
+  - Bucuresti
+  - Varna
+  - Haskovo
+  - Plovdiv
+  - Burgas
+  - Novi Sad
+  - Kragujevac
+  - Podgorica
+  - Maribor
+  - Rijeka
+  - Kukuljanovo
+  - Kyiv
+  - Kiev
+  - Lviv
+  - Odesa
+  - Kharkiv
+  - Kharkov
+  - Dnipro
+  - Ivano-Frankivsk
+  - Vinnytsia
+  - Almaty
+  - Astana
+  - Tashkent
+  - Moskva
+  - Novosibirsk
+  - Yekaterinburg
+  - Ankara
+  - Antalya
+  - Bursa
+  - Muğla
+  - Tekirdağ
+  - Çerkezköy
+  - Kocaeli
+  - Gebze
+  - Diyarbakır
+  - Raanana
+  - Ra'anana
+  - Haifa
+  - Petah Tikva
+  - Yokneam
+  - Rehovot
+  - Herzliya
+  - Modiin
+  - Netanya
+  - Jerusalem
+  - Hod Hasharon
+  - Kfar Saba
+  - Jeddah
+  - Makkah
+  - Tabuk
+  - Dhahran
+  - Al Khobar
+  - Khobar
+  - Jubail
+  - Manama
+  - Muscat
+  - Sharjah
+  - Giza
+  - Ben Arous
+  - Enfidha
+  - Sfax
+  - Sousse
+  - Tanger
+  - Tangier
+  - Rabat
+  - Fès
+  - Marrakech
+  - Algiers
+  - Tripoli
+  - Benghazi
+  - Suzhou
+  - Kunshan
+  - Nanjing
+  - Wuhan
+  - Hangzhou
+  - Shenyang
+  - Zhuhai
+  - Foshan
+  - Changshu
+  - Zhengzhou
+  - Xi'an
+  - Xian
+  - Urumqi
+  - Ningbo
+  - Changsha
+  - Fuzhou
+  - Kunming
+  - Wenzhou
+  - Jinan
+  - Lanzhou
+  - Nanning
+  - Chongqing
+  - Guiyang
+  - Harbin
+  - Hefei
+  - Huizhou
+  - Huzhou
+  - Luzhou
+  - Ganzhou
+  - Shangrao
+  - Shantou
+  - Shaoxing
+  - Taizhou
+  - Taicang
+  - Sanya
+  - Zhangzhou
+  - Zhenjiang
+  - Dalian
+  - Qingdao
+  - Dongguan
+  - Changchun
+  - Taiyuan
+  - Hohhot
+  - Nanchang
+  - Quanzhou
+  - Jinhua
+  - Wujiang
+  - Nanxun
+  - Shijiazhuang
+  - Xiamen
+  - Dongying
+  - Jiaxing
+  - Changzhou
+  - Yangzhou
+  - Nantong
+  - Xuzhou
+  - Yantai
+  - Kowloon
+  - Macau
+  - Hsin-Chu
+  - Zhubei
+  - Taoyuan
+  - Tainan
+  - Taichung
+  - Kaohsiung
+  - New Taipei
+  - Nagoya
+  - Yokohama
+  - Kobe
+  - Kyoto
+  - Fukuoka
+  - Sapporo
+  - Hiroshima
+  - Sendai
+  - Kawasaki
+  - Akashi
+  - Isehara
+  - Atsugi
+  - Itako
+  - Minato
+  - Gifu
+  - Numazu
+  - Matsumoto
+  - Fujioka
+  - Komaki
+  - Amagasaki
+  - Himeji
+  - Kamagaya
+  - Tsukuba
+  - Hamamatsu
+  - Shizuoka
+  - Kumamoto
+  - Okayama
+  - Kitakyushu
+  - Utsunomiya
+  - Sagamihara
+  - Higashine
+  - Kitakami
+  - Iwakuni
+  - Shinagawa
+  - Shibuya
+  - Shinjuku
+  - Chiyoda
+  - Pangyo
+  - Bundang
+  - Yongin
+  - Hwaseong
+  - Daegu
+  - Busan
+  - Gyeongsan
+  - Incheon
+  - Suwon
+  - Ulsan
+  - Daejeon
+  - Cheonan
+  - Changwon
+  - Pohang
+  - Gumi
+  - Icheon
+  - Pyeongtaek
+  - Malacca
+  - Kulim
+  - Penang
+  - Pulau Pinang
+  - Petaling Jaya
+  - Shah Alam
+  - Nilai
+  - Johor Bahru
+  - Kota Kinabalu
+  - Bintulu
+  - Cyberjaya
+  - Batu Kawan
+  - Puchong
+  - Taguig
+  - The Globe Tower
+  - Tan Uyen
+  - Mandaluyong
+  - Pasig
+  - Pasay
+  - Muntinlupa
+  - Quezon City
+  - Cebu
+  - Iloilo
+  - Davao
+  - Cavite
+  - Batangas
+  - Alabang
+  - Ortigas
+  - General Trias
+  - Samut Prakarn
+  - Samutprakan
+  - Rayong
+  - Chon Buri
+  - Chonburi
+  - Chiang Mai
+  - Laem Chabang
+  - Ayutthaya
+  - Pathum Thani
+  - Nonthaburi
+  - Songkhla
+  - Bekasi
+  - Batam
+  - Bandung
+  - Surabaya
+  - Medan
+  - Purwakarta
+  - Yogyakarta
+  - Cikarang
+  - Karawang
+  - Tangerang
+  - Semarang
+  - Hai Phong
+  - Haiphong
+  - Bac Ninh
+  - Binh Duong
+  - Dong Nai
+  - Hai Duong
+  - Quang Ngai
+  - Vung Tau
+  - Ho Chi Minh
+  - Phnom Penh
+  - Vientiane
+  - Yangon
+  - Colombo
+  - Kathmandu
+  - Chittagong
+  - Rawalpindi
+  - Faisalabad
+  - Guwahati
+  - Bhubaneswar
+  - Kochi
+  - Cochin
+  - Ernakulam
+  - Calicut
+  - Kozhikode
+  - Trivandrum
+  - Thiruvananthapuram
+  - Madurai
+  - Trichy
+  - Tiruchirappalli
+  - Mangalore
+  - Mangaluru
+  - Hubli
+  - Mysore
+  - Mysuru
+  - Vizag
+  - Visakhapatnam
+  - Vijayawada
+  - Indore
+  - Bhopal
+  - Nagpur
+  - Nashik
+  - Thane
+  - Navi Mumbai
+  - Airoli
+  - Kalyan
+  - Vadodara
+  - Rajkot
+  - Sanand
+  - Halol
+  - Jaipur
+  - Jodhpur
+  - Lucknow
+  - Kanpur
+  - Varanasi
+  - Ghaziabad
+  - Faridabad
+  - Sonipat
+  - Manesar
+  - Chandigarh
+  - Mohali
+  - Ludhiana
+  - Amritsar
+  - Dehradun
+  - Patna
+  - Ranchi
+  - Jamshedpur
+  - Raipur
+  - Howrah
+  - Siliguri
+  - Goa
+  - Sri City
+  - Hosur
+  - Tirupati
+  - Kancheepuram
+  - Sriperumbudur
+  - Gandhinagar
+  - Hobart
+  - Townsville
+  - Geelong
+  - Wollongong
+  - Parramatta
+  - North Ryde
+  - Macquarie Park
+  - Chatswood
+  - Tullamarine
+  - Dandenong
+  - Wangaratta
+  - Warrnambool
+  - Bundaberg
+  - Rockhampton
+  - Cairns
+  - Toowoomba
+  - Burnie
+  - Launceston
+  - Christchurch
+  - Tauranga
+  - Upper Hutt
+  - Lower Hutt
+  - Nouméa
+  - Papeete
+  - Suva
+  - Port Moresby
+  - San Luis Potosí
+  - Naucalpan
+  - Juárez
+  - Ciudad Juárez
+  - Monterrey
+  - Guadalajara
+  - Chihuahua City
+  - Cancún
+  - Hermosillo
+  - Toluca
+  - Huixquilucan
+  - Irapuato
+  - Acapulco
+  - Puebla
+  - Tijuana
+  - Reynosa
+  - Tampico
+  - Torreón
+  - Saltillo
+  - Ramos Arizpe
+  - Apodaca
+  - San Pedro Garza García
+  - Santa Catarina
+  - Matamoros
+  - Ensenada
+  - Celaya
+  - Silao
+  - Cuautitlán
+  - Tlalnepantla
+  - Tepeji
+  - Pachuca
+  - Villahermosa
+  - Coatzacoalcos
+  - Veracruz
+  - Xalapa
+  - Oaxaca
+  - Morelia
+  - Cuernavaca
+  - Zapopan
+  - Culiacán
+  - Mazatlán
+  - Ciudad Acuña
+  - Riviera Maya
+  - Playa del Carmen
+  - Ciudad del Carmen
+  - Campinas
+  - Varginha
+  - Taubaté
+  - Barueri
+  - Itajubá
+  - Itatiba
+  - Petrópolis
+  - Sorocaba
+  - Blumenau
+  - Curitiba
+  - São Bernardo do Campo
+  - Jaguariúna
+  - Joinville
+  - Brasília
+  - João Pessoa
+  - Recife
+  - Fortaleza
+  - Manaus
+  - Belém
+  - Porto Alegre
+  - Florianópolis
+  - Goiânia
+  - Uberlândia
+  - Ribeirão Preto
+  - São José dos Pinhais
+  - São Caetano do Sul
+  - Santo André
+  - Guarulhos
+  - Osasco
+  - Jundiaí
+  - Piracicaba
+  - Indaiatuba
+  - Hortolândia
+  - Sumaré
+  - Louveira
+  - Cajamar
+  - Camaçari
+  - Betim
+  - Contagem
+  - Juiz de Fora
+  - Cariacica
+  - Macaé
+  - Niterói
+  - Paranaguá
+  - Itapoá
+  - Pecém
+  - Cabo de Santo Agostinho
+  - Jaboatão
+  - Campo Largo
+  - Foz do Iguaçu
+  - Bauru
+  - Quito
+  - Guayaquil
+  - Arequipa
+  - Cusco
+  - Trujillo
+  - Chiclayo
+  - Callao
+  - Barranquilla
+  - Bucaramanga
+  - Caracas
+  - Maracaibo
+  - Antofagasta
+  - Mendoza
+  - Asunción
+  - Santa Cruz de la Sierra
+  - Cochabamba
+  - Lagunilla
+  - Tegucigalpa
+  - San Pedro Sula
+  - Managua
+  - San Salvador
+  - Guatemala City
+  - Santo Domingo
+  - Port of Spain
+  - Bridgetown
+  - George Town
+  - Paramaribo
+  - Belmopan
+  - Willemstad
+  - Oranjestad
+  - Penonomé
+  - Conakry
+  - Kigali
+  - Bamako
+  - Malabo
+  - Luanda
+  - Windhoek
+  - Walvis Bay
+  - Lusaka
+  - Ndola
+  - Solwezi
+  - Kalumbila
+  - Kansanshi
+  - Pretoria
+  - Durban
+  - Gqeberha
+  - Accra
+  - Kumasi
+  - Takoradi
+  - Abuja
+  - Port Harcourt
+  - Ibadan
+  - Agbara
+  - Ikeja
+  - Addis Ababa
+  - Kampala
+  - Dar es Salaam
+  - Mombasa
+  - Kinshasa
+  - Lubumbashi
+  - Brazzaville
+  - Douala
+  - Yaoundé
+  - Dakar
+  - Lomé
+  - Cotonou
+  - Ouagadougou
+  - Harare
+  - Maputo
+  - Antananarivo
+  - Port Louis
+  - Juba
+  - McMurdo
+  - South Pole Station
+  - Palmer Station
+  - St-Laurent-du-Var
+  - Glasgow
+  - Aberdeen
+  - Newcastle
+  - Valencia
+  - Heidelberg
+  - Sheffield
+  - Nottingham
+  - Leicester
+  - Liverpool
+  - Coventry
+  - Dundee
+  - Cardiff
+  - Swansea
+  - Limerick
+  - Abingdon
+  - Amesbury
+  - Northampton
+  - Broughton
+  - Derby
+  - Parma
+  - Ravenna
+  - Salamanca
+  - Bergen
+  - Münster
+  - Saint Petersburg
+  - Dunedin
+  - Abbeville
+  - Calais
+  - Versailles
+  - Angers
+  - Lund
+  - Pila
+  - Makati
+  - Tuam
+  - Grace-Hollogne
+  - Ebern
+  - Manching
+  - Mittelbach
+  - Kleinostheim
+  - Leimen
+  - Jessen
+  - Triefenstein
+  - Qormi
+  - Cayman
+  - København
+  - Schwaebisch Gmuend
+  - Schwäbisch Gmünd
+  - Meerane
+  - Assamstadt
+  - Neuenstein
+  - Kerpen
+  - Hennigsdorf
+  - Sailauf
+  - Salzgitter
+  - Soest
+  - Markt Schwaben
+  - Gross-Gerau
+  - Heilbad Heiligenstadt
+  - Neuenstadt am Kocher
+  - Markdorf
+  - Veitsbronn
+  - Elsendorf
+  - Eschborn
+  - Hagen
+  - Neuburg an der Donau
+  - Schleiz
+  - St. Ingbert
+  - Bautzen
+  - Siegen
+  - Gerlingen
+  - Ratingen
+  - Schoenefeld
+  - Schönefeld
+  - Untergruppenbach
+  - Kornwestheim
+  - Lindau
+  - Uelzen
+  - Waldshut-Tiengen
+  - Waldshut
+  - Kempten
+  - Neuss
+  - Celle
+  - Raunheim
+  - Nordlingen
+  - Hohen Wangelin
+  - Waghaeusel
+  - Dahlwitz-Hoppegarten
+  - Trappenkamp
+  - Singen
+  - Neuoetting
+  - Neuötting
+  - Neukloster
+  - Luebben
+  - Lübben
+  - Königs Wusterhausen
+  - Koenigs Wusterhausen
+  - Hagenbach
+  - Balve
+  - Ubstadt-Weiher
+  - Stolzenau
+  - Bornhoeved
+  - Bornhöved
+  - Osterfeld
+  - Varel
+  - Dettingen an der Erms
+  - Calden
+  - Buechen
+  - Büchen
+  - Boenen
+  - Bönen
+  - Wallau
+  - Nabern
+  - Otterfing
+  - Floersheim
+  - Flörsheim
+  - Herrsching am Ammersee
+  - Bünde
+  - Buende
+  - Bhosari
+  - Madhepura
+  - Kakinada
+  - Barmer
+  - Nazira
+  - Agartala
+  - Taloja
+  - Mehsana
+  - Pipavav
+  - Farukh Nagar
+  - Farukhnagar
+  - Jhajjar
+  - Ranjangaon
+  - Guhwathi
+  - Holon
+  - Yokne'am
+  - Ra'ananna
+  - Rosh Haayin
+  - Fez
+  - Kenitra
+  - Kechnec
+  - Ridderkerk
+  - Nieuwegein
+  - Joure
+  - Rijen
+  - Hilversum
+  - Sliedrecht
+  - Son en Breugel
+  - Pernis
+  - Huizen
+  - Sassenheim
+  - Ede
+  - Mollem
+  - Loppem
+  - Villavicencio
+  - Arauca
+  - Neiva
+  - Barrancabermeja
+  - Yopal
+  - Funza
+  - Neuquen
+  - Comodoro Rivadavia
+  - Godoy Cruz
+  - Pico Truncado
+  - Salta
+  - Port Gentil
+  - Balikpapan
+  - Narogong
+  - Banjarmasin
+  - Temuco
+  - Iquique
+  - La Serena
+  - Arezzo
+  - Agrate
+  - Vittuone
+  - Miguel Hidalgo
+  - Lerma
+  - Rio Bravo
+  - San Jose del Cabo
+  - San Francisco de Macoris
+  - Alajuela
+  - Kohnan
+  - Kanda
+  - Oura
+  - Chiba
+  - Shashi
+  - Anyang
+  - Yu Lin
+  - Shao Xing
+  - San Ming
+  - Hui Zhou
+  - Changhua
+  - Saint-Denis
+  - Saint-Étienne
+  - Sens
+  - Meung-Sur-Le-Loire
+  - Seiches-sur-le-Loir
+  - Seiches-sur-le-Loire
+  - Guerville
+  - Couvrot
+  - Bussac
+  - Tauriac
+  - Seurre
+  - Ranville
+  - Charny-sur-Meuse
+  - St Jean de Vedas
+  - Ormes
+  - Ussac
+  - Marsannay-la-Côte
+  - La Chapelle-Saint-Aubin
+  - La Chapel Saint Aubin
+  - Cantaron
+  - Chambray-lès-Tours
+  - Clermont-Ferrand
+  - Breuilpont
+  - Athis-Val de Rouvre
+  - Le Meux
+  - Chamant
+  - Courchevel
+  - Saint-Tropez
+  - Venette
+  - Châtres
+  - Champigneulles
+  - Champigneulle
+  - Sainte-Colombe-en-Bruilhois
+  - Chrzanow
+  - Aleksandrow
+  - Gryżyce
+  - Rakowice
+  - Chorzow
+  - Rowville
+  - Maribyrnong
+  - Axedale
+  - Co Durham
+  - Tasman
+  - Milpara
+  - Gold Coast
+  - Ansty
+  - Teesside
+  - Waterford City
+  - Carlow
+  - Moreira
+  - Novomoskovsk
+  - 10th of Ramadan
+  - Safat
+  - Nicosia
+  - Foetz
+  - Lugo
+  - Grey Lynn
+  - King's Lynn
+  - Klaipeda
+  - Chalandri
+  - Thessaloniki
+  - Vallensbaek
+  - Vallensbæk
+  - Barra dos Coqueiros
+  - Phu My
+  - Mogi Mirim
+  - Pathumthani
+  - Ilocos
+  - Hongkong
+  - Guatamela
+  - Sao Paolo
+  - Hong Leong Tower
+  - Negoiești
+  - La Chaux-de-Fonds
+  - La Paz
+  - Leongatha
+  - Cobram
+  - Kiewa
+  - Cohuna
+  - Yarram
+  - Laverton
+  - Colac
+  - Numurkah
+  - Deloraine
+  - Niamey
+  - Camana Bay
+  - Msida
+  - Bueno Aires
 
 country_codes: [
   "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AQ", "AR", "AT", "AU",
