@@ -31,3 +31,4 @@ class JobFilters:
     avoid_companies: frozenset[str] = frozenset()
     follow_companies: frozenset[str] = frozenset()
     excluded_ids: frozenset[str] = frozenset()
+    with_duplicates: bool = False

@@ -132,7 +132,7 @@ def _unproven_reason(history: list[VolumePoint]) -> str:
     if not any(point.ran for point in history):
         return "no run fetched this source, so none of them can show a drop"
     if all(point.blocked for point in history if point.ran):
-        return "every run was blocked, which is a throttle not a drop"
+        return "every run was blocked, so Stage was held back rather than seeing fewer postings"
     return "no run has recorded a stored count yet"
 
 

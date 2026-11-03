@@ -37,6 +37,20 @@ def database_path() -> Path:
     return data_dir() / "stage.db"
 
 
+def registry_override(explicit: Path | None = None) -> Path | None:
+    if explicit is not None:
+        return explicit
+    override = os.environ.get("STAGE_REGISTRY")
+    return Path(override).expanduser().resolve() if override else None
+
+
+def boards_path() -> Path:
+    override = os.environ.get("STAGE_BOARDS")
+    if override:
+        return Path(override).expanduser().resolve()
+    return data_root() / "boards.yaml"
+
+
 def registry_path() -> Path:
     override = os.environ.get("STAGE_REGISTRY")
     if override:
@@ -55,13 +69,22 @@ def lexicon_dir() -> Path:
     return Path(__file__).resolve().parent / "data" / "lexicon"
 
 
+def rules_stamp() -> int:
+    from hashlib import sha256
+
+    from stage import __version__
+
+    digest = sha256(__version__.encode())
+    for path in sorted(lexicon_dir().glob("*.yaml")):
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    return int.from_bytes(digest.digest()[:4], "big") % 2_147_483_646 + 1
+
+
 def font_path() -> Path:
     packaged = Path(__file__).resolve().parent / "data" / "fonts" / "DejaVuSans.ttf"
     if not packaged.exists():
-        raise FileNotFoundError(
-            f"the embedded PDF font is missing from {packaged.parent}; "
-            "export --format csv needs no font"
-        )
+        raise FileNotFoundError(f"{packaged} is missing")
     return packaged
 
 

@@ -23,6 +23,8 @@ SOURCE_PRIORITY: tuple[str, ...] = (
     "hanzili",
     "negar",
     "northwestern-quant",
+    "zapply-canada",
+    "zapply",
 )
 
 

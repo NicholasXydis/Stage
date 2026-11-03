@@ -40,7 +40,7 @@ def rested_until(visit: SourceVisit) -> datetime | None:
 
 def is_resting(visit: SourceVisit, now: datetime) -> bool:
     until = rested_until(visit)
-    return until is not None and now < until
+    return until is not None and visit.last_attempt_at <= now < until
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,8 +50,17 @@ class DetailFetch:
     failed: bool = False
 
 
+FULL_READ_PREFIX = "full:"
+SEARCH_PREFIX = "search:"
+FIRST_READ_PREFIX = "first:"
+HEIR_PREFIX = "heir:"
+
 __all__ = [
+    "FIRST_READ_PREFIX",
+    "FULL_READ_PREFIX",
+    "HEIR_PREFIX",
     "REST_AFTER_FAILURES",
+    "SEARCH_PREFIX",
     "CompanyVisit",
     "DetailFetch",
     "SourceVisit",

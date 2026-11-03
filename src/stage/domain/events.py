@@ -180,6 +180,9 @@ class SyncFinished:
     not_modified: int = 0
     dry_run: bool = False
     partial_reason: str = ""
+    first_reads: tuple[str, ...] = ()
+    checked: int = 0
+    checked_gone: int = 0
 
 
 SyncEvent = (

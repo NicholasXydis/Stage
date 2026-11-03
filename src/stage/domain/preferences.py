@@ -1,10 +1,10 @@
 import re
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, replace
-from difflib import get_close_matches
 
 from stage.domain.enums import UNKNOWN_TERM, LocationBucket, RoleCategory
 from stage.domain.filters import JobFilters
+from stage.domain.text import unknown_choice
 
 MAX_ABOUT = 2_000
 MAX_COMPANIES = 50
@@ -76,9 +76,9 @@ class Preferences:
         if self.terms and filters.term is None:
             parts.append(", ".join(self.terms))
         if self.follow and placed and (filters.company is None or self._follows(filters)):
-            parts.append("following " + COMPANY_SEPARATOR.join(e.name for e in self.follow))
+            parts.append("following " + ", ".join(e.name for e in self.follow))
         if self.avoid and filters.company is None:
-            parts.append("leaving out " + COMPANY_SEPARATOR.join(e.name for e in self.avoid))
+            parts.append("leaving out " + ", ".join(e.name for e in self.avoid))
         if not parts:
             return "Mine: the filters you typed replace your saved preferences"
         return "Mine: " + " | ".join(parts)
@@ -98,13 +98,6 @@ class Preferences:
         return frozenset(self.terms) | {UNKNOWN_TERM} if self.terms else frozenset()
 
 
-def _unknown(label: str, value: str, choices: list[str]) -> PreferenceError:
-    near = get_close_matches(value.lower(), choices, n=1, cutoff=0.6)
-    if near:
-        return PreferenceError(f"Unknown {label} {value!r}. Did you mean {near[0]!r}?")
-    return PreferenceError(f"Unknown {label} {value!r}. Choose from: {', '.join(choices)}")
-
-
 def _pieces(values: Iterable[str]) -> list[str]:
     return [piece.strip() for value in values for piece in _SEPARATOR.split(value) if piece.strip()]
 
@@ -120,11 +113,11 @@ def parse_locations(values: Iterable[str]) -> tuple[LocationBucket, ...]:
         location = allowed.get(value.lower())
         if value.lower() == LocationBucket.UNKNOWN.value:
             raise PreferenceError(
-                "Postings with no location given are left out of --mine; "
+                "Postings with no location given are left out of --mine. "
                 "stage list --mine --location unknown shows them."
             )
         if location is None:
-            raise _unknown("location", value, list(allowed))
+            raise PreferenceError(unknown_choice("location", value, list(allowed)))
         chosen.append(location)
     return tuple(dict.fromkeys(chosen))
 
@@ -135,7 +128,7 @@ def parse_roles(values: Iterable[str]) -> tuple[RoleCategory, ...]:
     for value in split_values(values):
         role = allowed.get(value.lower())
         if role is None:
-            raise _unknown("role", value, list(allowed))
+            raise PreferenceError(unknown_choice("role", value, list(allowed)))
         chosen.append(role)
     return tuple(dict.fromkeys(chosen))
 
@@ -149,11 +142,11 @@ def parse_terms(values: Iterable[str]) -> tuple[str, ...]:
             implied = True
             continue
         if not _TERM.match(term):
-            raise PreferenceError(f"Unknown term {value!r}. Terms look like summer-2027.")
+            raise PreferenceError(f'Unknown term "{value}". Terms look like summer-2027.')
         chosen.append(term)
     if implied and not chosen:
         raise PreferenceError(
-            "Postings with no term already count under --mine; save a term such as summer-2027."
+            "Postings with no term already count under --mine, so save a term such as summer-2027."
         )
     unique = tuple(dict.fromkeys(chosen))
     if len(unique) > MAX_TERMS:
@@ -165,17 +158,24 @@ def parse_companies(
     values: Iterable[str],
     fold: Callable[[str], str],
     known: Mapping[str, str] | None = None,
+    *,
+    commas: bool = True,
 ) -> tuple[ChosenCompany, ...]:
     stored = known or {}
     chosen: dict[str, ChosenCompany] = {}
-    for value in _company_names(_pieces(values), fold, stored):
+    names = (
+        _company_names(_pieces(values), fold, stored)
+        if commas
+        else (piece.strip() for value in values for piece in value.split(";") if piece.strip())
+    )
+    for value in names:
         name = clean_text(value)
         if len(name) > MAX_COMPANY_NAME:
             raise PreferenceError(f"Employer names can be at most {MAX_COMPANY_NAME} characters.")
         folded = fold(name)
         if not folded:
             raise PreferenceError(
-                f"{value!r} has no letters or digits, so it cannot match an employer."
+                f'"{value}" has no letters or digits, so it cannot match an employer.'
             )
         chosen.setdefault(folded, ChosenCompany(name=stored.get(folded, name), folded=folded))
         if len(chosen) > MAX_COMPANIES:
@@ -205,9 +205,7 @@ def check_overlap(follow: Iterable[ChosenCompany], avoid: Iterable[ChosenCompany
     avoided = {company.folded for company in avoid}
     both = [company.name for company in follow if company.folded in avoided]
     if both:
-        raise PreferenceError(
-            f"{COMPANY_SEPARATOR.join(both)} cannot be both followed and avoided."
-        )
+        raise PreferenceError(f"{', '.join(both)} cannot be both followed and avoided.")
 
 
 def clean_text(value: str) -> str:

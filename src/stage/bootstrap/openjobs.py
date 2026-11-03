@@ -228,35 +228,31 @@ def crossref(seeds: Sequence[Seed], entries: Sequence[DatasetEntry]) -> CrossRef
     return report
 
 
-def to_registry_rows(report: CrossReference) -> str:
-    from stage.companies import registry_entry_yaml
-    from stage.domain import Company, SourceOfRecord
-    from stage.services.discover import is_routable
+def _rows(found: Iterable[tuple[str, PlatformCandidate, bool]]) -> str:
+    from dataclasses import replace
 
-    boards_per_entry = Counter(item.entry.name for item in report.resolved)
-    blocks = []
-    for item in sorted(report.resolved, key=lambda entry: entry.display_name.lower()):
-        routable = is_routable(item.candidate.platform)
-        siblings = boards_per_entry[item.entry.name]
-        contested = siblings > 1
-        routable = routable and not contested
-        blocks.append(
-            registry_entry_yaml(
-                Company(
-                    name=item.display_name,
-                    platform=item.candidate.platform,
-                    slug=item.candidate.slug,
-                    enabled=routable,
-                    source_of_record=SourceOfRecord.OPENJOBS,
-                    workday_tenant=item.candidate.workday_tenant,
-                    workday_site=item.candidate.workday_site,
-                    workday_dc=item.candidate.workday_dc,
-                    oracle_host=item.candidate.oracle_host,
-                    oracle_site=item.candidate.oracle_site,
-                )
+    from stage.companies import registry_entry_yaml
+    from stage.domain import SourceOfRecord
+    from stage.services.discover import is_routable, to_company
+
+    blocks = [
+        registry_entry_yaml(
+            replace(
+                to_company(name, candidate, source=SourceOfRecord.OPENJOBS),
+                enabled=routable and is_routable(candidate.platform),
             )
         )
+        for name, candidate, routable in found
+    ]
     return "\n".join(blocks) + ("\n" if blocks else "")
+
+
+def to_registry_rows(report: CrossReference) -> str:
+    boards_per_entry = Counter(item.entry.name for item in report.resolved)
+    return _rows(
+        (item.display_name, item.candidate, boards_per_entry[item.entry.name] == 1)
+        for item in sorted(report.resolved, key=lambda entry: entry.display_name.lower())
+    )
 
 
 def mine_country(
@@ -280,30 +276,7 @@ def mine_country(
 
 
 def mined_registry_rows(found: Sequence[tuple[DatasetEntry, PlatformCandidate]]) -> str:
-    from stage.companies import registry_entry_yaml
-    from stage.domain import Company, SourceOfRecord
-    from stage.services.discover import is_routable
-
-    blocks = []
-    for entry, candidate in found:
-        routable = is_routable(candidate.platform)
-        blocks.append(
-            registry_entry_yaml(
-                Company(
-                    name=entry.name,
-                    platform=candidate.platform,
-                    slug=candidate.slug,
-                    enabled=routable,
-                    source_of_record=SourceOfRecord.OPENJOBS,
-                    workday_tenant=candidate.workday_tenant,
-                    workday_site=candidate.workday_site,
-                    workday_dc=candidate.workday_dc,
-                    oracle_host=candidate.oracle_host,
-                    oracle_site=candidate.oracle_site,
-                )
-            )
-        )
-    return "\n".join(blocks) + ("\n" if blocks else "")
+    return _rows((entry.name, candidate, True) for entry, candidate in found)
 
 
 def format_report(report: CrossReference, total_seeds: int) -> str:
@@ -385,7 +358,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         sys.stdout.write(
             f"\nwrote {counted(len(report.resolved) + len(mined), 'candidate row')} "
             f"to {args.emit_yaml}\n"
-            "Review before merging into src/stage/data/companies/; ats_links go stale.\n"
+            "Review before merging into src/stage/data/companies/. ats_links go stale.\n"
         )
     return 0
 

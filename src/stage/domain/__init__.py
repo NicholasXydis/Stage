@@ -119,7 +119,11 @@ from stage.domain.text import (
 )
 from stage.domain.validator import HttpValidator
 from stage.domain.visits import (
+    FIRST_READ_PREFIX,
+    FULL_READ_PREFIX,
+    HEIR_PREFIX,
     REST_AFTER_FAILURES,
+    SEARCH_PREFIX,
     CompanyVisit,
     DetailFetch,
     SourceVisit,
@@ -147,6 +151,10 @@ __all__ = [
     "TITLE_FIELD",
     "CompanyVisit",
     "DetailFetch",
+    "FIRST_READ_PREFIX",
+    "FULL_READ_PREFIX",
+    "SEARCH_PREFIX",
+    "HEIR_PREFIX",
     "CompanyDeferred",
     "CompanyFailed",
     "CompanyFinished",

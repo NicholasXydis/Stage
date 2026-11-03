@@ -1,10 +1,10 @@
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from difflib import get_close_matches
 from enum import StrEnum
 
 from stage.domain.preferences import clean_text
+from stage.domain.text import unknown_choice
 
 MAX_NOTE = 1_000
 EARLIEST = date(2000, 1, 1)
@@ -114,22 +114,19 @@ def parse_status(value: str) -> ApplicationStatus:
     wanted = value.strip().lower()
     if wanted in choices:
         return ApplicationStatus(wanted)
-    near = get_close_matches(wanted, choices, n=1, cutoff=0.6)
-    if near:
-        raise TrackerError(f"Unknown status {value!r}. Did you mean {near[0]!r}?")
-    raise TrackerError(f"Unknown status {value!r}. Choose from: {', '.join(choices)}")
+    raise TrackerError(unknown_choice("status", value, choices))
 
 
 def parse_day(value: str, today: date) -> date:
     text = value.strip()
     if not _DAY.match(text):
-        raise TrackerError(f"Unknown date {value!r}. Write dates like {today.isoformat()}.")
+        raise TrackerError(f'Unknown date "{value}". Write dates like {today.isoformat()}.')
     try:
         day = date.fromisoformat(text)
     except ValueError as exc:
         raise TrackerError(f"{text} is not a real date.") from exc
     if day > today:
-        raise TrackerError(f"{text} is in the future; today is {today.isoformat()}.")
+        raise TrackerError(f"{text} is in the future. Today is {today.isoformat()}.")
     if day < EARLIEST:
         raise TrackerError(f"{text} is before {EARLIEST.year}, which is too far back.")
     return day

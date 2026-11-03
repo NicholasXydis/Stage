@@ -36,6 +36,7 @@ class ProbeResult:
     board_name: str = ""
     job_count: int | None = None
     detail: str = ""
+    status: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
