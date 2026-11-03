@@ -56,14 +56,14 @@ It has kept **3,877** postings out of **341,837** screened so far.
 ## A look at it
 
 <div align="center">
-  <img src="assets/cli.png" alt="The stage command line help, showing commands grouped into Everyday, Applications, Keeping current, Registry and maintenance, Health, and AI apps" width="100%">
+  <img src="https://raw.githubusercontent.com/NicholasXydis/Stage/main/assets/cli.png" alt="The stage command line help, showing commands grouped into Everyday, Applications, Keeping current, Registry and maintenance, Health, and AI apps" width="100%">
   <br><sub><b>stage --help</b>: commands grouped by what you are doing</sub>
 </div>
 
 <br>
 
 <div align="center">
-  <img src="assets/tui.png" alt="The Stage TUI listing internship postings, with columns for age, company, title and location, a search bar, and the full description of the highlighted posting below" width="100%">
+  <img src="https://raw.githubusercontent.com/NicholasXydis/Stage/main/assets/tui.png" alt="The Stage TUI listing internship postings, with columns for age, company, title and location, a search bar, and the full description of the highlighted posting below" width="100%">
   <br><sub><b>stage tui</b>: browse everything, filter with <b>f</b>, open with <b>o</b></sub>
 </div>
 
@@ -308,7 +308,7 @@ Stage/
 ```
 
 <div align="center">
-  <img src="assets/architecture.svg" alt="Stage reads 2,000+ employer boards and 12 community lists with rate limits and caching, normalizes each posting, screens it for internship, CS role, degree and place, keeps what passes and records why the rest was rejected, merges duplicates into one SQLite file on your computer, and serves it to stage list, stage tui, AI apps and Discord" width="100%">
+  <img src="https://raw.githubusercontent.com/NicholasXydis/Stage/main/assets/architecture.svg" alt="Stage reads 2,000+ employer boards and 12 community lists with rate limits and caching, normalizes each posting, screens it for internship, CS role, degree and place, keeps what passes and records why the rest was rejected, merges duplicates into one SQLite file on your computer, and serves it to stage list, stage tui, AI apps and Discord" width="100%">
 </div>
 
 ## CI
@@ -325,7 +325,7 @@ Stage/
 | Release | `.github/workflows/release.yml` | Re-runs lint, types, tests, coverage and pip-audit, checks the sdist installs, then publishes from a `v*` tag |
 
 <div align="center">
-  <img src="assets/ci-flow.svg" alt="Quality checks on Python 3.12, the full suite on 3.13, 3.14, Windows and macOS, the posting card in a browser, a wheel smoke test on three operating systems, and CodeQL. Any failing check fails the run" width="100%">
+  <img src="https://raw.githubusercontent.com/NicholasXydis/Stage/main/assets/ci-flow.svg" alt="Quality checks on Python 3.12, the full suite on 3.13, 3.14, Windows and macOS, the posting card in a browser, a wheel smoke test on three operating systems, and CodeQL. Any failing check fails the run" width="100%">
 </div>
 
 Any failing gate blocks the merge. The canary runs weekly and opens an issue
