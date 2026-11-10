@@ -1,5 +1,6 @@
 import re
 import unicodedata
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any
@@ -66,13 +67,43 @@ def _collapse_inclusive(text: str) -> str:
 
 
 _COMBINING = dict.fromkeys(range(0x0300, 0x0370))
+_GLUED_TERM = re.compile(
+    r"\b(summer|fall|autumn|winter|spring|ete|hiver|automne|printemps)(20[0-9]{2})\b"
+)
+
+
+_LANGUAGES = (
+    (re.compile(r"(?<![0-9a-z])c\s?\+\+"), " cpp "),
+    (re.compile(r"(?<![0-9a-z])([cf])#(?![0-9])"), r" \1sharp "),
+    (re.compile(r"(?<![0-9a-z])(asp|vb)?\.net(?![0-9a-z])"), r" \1 dotnet "),
+)
+_FOLD_CACHED = 256
+
+
+def fold(raw: str) -> str:
+    return _fold_short(raw) if len(raw) < _FOLD_CACHED else _fold_long(raw)
+
+
+def fold_for_search(raw: str) -> str:
+    return _fold(raw, languages=False)
+
+
+@lru_cache(maxsize=65536)
+def _fold_short(raw: str) -> str:
+    return _fold(raw, languages=True)
 
 
 @lru_cache(maxsize=8)
-def fold(raw: str) -> str:
+def _fold_long(raw: str) -> str:
+    return _fold(raw, languages=True)
+
+
+def _fold(raw: str, *, languages: bool) -> str:
     decomposed = unicodedata.normalize("NFKD", raw.replace("&", " and "))
     collapsed = _collapse_inclusive(decomposed.translate(_COMBINING).casefold())
-    return " ".join(re.sub(r"[^0-9a-z]+", " ", collapsed).split())
+    for pattern, spelled in _LANGUAGES if languages else ():
+        collapsed = pattern.sub(spelled, collapsed)
+    return _GLUED_TERM.sub(r"\1 \2", " ".join(re.sub(r"[^0-9a-z]+", " ", collapsed).split()))
 
 
 def parse_yaml(text: str) -> Any:
@@ -145,6 +176,22 @@ def _folded_phrases(payload: dict[str, Any], key: str, source: str) -> frozenset
     return frozenset(phrases)
 
 
+def _phrase_map(payload: dict[str, Any], key: str, source: str) -> dict[str, frozenset[str]]:
+    raw = payload.get(key) or {}
+    if not isinstance(raw, dict):
+        raise LexiconError(f"{source}: {key!r} must be a mapping")
+    mapped: dict[str, frozenset[str]] = {}
+    for name, phrases in raw.items():
+        if not isinstance(phrases, list) or not all(isinstance(p, str) for p in phrases):
+            raise LexiconError(f"{source}: {key}.{name} must be a list of strings")
+        mapped[fold(str(name))] = frozenset(fold(phrase) for phrase in phrases)
+    return mapped
+
+
+def _optional_phrases(payload: dict[str, Any], key: str, source: str) -> frozenset[str]:
+    return _folded_phrases(payload, key, source) if payload.get(key) else frozenset()
+
+
 @dataclass(frozen=True, slots=True)
 class LocationLexicon:
     montreal: frozenset[str]
@@ -164,6 +211,7 @@ class LocationLexicon:
     international_cities: frozenset[str]
     country_codes: frozenset[str]
     city_aliases: dict[str, str]
+    region_codes: dict[str, str]
     remote: frozenset[str]
     hybrid: frozenset[str]
 
@@ -240,6 +288,14 @@ def internship_lexicon() -> InternshipLexicon:
 
 
 @dataclass(frozen=True, slots=True)
+class QualifiedTitles:
+    titles: frozenset[str]
+    needs: frozenset[str]
+    categories: frozenset[str] = frozenset()
+    described_by: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True, slots=True)
 class EligibilityLexicon:
     degree_required: dict[str, frozenset[str]]
     work_auth_excluded: frozenset[str]
@@ -252,20 +308,40 @@ class EligibilityLexicon:
     undergraduate_tokens: frozenset[str]
     graduate_title_tokens: frozenset[str]
     graduate_by_convention: frozenset[str]
+    graduate_by_employer: Mapping[str, frozenset[str]]
+    undergraduate_by_employer: Mapping[str, frozenset[str]]
     non_cs_exceptions: frozenset[str] = frozenset()
+    qualified_titles: tuple[QualifiedTitles, ...] = ()
+
+
+def _qualified_titles(payload: dict[str, Any], source: str) -> tuple[QualifiedTitles, ...]:
+    raw = payload.get("qualified_titles")
+    if raw is None:
+        return ()
+    if not isinstance(raw, dict):
+        raise LexiconError(f"{source}: 'qualified_titles' must be a mapping of families")
+    families: list[QualifiedTitles] = []
+    for name, entry in raw.items():
+        where = f"{source} qualified_titles.{name}"
+        if not isinstance(entry, dict):
+            raise LexiconError(f"{where} must hold 'titles' and 'needs'")
+        families.append(
+            QualifiedTitles(
+                titles=_folded_phrases(entry, "titles", where),
+                needs=_folded_phrases(entry, "needs", where),
+                categories=_optional_phrases(entry, "categories", where),
+                described_by=_optional_phrases(entry, "described_by", where),
+            )
+        )
+    return tuple(families)
 
 
 @lru_cache(maxsize=1)
 def eligibility_lexicon() -> EligibilityLexicon:
     payload, source = _load(ELIGIBILITY_FILE)
-    raw = payload.get("degree_required")
-    if not isinstance(raw, dict):
+    if not isinstance(payload.get("degree_required"), dict):
         raise LexiconError(f"{source}: 'degree_required' must be a mapping")
-    degrees: dict[str, frozenset[str]] = {}
-    for level, phrases in raw.items():
-        if not isinstance(phrases, list) or not all(isinstance(p, str) for p in phrases):
-            raise LexiconError(f"{source}: degree_required.{level} must be a list of strings")
-        degrees[str(level)] = frozenset(fold(phrase) for phrase in phrases)
+    degrees = _phrase_map(payload, "degree_required", source)
     return EligibilityLexicon(
         degree_required=degrees,
         work_auth_excluded=_folded_phrases(payload, "work_auth_excluded", source),
@@ -278,11 +354,10 @@ def eligibility_lexicon() -> EligibilityLexicon:
         undergraduate_tokens=_folded_phrases(payload, "undergraduate_tokens", source),
         graduate_title_tokens=_folded_phrases(payload, "graduate_title_tokens", source),
         graduate_by_convention=_folded_phrases(payload, "graduate_by_convention", source),
-        non_cs_exceptions=(
-            _folded_phrases(payload, "non_cs_exceptions", source)
-            if payload.get("non_cs_exceptions")
-            else frozenset()
-        ),
+        graduate_by_employer=_phrase_map(payload, "graduate_by_employer", source),
+        undergraduate_by_employer=_phrase_map(payload, "undergraduate_by_employer", source),
+        non_cs_exceptions=_optional_phrases(payload, "non_cs_exceptions", source),
+        qualified_titles=_qualified_titles(payload, source),
     )
 
 
@@ -314,6 +389,26 @@ def source_role_categories() -> dict[str, str]:
 def role_lexicon() -> dict[str, frozenset[str]]:
     payload, source = _load(ROLES_FILE)
     return {name: _folded_phrases(payload, name, source) for name in ROLE_CATEGORIES}
+
+
+@lru_cache(maxsize=1)
+def role_pairs() -> dict[str, tuple[tuple[str, str], ...]]:
+    payload, source = _load(ROLES_FILE)
+    raw = payload.get("paired", {})
+    if not isinstance(raw, dict):
+        raise LexiconError(f"{source}: 'paired' must map role categories to phrase pairs")
+    pairs: dict[str, tuple[tuple[str, str], ...]] = {}
+    for category, entries in raw.items():
+        if category not in ROLE_CATEGORIES:
+            raise LexiconError(f"{source}: {category!r} is not a role category")
+        found: list[tuple[str, str]] = []
+        for entry in entries if isinstance(entries, list) else [entries]:
+            parts = [fold(part) for part in entry] if isinstance(entry, list) else []
+            if len(parts) != 2 or not all(parts):
+                raise LexiconError(f"{source}: paired.{category} entries are [phrase, phrase]")
+            found.append((parts[0], parts[1]))
+        pairs[category] = tuple(found)
+    return pairs
 
 
 @dataclass(frozen=True, slots=True)
@@ -369,6 +464,9 @@ def location_lexicon() -> LocationLexicon:
         international_cities=_folded_phrases(payload, "international_cities", source),
         country_codes=_folded_phrases(payload, "country_codes", source),
         city_aliases=_folded_aliases(payload, "city_aliases", source),
+        region_codes=(
+            _folded_aliases(payload, "region_codes", source) if "region_codes" in payload else {}
+        ),
         remote=_folded_phrases(payload, "remote", source),
         hybrid=_folded_phrases(payload, "hybrid", source),
     )
@@ -402,6 +500,14 @@ def name_root_tokens(name: str) -> tuple[str, ...]:
 
 def division_qualifiers() -> frozenset[str]:
     return _company_tokens()[2]
+
+
+@lru_cache(maxsize=1)
+def employer_spellings() -> dict[str, str]:
+    payload, source = _load(COMPANY_TOKENS_FILE)
+    if not payload.get("employer_spellings"):
+        return {}
+    return _folded_aliases(payload, "employer_spellings", source)
 
 
 @lru_cache(maxsize=1)

@@ -4,8 +4,10 @@ from datetime import UTC, datetime
 
 from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
 
-_SEASON_ENDS = {"spring": (6, 30), "summer": (8, 31)}
-_YEAR = re.compile(r"\b20[0-9]{2}\b")
+_YEAR = re.compile(r"(?<!\d-)\b20[0-9]{2}\b(?!-\d)")
+_VERSIONED = re.compile(
+    r"\b(?:server|office|studio|ax|sql|dynamics|windows|vision)\s+20[0-9]{2}\b", re.I
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,16 +31,27 @@ def screen_is_internship(job: Job) -> Rejection | None:
 
 def _term_ended(job: Job) -> str:
     from stage.normalize import resolve_term
+    from stage.normalize.terms import scan, season_end
 
-    named = resolve_term(title=job.title_raw)
-    end = _SEASON_ENDS.get(named.season)
-    if end is None or named.year is None or len(set(_YEAR.findall(job.title_raw))) > 1:
+    since = job.source_posted_at or job.first_seen
+    years = set(_YEAR.findall(_VERSIONED.sub(" ", job.title_raw)))
+    seasons = {season for season, _, _ in scan(job.title_raw, since.year)}
+    if len(years) > 1 or len(seasons) > 1:
         return ""
-    finished = datetime(named.year, *end, 23, 59, tzinfo=UTC)
+    named = resolve_term(title=job.title_raw, pivot_year=since.year, posted=since)
+    if named.year is not None:
+        finished, label = season_end(named.season, named.year), f"{named.season} {named.year}"
+    elif not seasons and years:
+        year = int(next(iter(years)))
+        finished, label = datetime(year, 12, 31, 23, 59, tzinfo=UTC), str(year)
+    else:
+        return ""
+    if finished is None:
+        return ""
     posted = job.source_posted_at
     if _aware(job.last_seen) <= finished or (posted is not None and _aware(posted) > finished):
         return ""
-    return f"{named.season} {named.year} has ended"
+    return f"{label} has ended"
 
 
 def _aware(moment: datetime) -> datetime:

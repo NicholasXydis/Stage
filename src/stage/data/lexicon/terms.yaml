@@ -38,6 +38,7 @@ graduation_words:
   - graduates
   - graduated
   - grad
+  - grads
   - diplomation
   - diplome
   - diplomee
@@ -76,6 +77,16 @@ blocked_bigrams:
   - spring webflux
   - summer camp
   - winter garden
+  - winter haven
+  - winter park
+  - fall river
+  - silver spring
+  - spring tx
+  - spring hill
+  - spring valley
+  - spring lake
+  - spring branch
+  - java spring
   - fall protection
   - fall risk
   - fall arrest

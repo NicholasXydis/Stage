@@ -1,4 +1,5 @@
 montreal:
+  - St. Laurent
   - Bronfman Building
   - McConnell Eng
   - McLennan Library
@@ -428,6 +429,9 @@ usa_ambiguous:
   - Ghent
 
 usa_cities:
+  - Aliso Viejo
+  - Bethlehem
+  - Charlottesville
   - Evendale
   - Dayton
   - Grand Rapids
@@ -643,6 +647,7 @@ usa_cities:
   - Syracuse
   - Tulare
   - Tacoma
+  - Port Orchard
   - Renton
   - Kennewick
   - Lynnwood
@@ -935,6 +940,7 @@ usa_country:
   - Unitedstates
 
 international:
+  - Cuba
   - Botswana
   - Gabon
   - Cote dIvoire
@@ -2715,6 +2721,8 @@ international_cities:
   - Parramatta
   - North Ryde
   - Macquarie Park
+  - Macquarie University
+  - Wallumattagal
   - Chatswood
   - Tullamarine
   - Dandenong
@@ -3230,6 +3238,9 @@ country_codes: [
 ]
 
 remote:
+  - Flexible
+  - Flexible Remote
+  - Work Remotely
   - Remote
   - Fully Remote
   - Remote First
@@ -3512,3 +3523,142 @@ city_aliases:
     - dubai
   Sao Paulo:
     - sao paulo
+region_codes:
+  "AL":
+    - alabama
+  "AK":
+    - alaska
+  "AZ":
+    - arizona
+  "AR":
+    - arkansas
+  "CA":
+    - california
+  "CO":
+    - colorado
+  "CT":
+    - connecticut
+  "DE":
+    - delaware
+  "DC":
+    - district of columbia
+    - d c
+  "FL":
+    - florida
+  "GA":
+    - georgia
+  "HI":
+    - hawaii
+  "ID":
+    - idaho
+  "IL":
+    - illinois
+  "IN":
+    - indiana
+  "IA":
+    - iowa
+  "KS":
+    - kansas
+  "KY":
+    - kentucky
+  "LA":
+    - louisiana
+  "ME":
+    - maine
+  "MD":
+    - maryland
+  "MA":
+    - massachusetts
+  "MI":
+    - michigan
+  "MN":
+    - minnesota
+  "MS":
+    - mississippi
+  "MO":
+    - missouri
+  "MT":
+    - montana
+  "NE":
+    - nebraska
+  "NV":
+    - nevada
+  "NH":
+    - new hampshire
+  "NJ":
+    - new jersey
+  "NM":
+    - new mexico
+  "NY":
+    - new york
+  "NC":
+    - north carolina
+  "ND":
+    - north dakota
+  "OH":
+    - ohio
+  "OK":
+    - oklahoma
+  "OR":
+    - oregon
+  "PA":
+    - pennsylvania
+  "PR":
+    - puerto rico
+  "RI":
+    - rhode island
+  "SC":
+    - south carolina
+  "SD":
+    - south dakota
+  "TN":
+    - tennessee
+  "TX":
+    - texas
+  "UT":
+    - utah
+  "VT":
+    - vermont
+  "VA":
+    - virginia
+  "WA":
+    - washington
+    - washington state
+  "WV":
+    - west virginia
+  "WI":
+    - wisconsin
+  "WY":
+    - wyoming
+  "AB":
+    - alberta
+  "BC":
+    - british columbia
+    - colombie britannique
+  "MB":
+    - manitoba
+  "NB":
+    - new brunswick
+    - nouveau brunswick
+  "NL":
+    - newfoundland
+    - newfoundland and labrador
+    - terre neuve
+  "NS":
+    - nova scotia
+    - nouvelle ecosse
+  "NT":
+    - northwest territories
+  "NU":
+    - nunavut
+  "ON":
+    - ontario
+  "PE":
+    - prince edward island
+    - ile du prince edouard
+  "QC":
+    - quebec
+  "SK":
+    - saskatchewan
+  "YT":
+    - yukon

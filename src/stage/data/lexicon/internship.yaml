@@ -172,6 +172,14 @@ disqualifiers:
   - internship coordinator
   - mentor interns
   - supervise interns
+  - interns only
+  - co ops only
+  - returning intern
+  - returning interns
+  - return intern
+  - return internship
+  - returning students
+  - returning co op
 
 structured_excluded:
   - experienced professionals

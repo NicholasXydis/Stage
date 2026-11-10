@@ -1,4 +1,18 @@
 swe:
+  - android engineering
+  - ios engineering
+  - news engineering
+  - explore program engineering
+  - automation test
+  - automation quality engineer
+  - vr development
+  - developpement outils
+  - developpement d outils
+  - web cloud
+  - human computer interaction
+  - eda automation
+  - trading system development
+  - trading systems development
   - application engineering
   - software systems engineering
   - software system engineering
@@ -100,6 +114,8 @@ swe:
   - ingenieur d outil
   - ingenieure d outil
   - architecture logicielle
+  - ingenierie logicielle
+  - conception logicielle
   - software architecture
   - automation engineer
   - tooling engineer
@@ -171,6 +187,8 @@ swe:
   - low level software engineer
   - c software engineer
   - c software developer
+  - c++ software engineer
+  - c++ software developer
   - rust software engineer
   - linux software engineer
   - linux systems developer
@@ -254,6 +272,8 @@ swe:
   - spatial mapping
   - interactive systems
   - developpeur de jeux
+  - developpement de jeux
+  - developpement de jeux video
   - programmeur de jeux
   - ingenieur logiciel de jeux
   - programmeur de moteur de jeux
@@ -484,6 +504,12 @@ swe:
   - automation testing
   - python intern
 security:
+  - anticheat
+  - anti cheat
+  - soc intern
+  - critical infrastructure protection
+  - it technical security
+  - it and security
   - security engineer
   - security engineering
   - cybersecurity
@@ -772,6 +798,11 @@ security:
   - security consulting engineer
   - security workflow
 data:
+  - applied data solutions
+  - data ai and
+  - data ops engineer
+  - data management engineer
+  - data sience
   - analytics
   - visualization engineer
   - modeling and visualization
@@ -1007,6 +1038,24 @@ data:
   - data solution engineer
   - science de la donnee
 ml-ai:
+  - ai power systems
+  - ai product operator
+  - ai workflows
+  - generative modeling
+  - brain computer interface
+  - brain computer interfaces
+  - ai for science
+  - differentiable simulation
+  - ai interaction
+  - ai validation
+  - neurology ai
+  - imaging ai
+  - health ai
+  - ai vision engineer
+  - ai labs
+  - co op ai focus
+  - physics ai
+  - equation discovery
   - ml intern
   - ml internship
   - ia ml
@@ -1104,6 +1153,8 @@ ml-ai:
   - research and development engineer
   - ingenieur en intelligence artificielle
   - ingenieure en intelligence artificielle
+  - ingenierie de l ia
+  - ingenierie en intelligence artificielle
   - ingenieur ia
   - ingenieure ia
   - chercheuse en ia
@@ -1356,6 +1407,27 @@ ml-ai:
   - it intern ai
   - intelligent automation
 quant:
+  - trader intern
+  - trader internship
+  - trader summer internship
+  - trading intern
+  - trading internship
+  - trading analyst
+  - trading assistant
+  - proprietary trading
+  - market maker
+  - systematic data strategy
+  - systematic execution
+  - systematic fast trading
+  - execution tech
+  - data trading analyst
+  - model risk
+  - risk modeling
+  - trading desk operations engineer
+  - trading operations engineer
+  - internship program trading
+  - trading bootcamp
+  - trading fundamental analyst
   - quantitative
   - quantitative researcher
   - quantitative research
@@ -1568,12 +1640,15 @@ quant:
   - risque quantitatif
   - quant
 infra:
+  - infrastructure development and automation
   - cloud services
   - cloud operations
   - infrastructure engineer
   - infrastructure intern
   - cloud intern
   - site reliability
+  - fiabilite de site
+  - fiabilite des sites
   - sre
   - devops
   - platform reliability
@@ -1888,6 +1963,8 @@ infra:
   - server infrastructure
   - cloud integration
 embedded:
+  - sim to real
+  - driving simulation
   - embedded systems engineering
   - embedded system engineering
   - embedded systems engineer
@@ -2106,7 +2183,32 @@ embedded:
   - autonomy engineering
   - autonomy intern
 general-cs:
+  - computer eng
+  - computer sci
+  - computer architecture
+  - algorithms group
+  - quantum error correction
+  - quantum software
+  - quantum algorithms
+  - quantum applications
+  - quantum architecture
+  - quantum computing
+  - hamiltonian simulation
   - computer science
+  - information technology
+  - it intern
+  - technologies de l information
+  - stagiaire ti
+  - stage ti
+  - stage en ti
+  - ti co op
+  - ti coop
+  - it internship
+  - it co op
+  - it coop
+  - it student
+  - it services
+  - it solutions
   - computer engineering
   - computer scientist
   - computing
@@ -2154,6 +2256,14 @@ general-cs:
   - it engineering
   - capital markets technology
   - insurance technology
+
+paired:
+  ml-ai:
+    - [ai, development]
+    - [ai, developer]
+    - [research intern, ai]
+    - [intern research, ai]
+    - [research internship, ai]
 
 source_categories:
   swe:

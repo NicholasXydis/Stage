@@ -156,6 +156,16 @@ degree_list_tokens:
 
 work_auth_excluded:
   - must be a us citizen
+  - must be a u.s. citizen
+  - must be u.s. citizens
+  - must be us citizens
+  - must be a u.s. person
+  - requires u.s. citizenship
+  - requires us citizenship
+  - must hold u.s. citizenship
+  - must be a canadian citizen
+  - canadian citizenship is required
+  - canadian citizenship required
   - u.s. citizenship is required
   - us citizenship required
   - must be a united states citizen
@@ -196,6 +206,51 @@ work_auth_excluded:
   - habilitation de securite requise
 
 non_cs:
+  - footwear developer
+  - carrier operations
+  - business and technology intern
+  - recording head
+  - geothermal production
+  - provider advisory
+  - risk analytics product
+  - content creator
+  - ai enablement
+  - customer support ai
+  - knowledge management
+  - global security research
+  - supplier manager
+  - audit and assurance
+  - business systems analysis
+  - end user computing
+  - robotics technician
+  - automation and controls
+  - mechatronics engineering
+  - investment processes
+  - engineering and technology intern
+  - seismic imaging
+  - analyst co op bilingual
+  - asic eda
+  - design verification infrastructure
+  - mixed signal verification
+  - design automation and quality assurance
+  - soc engineering
+  - soc digital
+  - vlsi cad timing
+  - asic cad
+  - silicon engineering
+  - fpga development tools
+  - fpga software tool
+  - fpga verification
+  - electrical design automation
+  - commodities trading
+  - renewable energy intern
+  - transportation planning
+  - optical sensor development
+  - finance intern data analysis
+  - hr ai
+  - sales cyber
+  - vehicle performance
+  - digital design
   - registered nurse
   - nurse practitioner
   - phlebotomist
@@ -301,25 +356,40 @@ non_cs:
 
 non_cs_exceptions:
   - claims lab developer
+  - data science
+  - data scientist
+  - it infrastructure
+  - ai product operator
 
 excluded_titles:
+  - growth operations
+  - digital manufacturing
+  - process technology
+  - supplier development
+  - gis analyst
+  - digital infrastructure
+  - content development
+  - hardware architecture
+  - internal audit
+  - audit intern
+  - techstop
+  - reliability engineer
+  - power conversion
+  - electrical design
+  - setpoint
+  - fpga
+  - hw and soc
   - process engineering
   - category management
   - environmental engineering
   - talent acquisition
   - investor relations
   - construction management
-  - information technology intern
-  - information technology internship
-  - it intern
-  - it internship
-  - it co op
-  - it coop
-  - it student
-  - it trainee
-  - information technology co op
-  - information technology coop
   - it support
+  - it technician
+  - it helpdesk
+  - helpdesk
+  - techdesk
   - technical support
   - desktop support
   - help desk
@@ -349,14 +419,6 @@ excluded_titles:
   - sales engineering
   - pre sales engineer
   - solutions consultant
-  - stagiaire en technologies de l information
-  - stagiaire ti
-  - stage ti
-  - stage en ti
-  - ti co op
-  - ti coop
-  - technologies de l information co op
-  - technologies de l information coop
   - soutien informatique
   - support informatique
   - soutien technique
@@ -477,6 +539,44 @@ excluded_titles:
   - hr analytics
   - people analytics
   - talent analytics
+  - workforce analytics
+  - workforce data
+  - workforce planning
+  - people data
+  - hr data
+  - human capital analytics
+  - material developer
+  - materials developer
+  - creative and ai
+  - photonics test engineer
+  - photonics engineer
+  - electrical systems engineer
+  - electrical systems engineering
+  - qualite and logistique
+  - application engineer
+  - applications engineer
+  - application engineering
+  - applications engineering
+  - test engineer
+  - test engineering
+  - controls engineer
+  - controls engineering
+  - instrumentation and controls
+  - control systems engineer
+  - control systems engineering
+  - manufacturing engineer
+  - manufacturing engineering
+  - operational technology
+  - technology consulting
+  - technology consultant
+  - sales tools
+  - business systems analyst
+  - business system analyst
+  - business analyst
+  - mrna design engineer
+  - power systems
+  - hardware developer
+  - hardware development
   - hr business partner
   - hr systems
   - partenariat d affaires rh
@@ -549,8 +649,25 @@ excluded_titles:
   - product technology internship
   - programming intern
 technical_title_exceptions:
+  - software and product development
+  - devops
+  - computer programming
+  - conversion programming
+  - quantitative strats
+  - site reliability
+  - platform reliability
+  - data reliability
+  - database reliability
+  - cloud reliability
+  - ai reliability
+  - software reliability
+  - network reliability
+  - infrastructure reliability
+  - fpga software
+  - software tool
+  - development tools
   - vehicle software engineer diagnostic user interface
-  - fullstack c engineer intern vehicle user interface
+  - fullstack c++ engineer intern vehicle user interface
   - software engineer
   - software engineering
   - software developer
@@ -585,32 +702,35 @@ technical_title_exceptions:
   - computer engineering
   - security engineer
   - systems developer
-  - information technology intern data engineering
-  - information technology intern software
-  - information technology intern security
-  - information technology intern artificial intelligence
-  - artificial intelligence information technology intern
-  - it intern artificial intelligence
-  - enterprise architecture information technology intern
-  - cybersecurity it intern
-  - cybersecurity it internship
-  - ai and automation it intern
   - firmware engineer
   - web development
   - marketing developer
-  - it co op cloud platforms
-  - it intern ai
-  - ai it intern
-  - it intern manufacturing ai
-  - it intern analyst manufacturing ai
-  - it intern analyst data and ai
-  - it intern enterprise data
-  - data analytics it intern
   - tools programming
   - gameplay programming
   - ui programming
   - java programming
   - statistical programming
+  - software test
+  - automation test
+  - ai test
+  - performance test
+  - data application
+  - sdet
+  - qa test
+  - firmware test
+  - embedded test
+  - it application engineer
+  - hw sw
+  - hardware software
+  - systems software
+  - software application
+  - tools development
+  - embedded firmware
+  - embedded controls
+  - software controls
+  - ai application
+  - time series analytics
+  - ai power systems
 undergraduate_tokens:
   - bachelor
   - bachelors
@@ -654,8 +774,246 @@ graduate_title_tokens:
   - stage collegial
 graduate_by_convention:
   - summer associate
+  - applied scientist 2 intern
+  - applied scientist ii intern
   - research scientist intern
   - research scientist internship
   - applied scientist intern
   - applied science intern
   - applied science internship
+
+graduate_by_employer:
+  Microsoft:
+    - research intern
+    - stagiaire en recherche
+
+undergraduate_by_employer:
+  Navy Federal:
+    - summer associate
+
+qualified_titles:
+  it:
+    titles:
+      - information technology
+      - it intern
+      - it internship
+      - it co op
+      - it coop
+      - it student
+      - it trainee
+      - it services
+      - it solutions
+      - it sector
+      - technologies de l information
+      - stagiaire ti
+      - stage ti
+      - stage en ti
+      - ti co op
+      - ti coop
+      - technicien informatique
+      - technicienne informatique
+      - technicien en informatique
+    needs:
+      - software
+      - developer
+      - development
+      - data
+      - analytics
+      - cloud
+      - security
+      - cyber
+      - cybersecurity
+      - ai
+      - artificial intelligence
+      - machine learning
+      - ml
+      - logiciel
+      - logiciels
+      - developpeur
+      - developpeuse
+      - developpement
+      - programmation
+      - programmeur
+      - programmeuse
+      - infonuagique
+      - cybersecurite
+      - donnees
+      - securite
+      - ia
+  qa:
+    titles:
+      - quality assurance
+      - qa
+      - software quality
+      - assurance qualite
+      - tester
+      - testeur
+      - testeuse
+    needs:
+      - automation
+      - automated
+      - automatisation
+      - automatise
+      - automatisee
+      - automatises
+      - developpement
+      - developpeur
+      - ingenierie
+      - sdet
+      - in test
+      - test automation
+      - software test
+      - developer
+      - development
+      - engineer
+      - engineering
+      - devops
+      - frameworks
+      - programming
+  automation_engineering:
+    titles:
+      - automation engineer
+      - automation engineering
+    needs:
+      - software
+      - ai
+      - artificial intelligence
+      - qa
+      - quality assurance
+      - test
+      - testing
+      - data
+      - cloud
+      - devops
+      - it
+      - rpa
+      - banking
+      - network
+  networking:
+    titles:
+      - network engineer
+      - network engineering
+      - networking
+      - network administrator
+      - network administration
+      - network technician
+      - network specialist
+      - network analyst
+      - network support
+      - network design
+      - network site design
+      - network operations
+    needs:
+      - software
+      - developer
+      - development
+      - programming
+      - automation
+      - security
+      - secure
+      - cyber
+      - cybersecurity
+      - cloud
+      - ai
+      - artificial intelligence
+      - ml
+      - machine learning
+      - computer
+      - data
+      - devops
+      - embedded
+      - firmware
+  business_data:
+    titles:
+      - business intelligence
+      - business insights
+      - business analytics
+      - business data
+      - business performance
+      - business analyst data analyst
+      - insights and analytics
+      - analytics and insights
+      - sales data
+      - sales analytics
+      - sales administration data
+      - aftersales process analytics
+      - revenue operations data
+      - retail analytics
+      - merchandising and product data
+      - marketing and data analyst
+      - marketing data analyst
+      - finance data analyst
+      - financial data analyst
+      - financial analytics
+      - credit analytics
+      - automation finance
+      - automation intern finance
+      - customer experience data
+      - customer operations data
+      - data analyst intern people products
+      - operations reporting
+      - operations and data analyst
+      - operations data analyst
+      - operations analytics
+      - supply chain data
+      - business process automation
+      - policy institute
+      - policy data analyst
+      - intern business undergraduate
+    needs:
+      - engineer
+      - engineering
+      - developer
+      - scientist
+      - science
+      - software
+      - programming
+      - machine learning
+      - ai
+      - quantitative
+  systems_engineering:
+    titles:
+      - systems engineer
+      - systems engineering
+      - system engineer
+      - system engineering
+    needs:
+      - software
+      - developer
+      - development
+      - programming
+      - cyber
+      - cybersecurity
+      - security
+      - secure
+      - data
+      - ai
+      - ml
+      - machine learning
+      - cloud
+      - devops
+      - it
+      - information
+      - computer
+      - embedded
+      - firmware
+      - digital
+      - autonomy
+      - autonomous
+      - simulation
+      - modeling
+      - algorithm
+      - algorithms
+      - operating
+    categories:
+      - software
+      - software engineering
+      - ai ml data
+    described_by:
+      - computer science
+      - computer engineering
+      - software engineering
+      - information systems
+      - data science
+      - informatique
+      - genie logiciel

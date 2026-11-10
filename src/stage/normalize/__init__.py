@@ -1,4 +1,5 @@
 from stage.domain.text import is_workday_opening
+from stage.normalize.company import shown_company
 from stage.normalize.language import DetectedLanguage, detect_language
 from stage.normalize.location import (
     ResolvedLocation,
@@ -11,6 +12,8 @@ from stage.normalize.urls import (
     TRACKER_DOMAINS,
     canonical_apply_url,
     is_tracker_url,
+    named_posting,
+    names_posting,
 )
 
 __all__ = [
@@ -23,7 +26,10 @@ __all__ = [
     "is_tracker_url",
     "is_workday_opening",
     "listed_place",
+    "named_posting",
+    "names_posting",
     "resolve_listing",
     "resolve_location",
     "resolve_term",
+    "shown_company",
 ]

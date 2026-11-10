@@ -128,6 +128,7 @@ legal_suffixes:
   - corporation
   - gmbh
   - inc
+  - incorporated
   - limited
   - limitée
   - llc
@@ -241,18 +242,104 @@ division_qualifiers:
   - ventures
   - wealth
 
+employer_spellings:
+  Alaska Airlines:
+    - alaska air group
+  CAE:
+    - 10 cae canada inc
+    - cae canada inc
+  Chatham Financial:
+    - chathamfinancial
+  DocuSign:
+    - docusign
+  GM Financial:
+    - gm financial
+  L.L.Bean:
+    - llbean
+    - l l bean
+  M3 USA:
+    - m3usa
+  Motorola Solutions:
+    - motorola solutions
+  OLG:
+    - olg
+  PACCAR:
+    - paccar
+  Raft:
+    - raft company website
+  Riverside Research:
+    - riverside research institute
+  Spectrum:
+    - invitation charter
+  Starkey:
+    - starkey de mexico s a de c v
+  TMX Group:
+    - tmx group
+    - tsx inc
+  U-Haul:
+    - uhaul
+    - u haul
+  Western Alliance:
+    - western alliance bancorporation
+
 employer_aliases:
+  Amazon:
+    - amazon com services
+    - amazon development center u s inc b02
+    - amazon development centre canada ulc k03
+  Antares Nuclear:
+    - antares
+  BC Pension:
+    - bc pensions
+  BMO:
+    - bank of montreal
+    - bmo financial group
   Booz Allen:
     - booz allen hamilton
   Carnegie Mellon University:
     - carnegie mellon software engineering institute
     - carnegie mellon university software engineering institute
+  Commonwealth Fusion Systems:
+    - cfs energy
   Cook Group:
     - cook medical
+  Found Industries:
+    - found energy
+  Great American Insurance Company:
+    - national interstate
+    - national interstate insurance
+  HP:
+    - hewlett packard
+  Intuitive Surgical:
+    - intuitive
+  Johns Hopkins APL:
+    - jhu apl
+    - jhuapl
+    - johns hopkins university applied physics laboratory
+    - johns hopkins applied physics laboratory
+  Leidos:
+    - kudu dynamics
+  Manulife:
+    - manulife financial
+  PSP Investments:
+    - office d investissement des regimes de pensions du secteur public
+    - investissements psp
+  RTX:
+    - raytheon
+    - raytheon technologies
+  Shield AI:
+    - shield
   SK hynix:
     - sk hynix memory solution
     - sk hynix memory solutions
     - sk hynix memory solutions america
+  TMX Group:
+    - bourse de montreal
+    - montreal exchange
   Toshiba Global Commerce:
     - toshiba global commerce solutions
     - toshiba commerce solutions
+  Valon:
+    - valon tech
+  Veterans United:
+    - veterans united home loans

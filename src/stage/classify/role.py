@@ -2,12 +2,25 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from stage.domain import RoleCategory
-from stage.lexicon import fold, role_lexicon, source_role_categories
+from stage.lexicon import fold, role_lexicon, role_pairs, source_role_categories
 
 GENERAL_CS = RoleCategory.GENERAL_CS.value
 SWE = RoleCategory.SWE.value
-TECHNOLOGY_NOT_DISCIPLINE = frozenset({"gpu", "fpga", "soc", "asic", "rtos", "cuda"})
-OUTRANKED_BY_A_LEADING_QUALIFIER = (SWE,)
+NOT_A_SPECIALTY = frozenset(
+    {
+        "gpu",
+        "fpga",
+        "soc",
+        "asic",
+        "rtos",
+        "cuda",
+        "systems engineer",
+        "systems engineering",
+        "system engineer",
+        "system engineering",
+    }
+)
+OUTRANKED_BY_A_SPECIALTY = (SWE,)
 
 
 @lru_cache(maxsize=1)
@@ -26,25 +39,24 @@ class RoleVerdict:
     ambiguous: bool = False
 
 
-def _leading_specialist(folded: str, hits: dict[str, list[str]]) -> str | None:
-    outranked = [category for category in OUTRANKED_BY_A_LEADING_QUALIFIER if category in hits]
+def _specialist(hits: dict[str, list[str]]) -> str | None:
+    outranked = [category for category in OUTRANKED_BY_A_SPECIALTY if category in hits]
     if not outranked or len(hits) < 2:
         return None
-    if len(outranked) > 1:
-        return min(outranked, key=lambda c: min(folded.find(p) for p in hits[c]))
-    generic = min(folded.find(phrase) for category in outranked for phrase in hits[category])
-    ahead = {
-        category: min(
-            folded.find(phrase) for phrase in phrases if phrase not in TECHNOLOGY_NOT_DISCIPLINE
-        )
+    named = {
+        category
         for category, phrases in hits.items()
-        if category not in outranked
-        and any(phrase not in TECHNOLOGY_NOT_DISCIPLINE for phrase in phrases)
+        if category not in outranked and any(phrase not in NOT_A_SPECIALTY for phrase in phrases)
     }
-    ahead = {category: at for category, at in ahead.items() if 0 <= at < generic}
-    if len(ahead) != 1:
-        return None
-    return next(iter(ahead))
+    return next(iter(named)) if len(named) == 1 else None
+
+
+def _paired(padded: str) -> RoleVerdict | None:
+    for category, pairs in role_pairs().items():
+        for first, second in pairs:
+            if f" {first} " in padded and f" {second} " in padded:
+                return RoleVerdict(role=RoleCategory(category), matched=(f"{first} {second}",))
+    return None
 
 
 def classify_role(title: str, description: str = "", source_category: str = "") -> RoleVerdict:
@@ -61,6 +73,9 @@ def classify_role(title: str, description: str = "", source_category: str = "") 
                 if f" {phrase} " in padded:
                     hits.setdefault(category, []).append(phrase)
         if not hits:
+            paired = _paired(padded) if text is title else None
+            if paired is not None:
+                return paired
             continue
         if len(hits) > 1:
             hits.pop(GENERAL_CS, None)
@@ -68,10 +83,10 @@ def classify_role(title: str, description: str = "", source_category: str = "") 
             category: sorted(set(found), key=len, reverse=True) for category, found in hits.items()
         }
 
-        leading = _leading_specialist(folded, hits) if text is title else None
-        if leading is not None:
+        specialist = _specialist(hits) if text is title else None
+        if specialist is not None:
             matched = tuple(sorted({phrase for phrases in hits.values() for phrase in phrases}))
-            return RoleVerdict(role=RoleCategory(leading), matched=matched)
+            return RoleVerdict(role=RoleCategory(specialist), matched=matched)
 
         best = max(len(phrases[0]) for phrases in hits.values())
         winners = [category for category, phrases in hits.items() if len(phrases[0]) == best]

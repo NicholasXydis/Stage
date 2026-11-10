@@ -173,8 +173,14 @@ _CANADIAN_POSTAL = re.compile(
 )
 
 
+_INTERNATIONAL_CODE = re.compile(r"\bInternational\s*\((?P<code>[A-Z]{2})\)")
+
+
 def _trails_a_foreign_code(segment: str) -> bool:
     lexicon = location_lexicon()
+    marked = _INTERNATIONAL_CODE.search(segment)
+    if marked is not None and fold(marked["code"]) not in {"us", "ca"}:
+        return True
     fields = [field.strip() for field in _FIELD_SPLIT.split(segment) if field.strip()]
     if len(fields) < 2:
         return False
@@ -473,25 +479,50 @@ def _scope(segments: list[_Segment]) -> RemoteScope | None:
     return RemoteScope.UNSPECIFIED
 
 
-_MULTI_SITE_SUFFIX = re.compile(r"\s*\+\s*\d+\s*$")
+_MULTI_SITE_SUFFIX = re.compile(r"\s*\+\s*(?P<count>\d+)(?:\s+more)?\s*$")
 _MORE = re.compile(r"(?P<count>\d+) more")
+_MODE_NOTE = re.compile(r"\s*\((?:hybrid|on-?site|in[- ]office)\)", re.IGNORECASE)
 
 
+def _remote_only(place: str) -> bool:
+    resolved = resolve_location(place)
+    return resolved.bucket is LocationBucket.UNKNOWN and resolved.remote_scope is not None
+
+
+@lru_cache(maxsize=65_536)
 def display_location(raw: str) -> str:
     if not raw or not raw.strip():
         return ""
 
     aliases = location_lexicon().city_aliases
-    segments = _top_level_segments(raw)
-    first = _MULTI_SITE_SUFFIX.sub("", segments[0].strip())
+    segments = _in_scope_first(_top_level_segments(_TELEWORKER.sub("Remote", raw)))
+    hint = ""
+    if _homely(fold(_without_numbers(_NOTE.sub("", segments[0]).strip()))):
+        countries = {_country(part) for part in segments[1:]} - {""}
+        hint = next(iter(countries)) if len(countries) == 1 else ""
+        segments = [segments[0], *(part for part in segments[1:] if not _country(part))]
+    head = _MODE_NOTE.sub("", segments[0]).strip()
+    suffix = _MULTI_SITE_SUFFIX.search(head)
+    trimmed = head[: suffix.start()] if suffix else head
+    bucket = resolve_location(trimmed).bucket
+    abroad = bucket is LocationBucket.INTERNATIONAL
+    first = trimmed if abroad else _site_code(trimmed)
     if not first:
         return raw.strip()
 
-    others = sum(
+    remote = _remote_only(trimmed)
+    listed = sum(
         int(counted["count"]) if (counted := _MORE.fullmatch(part.strip())) else 1
         for part in segments[1:]
-        if part.strip()
+        if part.strip() and not (remote and _remote_only(part))
     )
+    others = max(listed, int(suffix["count"]) if suffix else 0)
+    if not abroad and (tidy := _tidy(first, hint)):
+        shown, extra = tidy
+        city = shown.removesuffix(", CA")
+        if bucket in _CANADIAN and city != shown and resolve_location(city).bucket is not _USA:
+            shown = f"{city}, Canada"
+        return shown + (f" +{others + extra}" if others + extra else "")
     more = f" +{others}" if others else ""
 
     fields = [field.strip() for field in first.split(",") if field.strip()]
@@ -500,8 +531,317 @@ def display_location(raw: str) -> str:
 
     canonical = aliases.get(fold(fields[0]))
     if canonical is None:
-        return f"{first}{more}"
+        return f"{first if abroad else _addressed(first) or first}{more}"
     return ", ".join([canonical, *fields[1:]]) + more
+
+
+def _in_scope_first(segments: list[str]) -> list[str]:
+    if (
+        len(segments) < 2
+        or resolve_location(segments[0]).bucket is not LocationBucket.INTERNATIONAL
+    ):
+        return segments
+    domestic = (LocationBucket.USA, LocationBucket.CANADA, LocationBucket.MONTREAL)
+    for index, segment in enumerate(segments[1:], start=1):
+        if resolve_location(segment).bucket in domestic:
+            return [segment, *segments[:index], *segments[index + 1 :]]
+    return segments
+
+
+_REGION_THEN_CITY = re.compile(
+    r"(?:(?:US|USA|CA|CAN)\s*[-.]\s*)?(?P<region>[A-Z]{2})\s*[-.\s]\s*"
+    r"(?P<city>[A-Za-z\u00c0-\u017f][A-Za-z\u00c0-\u017f .'-]*?)\s*(?:[-.]\s*)?"
+    r"(?=[0-9~]|\b(?:HQ|Hq)\b)"
+)
+_CANADIAN = frozenset({LocationBucket.CANADA, LocationBucket.MONTREAL})
+_USA = LocationBucket.USA
+_DIRECTION = re.compile(r"^(?:[NSEW]|NE|NW|SE|SW)\.?\s+")
+_CITY_BEFORE_REGION = re.compile(
+    r"[0-9][0-9A-Za-z.' ]*\b(?:St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Pkwy|Parkway|Blvd|Way|Ln"
+    r"|Lane|Plaza|Ct|Hwy)\.?"
+    r"\s+(?P<city>[A-Z][A-Za-z.' ]*?),?\s+(?P<region>[A-Z]{2})(?:\s+[0-9]{5}(?:-[0-9]{4})?)?"
+)
+
+
+def _addressed(place: str) -> str:
+    for pattern in (_REGION_THEN_CITY, _CITY_BEFORE_REGION):
+        found = pattern.match(place.strip())
+        if found is None or not _code(found["region"]):
+            continue
+        city = _DIRECTION.sub("", found["city"].strip(" .-"))
+        if not city or _region(city) or _site_field(city):
+            continue
+        return f"{_city_text(city, location_lexicon().city_aliases)}, {found['region']}"
+    words = place.split()
+    for size in (3, 2, 1):
+        if len(words) > size and (region := _region(" ".join(words[:size]))):
+            city = " ".join(words[size:])
+            if _known(city) and not _region(city):
+                return f"{_city_text(city, location_lexicon().city_aliases)}, {region}"
+    return ""
+
+
+_SITE_CODE = re.compile(
+    r"(?:(?:US|USA|CAN?)-)?(?P<region>[A-Z]{2})-(?P<city>[A-Za-z][A-Za-z .'&-]*?[A-Za-z])"
+    r"(?:-[A-Z0-9]{1,5})?(?:\s*~.*)?"
+)
+_AT_HOME = frozenset({"home", "remote", "virtual"})
+
+
+_REGION_FIRST = (
+    re.compile(r"(?P<region>[A-Z]{2}) (?P<city>[A-Z][a-z][A-Za-z .'-]*)"),
+    re.compile(r"(?P<city>[A-Z][a-z][A-Za-z .']*?)-(?P<region>[A-Z]{2})-[0-9A-Za-z][\w .'-]*"),
+    re.compile(r"(?:US|USA|CAN?), (?P<region>[A-Z]{2}) - (?P<city>[A-Za-z][A-Za-z .'-]*)"),
+    re.compile(r"United States-(?P<region>[A-Z][a-z]+(?: [A-Z][a-z]+)*)-(?P<city>[A-Za-z .'-]+)"),
+)
+
+
+def _site_code(place: str) -> str:
+    lexicon = location_lexicon()
+    regions = lexicon.usa_codes | lexicon.canada_codes | lexicon.usa_regions
+    for pattern in (_SITE_CODE, *_REGION_FIRST):
+        match = pattern.fullmatch(place)
+        if match is not None and fold(match["region"]) in regions:
+            city = _city_text(match["city"], lexicon.city_aliases)
+            return f"{'Remote' if fold(city) in _AT_HOME else city}, {match['region']}"
+    return place
+
+
+_TELEWORKER = re.compile(r"\bRemote\s*/?\s*Teleworker\b", re.IGNORECASE)
+_NOTE = re.compile(r"\s*\([^()]*\)")
+_REQUISITION = re.compile(r"\bR[0-9]{5,}\b")
+_CODED_REGION = re.compile(
+    r"\b(?:US|USA|CA|CAN)-(?P<code>[A-Z]{2})\b|\b(?P<site>[A-Z]{2})-[0-9]+\b"
+)
+_REMOTE_IN = re.compile(r"\bRemote\s+in\b", re.IGNORECASE)
+_REMOTE_CODE = re.compile(r"\bRemote-(?=[A-Z]{2}\b)")
+_NOTE_LIST = re.compile(r"[|;]")
+_TIDY_FIELDS = re.compile(r"\s*(?:,|;|:|_|\s[-\u2013\u2014]\s)\s*")
+_US_WORDS = frozenset({"united", "america", "us", "usa"})
+_CANADA_WORDS = frozenset({"can", "cad"})
+_REMOTE_FIRST = frozenset({"remote", "telecommuter", "telecommute", "teleworker", "teleworkers"})
+_HOME = frozenset(
+    {"home", "home teleworker", "home teleworkers", "working at home", "work at home"}
+)
+_MODE_WORDS = frozenset({"hybrid", "onsite", "on site", "in office"})
+_SITE_WORDS = frozenset(
+    {
+        "hq",
+        "ghq",
+        "headquarters",
+        "office",
+        "site",
+        "campus",
+        "tower",
+        "hub",
+        "street",
+        "avenue",
+        "ave",
+        "place",
+        "building",
+        "bldg",
+        "plaza",
+        "road",
+        "rd",
+        "drive",
+        "dr",
+        "parkway",
+        "pkwy",
+        "blvd",
+        "boulevard",
+        "lane",
+        "floor",
+        "suite",
+        "facility",
+        "locations",
+        "parking",
+        "more",
+    }
+)
+
+
+def _country(field: str) -> str:
+    lexicon = location_lexicon()
+    folded = fold(field.rstrip(". \u2026"))
+    if not folded:
+        return ""
+    if folded in lexicon.usa_country or folded in _US_WORDS:
+        return "US"
+    if folded in lexicon.canada_country or folded in _CANADA_WORDS:
+        return "Canada"
+    return ""
+
+
+def _code(field: str) -> bool:
+    lexicon = location_lexicon()
+    return (
+        len(field) == 2
+        and field.isupper()
+        and fold(field) in lexicon.usa_codes | lexicon.canada_codes
+    )
+
+
+def _region(field: str) -> str:
+    if _code(field):
+        return field
+    return location_lexicon().region_codes.get(fold(field), "")
+
+
+def _homely(folded: str) -> bool:
+    words = folded.split()
+    return bool(words) and (
+        words[0] in _REMOTE_FIRST
+        or "remote" in words
+        or folded in _HOME
+        or folded in location_lexicon().remote
+    )
+
+
+def _any_region(field: str) -> str:
+    words = field.split()
+    for size in (3, 2, 1):
+        for start in range(len(words) - size + 1):
+            if found := _region(" ".join(words[start : start + size])):
+                return found
+    return ""
+
+
+def _known(city: str) -> bool:
+    return fold(city) in _city_names() or fold(city) in location_lexicon().city_aliases
+
+
+def _peel(field: str, names: bool = True) -> tuple[str, str, str]:
+    words = field.split()
+    country = region = ""
+    for size in (4, 3, 2, 1):
+        head = " ".join(words[:size])
+        lead = size > 1 or words[0].isupper() or fold(head) == "canada"
+        if len(words) > size and lead and _country(head):
+            country, words = _country(head), words[size:]
+            break
+    for size in (4, 3, 2, 1):
+        if len(words) > size and _country(" ".join(words[-size:])):
+            country, words = country or _country(" ".join(words[-size:])), words[:-size]
+            break
+    if len(words) > 1 and _code(words[0]):
+        region, words = words[0], words[1:]
+    for size in (3, 2, 1):
+        tail = " ".join(words[-size:])
+        if len(words) > size and (names or _code(tail)) and (found := _region(tail)):
+            region, words = region or found, words[:-size]
+            while len(words) > size and _region(" ".join(words[-size:])) == found:
+                words = words[:-size]
+            break
+    return " ".join(words), region, country
+
+
+def _site_field(field: str) -> bool:
+    words = fold(field).split()
+    if not words or any(character.isdigit() for character in field):
+        return True
+    if words[-1] in _SITE_WORDS:
+        return True
+    return field.isupper() and len(field) <= 4 and not _known(field) and not _region(field)
+
+
+def _without_numbers(field: str) -> str:
+    bare = " ".join(word for word in field.split() if not word.isdigit())
+    return bare if bare != field and (_region(bare) or _homely(fold(bare))) else field
+
+
+def _tidy(place: str, hint: str = "") -> tuple[str, int] | None:
+    lexicon = location_lexicon()
+    country, remote, noted = hint, False, False
+    for note in _NOTE.findall(place):
+        inner = fold(note.strip(" ()"))
+        if _NOTE_LIST.search(note) or inner in _MODE_WORDS or inner in lexicon.hybrid:
+            return None
+        noted = noted or _homely(inner)
+        country = country or _country(inner)
+    text = _REQUISITION.sub("", _NOTE.sub("", place))
+    text = _CODED_REGION.sub(lambda found: f" {found['code'] or found['site']}", text)
+    text = _REMOTE_CODE.sub("Remote ", _REMOTE_IN.sub("Remote,", text))
+    fields = [_without_numbers(field.strip(" .\u2026-")) for field in _TIDY_FIELDS.split(text)]
+    fields = [field for field in fields if field]
+    named = not any(_region(field) for field in fields)
+    order: list[tuple[str, str]] = []
+    for field in fields:
+        folded = fold(field)
+        if _country(field):
+            country = country or _country(field)
+        elif _homely(folded):
+            remote = True
+            _, region, found = _peel(field, names=named)
+            country = country or found
+            if region := region or _any_region(field):
+                order.append(("region", region))
+        elif folded in _MODE_WORDS or folded in lexicon.hybrid:
+            continue
+        elif _region(field):
+            order.append(("region", field))
+        elif not _site_field(field):
+            rest, region, found = _peel(field, names=named)
+            country = country or found
+            if _region(rest):
+                order.append(("region", rest))
+            elif _homely(fold(rest)):
+                remote = True
+            elif rest and not _site_field(rest):
+                order.append(("city", rest))
+            if region:
+                order.append(("region", region))
+    result = _tidy_result(order, country, remote or noted)
+    if noted and result is not None and not result[0].startswith("Remote"):
+        return None
+    return result
+
+
+def _tidy_result(
+    order: list[tuple[str, str]], country: str, remote: bool
+) -> tuple[str, int] | None:
+    aliases = location_lexicon().city_aliases
+    kinds = [kind for kind, _ in order]
+    cities = list(dict.fromkeys(text for kind, text in order if kind == "city"))
+    regions = list(dict.fromkeys(_region(text) for kind, text in order if kind == "region"))
+    pairs = len(kinds) // 2
+    if pairs >= 2 and kinds == ["city", "region"] * pairs:
+        return f"{_city_text(order[0][1], aliases)}, {_region(order[1][1])}", pairs - 1
+    if len(cities) > 1:
+        known = list(dict.fromkeys(fold(city) for city in cities if _known(city)))
+        if len(known) != 1:
+            return None
+        cities = [next(city for city in cities if fold(city) == known[0])]
+    if not cities and remote:
+        if len(regions) == 1:
+            return f"Remote, {regions[0]}", 0
+        return (f"Remote, {country}" if country and not regions else "Remote"), 0
+    if not cities and kinds.count("region") == 2:
+        named = next((text for kind, text in order if kind == "region" and not _code(text)), "")
+        if not named or not _known(named):
+            return None
+        cities, regions = [named], [region for region in regions if region != _region(named)]
+        regions = regions or [_region(named)]
+    if not cities:
+        return None
+    if fold(cities[0]) in _CONJUNCTIONS or (
+        cities[0].isupper() and any(_code(word) for word in cities[0].split())
+    ):
+        return None
+    city = _city_text(cities[0], aliases)
+    if regions and fold(city) == fold(regions[0]):
+        return regions[0], 0
+    if regions:
+        return f"{city}, {regions[0]}", 0
+    if country == "Canada":
+        return f"{city}, Canada", 0
+    return (city, 0) if _known(cities[0]) or (country and len(order) == 1) else None
+
+
+def _city_text(city: str, aliases: dict[str, str]) -> str:
+    named = aliases.get(fold(city))
+    if named is not None:
+        return named
+    return city.title() if city.isupper() else city
 
 
 def _top_level_segments(raw: str) -> list[str]:
@@ -678,15 +1018,50 @@ def _titled_place(title: str) -> str:
 
 def listed_place(location_raw: str, apply_url: str, title: str = "") -> str:
     place = _linked_place(location_raw, apply_url)
-    if place.strip():
+    cut = place.rstrip().endswith(("...", "\u2026"))
+    if place.strip() and not cut:
         return place
-    return _titled_place(title) or place
+    return _titled_place(title) or _tail_place(title) or _bracketed_place(title) or place
+
+
+_LOOSE_TAIL = re.compile(r"\s*[-\u2013]\s*(?P<place>[^-\u2013()|]+?)\s*$")
+
+
+def place_tail(title: str) -> str:
+    tail = _LOOSE_TAIL.search(title or "")
+    return _named_place(tail["place"]) if tail else ""
+
+
+def _bracketed_place(title: str) -> str:
+    hinted = _TITLE_PARENTHESIS.search(title or "")
+    return _named_place(hinted["place"]) if hinted else ""
+
+
+def _tail_place(title: str) -> str:
+    tail = _TITLE_TAIL.search(title or "")
+    return _named_place(tail["place"]) if tail else ""
+
+
+def _named_place(place: str) -> str:
+    lexicon = location_lexicon()
+    regions = (
+        lexicon.usa_codes | lexicon.canada_codes | lexicon.usa_regions | lexicon.canada_regions
+    )
+    words = fold(place).split()
+    named = bool(words) and (words[-1] in regions or _names_only_places(place))
+    return place if named and resolve_location(place).bucket in _PREFERRED else ""
 
 
 def _linked_place(location_raw: str, apply_url: str) -> str:
     many = _MANY_PLACES.fullmatch(location_raw or "")
     link = _WORKDAY_PLACE.match(apply_url or "")
-    blank = not (location_raw or "").strip()
+    listed = resolve_location(location_raw or "")
+    blank = not (location_raw or "").strip() or (
+        many is None
+        and listed.bucket is LocationBucket.UNKNOWN
+        and listed.remote_scope is None
+        and not any(character.isdigit() for character in location_raw)
+    )
     if link is None or (not blank and (many is None or int(many["count"]) < 2)):
         return location_raw
     known = accent_dropped_words()
