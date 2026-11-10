@@ -19,6 +19,7 @@ updates:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+      - dependency-name: "cryptography"
 
   - package-ecosystem: "github-actions"
     directory: "/"
