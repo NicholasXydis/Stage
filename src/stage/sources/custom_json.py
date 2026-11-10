@@ -474,6 +474,7 @@ class CustomJsonAdapter:
         stale_page = False
         ignored_param = False
         unconfirmed_end = False
+        cut_short = False
         stated: int | None = None
         seen: set[str] = set()
         pages = board.page_budget(MAX_PAGES, PAGE_CEILING)
@@ -497,8 +498,10 @@ class CustomJsonAdapter:
                     declared_empty=True,
                 )
             page = _rows(payload, board)
-            if not isinstance(page, list):
+            if not isinstance(page, list) or (index and not page):
                 if index:
+                    listless = not isinstance(page, list)
+                    cut_short = listless if stated is None else len(entries) < stated
                     break
                 where = (
                     f'at jobs_path "{board.jobs_path}"' if board.jobs_path else "at its top level"
@@ -519,6 +522,7 @@ class CustomJsonAdapter:
             seen |= fingerprint
             entries.extend(page)
             if not board.paginated or len(page) < board.page_size:
+                cut_short = board.paginated and stated is not None and len(entries) < stated
                 break
             if len(entries) > MAX_ROWS:
                 truncated = True
@@ -551,9 +555,16 @@ class CustomJsonAdapter:
                 f"A later page repeated an earlier one {where}, so this read closes nothing"
                 if unconfirmed_end
                 else "",
+                f"The pages ended at {len(entries):,}"
+                + (f" of the {stated:,} postings the board states" if stated is not None else "")
+                + ", so this read closes nothing"
+                if cut_short
+                else "",
             ),
             authoritative=board.authoritative
-            and not (dropped or truncated or stale_page or ignored_param or unconfirmed_end),
+            and not (
+                dropped or truncated or stale_page or ignored_param or unconfirmed_end or cut_short
+            ),
         )
 
     def _jobs(
@@ -663,7 +674,7 @@ class CustomJsonAdapter:
     async def _handshake(board: CustomBoard, client: HttpClient) -> dict[str, str]:
         if not board.handshakes:
             return {}
-        page = await client.get_text(board.handshake_url)
+        page = await client.get_text(board.handshake_url, revalidate=True)
         found = re.search(board.token_pattern, page.text)
         if found is None or not found.groups():
             raise PayloadValidationError(

@@ -140,32 +140,46 @@ def payload_error(source: str, slug: str, payload: Any, problem: str) -> Payload
     return PayloadValidationError(f"{problem}, and Stage saved the answer to {captured}", captured)
 
 
+class FileFetch[ResponseT](Protocol):
+    def __call__(self, url: str, *, revalidate: bool = False) -> Awaitable[ResponseT]:
+        pass
+
+
 async def read_files[ResponseT: JsonResponse | TextResponse](
     name: str,
     urls: Sequence[str],
-    fetch: Callable[[str], Awaitable[ResponseT]],
+    fetch: FileFetch[ResponseT],
     parse: Callable[[str, ResponseT], tuple[Sequence[Job], int]],
     *,
     unique: bool = False,
 ) -> "FetchResult":
     jobs: list[Job] = []
-    modified = False
     failures: list[Exception] = []
     stale: list[str] = []
+    unchanged: list[str] = []
     malformed = 0
-    for url in urls:
+
+    async def read(url: str, *, revalidate: bool) -> None:
+        nonlocal malformed
         try:
-            response = await fetch(url)
+            response = await fetch(url, revalidate=revalidate)
         except Exception as exc:
             failures.append(exc)
             stale.append(url)
-            continue
+            return
         if response.not_modified:
-            continue
-        modified = True
+            (stale if revalidate else unchanged).append(url)
+            return
         found, dropped = parse(url, response)
         malformed += dropped
         jobs.extend(found)
+
+    for url in urls:
+        await read(url, revalidate=False)
+    modified = len(unchanged) + len(failures) < len(urls)
+    if modified:
+        for url in unchanged:
+            await read(url, revalidate=True)
     if failures and not jobs:
         if all(isinstance(exc, RequestRefusedError) for exc in failures):
             raise failures[0]
@@ -180,7 +194,7 @@ async def read_files[ResponseT: JsonResponse | TextResponse](
             f"{len(failures)} of {counted(len(urls), 'file')} unavailable" if failures else "",
             malformed_note(malformed),
         ),
-        authoritative=not (failures or malformed),
+        authoritative=not (failures or malformed or stale),
         stale_urls=tuple(stale),
     )
 

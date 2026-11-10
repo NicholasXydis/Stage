@@ -45,7 +45,7 @@ class LeverPosting(BaseModel):
 class LeverAdapter(BoardAdapter):
     name: ClassVar[str] = "lever"
     platform: ClassVar[Platform] = Platform.LEVER
-    rate_profile: ClassVar[str] = "standard"
+    rate_profile: ClassVar[str] = "steady"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     detail_budget: ClassVar[int] = 0
     max_requests_per_company: ClassVar[int] = 1

@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from stage.domain import Job, SourceSignals, job_id
 from stage.domain.text import counted
-from stage.http import HttpClient
+from stage.http import HttpClient, HttpStatusError
 from stage.sources._text import collapse_whitespace
 from stage.sources.base import (
     FetchResult,
@@ -16,7 +16,7 @@ from stage.sources.base import (
 )
 from stage.sources.feed import register_feed, upcoming_season_year
 
-URL = "https://zshah101.github.io/Automated-List-Of-Summer-{year}-and-Fall-2026-Tech-Internships/api/jobs.json"
+URL = "https://zshah101.github.io/Automated-List-Of-Summer-{year}-and-Fall-{fall}-Tech-Internships/api/jobs.json"
 HOST = "zshah101.github.io"
 
 
@@ -48,11 +48,21 @@ class ZshahFeed:
         return upcoming_season_year(now)
 
     def plan(self, now: datetime) -> tuple[str, ...]:
-        return (URL.format(year=self.season_year(now)),)
+        year = self.season_year(now)
+        return tuple(URL.format(year=named, fall=named - 1) for named in (year, year - 1))
 
     async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
-        url = self.plan(now)[0]
-        response = await client.get_json(url)
+        *earlier, last = self.plan(now)
+        for url in earlier:
+            try:
+                response = await client.get_json(url)
+            except HttpStatusError as exc:
+                if exc.status != 404:
+                    raise
+                continue
+            break
+        else:
+            response = await client.get_json(last)
         if response.not_modified:
             return FetchResult(not_modified=True)
         envelope = parsed(

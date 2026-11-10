@@ -69,6 +69,9 @@ class _GitHubMarkdownFeed:
     def plan(self, now: datetime) -> tuple[str, ...]:
         raise NotImplementedError
 
+    def fallback(self, now: datetime) -> tuple[str, ...]:
+        return ()
+
     async def _available(
         self, client: HttpClient, urls: tuple[str, ...], now: datetime
     ) -> tuple[str, TextResponse]:
@@ -91,7 +94,12 @@ class _GitHubMarkdownFeed:
         raise missing[urls[-1]]
 
     async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
-        url, response = await self._available(client, self.plan(now), now)
+        try:
+            url, response = await self._available(client, self.plan(now), now)
+        except HttpStatusError as exc:
+            if exc.status != 404 or not self.fallback(now):
+                raise
+            url, response = await self._available(client, self.fallback(now), now)
         if response.not_modified:
             return FetchResult(not_modified=True)
         text = response.text
@@ -147,9 +155,15 @@ class NegarFeed(_GitHubMarkdownFeed):
     name: ClassVar[str] = "negar"
 
     def plan(self, now: datetime) -> tuple[str, ...]:
-        repository = "negarprh/Canadian-Tech-Internships-2027"
+        return self._files(self.season_year(now))
+
+    def fallback(self, now: datetime) -> tuple[str, ...]:
+        return self._files(self.season_year(now) - 1)
+
+    def _files(self, named: int) -> tuple[str, ...]:
+        repository = f"negarprh/Canadian-Tech-Internships-{named}"
         return (
-            CONTENT_URL.format(repository=repository, path=f"README-{self.season_year(now)}.md"),
+            CONTENT_URL.format(repository=repository, path=f"README-{named}.md"),
             CONTENT_URL.format(repository=repository, path="README.md"),
         )
 

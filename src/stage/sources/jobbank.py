@@ -101,6 +101,10 @@ class JobBankFeed:
     rate_profile: ClassVar[str] = "jobbank"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = "jobbank"
+    paused: ClassVar[str] = (
+        "Job Bank lists full-time jobs: 120 reads found no internship, so a sync skips it "
+        "unless --source names it."
+    )
 
     def season_year(self, now: datetime) -> int:
         return now.year

@@ -21,7 +21,7 @@ from stage.domain import (
     board_key,
     job_id,
 )
-from stage.domain.text import counted
+from stage.domain.text import counted, counts_locations
 from stage.http import (
     CEILING_BACKSTOP,
     CaptivePortalError,
@@ -268,6 +268,7 @@ class WorkdayAdapter:
                 continue
             start = max(0, crawl.next_offset - PAGE_SIZE)
             pages = max(1, (max(0, crawl.total - start) + PAGE_SIZE - 1) // PAGE_SIZE)
+            pages += int(start > 0)
             demands.append((min(MAX_CRAWL_PAGES, pages), company.registry_key))
         for pages, key in sorted(demands):
             extra = max(0, min(remaining, pages - budgets[key]))
@@ -350,6 +351,7 @@ class WorkdayAdapter:
             persisted = None
             crawl_reset = True
         degraded = ""
+        whole_note = ""
 
         discovered: WorkdayFacet | None = None
         forgotten: WorkdayFacet | None = None
@@ -368,19 +370,14 @@ class WorkdayAdapter:
         pages = 0
         total = persisted.total if persisted is not None else None
         total_changed = False
+        fresh_total = False
         listed_facets = True
         huge = False
         whole = False
         limit = page_budget
 
         while pages < limit:
-            body: dict[str, Any] = {
-                "appliedFacets": applied,
-                "limit": PAGE_SIZE,
-                "offset": offset,
-                "searchText": "",
-            }
-            response = await client.post_json(url, body=body)
+            response = await client.post_json(url, body=_search_body(applied, offset))
             page, dropped = _validate(response.payload, company)
             malformed += dropped
             pages += 1
@@ -403,13 +400,7 @@ class WorkdayAdapter:
                         "stage discover --url or clear workday_facet"
                     )
                 else:
-                    probe_body: dict[str, Any] = {
-                        "appliedFacets": {},
-                        "limit": PAGE_SIZE,
-                        "offset": 0,
-                        "searchText": "",
-                    }
-                    probe_response = await client.post_json(url, body=probe_body)
+                    probe_response = await client.post_json(url, body=_search_body({}, 0))
                     probe, probe_dropped = _validate(probe_response.payload, company)
                     malformed += probe_dropped
                     pages += 1
@@ -440,6 +431,7 @@ class WorkdayAdapter:
                     fell_back = True
                     listed_facets = listed_facets and page.facets is not None
                     degraded = _fallback_reason(page, company, response.payload)
+                    whole_note = degraded if page.facets is not None else ""
 
             if discovered is not None and not applied and not restarted:
                 applied = {discovered.parameter: list(discovered.facet_ids)}
@@ -452,6 +444,7 @@ class WorkdayAdapter:
 
             postings.extend(page.jobPostings)
             if page.total > 0:
+                fresh_total = True
                 if total is None:
                     total = page.total
                 elif total != page.total:
@@ -471,6 +464,22 @@ class WorkdayAdapter:
             if offset >= _last(total):
                 reached_end = True
                 break
+
+        if persisted is not None and persisted.next_offset > 0 and reached_end and not fresh_total:
+            try:
+                head, lost = _validate(
+                    (await client.post_json(url, body=_search_body(applied, 0))).payload, company
+                )
+            except CaptivePortalError:
+                raise
+            except (HttpError, httpx.HTTPError, PayloadValidationError):
+                total_changed = True
+            else:
+                malformed += lost
+                pages += 1
+                if head.total > 0 and head.total != total:
+                    total_changed = True
+                    total = head.total
 
         glance = huge and not whole
         capped = not reached_end and not glance
@@ -570,10 +579,11 @@ class WorkdayAdapter:
                 )
             )
 
+        authoritative = reached_end and safe and not glance
         return FetchResult(
             jobs=tuple(job for _, job in paired),
-            degraded=degraded,
-            authoritative=reached_end and safe and not glance,
+            degraded="" if authoritative and degraded == sentences(whole_note) else degraded,
+            authoritative=authoritative,
             facets=(discovered,) if discovered is not None else (),
             forgotten_facets=(forgotten,) if forgotten is not None else (),
             detail_fetches=tuple(fetched),
@@ -595,14 +605,8 @@ async def _search(
         while True:
             if pages >= limit:
                 return found, pages, lost, _search_note(f"stopped after {counted(pages, 'page')}")
-            body: dict[str, Any] = {
-                "appliedFacets": {},
-                "limit": PAGE_SIZE,
-                "offset": offset,
-                "searchText": text,
-            }
             try:
-                response = await client.post_json(url, body=body)
+                response = await client.post_json(url, body=_search_body({}, offset, text))
                 page, dropped = _validate(response.payload, company)
             except CaptivePortalError:
                 raise
@@ -735,6 +739,10 @@ def _pinned_facet(company: Company) -> WorkdayFacet | None:
     )
 
 
+def _search_body(applied: dict[str, Any], offset: int, text: str = "") -> dict[str, Any]:
+    return {"appliedFacets": applied, "limit": PAGE_SIZE, "offset": offset, "searchText": text}
+
+
 def _validate(payload: Any, company: Company) -> tuple[WorkdayPage, int]:
     raw = parsed(
         WorkdayRawPage,
@@ -775,15 +783,43 @@ async def _attach_descriptions(
         path = posting.externalPath
         url = f"https://{host}/wday/cxs/{company.workday_tenant}/{company.workday_site}{path}"
         try:
-            response = await client.get_json(url)
+            response = await client.get_json(url, revalidate=True)
         except (HttpError, httpx.HTTPError):
             outcomes.append(DetailFetch(id=job.id, resolved=False, failed=True))
             merged.append((posting, job))
             continue
         body = _description_from(response.payload)
+        places = _locations_from(response.payload) if counts_locations(job.location_raw) else ""
         outcomes.append(DetailFetch(id=job.id, resolved=bool(body)))
-        merged.append((posting, replace(job, description=body) if body else job))
+        merged.append(
+            (
+                posting,
+                replace(
+                    job,
+                    description=body or job.description,
+                    location_raw=places or job.location_raw,
+                ),
+            )
+        )
     return merged, outcomes
+
+
+def _locations_from(payload: Any) -> str:
+    info = payload.get("jobPostingInfo") if isinstance(payload, dict) else None
+    if not isinstance(info, dict) or not isinstance(info.get("location"), str):
+        return ""
+    primary = collapse_whitespace(info["location"])
+    country = info.get("country")
+    named = country.get("descriptor") if isinstance(country, dict) else None
+    if isinstance(named, str) and named and fold(named) not in fold(primary):
+        primary = f"{primary}, {collapse_whitespace(named)}"
+    extra = info.get("additionalLocations")
+    others = (
+        [collapse_whitespace(place) for place in extra if isinstance(place, str)]
+        if isinstance(extra, list)
+        else []
+    )
+    return " / ".join(place for place in [primary, *others] if place)
 
 
 def _description_from(payload: Any) -> str:

@@ -73,6 +73,7 @@ WORKDAY = RatePosture(
 FEEDS = RatePosture(
     concurrency=2, min_interval_s=0.5, max_requests_per_run=20, refresh_interval_h=0.0
 )
+REDIRECTED_FEEDS = replace(FEEDS, max_requests_per_run=30)
 
 SEARCHES = replace(FEEDS, refresh_interval_h=SEARCH_REFRESH_H)
 
@@ -83,6 +84,8 @@ JOBBANK = RatePosture(
     refresh_interval_h=SEARCH_REFRESH_H,
     requests_per_board=1,
 )
+
+STEADY = RatePosture(concurrency=1, min_interval_s=1.0, max_requests_per_run=300)
 
 PATIENT = RatePosture(
     concurrency=1,
@@ -104,8 +107,10 @@ PROFILES: MappingProxyType[str, RatePosture] = MappingProxyType(
         "conservative": CONSERVATIVE,
         "workday": WORKDAY,
         "feeds": FEEDS,
+        "redirected_feeds": REDIRECTED_FEEDS,
         "searches": SEARCHES,
         "jobbank": JOBBANK,
+        "steady": STEADY,
         "patient": PATIENT,
         "discovery": DISCOVERY,
     }

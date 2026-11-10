@@ -27,7 +27,7 @@ from stage.http.cache import ValidatorCache
 from stage.http.profiles import RatePosture
 
 USER_AGENT = (
-    f"stage-cli/{__version__} (+https://github.com/NicholasXydis/Stage; internship aggregator)"
+    f"stage-cli/{__version__} (+https://pypi.org/project/stage-cli/; internship aggregator)"
 )
 TEXT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 MEGABYTE = 1024 * 1024

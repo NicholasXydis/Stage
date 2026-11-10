@@ -63,7 +63,7 @@ def listed(text: str) -> list[dict[str, str]]:
 @register_feed
 class EspressoJobsFeed:
     name: ClassVar[str] = "espresso-jobs"
-    rate_profile: ClassVar[str] = "feeds"
+    rate_profile: ClassVar[str] = "redirected_feeds"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = "espresso-jobs"
 

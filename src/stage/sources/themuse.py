@@ -79,6 +79,10 @@ class TheMuseFeed:
     rate_profile: ClassVar[str] = "searches"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = "themuse"
+    paused: ClassVar[str] = (
+        "The Muse's job API now answers 404 or a bot check, so a sync skips it unless "
+        "--source names it."
+    )
 
     def season_year(self, now: datetime) -> int:
         return now.year
@@ -94,7 +98,9 @@ class TheMuseFeed:
         for page in range(1, PAGE_CAP + 1):
             if page > pages:
                 break
-            response = await client.get_json(self._url(page))
+            response = await client.get_json(self._url(page), revalidate=page > 1)
+            if response.not_modified and page == 1:
+                return FetchResult(not_modified=True)
             rows, dropped, pages = self._validate(response.payload, page)
             malformed += dropped
             for listing in rows:

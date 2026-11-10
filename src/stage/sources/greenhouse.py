@@ -31,6 +31,7 @@ class GreenhouseJob(BaseModel):
     title: str
     absolute_url: str
     updated_at: datetime | None = None
+    first_published: datetime | None = None
     location: GreenhouseLocation | None = None
     content: str = ""
 
@@ -100,5 +101,5 @@ class GreenhouseAdapter(BoardAdapter):
             ),
             first_seen=now,
             last_seen=now,
-            source_posted_at=row.updated_at,
+            source_posted_at=row.first_published,
         )

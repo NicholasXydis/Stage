@@ -92,6 +92,7 @@ class SmartRecruitersAdapter:
         postings: list[SmartRecruitersPosting] = []
         truncated = False
         stale_page = False
+        short = False
         scoped = False
         malformed = 0
 
@@ -119,6 +120,7 @@ class SmartRecruitersAdapter:
                     break
                 malformed += dropped
                 if not rows and not dropped:
+                    short = short or gathered < total
                     break
                 postings.extend(rows)
                 gathered += len(rows) + dropped
@@ -133,6 +135,9 @@ class SmartRecruitersAdapter:
             "rather than at the end of the list"
             if stale_page
             else "",
+            "A page came back empty before the board's stated total, so this read closes nothing"
+            if short
+            else "",
             malformed_note(malformed),
         )
         paired = [(posting, self._to_job(company, posting, now)) for posting in postings]
@@ -144,7 +149,7 @@ class SmartRecruitersAdapter:
         return FetchResult(
             jobs=tuple(jobs),
             degraded=sentences(*notes),
-            authoritative=not (truncated or stale_page or malformed or scoped),
+            authoritative=not (truncated or stale_page or short or malformed or scoped),
             detail_fetches=tuple(fetched),
         )
 
@@ -163,7 +168,7 @@ class SmartRecruitersAdapter:
                 continue
             url = DETAIL_URL.format(slug=safe_slug(company.slug), posting=posting.id)
             try:
-                response = await client.get_json(url)
+                response = await client.get_json(url, revalidate=True)
             except (HttpError, httpx.HTTPError):
                 outcomes.append(DetailFetch(id=job.id, resolved=False, failed=True))
                 merged.append((posting, job))
