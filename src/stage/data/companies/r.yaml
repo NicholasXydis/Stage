@@ -788,6 +788,18 @@
   name_gate_exempt: true
   notes: 'Found in a feed apply URL: globalhr.wd5 carries 269 postings, and the tenant
     is shared with Pratt & Whitney.'
+- name: RTX
+  platform: workday
+  slug: globalhr
+  source_of_record: discover
+  last_verified: 2026-08-08
+  workday_tenant: globalhr
+  workday_site: REC_RTX_Ext_Gateway
+  workday_dc: wd5
+  name_gate_exempt: true
+  notes: '2026-11-03: RTX''s main careers site, which lists Collins, Pratt & Whitney (Canada
+    too) and Raytheon jobs. It was named Pratt & Whitney Canada, so US RTX postings showed
+    under that name and did not join their list copies.'
 - name: Rubrik
   platform: greenhouse
   slug: rubrik

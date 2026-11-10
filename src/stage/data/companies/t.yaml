@@ -382,6 +382,7 @@
   slug: thealleninstitute
   source_of_record: discover
   last_verified: 2026-11-01
+  name_gate_exempt: true
   notes: Board found through this employer's own apply link in the community feeds;
     a scratch sync on 2026-11-01 read 16 postings and kept 1 CS internship in Canada
     or the US.
@@ -673,7 +674,7 @@
   last_verified: 2026-08-17
   notes: '2026-08-14: paused after two 429s in one day, the second after 7 requests;
     paused_until resumed it.'
-- name: TMX GROUP
+- name: TMX Group
   platform: workday
   slug: tmx
   source_of_record: discover

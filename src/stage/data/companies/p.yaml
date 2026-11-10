@@ -472,6 +472,27 @@
     page_start: 1
     page_step: 1
     max_pages: 3
+- name: Peraton
+  platform: custom_json
+  slug: peraton-icims
+  source_of_record: manual
+  last_verified: 2026-11-03
+  notes: '2026-11-03: the iCIMS site behind this employer''s job hub, read beside it
+    because the hub answers servers with 403 and this robots.txt allows /jobs/search.'
+  custom:
+    url: https://careers-peraton.icims.com/jobs/search?ss=1&in_iframe=1&searchKeyword=intern
+    format: html
+    empty_marker: no jobs were found
+    row_selector: li.iCIMS_JobCardItem
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
+      description: .description
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 4
 - name: Periodic Labs
   platform: ashby
   slug: periodic-labs
@@ -515,11 +536,16 @@
   custom:
     url: https://careers-persistentsystems.icims.com/jobs/search?ss=1&in_iframe=1
     format: html
+    empty_marker: no jobs were found
     row_selector: div.row:has(a.iCIMS_Anchor)
     fields:
       title: a.iCIMS_Anchor h3
       url: a.iCIMS_Anchor::attr(href)
       location: .header.left span + span
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 6
 - name: Persona AI
   platform: ashby
   slug: persona.ai
@@ -916,15 +942,6 @@
   notes: Board found through this employer's own apply link in the community feeds;
     a scratch sync on 2026-11-01 read 8 postings and kept 2 CS internships in Canada
     or the US.
-- name: Pratt & Whitney Canada
-  platform: workday
-  slug: globalhr
-  source_of_record: discover
-  last_verified: 2026-08-08
-  workday_tenant: globalhr
-  workday_site: REC_RTX_Ext_Gateway
-  workday_dc: wd5
-  name_gate_exempt: true
 - name: Praytell
   platform: workable
   slug: praytell
@@ -937,9 +954,11 @@
   slug: pretiuminternships2027
   source_of_record: discover
   last_verified: 2026-11-01
+  name_gate_exempt: true
   notes: Board found through this employer's own apply link in the community feeds;
     a scratch sync on 2026-11-01 read 11 postings and kept 2 CS internships in Canada
     or the US.
+    The board names itself 2027 Summer Internship Job Board.
 - name: Principal Financial Group
   platform: custom_json
   slug: principal

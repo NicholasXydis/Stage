@@ -130,7 +130,7 @@
   notes: '2026-10-22: greenhouse/oldmissioncapital answers 404; oldmissioncapital.com/careers
     now embeds jobs.ashbyhq.com/old-mission-capital, which lists 39 roles in Chicago,
     New York and London.'
-- name: Olg
+- name: OLG
   platform: workday
   slug: olg
   source_of_record: openjobs

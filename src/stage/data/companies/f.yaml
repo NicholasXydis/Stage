@@ -257,30 +257,16 @@
   notes: '2026-08-21: official job markup carries Greenhouse posting identifiers;
     board identity verified.'
 - name: Firefly Aerospace
-  platform: custom_json
+  platform: workday
   slug: fireflyspace
   source_of_record: discover
-  last_verified: 2026-08-20
-  notes: '2026-08-20: owner-captured ClearCompany request. The board id is the path,
-    the visible site renders from it client-side, and location already carries the
-    uppercase subdivision code.'
-  custom:
-    url: https://careers-api.clearcompany.com/v1/00ed92c3-5bfb-7bfb-456d-4d9d77fef9a5?pageSize=25&source=CJB-0
-    headers:
-      Origin: https://fireflyspace.com
-      Referer: https://fireflyspace.com/
-    jobs_path: results
-    fields:
-      title: positionTitle
-      id: id
-      url: applyLink
-      location: location
-      description: description
-      department: departmentName
-    page_param: pageIndex
-    page_size: 25
-    page_step: 1
-    max_pages: 20
+  last_verified: 2026-11-03
+  workday_tenant: fireflyspace
+  workday_site: Firefly
+  workday_dc: wd115
+  notes: '2026-11-03: moved from ClearCompany (its API now lists nothing and answers a
+    server with 404) to the Workday site its careers page links. robots.txt allows
+    /Firefly/; the board listed 129 postings with a workerSubType facet.'
 - name: Firetiger
   platform: ashby
   slug: firetiger
@@ -587,14 +573,15 @@
   notes: Board found through this employer's own apply link in the community feeds;
     a scratch sync on 2026-11-01 read 66 postings and kept 2 CS internships in Canada
     or the US.
-- name: Found Energy
+- name: Found Industries
   platform: greenhouse
   slug: foundenergy
   source_of_record: discover
-  last_verified: 2026-11-01
-  notes: Board found through this employer's own apply link in the community feeds;
+  last_verified: 2026-11-04
+  notes: 'Board found through this employer''s own apply link in the community feeds;
     a scratch sync on 2026-11-01 read 5 postings and kept 1 CS internship in Canada
-    or the US.
+    or the US. 2026-11-04: Found Energy renamed itself Found Industries (same board,
+    Cambridge, MA postings).'
 - name: Four Hands
   platform: greenhouse
   slug: fourhands

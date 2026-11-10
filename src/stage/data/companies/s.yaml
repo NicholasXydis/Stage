@@ -1460,6 +1460,27 @@
     page_start: 1
     page_step: 1
     max_pages: 3
+- name: Stifel
+  platform: custom_json
+  slug: stifel-icims
+  source_of_record: manual
+  last_verified: 2026-11-03
+  notes: '2026-11-03: the iCIMS site behind this employer''s job hub, read beside it
+    because the hub answers servers with 403 and this robots.txt allows /jobs/search.'
+  custom:
+    url: https://careers-stifel.icims.com/jobs/search?ss=1&in_iframe=1&searchKeyword=intern
+    format: html
+    empty_marker: no jobs were found
+    row_selector: li.iCIMS_JobCardItem
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
+      description: .description
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 4
 - name: Stingray
   platform: custom_json
   slug: stingray

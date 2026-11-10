@@ -477,6 +477,7 @@
   slug: hrttalentcommunity
   source_of_record: discover
   last_verified: 2026-08-17
+  name_gate_exempt: true
   notes: '2026-08-17: greenhouse token from the careers page. The board names itself
     ''HRT Talent Community'' and carried only 3 jobs, so this is a talent-community
     board rather than the main requisition list; feed coverage stays the primary route

@@ -242,6 +242,7 @@
   custom:
     url: https://campus-libertymutual.icims.com/jobs/search?ss=1&in_iframe=1
     format: html
+    empty_marker: no jobs were found
     row_selector: li.iCIMS_JobCardItem
     fields:
       title: a.iCIMS_Anchor h3

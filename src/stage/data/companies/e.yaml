@@ -24,11 +24,16 @@
   custom:
     url: https://careers-eastpennmanufacturing.icims.com/jobs/search?ss=1&in_iframe=1
     format: html
+    empty_marker: no jobs were found
     row_selector: div.row:has(a.iCIMS_Anchor)
     fields:
       title: a.iCIMS_Anchor h3
       url: a.iCIMS_Anchor::attr(href)
       location: .header.left span + span
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 6
 - name: Eaton
   platform: custom_json
   slug: eaton

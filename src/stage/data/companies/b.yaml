@@ -92,6 +92,23 @@
       description: jobDescriptionExternal
       category: family
     url_template: https://careers.bankofamerica.com/en-us/students/job-detail/{id}/job
+- name: Bank of Canada
+  platform: custom_json
+  slug: bankofcanada
+  source_of_record: manual
+  last_verified: 2026-11-09
+  notes: '2026-11-09: SuccessFactors RMK; /rss.xml carries the whole bilingual board
+    (14 postings, none for students that day); robots.txt allows it. Co-op terms are
+    posted in season.'
+  custom:
+    url: https://careers.bankofcanada.ca/rss.xml
+    format: rss
+    fields:
+      title: title
+      id: g:id
+      url: link
+      location: g:location
+      description: description
 - name: Bank of China USA
   platform: custom_json
   slug: bocusa
@@ -102,11 +119,16 @@
   custom:
     url: https://careers-bocusa.icims.com/jobs/search?ss=1&in_iframe=1
     format: html
+    empty_marker: no jobs were found
     row_selector: div.row:has(a.iCIMS_Anchor)
     fields:
       title: a.iCIMS_Anchor h3
       url: a.iCIMS_Anchor::attr(href)
       location: .header.left span + span
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 6
 - name: Banyan Software
   platform: greenhouse
   slug: banyansoftware
@@ -594,6 +616,29 @@
     page_start: 1
     page_step: 1
     max_pages: 3
+- name: Blackhawk Network
+  platform: custom_json
+  slug: blackhawknetwork-icims
+  source_of_record: manual
+  last_verified: 2026-11-03
+  notes: '2026-11-03: the iCIMS site behind this employer''s job hub, read beside it
+    because the hub answers servers with 403 and this robots.txt allows /jobs/search.
+    2026-11-05: read whole (2 pages of 20); its intern search answered "no jobs were
+    found" for postings it listed the day before.'
+  custom:
+    url: https://careers-blackhawknetwork.icims.com/jobs/search?ss=1&in_iframe=1
+    format: html
+    empty_marker: no jobs were found
+    row_selector: li.iCIMS_JobCardItem
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .iCIMS_JobHeaderTag:has(.glyphicons-map-marker) dd span
+      description: .description
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 4
 - name: Blackline Safety
   platform: workday
   slug: blackline

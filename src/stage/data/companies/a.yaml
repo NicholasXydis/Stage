@@ -450,6 +450,7 @@
   slug: transatat1
   source_of_record: discover
   last_verified: *id006
+  name_gate_exempt: true
   notes: smartrecruiters/transatat1 is the parent's board, approved by hand after
     the name fold failed.
 - name: Airbnb
@@ -1569,6 +1570,7 @@
   slug: asteraearlycareer2027
   source_of_record: discover
   last_verified: 2026-11-02
+  name_gate_exempt: true
   notes: The student board beside the main one, which keeps no internships. Found through this
     employer's own apply links in the community feeds; a scratch sync on 2026-11-02 read
     93 postings and kept 17 CS internships in the US and Canada.

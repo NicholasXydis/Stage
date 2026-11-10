@@ -131,9 +131,11 @@
   slug: idmeuniversityrecruiting
   source_of_record: discover
   last_verified: 2026-11-01
+  name_gate_exempt: true
   notes: Board found through this employer's own apply link in the community feeds;
     a scratch sync on 2026-11-01 read 8 postings and kept 2 CS internships in Canada
     or the US.
+    The board names itself IDMe University Recruiting.
 - name: ideogram
   platform: ashby
   slug: ideogram
@@ -498,6 +500,7 @@
   slug: integrainterns
   source_of_record: discover
   last_verified: 2026-11-02
+  name_gate_exempt: true
   notes: The intern board beside the main one. Found through this employer's own apply links in
     the community feeds; a scratch sync on 2026-11-02 read 8 postings and kept 2 CS
     internships in the US.

@@ -402,9 +402,11 @@
   slug: didi
   source_of_record: discover
   last_verified: 2026-11-01
+  name_gate_exempt: true
   notes: Board found through this employer's own apply link in the community feeds;
     a scratch sync on 2026-11-01 read 9 postings and kept no CS internship in Canada
     or the US, but this employer hires CS interns most seasons.
+    The board names itself DiDi Labs.
 - name: Digital extremes
   platform: greenhouse
   slug: digitalextremes

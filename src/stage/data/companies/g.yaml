@@ -273,15 +273,21 @@
   source_of_record: discover
   last_verified: 2026-09-01
   notes: '2026-09-01: iCIMS serves no JSON, so this reads the search page.
-    Verified an Infrastructure Engineer co-op.'
+    Verified an Infrastructure Engineer co-op. 2026-11-03: page 1 of 37 was read as the
+    whole board and closed later pages; now searchKeyword=intern (5 pages), paged.'
   custom:
-    url: https://careers-gdms.icims.com/jobs/search?ss=1&in_iframe=1
+    url: https://careers-gdms.icims.com/jobs/search?ss=1&in_iframe=1&searchKeyword=intern
     format: html
+    empty_marker: no jobs were found
     row_selector: div.row:has(a.iCIMS_Anchor)
     fields:
       title: a.iCIMS_Anchor h3
       url: a.iCIMS_Anchor::attr(href)
       location: .header.left span + span
+    page_param: pr
+    page_size: 20
+    page_step: 1
+    max_pages: 6
 - name: General Intuition & Medal
   platform: ashby
   slug: generalintuition-medal
@@ -311,9 +317,11 @@
   platform: custom_json
   slug: gm
   source_of_record: discover
-  last_verified: 2026-08-20
-  notes: '2026-08-20: the Beamery listing is client-side, but /sitemap.xml carries
-    872 English job urls whose requisition id precedes the slug.'
+  last_verified: 2026-11-08
+  enabled: false
+  notes: '2026-11-08: switched off. The sitemap names no places, and the General Motors
+    (Workday) row carries the same requisitions with them; its 4 open internships were
+    all Workday postings, one of them in Dublin.'
   custom:
     url: https://search-careers.gm.com/sitemap.xml
     format: sitemap
@@ -584,6 +592,13 @@
   notes: '2026-10-22: 1,845 roles and no internship facet, and all 1,839 postings Stage
     has read were quarantined as not-an-internship; parked so syncs stop spending Workday
     pages on a board that never yields one.'
+- name: Global Relay
+  platform: greenhouse
+  slug: globalrelay
+  source_of_record: manual
+  last_verified: 2026-11-09
+  notes: '2026-11-09: board named Global Relay with 43 postings, including Vancouver
+    software, DevOps and SDET co-ops for winter 2027.'
 - name: GlobalFoundries
   platform: workday
   slug: globalfoundries
@@ -612,7 +627,7 @@
   notes: '2026-09-03: disabled — greenhouse answers 404 for this slug and no ashby or
     lever board carries it. 2026-08-08: the board published the name ''Genius AI'',
     which the name gate rejects.'
-- name: GM financial
+- name: GM Financial
   platform: oracle_cloud
   slug: fa-exvu-saasfaprod1
   source_of_record: discover

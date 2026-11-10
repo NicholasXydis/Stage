@@ -173,6 +173,29 @@
     page_start: 1
     page_step: 1
     max_pages: 3
+- name: Kinaxis
+  platform: custom_json
+  slug: kinaxis-icims
+  source_of_record: manual
+  last_verified: 2026-11-03
+  notes: '2026-11-03: the iCIMS site behind this employer''s job hub, read beside it
+    because the hub answers servers with 403 and this robots.txt allows /jobs/search.
+    2026-11-05: read whole (3 pages of 50); its intern search answered "no jobs were
+    found" while 4 internships were listed.'
+  custom:
+    url: https://careers-kinaxis.icims.com/jobs/search?ss=1&in_iframe=1
+    format: html
+    empty_marker: no jobs were found
+    row_selector: li.iCIMS_JobCardItem
+    fields:
+      title: a.iCIMS_Anchor h3
+      url: a.iCIMS_Anchor::attr(href)
+      location: .header.left span + span
+      description: .description
+    page_param: pr
+    page_size: 50
+    page_step: 1
+    max_pages: 4
 - name: Kion Group
   platform: workday
   slug: kiongroup
