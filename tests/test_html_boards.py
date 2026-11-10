@@ -857,3 +857,23 @@ def test_no_shipped_html_selector_takes_more_than_one_step_inside_has() -> None:
 def test_the_step_check_matches_what_soupsieve_4_refuses(selector: str, deep: bool) -> None:
     steps = _steps_inside_has(selector)
     assert any(re.search(r"[\s>+~]", step) for step in steps) is deep
+
+
+def test_every_shipped_icims_board_pages_and_knows_when_it_is_empty() -> None:
+    from stage.companies import load_companies
+
+    boards = [
+        company
+        for company in load_companies()
+        if company.custom is not None and ".icims.com/jobs/search" in company.custom.url
+    ]
+    unpaged = [
+        company.name for company in boards if not company.custom or not company.custom.page_param
+    ]
+    unmarked = [
+        company.name for company in boards if not company.custom or not company.custom.empty_marker
+    ]
+
+    assert boards
+    assert unpaged == [], "page 1 of an iCIMS search was read as the whole board"
+    assert unmarked == [], "an iCIMS search with no jobs is empty, not drifted"

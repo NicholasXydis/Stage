@@ -142,3 +142,122 @@ async def test_failures_stage_s_own_circuit_breaker_caused_never_rest_a_board(
         ]
 
     assert {event.company for event in events if isinstance(event, CompanyFinished)} == {"Acme"}
+
+
+@respx.mock
+@pytest.mark.parametrize(("refused_before", "quiet"), [(REST_AFTER_FAILURES - 1, True), (0, False)])
+async def test_a_board_that_keeps_refusing_this_computer_stops_failing_the_run(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch, refused_before: int, quiet: bool
+) -> None:
+    from stage.domain import CompanyFailed, CompanyVisit, SyncFinished, SyncOutcome
+
+    respx.get(url__regex=r"https://boards-api\.greenhouse\.io/v1/boards/acme/.*").mock(
+        return_value=httpx.Response(403)
+    )
+    monkeypatch.setattr(sync_module, "get_feeds", dict)
+    boards = [Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")]
+    refusal = "boards-api.greenhouse.io returned 403 (forbidden)"
+
+    async with open_repository(db_path) as repository:
+        for _ in range(refused_before):
+            await repository.apply_source_batch(
+                SourceBatch(
+                    source="greenhouse",
+                    run_started_at=NOW - timedelta(days=30),
+                    visits=(CompanyVisit(board="greenhouse:acme", succeeded=False, error=refusal),),
+                )
+            )
+        events = [
+            event
+            async for event in sync_module.sync(
+                repository, boards, sources=["greenhouse"], now_fn=lambda: NOW
+            )
+        ]
+
+    failed = [event for event in events if isinstance(event, CompanyFailed)]
+    finished = next(event for event in events if isinstance(event, SyncFinished))
+    assert [event.refused for event in failed] == [quiet]
+    assert (finished.outcome is SyncOutcome.SUCCESS) is quiet
+    assert (finished.partial_reason == "") is quiet
+
+
+@respx.mock
+@pytest.mark.parametrize(("missing_before", "quiet"), [(REST_AFTER_FAILURES - 1, True), (0, False)])
+async def test_a_board_that_keeps_answering_not_found_stops_failing_the_run(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch, missing_before: int, quiet: bool
+) -> None:
+    from stage.domain import CompanyFailed, CompanyVisit, SyncFinished, SyncOutcome
+
+    respx.get(url__regex=r"https://boards-api\.greenhouse\.io/v1/boards/acme/.*").mock(
+        return_value=httpx.Response(404)
+    )
+    monkeypatch.setattr(sync_module, "get_feeds", dict)
+    boards = [Company(name="Acme", platform=Platform.GREENHOUSE, slug="acme")]
+    missing = "boards-api.greenhouse.io returned 404 (not found)"
+
+    async with open_repository(db_path) as repository:
+        for _ in range(missing_before):
+            await repository.apply_source_batch(
+                SourceBatch(
+                    source="greenhouse",
+                    run_started_at=NOW - timedelta(days=30),
+                    visits=(CompanyVisit(board="greenhouse:acme", succeeded=False, error=missing),),
+                )
+            )
+        events = [
+            event
+            async for event in sync_module.sync(
+                repository, boards, sources=["greenhouse"], now_fn=lambda: NOW
+            )
+        ]
+
+    failed = [event for event in events if isinstance(event, CompanyFailed)]
+    finished = next(event for event in events if isinstance(event, SyncFinished))
+    assert [(event.gone, event.refused) for event in failed] == [(quiet, False)]
+    assert (finished.outcome is SyncOutcome.SUCCESS) is quiet
+
+
+@pytest.mark.parametrize(
+    ("failures", "error", "gone"),
+    [
+        (REST_AFTER_FAILURES, "boards-api.greenhouse.io returned 404 (not found)", True),
+        (REST_AFTER_FAILURES, "api.lever.co returned 410 (gone)", True),
+        (REST_AFTER_FAILURES - 1, "boards-api.greenhouse.io returned 404 (not found)", False),
+        (REST_AFTER_FAILURES, "jobs.aon.com returned 403 (forbidden)", False),
+    ],
+)
+def test_a_board_that_answers_not_found_three_times_is_gone(
+    failures: int, error: str, gone: bool
+) -> None:
+    from dataclasses import replace
+
+    from stage.domain import VisitState, classify_visit
+
+    visit = replace(_visit(failures), last_error=error)
+
+    assert visit.gone is gone
+    state = classify_visit(None, failures, NOW, refusing=visit.refusing, gone=visit.gone)
+    assert (state is VisitState.GONE) is gone
+
+
+@pytest.mark.parametrize(
+    ("failures", "error", "refusing"),
+    [
+        (REST_AFTER_FAILURES, "jobs.aon.com returned 403 (forbidden)", True),
+        (REST_AFTER_FAILURES, "apply.careers.microsoft.com returned 429 (too many requests)", True),
+        (REST_AFTER_FAILURES - 1, "jobs.aon.com returned 403 (forbidden)", False),
+        (REST_AFTER_FAILURES, "boards-api.greenhouse.io returned 404 (not found)", False),
+    ],
+)
+def test_a_board_refuses_this_computer_after_repeated_403_or_429(
+    failures: int, error: str, refusing: bool
+) -> None:
+    from dataclasses import replace
+
+    from stage.domain import VisitState, classify_visit
+
+    visit = replace(_visit(failures), last_error=error)
+
+    assert visit.refusing is refusing
+    state = classify_visit(None, failures, NOW, refusing=visit.refusing)
+    assert (state is VisitState.REFUSING) is refusing

@@ -320,6 +320,28 @@ async def test_a_handshake_without_a_prefix_sends_the_bare_token() -> None:
     )
 
 
+@pytest.mark.asyncio
+@respx.mock
+async def test_a_handshake_never_asks_whether_its_token_changed() -> None:
+    def token_page(request: httpx.Request) -> httpx.Response:
+        if "if-none-match" in request.headers:
+            return httpx.Response(304)
+        return httpx.Response(200, text='{"token":"same"}', headers={"ETag": '"v1"'})
+
+    handshake = respx.get("https://board.example.test/home").mock(side_effect=token_page)
+    rows = {"data": {"rows": [{"reqId": "1", "name": "Intern"}]}}
+    respx.post("https://api.example.test/search").mock(return_value=httpx.Response(200, json=rows))
+    adapter = CustomJsonAdapter()
+    async with _handshake_client() as client:
+        await adapter.fetch(_company(HANDSHAKE_BOARD), client, NOW)
+        again = await adapter.fetch(_company(HANDSHAKE_BOARD), client, NOW)
+
+    assert [job.title_raw for job in again.jobs] == ["Intern"]
+    assert "if-none-match" not in handshake.calls.last.request.headers, (
+        "a 304 carries no body, so a cached token page has no token to read"
+    )
+
+
 def test_an_rss_value_arrives_with_its_entities_decoded() -> None:
     from stage.sources.custom_json import rss_items
 

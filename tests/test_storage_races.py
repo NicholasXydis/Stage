@@ -128,6 +128,27 @@ def test_a_sync_and_a_rescreen_writing_at_once_both_land(db_path: Path) -> None:
     assert len(_ids(db_path)) == 60
 
 
+def test_a_failed_commit_rolls_back_so_the_next_write_lands() -> None:
+    from stage.storage.sql import Store
+
+    store = Store()
+    store._conn = sqlite3.connect(":memory:", isolation_level=None)
+    store._conn.executescript(
+        "PRAGMA foreign_keys = ON;"
+        "CREATE TABLE parent (id INTEGER PRIMARY KEY);"
+        "CREATE TABLE child (id INTEGER REFERENCES parent (id) DEFERRABLE INITIALLY DEFERRED);"
+    )
+    try:
+        with pytest.raises(sqlite3.IntegrityError), store._transaction() as conn:
+            conn.execute("INSERT INTO child VALUES (1)")
+        assert not store._conn.in_transaction
+        with store._transaction() as conn:
+            conn.execute("INSERT INTO parent VALUES (1)")
+        assert store._conn.execute("SELECT COUNT(*) FROM child").fetchone()[0] == 0
+    finally:
+        store._conn.close()
+
+
 def test_an_interrupted_batch_leaves_no_transaction_open(db_path: Path) -> None:
     def interrupt(_: Sequence[Job], __: Sequence[Job]) -> Sequence[DuplicateLink]:
         raise KeyboardInterrupt

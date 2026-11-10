@@ -196,3 +196,52 @@ def test_a_list_copy_stored_before_its_board_copy_is_rejected_with_it(db_path: P
 
     assert COPY not in jobs and held[COPY].startswith("copy of greenhouse:acme:8046795003 ")
     assert OTHER in jobs and result.quarantined == 2
+
+
+def test_a_second_posting_of_one_title_on_the_board_never_inherits_a_rejection(
+    db_path: Path,
+) -> None:
+    twin = replace(
+        _board(description=""),
+        id="greenhouse:acme:8046795004",
+        apply_url_raw="https://job-boards.greenhouse.io/acme/jobs/8046795004",
+    )
+    repository = SqliteRepository.connect(db_path)
+    repository.apply_source_batch(_screened("greenhouse", [_board(OPEN_TO_ALL), twin]))
+    jobs, _ = _state(repository)
+    assert jobs[twin.id] == _board().id, "the fixture needs the twin shown under its first posting"
+
+    later = NOW + timedelta(hours=1)
+    repository.apply_source_batch(
+        _screened("greenhouse", [_board(DOCTORAL, later), replace(twin, last_seen=later)], later)
+    )
+    jobs, held = _state(repository)
+    repository.close()
+
+    assert jobs[twin.id] is None and twin.id not in held, "the twin may be the undergrad posting"
+
+
+def test_a_board_label_is_not_part_of_the_company_name() -> None:
+    labelled = replace(_board(OPEN_TO_ALL), company="Acme Semiconductor (Workday)")
+
+    kept, _ = normalize_batch([labelled])
+
+    assert kept[0].company == "Acme Semiconductor"
+
+
+def test_a_list_copy_with_a_different_link_and_extra_words_is_still_found(
+    db_path: Path,
+) -> None:
+    repository = SqliteRepository.connect(db_path)
+    repository.apply_source_batch(_screened("greenhouse", [_board()]))
+    renamed = _listed(
+        COPY,
+        "Power-Thermal Simulation Software Engineer Intern - Summer 2027",
+        "https://careers.acme.example/jobs/power-thermal",
+    )
+
+    repository.apply_source_batch(_screened("simplify", [renamed]))
+    jobs, held = _state(repository)
+
+    assert COPY not in jobs and held[COPY].startswith("copy of greenhouse:acme:8046795003 ")
+    repository.close()

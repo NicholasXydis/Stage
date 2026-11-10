@@ -88,6 +88,8 @@ def test_french_alternance_is_still_recognized() -> None:
         "New Grad Software Engineer",
         "Recent Graduate Program - Engineering",
         "Entry Level Software Developer",
+        "Returning Intern - Software Engineering",
+        "Software Engineer Intern - For Current/Former HNTB Interns Only",
     ],
 )
 def test_postings_about_interns_are_not_internships(title: str) -> None:
@@ -791,10 +793,42 @@ def test_a_leading_qualifier_outranks_a_generic_engineering_phrase() -> None:
     assert classify_role("Flight Software Engineering Intern").role is RoleCategory.EMBEDDED
 
 
-def test_a_trailing_qualifier_does_not_outrank_the_leading_phrase() -> None:
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Software Engineer, Machine Learning Intern", RoleCategory.ML_AI),
+        ("Software Engineer Co-op, Embedded Software", RoleCategory.EMBEDDED),
+        ("Intern - Software Engineer, Platform Security (NTD)", RoleCategory.SECURITY),
+        ("Software Engineering Intern - DevOps", RoleCategory.INFRA),
+        ("Software Systems Engineering Intern", RoleCategory.SWE),
+    ],
+)
+def test_a_specialty_later_in_the_title_outranks_a_generic_phrase(
+    title: str, role: RoleCategory
+) -> None:
     from stage.classify.role import classify_role
 
-    assert classify_role("Software Engineer, Machine Learning Intern").role is RoleCategory.SWE
+    assert classify_role(title).role is role
+
+
+@pytest.mark.parametrize(
+    ("title", "role"),
+    [
+        ("Institutional Trader Intern (2027 Start - Chicago)", RoleCategory.QUANT),
+        ("Trading Analyst Intern, Rates", RoleCategory.QUANT),
+        ("Model Risk Management Intern", RoleCategory.QUANT),
+        ("Risk Modeling Intern", RoleCategory.QUANT),
+        ("Summer 2027 - Execution Tech Internship", RoleCategory.QUANT),
+        ("SOC Intern", RoleCategory.SECURITY),
+        ("Anticheat Engineer Intern", RoleCategory.SECURITY),
+        ("Android Engineering Intern", RoleCategory.SWE),
+        ("GE Vernova - AGI - AI Power Systems Intern - Summer 2027", RoleCategory.ML_AI),
+    ],
+)
+def test_trading_desks_and_named_teams_get_their_category(title: str, role: RoleCategory) -> None:
+    from stage.classify.role import classify_role
+
+    assert classify_role(title).role is role
 
 
 def test_the_earliest_of_two_qualifiers_wins() -> None:
@@ -841,9 +875,9 @@ def test_a_posting_that_only_mentions_interns_is_not_an_internship(title: str) -
     assert verdict.disqualified_by, title
 
 
-def test_a_returning_intern_restriction_keeps_the_internship() -> None:
+def test_an_internship_only_for_returning_interns_is_not_open() -> None:
     title = "Systems Security Engineer Intern - Summer 2027 (For SNC Summer 2026 Interns Only)"
-    assert screen_internship(title).is_internship, "the title still names an internship"
+    assert not screen_internship(title).is_internship, "only last summer's interns may apply"
 
 
 @pytest.mark.parametrize(
@@ -1008,3 +1042,13 @@ def test_systems_engineer_and_systems_engineering_share_one_label(
     title: str, role: RoleCategory
 ) -> None:
     assert classify_role(title, "").role is role
+
+
+def test_a_pair_names_a_role_only_in_a_title_no_phrase_already_names() -> None:
+    paired = classify_role("AI & Automation Development Intern")
+    named = classify_role("Software Developer Intern - AI")
+    body = classify_role("Summer Intern", "Our AI team leads development of new tools.")
+
+    assert (paired.role, paired.matched) == (RoleCategory.ML_AI, ("ai development",))
+    assert named.role is RoleCategory.SWE
+    assert body.role is RoleCategory.UNKNOWN, "a description never pairs words"

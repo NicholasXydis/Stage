@@ -193,3 +193,26 @@ def test_doctor_reads_the_whole_file_unless_the_schedule_asks_it_not_to(db_path:
     assert payload["integrity"][0]["check"] == "damaged database pages"
     assert payload["healthy"] is False
     assert "all 6 checks clean" in quick.output and "not read for damage" in quick.output
+
+
+async def test_one_title_posted_twice_in_one_city_is_not_a_finding(db_path: Path) -> None:
+    twice = {"title_raw": "Software Engineer Intern", "location_raw": "Toronto, ON"}
+    async with open_repository(db_path) as repository:
+        await _store(repository, [_job("a", **twice), _job("b", duplicate_of="a", **twice)])
+        assert (await _counts(repository))["same-board merges"] == 0
+
+        await repair_integrity(repository)
+        kept = await repository.get_job("b")
+        assert kept is not None and kept.duplicate_of == "a", "one internship posted twice"
+
+
+async def test_a_repost_whose_main_took_a_term_from_its_copies_is_not_a_finding(
+    db_path: Path,
+) -> None:
+    twice = {"title_raw": "Software Engineer Intern", "location_raw": "Toronto, ON"}
+    async with open_repository(db_path) as repository:
+        await _store(
+            repository,
+            [_job("a", term="summer-2027", **twice), _job("b", duplicate_of="a", **twice)],
+        )
+        assert (await _counts(repository))["same-board merges"] == 0

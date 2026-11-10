@@ -191,7 +191,67 @@ def test_a_later_page_without_the_array_ends_the_walk_instead_of_failing() -> No
         CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
     )
 
-    assert len(result.jobs) == 10, "a later page that omits the array means the list ended"
+    assert len(result.jobs) == 10, "a later page that omits the array keeps what arrived"
+    assert not result.authoritative, "a page with no list cannot prove the list ended"
+
+
+def test_a_later_page_without_the_array_after_the_stated_total_may_close() -> None:
+    company = _company(page_param="start", page_size=10)
+    client = _Client(
+        [{"positions": _rows(10), "total": 20}, _rows(10, 10), {"error": "out of range"}]
+    )
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert len(result.jobs) == 20
+    assert result.authoritative, "every posting the board counted arrived"
+
+
+@pytest.mark.parametrize(
+    ("second", "authoritative"),
+    [({"positions": [], "total": 26}, False), ({"positions": []}, True)],
+)
+def test_an_empty_later_page_ends_the_list_only_when_no_stated_total_says_more(
+    second: dict[str, Any], authoritative: bool
+) -> None:
+    company = _company(page_param="start", page_size=10)
+    client = _Client(
+        [{"positions": _rows(10), **{k: v for k, v in second.items() if k != "positions"}}, second]
+    )
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert len(result.jobs) == 10
+    assert result.authoritative is authoritative
+
+
+@pytest.mark.parametrize(("total", "authoritative"), [(13, True), (45, False), (None, True)])
+def test_a_short_last_page_closes_only_when_it_reaches_the_stated_total(
+    total: int | None, authoritative: bool
+) -> None:
+    company = _company(page_param="start", page_size=10)
+    first: dict[str, Any] = {"positions": _rows(10)}
+    if total is not None:
+        first["total"] = total
+    client = _Client([first, _rows(3, 10)])
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(company, client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert len(result.jobs) == 13
+    assert result.authoritative is authoritative
+    assert ("13 of the 45" in result.degraded) is (total == 45)
+
+
+def test_an_unpaged_board_short_of_a_stated_count_still_closes() -> None:
+    client = _Client([{"positions": _rows(4), "total": 9}])
+    result = __import__("asyncio").run(
+        CustomJsonAdapter().fetch(_company(), client, NOW)  # type: ignore[arg-type]
+    )
+
+    assert result.authoritative, "a board read in one request has no later page to miss"
 
 
 def test_a_first_page_without_the_array_is_still_a_shape_error() -> None:

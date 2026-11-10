@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from stage.lexicon import company_legal_suffixes, generic_company_tokens
@@ -81,3 +83,24 @@ def test_no_phrase_is_both_non_cs_and_an_explicit_exclusion() -> None:
     lexicon = eligibility_lexicon()
     overlap = lexicon.non_cs & lexicon.excluded_titles
     assert not overlap, f"{sorted(overlap)} appears in both exclusion groups"
+
+
+def test_a_role_pair_needs_two_phrases(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from stage.lexicon import LexiconError, role_pairs
+
+    (tmp_path / "roles.yaml").write_text("paired:\n  ml-ai:\n    - [ai]\n", encoding="utf-8")
+    monkeypatch.setenv("STAGE_LEXICON", str(tmp_path))
+    role_pairs.cache_clear()
+    try:
+        with pytest.raises(LexiconError, match=r"\[phrase, phrase\]"):
+            role_pairs()
+    finally:
+        monkeypatch.delenv("STAGE_LEXICON")
+        role_pairs.cache_clear()
+
+
+def test_a_qualified_family_needs_titles_and_needs() -> None:
+    from stage.lexicon import LexiconError, _qualified_titles
+
+    with pytest.raises(LexiconError, match="needs"):
+        _qualified_titles({"qualified_titles": {"it": {"titles": ["it intern"]}}}, "eligibility")

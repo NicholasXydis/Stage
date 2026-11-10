@@ -35,7 +35,7 @@ from stage.domain import (
     SyncRun,
 )
 from stage.services.preferences import preferences_path
-from stage.services.tracker import LIST_PROBLEM, tracker_path
+from stage.services.tracker import LIST_PROBLEM, UNTRACKED_PROBLEM, tracker_path
 from stage.storage.repository import SourceBatch
 from stage.storage.sqlite_repo import SqliteRepository
 
@@ -1129,6 +1129,25 @@ async def test_a_damaged_tracker_is_reported_and_left_as_it_was(catalogue: Path)
     assert found["warning"] == LIST_PROBLEM and "could not use your tracker" in detail["warning"]
     assert all("could not use your tracker" in problem for problem in problems)
     assert path.read_bytes() == before
+
+
+def _damage_the_tracker() -> None:
+    path = tracker_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"not a database " * 100)
+
+
+async def test_untracked_with_a_damaged_tracker_is_refused(catalogue: Path) -> None:
+    _damage_the_tracker()
+    async with _connected(catalogue) as client:
+        said = await _refused(client, "search_postings", {"untracked": True})
+    assert said == toolbox.UNTRACKED_REFUSED
+
+
+def test_the_cli_refuses_untracked_with_a_damaged_tracker(catalogue: Path) -> None:
+    _damage_the_tracker()
+    cli = CliRunner().invoke(app, ["list", "--untracked", "--db", str(catalogue)])
+    assert cli.exit_code == 2 and " ".join(cli.stderr.split()) == UNTRACKED_PROBLEM
 
 
 async def test_a_blank_id_and_a_non_latin_search_are_explained(catalogue: Path) -> None:

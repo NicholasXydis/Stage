@@ -261,8 +261,15 @@ def test_schedule_status_watch_stops_for_a_blocked_run(
     assert "another run holds the lock" in ANSI_ESCAPE.sub("", result.stdout)
 
 
-def test_schedule_status_says_when_a_run_was_skipped_offline(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    ("phase", "said"),
+    [
+        ("offline", "skipped, no internet connection"),
+        ("stopped", "skipped, the computer stopped it before it started"),
+    ],
+)
+def test_schedule_status_says_when_a_run_was_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, phase: str, said: str
 ) -> None:
     from stage.cli.app import app
 
@@ -270,7 +277,7 @@ def test_schedule_status_says_when_a_run_was_skipped_offline(
         "Windows Task Scheduler",
         ((schedule._ACTIONS[0], True, schedule._ACTIONS[0].cadence),),
         tmp_path,
-        ({"phase": "offline", "finished_at": "2026-11-01T12:00:00+00:00"},),
+        ({"phase": phase, "finished_at": "2026-11-01T12:00:00+00:00", "exit_code": 143},),
         (False,),
     )
     monkeypatch.setattr(schedule, "status", lambda: report)
@@ -278,7 +285,8 @@ def test_schedule_status_says_when_a_run_was_skipped_offline(
     result = CliRunner().invoke(app, ["schedule", "status"])
 
     assert result.exit_code == 0
-    assert "skipped, no internet connection" in ANSI_ESCAPE.sub("", result.stdout)
+    shown = ANSI_ESCAPE.sub("", result.stdout)
+    assert said in shown and "failure" not in shown and "exit code" not in shown
 
 
 def test_the_sync_action_runs_every_half_hour() -> None:

@@ -138,7 +138,7 @@ def test_a_large_resumable_board_gets_enough_budget_to_finish_on_the_second_sync
         {("tenant0", "career"): facet},
         posture.max_requests_per_run,
     )
-    assert budgets[large.registry_key] == 85
+    assert budgets[large.registry_key] == 86, "85 pages to finish plus the page-one recheck"
     assert budgets[large.registry_key] <= MAX_CRAWL_PAGES
     assert sum(budgets.values()) + details + adapter.retry_reserve <= posture.max_requests_per_run
 
@@ -582,6 +582,71 @@ async def test_resumable_crawl_reconciles_only_after_the_terminal_page(
     assert offsets == [0, 20, 40, 60, 80, 100, 100, 120]
 
 
+@pytest.mark.parametrize("recheck", ["grew", "failed"])
+@respx.mock
+async def test_a_resumed_crawl_rechecks_the_total_and_closes_nothing_when_the_board_grew(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch, recheck: str
+) -> None:
+    from stage.domain import Job, JobStatus, job_id
+    from stage.services import sync as sync_module
+    from stage.storage import SourceBatch, open_repository
+
+    company = _company(workday_facet="timeType:f-intern")
+    offsets: list[int] = []
+    board = {"total": 125}
+
+    def page(request: httpx.Request) -> httpx.Response:
+        offset = int(json.loads(request.content)["offset"])
+        offsets.append(offset)
+        if offset == 0 and board.get("failing"):
+            return httpx.Response(500)
+        count = 5 if offset == 120 else PAGE_SIZE
+        return httpx.Response(
+            200,
+            json={
+                "total": board["total"] if offset == 0 else 0,
+                "jobPostings": [_posting(offset + index) for index in range(count)],
+                "facets": _facets(),
+            },
+        )
+
+    respx.post(CXS).mock(side_effect=page)
+    monkeypatch.setattr(sync_module, "resolve", lambda *_: UNPACED)
+    old = Job(
+        id=job_id("workday", "cae-career", "R99999"),
+        source="workday",
+        company=company.name,
+        title_raw="Software Engineer Intern",
+        title_normalized="software engineer intern",
+        apply_url_raw="https://example.test/old",
+        description="",
+        first_seen=NOW - timedelta(days=1),
+        last_seen=NOW - timedelta(days=1),
+    )
+    later = NOW + timedelta(days=1)
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="workday", run_started_at=old.last_seen, jobs=(old,))
+        )
+        async for _ in sync_module.sync(
+            repository, [company], sources=("workday",), now_fn=lambda: NOW
+        ):
+            pass
+        board["total" if recheck == "grew" else "failing"] = 145
+        async for _ in sync_module.sync(
+            repository, [company], sources=("workday",), now_fn=lambda: later
+        ):
+            pass
+
+        kept = await repository.get_job(old.id)
+        last = await repository.get_job(job_id("workday", "cae-career", "R00124"))
+        assert kept is not None and kept.status is JobStatus.OPEN
+        assert last is not None and last.last_seen == later, "the pages that arrived still count"
+
+    assert offsets[-1] == 0
+
+
 @respx.mock
 async def test_an_unfinished_resume_is_discarded_after_the_second_workday_pass(
     db_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -644,7 +709,7 @@ async def test_an_unfinished_resume_is_discarded_after_the_second_workday_pass(
 
 
 @respx.mock
-async def test_no_facet_falls_back_to_search_text_and_says_so() -> None:
+async def test_no_facet_falls_back_to_a_whole_read_that_needs_no_warning() -> None:
     captured: list[dict[str, object]] = []
 
     def record(request: httpx.Request) -> httpx.Response:
@@ -672,7 +737,7 @@ async def test_no_facet_falls_back_to_search_text_and_says_so() -> None:
     assert captured[0]["searchText"] == "", (
         "an English keyword cannot match stagiaire, stage or alternance"
     )
-    assert "whole" in result.degraded
+    assert result.degraded == "" and result.authoritative, "the whole board was read"
 
 
 @respx.mock
@@ -1375,6 +1440,50 @@ async def test_a_queued_workday_posting_gets_its_body_on_the_shared_bucket() -> 
 
     assert "2027" in result.jobs[0].description
     assert result.detail_fetches == (DetailFetch(id=ident, resolved=True),)
+
+
+@respx.mock
+async def test_a_posting_listed_as_a_count_of_places_takes_them_from_its_page() -> None:
+    detail = "https://cae.wd3.myworkdayjobs.com/wday/cxs/cae/career/job/Shanghai/x_R00002"
+    respx.get(detail).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jobPostingInfo": {
+                    "jobDescription": "<p>Summer 2027.</p>",
+                    "location": "China, Shanghai",
+                    "additionalLocations": ["China, Beijing"],
+                    "country": {"descriptor": "China"},
+                }
+            },
+        )
+    )
+    respx.post(CXS).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "total": 1,
+                "jobPostings": [
+                    {
+                        "title": "Deep Learning Intern",
+                        "externalPath": "/job/Shanghai/x_R00002",
+                        "locationsText": "2 Locations",
+                        "bulletFields": ["R00002"],
+                    }
+                ],
+                "facets": _facets(),
+            },
+        )
+    )
+
+    from stage.domain import job_id
+
+    ident = job_id("workday", "cae-career", "R00002")
+    async with _client(UNPACED) as client:
+        company = _company(workday_facet="timeType:f-intern")
+        result = await WorkdayAdapter().fetch(company, client, NOW, None, [ident])
+
+    assert result.jobs[0].location_raw == "China, Shanghai / China, Beijing"
 
 
 @respx.mock

@@ -198,6 +198,74 @@ async def test_doctor_names_the_source_whose_volume_collapsed(db_path: Path) -> 
     )
 
 
+async def test_doctor_compares_volumes_only_since_the_rules_last_changed(db_path: Path) -> None:
+    async with open_repository(db_path) as repository:
+        for offset, stored in enumerate((3200, 3210, 3190, 3205, 730)):
+            moment = NOW + timedelta(hours=offset)
+            if offset == 4:
+                await repository.mark_screened(0)
+                await repository.mark_screened(1, at=moment - timedelta(minutes=1))
+            await repository.record_sync_run(
+                SyncRun(
+                    started_at=moment,
+                    finished_at=moment,
+                    outcome=SyncOutcome.SUCCESS,
+                    sources=(SourceRunStats(source="simplify", stored=stored, requests=1),),
+                )
+            )
+        report = await doctor(repository, now=NOW + timedelta(hours=5))
+
+    assert report.volume_alerts == (), "an upgrade's new counting is not a drop"
+
+
+async def test_the_moment_the_rules_changed_survives_a_purge(db_path: Path) -> None:
+    async with open_repository(db_path) as repository:
+        await repository.mark_screened(0)
+        await repository.mark_screened(1, at=NOW)
+        await repository.purge(NOW + timedelta(days=60))
+        changed = await repository.rules_changed_at()
+
+    assert changed == NOW
+
+
+async def test_doctor_leaves_out_a_paused_list_that_holds_nothing(db_path: Path) -> None:
+    from stage.domain import RateState
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="quebec-emploi",
+                run_started_at=NOW,
+                rate_state=(
+                    RateState(
+                        bucket="quebec-emploi",
+                        updated_at=NOW,
+                        blocked_until=NOW + timedelta(hours=10),
+                        consecutive_failures=1,
+                        reason="timed out",
+                    ),
+                ),
+            )
+        )
+        await repository.record_sync_run(
+            SyncRun(
+                started_at=NOW,
+                finished_at=NOW,
+                outcome=SyncOutcome.SUCCESS,
+                sources=(SourceRunStats(source="quebec-emploi", errors=1),),
+            )
+        )
+        report = await doctor(repository, now=NOW)
+
+    assert "quebec-emploi" not in [source.source for source in report.sources]
+    assert report.blocks == ()
+
+
+def test_a_list_that_keeps_one_or_two_postings_is_not_watched() -> None:
+    signal = assess_volume("hanzili", _points(0, 1, 1, 1, 2))
+    assert signal.verdict is VolumeVerdict.HEALTHY
+
+
 async def test_doctor_treats_a_failing_board_as_a_warning_not_an_error(db_path: Path) -> None:
     from stage.domain import CompanyVisit
 

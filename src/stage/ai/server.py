@@ -129,8 +129,8 @@ CATALOGUE: tuple[tuple[str, str, ToolAnnotations, str], ...] = (
         "Check sources",
         FIND,
         "Health of the job boards and feeds Stage reads: open rows per source (a posting "
-        "two sources list counts in both), errors, volume drops, blocked hosts, and failing "
-        "or stale boards. It only reads and changes nothing.",
+        "two sources list counts in both), errors, volume drops, blocked hosts, and failing, "
+        "stale, refusing or gone boards. It only reads and changes nothing.",
     ),
     (
         "track_postings",
@@ -559,7 +559,7 @@ def build_server(database: Path, *, actions: bool = False) -> MCPServer[Any]:
         title="Stage",
         description="Computer science internship postings, a tracker and preferences",
         instructions=ACTION_INSTRUCTIONS if actions else INSTRUCTIONS,
-        website_url="https://github.com/NicholasXydis/Stage",
+        website_url="https://pypi.org/project/stage-cli/",
         icons=icons(),
         version=__version__,
         extensions=[_card()],

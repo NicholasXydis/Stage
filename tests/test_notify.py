@@ -1,6 +1,8 @@
 import json
 import os
 import re
+import ssl
+from http.client import IncompleteRead, RemoteDisconnected
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
@@ -166,6 +168,24 @@ def test_a_title_cannot_break_out_of_its_own_link() -> None:
 
     assert line.startswith("[Intern (evil)(http://bad)]")
     assert line.endswith("(https://ok.com/1)")
+
+
+def test_the_employer_and_place_cannot_add_links_or_lines() -> None:
+    hostile = notify.Posting(
+        "# [Win](https://bad.example)", "Intern", "Remote\n> [x](http://y)", "https://ok.com/1"
+    )
+
+    lines = notify.compose([hostile], total=1)["embeds"][0]["description"].splitlines()  # type: ignore[index]
+
+    assert lines[1:] == [r"\# (Win)(https\://bad.example) · Remote \> (x)(http\://y)"]
+
+
+def test_a_title_without_a_link_cannot_start_a_list() -> None:
+    lines = notify.compose(  # type: ignore[index]
+        [notify.Posting("1. Acme", "- Intern at https://x.example", "L", "")], total=1
+    )["embeds"][0]["description"].splitlines()
+
+    assert lines == [r"\- Intern at https\://x.example", r"1\. Acme · L"]
 
 
 def test_a_posting_without_a_url_still_appears() -> None:
@@ -580,6 +600,28 @@ def test_every_discord_status_is_reported_not_swallowed(
 
     with pytest.raises(notify.NotifyError):
         notify.post("https://discord.com/api/webhooks/1/tok", {"content": "hi"})
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        RemoteDisconnected("Remote end closed connection without response"),
+        ssl.SSLError("record layer failure"),
+        IncompleteRead(b""),
+    ],
+)
+def test_a_connection_dropped_mid_answer_is_reported_not_raised(
+    failure: Exception, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def explode(request: object, timeout: object = None) -> None:
+        raise failure
+
+    monkeypatch.setattr(notify, "urlopen", explode)
+
+    with pytest.raises(notify.NotifyError) as caught:
+        notify.post("https://discord.com/api/webhooks/1/tok", {"content": "hi"})
+
+    assert type(failure).__name__ not in str(caught.value)
 
 
 def test_rate_limiting_says_to_wait(monkeypatch: pytest.MonkeyPatch) -> None:

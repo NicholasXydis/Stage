@@ -352,7 +352,7 @@ def test_a_region_suffix_survives_normalization() -> None:
     from stage.normalize.location import display_location
 
     assert display_location("San Jose, CA") == "San Jose, CA"
-    assert display_location("Toronto, ON, Canada") == "Toronto, ON, Canada"
+    assert display_location("Toronto, ON, Canada") == "Toronto, ON"
 
 
 def test_an_unknown_city_passes_through_untouched() -> None:
@@ -369,11 +369,23 @@ def test_normalizing_an_empty_location_stays_empty() -> None:
     assert display_location("   ") == ""
 
 
-def test_a_multi_site_suffix_is_dropped() -> None:
+@pytest.mark.parametrize(
+    ("raw", "shown"),
+    [
+        ("Hong Kong +1", "Hong Kong +1"),
+        ("Arlington, VA +2", "Arlington, VA +2"),
+        ("Kanata Ontario Canada +5 more", "Kanata, ON +5"),
+        ("Boston Massachusetts US +3", "Boston, MA +3"),
+        ("Austin, TX +1 / Dallas, TX", "Austin, TX +1"),
+        ("Seattle-WA-2nd Ave", "Seattle, WA"),
+        ("Wakefield, MA (Hybrid)", "Wakefield, MA"),
+        ("Seattle (Remote)", "Seattle (Remote)"),
+    ],
+)
+def test_a_source_count_of_more_places_is_kept_once(raw: str, shown: str) -> None:
     from stage.normalize.location import display_location
 
-    assert display_location("Hong Kong +1") == "Hong Kong"
-    assert display_location("Arlington, VA +2") == "Arlington, VA"
+    assert display_location(raw) == shown
 
 
 def test_metro_names_collapse_onto_the_city() -> None:
@@ -403,7 +415,7 @@ def test_a_borough_that_names_another_city_is_left_alone() -> None:
 def test_two_cities_sharing_a_name_stay_apart() -> None:
     from stage.normalize.location import display_location
 
-    assert display_location("Richmond, BC, Canada") == "Richmond, BC, Canada"
+    assert display_location("Richmond, BC, Canada") == "Richmond, BC"
     assert display_location("Richmond, VA") == "Richmond, VA"
 
 
@@ -423,6 +435,7 @@ def test_two_cities_sharing_a_name_stay_apart() -> None:
         ("Dublin", LocationBucket.INTERNATIONAL),
         ("Berlin, DE", LocationBucket.INTERNATIONAL),
         ("Madrid, MD, ES", LocationBucket.INTERNATIONAL),
+        ("Madrid, MD, International (ES) (Hybrid)", LocationBucket.INTERNATIONAL),
         ("Cork, CO, IE", LocationBucket.INTERNATIONAL),
         ("Walldorf, DE, 69190", LocationBucket.INTERNATIONAL),
         ("Wilmington, DE", LocationBucket.USA),
@@ -464,7 +477,7 @@ def test_a_list_of_cities_keeps_the_domestic_one(raw: str, bucket: LocationBucke
     [
         ("Remote (United States | Canada)", "Remote (United States | Canada)"),
         ("New York (In-Office / Hybrid)", "New York (In-Office / Hybrid)"),
-        ("IN-Indianapolis;6910 Network Place (Tribune-WXIN/WTTV)", "IN-Indianapolis +1"),
+        ("IN-Indianapolis;6910 Network Place (Tribune-WXIN/WTTV)", "Indianapolis, IN +1"),
         ("Toronto (Hybrid; Remote) | New York, NY", "Toronto (Hybrid; Remote) +1"),
         ("Montreal, QC | Toronto, ON | Vancouver, BC", "Montreal, QC +2"),
         ("(an unclosed bracket | Boston", "(an unclosed bracket | Boston"),
@@ -1021,3 +1034,174 @@ def test_a_title_marks_an_unknown_place_abroad(
     place: str, title: str, bucket: LocationBucket
 ) -> None:
     assert resolve_listing(place, title).bucket is bucket, title
+
+
+@pytest.mark.parametrize(
+    ("raw", "title", "listed"),
+    [
+        (
+            "United...",
+            "2027 Ground Software Engineer Intern - Redondo Beach CA",
+            "Redondo Beach CA",
+        ),
+        ("", "Data Intern - Montreal", "Montreal"),
+        ("United...", "Software Intern - Georgia Tech", "United..."),
+        ("United...", "Software Intern - Backend", "United..."),
+        ("Austin, TX", "Software Intern - Redondo Beach CA", "Austin, TX"),
+    ],
+)
+def test_a_cut_off_or_blank_place_takes_the_place_ending_the_title(
+    raw: str, title: str, listed: str
+) -> None:
+    from stage.normalize import listed_place
+
+    assert listed_place(raw, "", title) == listed
+
+
+def test_a_macquarie_campus_is_abroad() -> None:
+    assert resolve_location("Wallumattagal-Campus-Macquarie-University").bucket is (
+        LocationBucket.INTERNATIONAL
+    )
+
+
+@pytest.mark.parametrize(
+    ("raw", "shown"),
+    [
+        ("US-UT-WEST VALLEY CITY-338 ~ 1127 & 1128 w 2400 S ~ BLDG 338", "West Valley City, UT"),
+        ("UT-WEST VALLEY CITY", "West Valley City, UT"),
+        ("CAN-QC-LONGUEUIL-LGB ~ 1000 Marie-Victorin ~ BLDG 01", "Longueuil, QC"),
+        ("US-NC-WINSTON-SALEM-123 ~ 1 Main St", "Winston-Salem, NC"),
+        ("US-CA-SAN DIEGO / 2 more", "San Diego, CA +2"),
+        ("GB-NU-NEWCASTLE", "GB-NU-NEWCASTLE"),
+        ("CA-ON-Ottawa", "Ottawa, ON"),
+        ("US-OK-Home", "Remote, OK"),
+        ("US-CA-San Francisco", "San Francisco, CA"),
+        ("CO Westminster", "Westminster, CO"),
+        ("US, MA - Framingham", "Framingham, MA"),
+        ("United States-Arizona-Chandler", "Chandler, AZ"),
+        ("IA-CEDAR RAPIDS", "Cedar Rapids, IA"),
+    ],
+)
+def test_a_workday_site_code_shows_as_city_and_region(raw: str, shown: str) -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location(raw) == shown
+
+
+@pytest.mark.parametrize(
+    ("raw", "shown"),
+    [
+        ("Sunnyvale, California, United States of America", "Sunnyvale, CA"),
+        ("Perrysburg, OH, United States, US", "Perrysburg, OH"),
+        ("Cincinnati, OH (USA)", "Cincinnati, OH"),
+        ("IL - Chicago / 1 more", "Chicago, IL +1"),
+        ("Florida - Deerfield Beach", "Deerfield Beach, FL"),
+        ("USA, CA, Pleasanton", "Pleasanton, CA"),
+        ("Spring Texas United States of America / 9 more", "Spring, TX +9"),
+        ("NYC - 1211 Ave of the Americas", "New York"),
+        ("IA, Urbandale - 3840 109th Street", "Urbandale, IA"),
+        ("Schaumburg, IL 60173", "Schaumburg, IL"),
+        ("Fort Washington, PA, United States", "Fort Washington, PA"),
+        ("NY - New York", "New York, NY"),
+        ("Cambridge, MA, Arlington, VA, Seattle, WA", "Cambridge, MA +2"),
+        ("Canada - Ottawa (Bill Leathem)", "Ottawa, Canada"),
+        ("CAN Kanata (2), ON - WR", "Kanata, ON"),
+        ("VA, Centreville, R188194", "Centreville, VA"),
+        ("Auburn Hills - Michigan - USA", "Auburn Hills, MI"),
+        ("Maple Grove US-MN, United...", "Maple Grove, MN"),
+        ("Remote / United States", "Remote, US"),
+        ("Remote in USA", "Remote, US"),
+        ("Remote-MO", "Remote, MO"),
+        ("6314 Remote/Teleworker US", "Remote, US"),
+        ("PA Working at Home - Pennsylvania / 50 more", "Remote, PA +50"),
+        ("Remote (Any Location), R188147", "Remote"),
+        ("Remote / United States / Odenton, MD / Shiloh, IL", "Remote, US +2"),
+        ("US - WI - Milwaukee HQ", "Milwaukee, WI"),
+        ("US-TX-MIDLAND-2101 MARKET STREET", "Midland, TX"),
+        (
+            "US-NM-LAS CRUCES-12400-CUST ~ 12400 NASA Rd ~ ASFCF CTR (External Site)",
+            "Las Cruces, NM",
+        ),
+        ("CT Bloomfield 900 Cottage Grove Rd Wilde Bldg / 1 more", "Bloomfield, CT +1"),
+        ("IN INDIANAPOLIS 220 VIRGINIA AVE", "Indianapolis, IN"),
+        ("1720 W Rio Salado Pkwy Tempe, AZ 85281", "Tempe, AZ"),
+        ("300 Concord Plaza Dr San Antonio TX 78216-6903", "San Antonio, TX"),
+        ("CA.QC.Montr\u00e9al.455 boul. Ren\u00e9-L\u00e9vesque Ouest", "Montreal, QC"),
+        ("California San Francisco", "San Francisco, CA"),
+        ("Markham, CA", "Markham, Canada"),
+        ("Oakville, California", "Oakville, CA"),
+        ("Los Angeles, CA or Toronto, Ontario", "Los Angeles, CA"),
+        ("CA Remote (BC & ON only); U.S. Remote", "Remote, Canada +1"),
+        ("123 Front Street W Toronto, ON", "Toronto, ON"),
+        ("Wa, WA", "WA"),
+        ("Amsterdam, Netherlands; London, United Kingdom; New York; Singapore", "New York +3"),
+    ],
+)
+def test_a_place_shows_as_city_and_region_code(raw: str, shown: str) -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location(raw) == shown
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "YWG BW",
+        "Lake St. Louis, MO or Mandan, ND",
+        "Seattle (Remote)",
+        "Remote (United States | Canada)",
+        "2 Locations",
+        "Canada / Santa Clara, CA / United States",
+        "Ontario, New York",
+        "CAN or USA",
+        "CA AB OTHER ALBERTA / 3 more",
+        "Amsterdam, NH, Netherlands",
+        "AZ - Baku, Azerbaijan",
+        "IN-KA-Bangalore",
+    ],
+)
+def test_a_place_that_cannot_be_read_surely_is_left_as_written(raw: str) -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location(raw).startswith(raw.split(" / ")[0])
+
+
+def test_a_blank_place_is_read_from_the_title_brackets() -> None:
+    from stage.normalize.location import listed_place
+
+    assert listed_place("", "", "SW Engineering Intern (Port Orchard)") == "Port Orchard"
+    assert listed_place("", "", "Software Engineer Intern (Summer 2027)") == ""
+
+
+@pytest.mark.parametrize(
+    ("raw", "bucket"),
+    [
+        ("Aliso Viejo", LocationBucket.USA),
+        ("Charlottesville", LocationBucket.USA),
+        ("Bethlehem", LocationBucket.USA),
+        ("St. Laurent", LocationBucket.MONTREAL),
+        ("Amancio, Cuba", LocationBucket.INTERNATIONAL),
+    ],
+)
+def test_places_left_unknown_on_real_postings_resolve(raw: str, bucket: LocationBucket) -> None:
+    assert resolve_location(raw).bucket is bucket
+
+
+@pytest.mark.parametrize("raw", ["Flexible / Remote", "Work Remotely", "Remote / Remote"])
+def test_a_remote_place_said_twice_shows_as_remote(raw: str) -> None:
+    from stage.normalize.location import display_location
+
+    assert display_location(raw) == "Remote"
+    assert resolve_location(raw).remote_scope is RemoteScope.UNSPECIFIED
+
+
+def test_a_site_name_takes_the_city_its_workday_link_names() -> None:
+    from stage.normalize import listed_place
+
+    assert (
+        listed_place("ASU Enterprise Partners", WORKDAY.format("Scottsdale-AZ")) == "Scottsdale AZ"
+    )
+    assert listed_place("Customer Support Center", WORKDAY.format("Customer-Support-Center")) == (
+        "Customer Support Center"
+    )
+    assert listed_place("Remote", WORKDAY.format("Austin-TX")) == "Remote"

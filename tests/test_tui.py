@@ -398,6 +398,27 @@ async def test_a_failed_company_is_recorded_as_a_warning(tmp_path: Path) -> None
         assert any("Acme" in line for line in screen._warnings)
 
 
+async def test_a_board_that_refuses_or_is_gone_stays_quiet_as_in_the_cli(tmp_path: Path) -> None:
+    from stage.domain import CompanyFailed
+    from stage.tui.app import StageApp
+    from stage.tui.screens.sync import SyncScreen
+
+    app = StageApp(tmp_path / "empty.db", "")
+
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        screen = SyncScreen(dry_run=True)
+        app.push_screen(screen)
+        await pilot.pause()
+
+        for refused, gone in ((True, False), (False, True)):
+            screen._absorb(
+                CompanyFailed("lever", "Acme", "returned 403", 1.0, refused=refused, gone=gone)
+            )
+
+        assert screen._warnings == [] and screen._done == 2
+
+
 async def test_the_warning_list_stays_bounded(tmp_path: Path) -> None:
     from stage.tui.app import StageApp
     from stage.tui.screens.sync import MAX_WARNINGS, SyncScreen

@@ -291,3 +291,51 @@ def test_the_canada_list_mixes_in_full_time_jobs_so_the_title_must_say_intern() 
     intern, full_time = (ZapplyCanadaFeed()._to_job(row, now) for row in rows)
     assert screen_is_internship(intern) is None
     assert screen_is_internship(full_time) is not None
+
+
+@respx.mock
+async def test_a_new_season_without_its_list_yet_reads_last_seasons_list(
+    run_time: datetime,
+) -> None:
+    feed = NegarFeed()
+    for url in feed.plan(run_time):
+        respx.get(url).mock(return_value=httpx.Response(404))
+    seasonal, current = feed.fallback(run_time)
+    respx.get(seasonal).mock(return_value=httpx.Response(404))
+    respx.get(current).mock(return_value=httpx.Response(200, text=NEGAR_TABLE))
+    async with HttpClient(
+        allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False
+    ) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert result.jobs
+
+
+@respx.mock
+async def test_zshah_reads_last_seasons_list_until_the_new_one_exists(run_time: datetime) -> None:
+    feed = ZshahFeed()
+    upcoming, last = feed.plan(run_time)
+    respx.get(upcoming).mock(return_value=httpx.Response(404))
+    respx.get(last).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jobs": [
+                    {
+                        "id": "one",
+                        "company": "Acme",
+                        "title": "Software Engineer Intern",
+                        "url": "https://jobs.example/one",
+                        "program": "Internship",
+                    }
+                ]
+            },
+        )
+    )
+    async with HttpClient(
+        allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False
+    ) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert len(result.jobs) == 1
+    assert "Fall-" in upcoming and upcoming != last

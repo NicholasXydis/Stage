@@ -1,8 +1,11 @@
 from collections.abc import AsyncIterator, Callable
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import httpx
 import pytest
+import respx
 
 from stage.domain import (
     Company,
@@ -12,6 +15,7 @@ from stage.domain import (
     Platform,
     PlatformProbed,
     ProbeVerdict,
+    RateState,
 )
 from stage.http import HttpClient, RatePosture, ValidatorCache
 from stage.services.discover import ClientFactory, NoMatchingCompanyError, verify_registry
@@ -273,3 +277,92 @@ async def test_a_failed_probe_explains_itself_without_a_class_name() -> None:
     assert probe.result.verdict is ProbeVerdict.ERROR
     assert "returned 400" in probe.result.detail
     assert "Error" not in probe.result.detail
+
+
+async def test_every_greenhouse_row_is_checked_past_the_standard_ceiling() -> None:
+    rows = tuple(
+        Company(name=f"Faire {index}", platform=Platform.GREENHOUSE, slug=f"faire{index}")
+        for index in range(200)
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        slug = request.url.path.split("/")[3]
+        if request.url.path.endswith("/jobs"):
+            return httpx.Response(200, json={"jobs": [{"id": 1}]})
+        return httpx.Response(200, json={"name": f"Faire {slug[5:]}", "jobs": [{"id": 1}]})
+
+    events = await _collect(verify_registry(rows, client_factory=_client_factory(handler)))
+
+    finished = events[-1]
+    assert isinstance(finished, DiscoveryFinished)
+    assert len(_probed(events)) == 200, "Verify stopped before checking every Greenhouse row"
+    assert not finished.ceiling_hit, "the request ceiling must be sized to the rows checked"
+    assert finished.requests > 300
+
+
+@pytest.fixture
+def unpaced(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "stage.services.discover.resolve", lambda *_: RatePosture(min_interval_s=0.0)
+    )
+
+
+def _sync_bucket(row: Company) -> str:
+    from stage.services.sync import _host_buckets
+    from stage.sources import adapter_for_platform
+
+    adapter = adapter_for_platform(row.platform)
+    assert adapter is not None
+    return next(iter(_host_buckets(adapter, [row]).values()))
+
+
+@respx.mock
+@pytest.mark.parametrize("verifying", [True, False])
+async def test_discovery_waits_out_a_block_a_sync_stored(verifying: bool, unpaced: None) -> None:
+    from stage.services.discover import StoredLimits, probe_companies
+
+    route = respx.route().mock(return_value=httpx.Response(200, json={"name": "Faire"}))
+    now = datetime.now(UTC)
+    bucket = _sync_bucket(ROWS[0])
+    held = RateState(bucket, now, blocked_until=now + timedelta(hours=1), reason="429")
+    limits = StoredLimits({bucket: held}, now)
+
+    events = await _collect(
+        verify_registry(ROWS[:1], limits=limits)
+        if verifying
+        else probe_companies(["Faire"], platforms=[Platform.GREENHOUSE], limits=limits)
+    )
+
+    assert route.call_count == 0 and limits.settled == {}
+    assert all("blocked" in event.result.detail for event in _probed(events))
+
+
+@respx.mock
+async def test_verify_saves_a_block_it_met_for_the_next_sync(db_path: Path, unpaced: None) -> None:
+    from stage.services.discover import save_limits, stored_limits
+    from stage.storage import open_repository
+
+    respx.route().mock(return_value=httpx.Response(429, headers={"Retry-After": "3600"}))
+    async with open_repository(db_path) as repository:
+        limits = await stored_limits(repository)
+        await _collect(verify_registry(ROWS[:1], limits=limits))
+        await save_limits(repository, limits)
+        saved = await repository.load_rate_state()
+
+    assert saved[_sync_bucket(ROWS[0])].blocked_until is not None
+
+
+@respx.mock
+async def test_verify_run_offline_saves_nothing(
+    unpaced: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.services.discover import StoredLimits
+
+    monkeypatch.setattr("stage.http.client.wait_exponential_jitter", lambda **_: lambda _: 0.0)
+    respx.route().mock(side_effect=httpx.ConnectError("offline"))
+    rows = tuple(replace(ROWS[0], name=name, slug=name.lower()) for name in ("Faire", "Fable"))
+    limits = StoredLimits()
+
+    await _collect(verify_registry(rows, limits=limits))
+
+    assert limits.settled == {}

@@ -51,6 +51,9 @@ def _answer(name: str, **headers: str) -> httpx.Response:
     return httpx.Response(found["status"], json=found["body"], headers=headers)
 
 
+_WAL = "https://wal.wd1.myworkdayjobs.com/WAB/job/Dallas-TX/Intern"
+
+
 def _job(
     ident: str,
     url: str = "",
@@ -533,6 +536,73 @@ async def test_a_gone_posting_closes_its_copies_and_a_list_never_brings_them_bac
     assert listed == []
 
 
+async def test_a_gone_posting_leaves_a_copy_another_board_still_lists(db_path: Path) -> None:
+    now = datetime.now(UTC)
+    board_copy = _job(
+        "ashby:acme:1", seen=now - timedelta(hours=2), duplicate_of="greenhouse:acme:1"
+    )
+    _store(
+        db_path,
+        _batch("greenhouse", _job("greenhouse:acme:1", seen=now - timedelta(hours=2))),
+        _batch("ashby", board_copy, at=now - timedelta(hours=2)),
+    )
+    async with open_repository(db_path) as repository:
+        closed = await repository.record_checks(
+            (LivenessCheck("greenhouse:acme:1", Liveness.GONE, now),)
+        )
+        await repository.apply_source_batch(
+            _batch(
+                "ashby",
+                replace(board_copy, last_seen=now + timedelta(minutes=5)),
+                at=now + timedelta(minutes=5),
+            )
+        )
+
+    assert closed == ("greenhouse:acme:1",)
+    assert _status(db_path, "ashby:acme:1") == "open"
+
+
+async def test_a_gone_posting_closes_only_list_copies_of_the_same_job_number(
+    db_path: Path,
+) -> None:
+    now = datetime.now(UTC)
+    earlier = now - timedelta(hours=2)
+    main = _job("workday:wal:r14019", f"{_WAL}_R14019", seen=earlier)
+    same = _job("simplify:wal:1", f"{_WAL}_R14019", seen=earlier, duplicate_of=main.id)
+    other = _job("zshah101:wal:2", f"{_WAL}_R14020", seen=earlier, duplicate_of=main.id)
+    _store(
+        db_path,
+        _batch("workday", main, at=earlier),
+        _batch("simplify", same, at=earlier),
+        _batch("zshah101", other, at=earlier),
+    )
+    async with open_repository(db_path) as repository:
+        closed = await repository.record_checks((LivenessCheck(main.id, Liveness.GONE, now),))
+
+    assert closed == (same.id, main.id)
+    assert _status(db_path, other.id) == "open", "another job number was never checked"
+    assert _rows(db_path, "SELECT duplicate_of FROM jobs WHERE id = ?", other.id) == [(None,)]
+
+
+async def test_a_gone_check_makes_the_open_board_copy_the_main_at_once(db_path: Path) -> None:
+    now = datetime.now(UTC)
+    _store(
+        db_path,
+        _batch("greenhouse", _job("greenhouse:acme:1", seen=now - timedelta(hours=2))),
+        _batch(
+            "ashby",
+            _job("ashby:acme:1", seen=now - timedelta(hours=2), duplicate_of="greenhouse:acme:1"),
+            at=now - timedelta(hours=2),
+        ),
+    )
+    async with open_repository(db_path) as repository:
+        await repository.record_checks((LivenessCheck("greenhouse:acme:1", Liveness.GONE, now),))
+
+    assert _rows(db_path, "SELECT duplicate_of FROM jobs WHERE id = 'ashby:acme:1'") == [(None,)]
+    heir = "SELECT source FROM detail_fetches WHERE id = 'heir:greenhouse:acme:1'"
+    assert _rows(db_path, heir) == [("ashby:acme:1",)], "tracking follows the posting"
+
+
 @pytest.mark.parametrize(("minutes", "status"), [(-1, "closed"), (0, "closed"), (1, "open")])
 async def test_a_board_read_reopens_a_checked_posting_only_if_it_started_after_the_check(
     db_path: Path, minutes: int, status: str
@@ -882,3 +952,28 @@ def test_a_board_that_drops_a_posting_closes_its_list_copies_for_good(tmp_path: 
 
     _store(db, _batch("simplify", replace(copy, last_seen=datetime.now(UTC))))
     assert _status(db, copy.id) == "closed", "a list still carrying the link cannot reopen it"
+
+
+def test_a_board_that_drops_a_posting_keeps_list_copies_of_another_job_number(
+    tmp_path: Path,
+) -> None:
+    earlier = datetime.now(UTC) - timedelta(hours=3)
+    board = _job("workday:wal:r14019", f"{_WAL}_R14019", seen=earlier)
+    same = _job("simplify:wal:1", f"{_WAL}_R14019", seen=earlier, duplicate_of=board.id)
+    other = _job("simplify:wal:2", f"{_WAL}_R14020", seen=earlier, duplicate_of=board.id)
+    db = _store(
+        tmp_path / "s.db",
+        _batch("workday", board, at=earlier),
+        _batch("simplify", same, other, at=earlier),
+    )
+    _store(
+        db,
+        _batch(
+            "workday",
+            closable_boards=("workday:wal",),
+            list_sources=frozenset({"simplify"}),
+        ),
+    )
+
+    assert (_status(db, board.id), _status(db, same.id)) == ("closed", "closed")
+    assert _status(db, other.id) == "open", "another job number was never checked"

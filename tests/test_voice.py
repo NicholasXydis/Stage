@@ -20,7 +20,7 @@ SEMICOLONS_KEPT = {
     ("sources/oracle_cloud.py", "findReqs;siteNumber={}{},offset={},limit={}"),
     (
         "http/client.py",
-        "stage-cli/{} (+https://github.com/NicholasXydis/Stage; internship aggregator)",
+        "stage-cli/{} (+https://pypi.org/project/stage-cli/; internship aggregator)",
     ),
     ("http/client.py", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
     ("ai/server.py", "data:{};base64,{}"),

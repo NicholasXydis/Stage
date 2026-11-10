@@ -5,6 +5,7 @@ import httpx
 import pytest
 import respx
 
+from stage.domain import HttpValidator
 from stage.http import HttpClient, RatePosture, ValidatorCache
 from stage.sources.base import FetchResult, PayloadValidationError
 from stage.sources.jobbank import SEARCH, JobBankFeed
@@ -257,6 +258,36 @@ def test_the_muse_stops_at_the_page_count_it_is_given() -> None:
 
 
 @respx.mock
+def test_the_muse_reads_an_unchanged_first_page_as_unchanged_not_empty() -> None:
+    route = respx.get(url__startswith=MUSE_SEARCH).mock(return_value=httpx.Response(304))
+
+    async def run() -> FetchResult:
+        async with _client(TheMuseFeed.hosts) as client:
+            return await TheMuseFeed().fetch(client, NOW)
+
+    assert asyncio.run(run()) == FetchResult(not_modified=True) and route.call_count == 1
+
+
+@respx.mock
+def test_the_muse_reads_later_pages_whole_once_the_first_has_changed() -> None:
+    feed = TheMuseFeed()
+    body = {"results": [_muse(5, "Intern", "Acme")], "page_count": 2}
+    route = respx.get(url__startswith=MUSE_SEARCH).mock(return_value=httpx.Response(200, json=body))
+    known = HttpValidator(url=feed._url(2), etag='"v1"', fetched_at=NOW)
+
+    async def run() -> FetchResult:
+        async with HttpClient(
+            allowed_hosts=feed.hosts,
+            posture=RatePosture(min_interval_s=0.0),
+            cache=ValidatorCache({feed._url(2): known}),
+        ) as client:
+            return await feed.fetch(client, NOW)
+
+    assert len(asyncio.run(run()).jobs) == 1
+    assert "if-none-match" not in route.calls.last.request.headers
+
+
+@respx.mock
 def test_the_muse_drops_a_bad_row_rather_than_losing_the_page() -> None:
     body = {"results": [_muse(4, "Intern", "Acme"), {"id": 0, "name": ""}], "page_count": 1}
     respx.get(url__startswith=MUSE_SEARCH).mock(return_value=httpx.Response(200, json=body))
@@ -392,6 +423,39 @@ def test_espresso_keeps_what_it_read_when_the_request_ceiling_stops_it() -> None
 
 
 @respx.mock
+def test_espresso_reads_every_redirected_search_within_the_feeds_ceiling() -> None:
+    from dataclasses import replace
+
+    from stage.http.profiles import profile
+    from stage.sources.espresso import PAGE_CAP, PAGE_SIZE, TERMS, EspressoJobsFeed
+    from stage.sources.espresso import SEARCH as ESPRESSO_SEARCH
+
+    rows = [
+        _espresso_row(str(index), f"dev-{index}", f"Stagiaire dev {index}", "Acme", "Stage")
+        for index in range(PAGE_SIZE)
+    ]
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        if "criteria" in request.url.params:
+            return httpx.Response(200, text=_page(*rows))
+        return httpx.Response(302, headers={"Location": f"{request.url}&criteria=token"})
+
+    respx.get(url__startswith=ESPRESSO_SEARCH).mock(side_effect=answer)
+    posture = replace(profile(EspressoJobsFeed.rate_profile), min_interval_s=0.0)
+
+    async def run() -> FetchResult:
+        async with HttpClient(
+            allowed_hosts=EspressoJobsFeed.hosts, posture=posture, cache=ValidatorCache()
+        ) as client:
+            return await EspressoJobsFeed().fetch(client, NOW)
+
+    result = asyncio.run(run())
+
+    assert len(TERMS) * PAGE_CAP * 2 <= posture.max_requests_per_run
+    assert "request ceiling" not in result.degraded, result.degraded
+
+
+@respx.mock
 def test_espresso_raises_when_no_query_returns_a_row_at_all() -> None:
     from stage.sources.espresso import SEARCH as ESPRESSO_SEARCH
     from stage.sources.espresso import EspressoJobsFeed
@@ -406,3 +470,13 @@ def test_espresso_raises_when_no_query_returns_a_row_at_all() -> None:
                 await EspressoJobsFeed().fetch(client, NOW)
 
     asyncio.run(run())
+
+
+def test_a_paused_list_is_read_only_when_named() -> None:
+    from stage.services.sync import _select
+
+    _, everyday, _ = _select([], None)
+    _, named, _ = _select([], ["jobbank"])
+
+    assert not {"jobbank", "quebec-emploi", "themuse"} & set(everyday)
+    assert set(named) == {"jobbank"}

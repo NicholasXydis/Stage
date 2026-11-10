@@ -238,6 +238,36 @@ async def test_promotion_picks_the_highest_priority_remaining_row(db_path: Path)
         assert await repository.count_duplicates() == 1
 
 
+async def test_promotion_prefers_an_open_copy_over_a_closed_one(db_path: Path) -> None:
+    import sqlite3
+
+    old = NOW - timedelta(days=20)
+    async with open_repository(db_path) as repository:
+        survivor = job("gh", source="greenhouse", seen=old)
+        shut = job("ash", source="ashby", seen=NOW)
+        listed = job("simp", source="simplify", seen=NOW)
+        links = resolve_duplicates([survivor, shut, listed], [])
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=NOW,
+                jobs=(survivor, shut, listed),
+                resolve_duplicates=lambda _incoming, _existing: links,
+            )
+        )
+    connection = sqlite3.connect(db_path)
+    with connection:
+        connection.execute("UPDATE jobs SET status = 'closed' WHERE id = 'ash'")
+    connection.close()
+    async with open_repository(db_path) as repository:
+        await repository.purge(NOW)
+        main = await repository.get_job("simp")
+        copy = await repository.get_job("ash")
+
+    assert main is not None and main.duplicate_of is None
+    assert copy is not None and copy.duplicate_of == "simp"
+
+
 async def test_purging_nothing_is_not_an_error(db_path: Path) -> None:
     async with open_repository(db_path) as repository:
         await repository.apply_source_batch(
@@ -574,3 +604,59 @@ async def test_a_new_copy_never_hides_behind_a_closed_main(db_path: Path) -> Non
         shown = await repository.get_job(copy.id)
 
     assert shown is not None and shown.duplicate_of is None
+
+
+@pytest.mark.parametrize(
+    ("link", "retired"),
+    [
+        ("https://job-boards.greenhouse.io/acme/jobs/8046795003", True),
+        ("https://acme.com/careers?gh_jid=8046795003", True),
+        ("https://job-boards.greenhouse.io/acme/jobs/18046795003", False),
+        ("https://job-boards.greenhouse.io/acme/jobs/8046795004", False),
+    ],
+)
+async def test_a_list_copy_of_a_retired_board_posting_stays_retired(
+    db_path: Path, link: str, retired: bool
+) -> None:
+    board = dataclasses.replace(
+        job("greenhouse:acme:8046795003", seen=NOW - timedelta(days=20)),
+        apply_url_raw="https://job-boards.greenhouse.io/acme/jobs/8046795003",
+    )
+    copy = dataclasses.replace(
+        job("simplify:acme:1", source="simplify"),
+        apply_url_raw=link,
+        apply_url_canonical=link,
+    )
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=(board,))
+        )
+        await repository.purge(NOW)
+        await repository.apply_source_batch(
+            SourceBatch(source="simplify", run_started_at=NOW, jobs=(copy,))
+        )
+        stored = await repository.get_job(copy.id)
+
+    assert (stored is None) is retired, "an old posting a list re-lists is not new"
+
+
+async def test_a_list_copy_of_a_recently_purged_posting_still_arrives(db_path: Path) -> None:
+    closed = dataclasses.replace(
+        job("greenhouse:acme:8046795003", seen=NOW - timedelta(days=5), status=JobStatus.CLOSED),
+        apply_url_raw="https://job-boards.greenhouse.io/acme/jobs/8046795003",
+    )
+    link = "https://job-boards.greenhouse.io/acme/jobs/8046795003"
+    copy = dataclasses.replace(
+        job("simplify:acme:1", source="simplify"), apply_url_raw=link, apply_url_canonical=link
+    )
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=(closed,))
+        )
+        await repository.purge(NOW)
+        await repository.apply_source_batch(
+            SourceBatch(source="simplify", run_started_at=NOW, jobs=(copy,))
+        )
+        stored = await repository.get_job(copy.id)
+
+    assert stored is not None, "only the 14-day window retires a posting for good"

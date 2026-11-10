@@ -399,6 +399,17 @@ def test_a_hand_edited_overlap_is_avoided(tmp_path: Path) -> None:
     assert loaded.problems
 
 
+def test_a_saved_board_label_still_names_the_employer(tmp_path: Path) -> None:
+    path = tmp_path / "preferences.json"
+    saved = {"name": "General Motors (Workday)", "folded": "general motors workday"}
+    path.write_text(json.dumps({"avoid": [saved], "follow": [{"name": "Acme", "folded": "acme"}]}))
+
+    loaded = load_preferences(path).preferences
+
+    assert [e.folded for e in loaded.avoid] == ["general motors"]
+    assert [e.folded for e in loaded.follow] == ["acme"]
+
+
 @pytest.mark.skipif(os.name == "nt", reason="POSIX permission bits")
 def test_the_file_is_readable_only_by_its_owner(tmp_path: Path) -> None:
     path = save_preferences(Preferences(about="private"), tmp_path / "preferences.json")
@@ -925,6 +936,20 @@ def test_the_suggested_command_shows_exactly_what_was_left_out(db_path: Path) ->
     )
 
     assert sorted(row["company"] for row in json.loads(data)) == ["Cisco", "Mystery"]
+
+
+def test_the_suggested_command_spells_the_language_flag_stage_accepts(db_path: Path) -> None:
+    from shlex import split
+
+    from stage.cli.commands.postings import _no_location_hint
+    from stage.domain import Language
+
+    db = _seeded(db_path)
+    hint = _no_location_hint(2, "stage list", JobFilters(language=Language.FR), False)
+    typed = split(hint.split(": ", 1)[1])[1:]
+
+    assert "--lang fr" in hint
+    assert CliRunner().invoke(app, [*typed, "--db", db]).exit_code == 0
 
 
 def test_one_left_out_posting_reads_as_one(db_path: Path) -> None:

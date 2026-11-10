@@ -53,6 +53,9 @@ async def test_fetch_maps_payload_to_domain(acme: Company, run_time: datetime) -
     assert first.first_seen == run_time
     assert first.last_seen == run_time
     assert first.source_posted_at is not None
+    assert first.source_posted_at.isoformat().startswith("2026-07-20T09:00:00"), (
+        "the posted date is when the posting first went up, not its last edit"
+    )
 
 
 @respx.mock

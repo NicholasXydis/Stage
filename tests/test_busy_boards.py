@@ -1,5 +1,6 @@
 import json
 from collections.abc import AsyncGenerator
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
@@ -157,9 +158,10 @@ def _avoid(*names: str) -> None:
     save_preferences(Preferences(avoid=chosen))
 
 
+@pytest.mark.parametrize("label", ["", " (Workday)"])
 @respx.mock
 async def test_an_avoided_busy_board_keeps_the_normal_window_not_the_hourly_floor(
-    tmp_path: Path,
+    tmp_path: Path, label: str
 ) -> None:
     routes = {
         slug: respx.get(f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs").mock(
@@ -168,7 +170,7 @@ async def test_an_avoided_busy_board_keeps_the_normal_window_not_the_hourly_floo
         )
         for slug in ("acme", "rbc")
     }
-    boards = [_board("acme"), _board("rbc")]
+    boards = [_board("acme"), replace(_board("rbc"), name=f"Rbc{label}")]
     db = tmp_path / "stage.db"
     _avoid("Rbc")
 

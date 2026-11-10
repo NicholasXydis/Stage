@@ -15,11 +15,22 @@ def test_the_documented_tiers_exist() -> None:
         "conservative",
         "workday",
         "feeds",
+        "redirected_feeds",
         "searches",
         "jobbank",
+        "steady",
         "patient",
         "discovery",
     }
+
+
+def test_redirected_feeds_raise_only_the_ceiling_never_the_rate() -> None:
+    feeds, redirected = profile("feeds"), profile("redirected_feeds")
+    assert (redirected.concurrency, redirected.min_interval_s) == (
+        feeds.concurrency,
+        feeds.min_interval_s,
+    )
+    assert redirected.max_requests_per_run > feeds.max_requests_per_run
 
 
 def test_the_paginated_tier_raises_only_the_ceiling_never_the_rate() -> None:
@@ -176,3 +187,8 @@ def test_every_jibe_job_hub_honours_its_five_second_crawl_delay() -> None:
     assert slow == [] or set(slow) <= {"Snap", "Aurora"}, slow
     assert profile("patient").min_interval_s >= 5.0
     assert profile("patient").concurrency == 1
+
+
+def test_lever_keeps_to_the_one_second_delay_its_robots_txt_asks_for() -> None:
+    lever = profile(get_adapters()["lever"].rate_profile)
+    assert (lever.concurrency, lever.min_interval_s) == (1, 1.0)

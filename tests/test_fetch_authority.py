@@ -109,7 +109,7 @@ async def test_a_whole_workday_listing_without_an_internship_facet_closes() -> N
         result = await WorkdayAdapter().fetch(company, client, NOW)
 
     assert result.jobs, "the postings are real and kept"
-    assert "no internship facet" in result.degraded
+    assert result.degraded == "", "a whole read of a board without an internship facet is complete"
     assert result.authoritative, "a whole unfiltered listing is still the whole board"
 
 

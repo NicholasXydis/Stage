@@ -207,6 +207,75 @@ async def test_rescreen_never_rewrites_a_stored_classification(db_path: Path) ->
     store.close()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("title", "stored", "description", "expected"),
+    [
+        ("Software Intern (Grad Year: Spring 2028)", "spring-2028", "", "unknown"),
+        (
+            "2027 Software Engineering Summer Intern",
+            "spring-2029",
+            "Grad date: Dec 2028 - Spring 2029",
+            "summer-2027",
+        ),
+        ("Software Intern", "winter-2021", "Recruiting for winter 2021 is over.", "unknown"),
+        ("Software Intern", "summer-2027", "", "summer-2027"),
+        ("Winter Software Intern", "unknown", "Summer 2026 cohort", "unknown"),
+        ("Winter Software Intern", "summer-2026", "Summer 2026 cohort", "unknown"),
+    ],
+)
+async def test_rescreen_repairs_stored_terms_the_rules_now_read_differently(
+    db_path: Path, title: str, stored: str, description: str, expected: str
+) -> None:
+    store = SqliteRepository.connect(db_path)
+    store.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=NOW,
+            jobs=(replace(_job("workday:td:9", title), description=description),),
+        )
+    )
+    store._conn.execute("UPDATE jobs SET term = ? WHERE id = 'workday:td:9'", (stored,))
+    store._conn.commit()
+    store.close()
+
+    async with open_repository(db_path) as repo:
+        await rescreen(repo, now=NOW)
+
+    store = SqliteRepository.connect(db_path)
+    row = store._conn.execute("SELECT term FROM jobs WHERE id = 'workday:td:9'").fetchone()
+    store.close()
+    assert row["term"] == expected
+
+
+@pytest.mark.asyncio
+async def test_rescreen_recomputes_eligibility_and_language(db_path: Path) -> None:
+    store = SqliteRepository.connect(db_path)
+    job = replace(
+        _job("workday:td:8", "Software Intern"),
+        description="Candidates must be a U.S. citizen. Currently pursuing a bachelor's degree.",
+    )
+    store.apply_source_batch(SourceBatch(source="workday", run_started_at=NOW, jobs=(job,)))
+    store._conn.execute(
+        "UPDATE jobs SET work_auth_flag = 0, degree_requirement = 'unknown', language = 'unknown' "
+        "WHERE id = 'workday:td:8'"
+    )
+    store._conn.commit()
+    store.close()
+
+    async with open_repository(db_path) as repo:
+        await rescreen(repo, now=NOW)
+
+    store = SqliteRepository.connect(db_path)
+    row = store._conn.execute(
+        "SELECT work_auth_flag, degree_requirement, language FROM jobs WHERE id = 'workday:td:8'"
+    ).fetchone()
+    store.close()
+    assert row["work_auth_flag"] == 1
+    assert row["degree_requirement"] != "unknown"
+    assert row["language"] != "unknown"
+
+
 def test_rescreen_is_reachable_from_the_command_line(seeded: Path) -> None:
     from typer.testing import CliRunner
 
@@ -597,17 +666,18 @@ async def test_rescreen_undoes_a_link_between_two_cities_an_older_stage_made(
 async def test_a_database_from_an_older_stage_is_checked_once_on_its_first_sync(
     seeded: Path,
 ) -> None:
-    from stage.services.maintenance import rescreen_after_upgrade
+    from stage.services.maintenance import rescreen, upgrade_pending
 
     store = SqliteRepository.connect(seeded)
     store.mark_screened(0)
     store.close()
 
     async with open_repository(seeded) as repository:
-        first = await rescreen_after_upgrade(repository, now=NOW)
-        second = await rescreen_after_upgrade(repository, now=NOW)
+        pending = await upgrade_pending(repository)
+        first = await rescreen(repository, now=NOW)
+        again = await upgrade_pending(repository)
 
-    assert first is not None and first.quarantined == 1 and second is None
+    assert pending and first.quarantined == 1 and not again
 
 
 def test_a_new_database_starts_out_screened_by_this_version(db_path: Path) -> None:
@@ -635,3 +705,37 @@ def test_a_changed_word_list_asks_for_a_new_check(
     monkeypatch.setenv("STAGE_LEXICON", str(copy))
 
     assert rules_stamp() != before
+
+
+@pytest.mark.asyncio
+async def test_a_stored_term_over_before_the_posting_was_seen_is_cleared(db_path: Path) -> None:
+    seen = datetime(2026, 11, 5, tzinfo=UTC)
+    labelled = replace(_job("workday:td:3", "AI IT Intern"), term="summer-2026")
+    named = replace(
+        _job("workday:td:4", "Summer 2026 Software Intern"),
+        term="summer-2026",
+        source_posted_at=seen,
+    )
+    current = replace(_job("workday:td:5", "Software Intern"), term="summer-2027")
+    store = SqliteRepository.connect(db_path)
+    store.apply_source_batch(
+        SourceBatch(
+            source="workday",
+            run_started_at=seen,
+            jobs=tuple(
+                replace(job, first_seen=seen, last_seen=seen) for job in (labelled, named, current)
+            ),
+        )
+    )
+    store.close()
+    async with open_repository(db_path) as repository:
+        await rescreen(repository, now=seen)
+
+    store = SqliteRepository.connect(db_path)
+    terms = dict(store._conn.execute("SELECT id, term FROM jobs").fetchall())
+    store.close()
+    assert terms == {
+        "workday:td:3": "unknown",
+        "workday:td:4": "summer-2026",
+        "workday:td:5": "summer-2027",
+    }, "only a term no title or description names is a stale label"

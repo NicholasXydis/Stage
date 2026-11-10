@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta
 
 import httpx
@@ -114,6 +115,42 @@ async def test_a_missing_table_keeps_arrived_jobs_but_cannot_close_the_feed(
     assert not result.authoritative
     assert "1 of 4 files unavailable" in result.degraded
     assert result.stale_urls == (urls[1],)
+
+
+@respx.mock
+async def test_a_file_answering_not_modified_is_read_again_so_its_rows_stay_open(
+    run_time: datetime,
+) -> None:
+    feed = SpeedyApplyFeed()
+    urls = feed.plan(run_time)
+    calls = {"round": 0}
+
+    def answer(index: int) -> Callable[[httpx.Request], httpx.Response]:
+        def respond(request: httpx.Request) -> httpx.Response:
+            if index == 0 and calls["round"] and request.headers.get("if-none-match"):
+                return httpx.Response(304, headers={"ETag": '"same"'})
+            title = (
+                "Software Engineer Intern" if index == 0 or not calls["round"] else "Data Intern"
+            )
+            body = _table(
+                f"Acme {index}", title, "Toronto, ON, Canada", f"https://jobs.example/{index}"
+            )
+            return httpx.Response(
+                200, text=body, headers={"ETag": '"same"' if index == 0 else f'"v{calls["round"]}"'}
+            )
+
+        return respond
+
+    for index, url in enumerate(urls):
+        respx.get(url).mock(side_effect=answer(index))
+    async with _client(feed) as client:
+        await feed.fetch(client, run_time)
+        calls["round"] = 1
+        result = await feed.fetch(client, run_time)
+
+    assert result.authoritative
+    assert len(result.jobs) == 4
+    assert respx.get(urls[0]).call_count == 3
 
 
 @respx.mock

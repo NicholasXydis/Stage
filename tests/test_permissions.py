@@ -132,6 +132,41 @@ def test_a_new_database_that_cannot_be_made_private_is_not_left_behind(
     assert list(tmp_path.iterdir()) == []
 
 
+def test_a_new_database_is_made_private_before_anything_is_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.storage import sqlite_repo
+
+    sizes: list[int] = []
+    monkeypatch.setattr(
+        sqlite_repo, "restrict_permissions", lambda p: sizes.append(p.stat().st_size)
+    )
+    target = tmp_path / "stage.db"
+
+    sqlite_repo.SqliteRepository.connect(target).close()
+
+    assert sizes == [0] and target.stat().st_size > 0
+
+
+def test_an_interrupted_first_open_on_windows_is_made_private_next_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+
+    from stage.storage import sqlite_repo
+
+    made: list[Path] = []
+    monkeypatch.setattr(sqlite_repo, "restrict_permissions", made.append)
+    monkeypatch.setattr(sqlite_repo, "os", SimpleNamespace(name="nt"))
+    target = tmp_path / "stage.db"
+    target.touch()
+
+    sqlite_repo.SqliteRepository.connect(target).close()
+    sqlite_repo.SqliteRepository.connect(target).close()
+
+    assert made == [target], "only the open that finds no tables yet needs to restrict"
+
+
 def test_a_new_tracker_that_cannot_be_made_private_is_not_left_behind(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -158,3 +193,18 @@ def test_tightening_never_makes_a_read_only_database_writable(tmp_path: Path) ->
     paths.tighten_permissions(target)
 
     assert target.stat().st_mode & 0o777 == 0o400
+
+
+def test_a_new_tracker_is_made_private_before_anything_is_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage import paths
+    from stage.storage.tracker import TrackerStore
+
+    sizes: list[int] = []
+    monkeypatch.setattr(paths, "restrict_permissions", lambda p: sizes.append(p.stat().st_size))
+    target = tmp_path / "tracker.db"
+
+    TrackerStore.connect(target).close()
+
+    assert sizes == [0] and target.stat().st_size > 0

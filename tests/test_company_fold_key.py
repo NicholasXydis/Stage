@@ -75,14 +75,14 @@ def test_a_company_spelled_differently_still_reaches_the_matcher(
         repository.close()
 
 
-def test_the_stored_fold_is_the_lexicon_primitive_and_follows_a_renamed_employer(
+def test_the_stored_fold_drops_a_board_label_and_follows_a_renamed_employer(
     db_path: Path,
 ) -> None:
     repository = SqliteRepository.connect(db_path)
     try:
         _land(repository, "greenhouse", job("greenhouse:b:1", "greenhouse", "Coveo (FR)", "SWE"))
         stored = repository._conn.execute("SELECT company_fold FROM jobs").fetchone()
-        assert stored["company_fold"] == fold("Coveo (FR)")
+        assert stored["company_fold"] == fold("Coveo")
 
         _land(
             repository,

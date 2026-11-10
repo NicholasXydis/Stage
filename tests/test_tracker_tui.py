@@ -223,6 +223,19 @@ async def test_quick_keys_never_move_a_status_back(db_path: Path) -> None:
         assert _messages(app)[-1].startswith("Nothing to change. Already marked interviewing")
 
 
+async def test_only_postings_further_along_count_as_further_along(db_path: Path) -> None:
+    _seed(_entry("a", ApplicationStatus.SAVED), _entry("b", ApplicationStatus.APPLIED))
+    app = StageApp(_store(db_path), "")
+    async with app.run_test(size=SIZE) as pilot:
+        await _postings(app, pilot)
+        await pilot.press("space", "down", "space", "down", "space", "s")
+        await _settle(app, pilot)
+
+        assert _messages(app)[-1] == (
+            "Saved 1 posting. 1 already further along stayed as they were. z undoes it."
+        )
+
+
 async def test_the_detail_names_the_status(db_path: Path) -> None:
     _seed(_entry("a", ApplicationStatus.SAVED))
     app = StageApp(_store(db_path), "")
@@ -251,6 +264,28 @@ async def test_the_not_acted_on_filter_hides_tracked_and_clears(db_path: Path) -
         await _settle(app, pilot)
         assert not _untracked(screen)
         assert len(screen._jobs) == 4
+
+
+async def test_not_acted_on_turns_off_when_the_tracker_cannot_be_read(db_path: Path) -> None:
+    from stage.tui.screens.postings import UNTRACKED_OFF
+
+    tracker_path().parent.mkdir(parents=True, exist_ok=True)
+    tracker_path().write_bytes(b"garbage" * 200)
+    app = StageApp(_store(db_path), "")
+    async with app.run_test(size=SIZE) as pilot:
+        screen = await _postings(app, pilot)
+        await pilot.press("f")
+        await pilot.pause()
+        panel = screen.query_one("#filters", OptionList)
+        panel.highlighted = 1
+        await pilot.press("enter")
+        await _settle(app, pilot)
+        await type(screen).refresh_results.__wrapped__(screen)  # type: ignore[attr-defined]
+
+        assert not _untracked(screen) and len(screen._jobs) == 5
+        assert str(panel.get_option_at_index(1).prompt).startswith("[ ]")
+        assert any(message.startswith(UNTRACKED_OFF) for message in _messages(app))
+        assert "not acted on" not in _plain(screen.query_one("#chips", Static))
 
 
 async def test_l_opens_your_applications_and_back_updates_the_markers(db_path: Path) -> None:

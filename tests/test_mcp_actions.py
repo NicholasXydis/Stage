@@ -613,6 +613,7 @@ async def test_prompts_and_autocomplete_exist_without_actions(stored: Path) -> N
 async def test_export_postings_still_exports_with_a_damaged_tracker(
     stored: Path, exports: Path
 ) -> None:
+    from stage.ai.tools import UNTRACKED_REFUSED
     from stage.services.tracker import LIST_PROBLEM, tracker_path
 
     path = tracker_path()
@@ -621,7 +622,9 @@ async def test_export_postings_still_exports_with_a_damaged_tracker(
     before = path.read_bytes()
     async with _connected(stored) as client:
         found = await _ok(client, "export_postings", {})
+        untracked = await _refused(client, "export_postings", {"untracked": True})
     assert found["warning"] == LIST_PROBLEM and found["count"] == 7
+    assert untracked == UNTRACKED_REFUSED and len(list(exports.iterdir())) == 1
     assert path.read_bytes() == before
 
 
@@ -674,4 +677,4 @@ async def test_answers_carry_the_whole_location_and_compact_rows_stay_short(
     places = {row["id"]: row["location"] for row in rows}
     assert places[_id("both")] == both and detail["location"] == both
     assert places[_id("many")] == "City 0, ON +39"
-    assert {row[3] for row in compact} == {"Remote in USA +1", "City 0, ON +39"}
+    assert {row[3] for row in compact} == {"Remote, US +1", "City 0, ON +39"}

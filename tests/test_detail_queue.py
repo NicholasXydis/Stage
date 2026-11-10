@@ -11,6 +11,7 @@ from stage.domain import (
     Company,
     DetailFetch,
     Job,
+    JobFilters,
     Platform,
     RoleCategory,
     job_id,
@@ -274,7 +275,7 @@ async def test_a_failed_fetch_is_retried_while_an_answered_one_is_not(db_path: P
             SourceBatch(
                 source="smartrecruiters",
                 run_started_at=NOW,
-                jobs=(_job("failed"), _job("empty-body"), _job("answered")),
+                jobs=(_job("failed"), _job("empty-body"), _job("answered", description="Body.")),
             )
         )
         await repository.apply_source_batch(
@@ -316,3 +317,119 @@ async def test_a_retry_is_bounded_so_a_dead_endpoint_cannot_hold_the_queue(
         assert await repository.detail_queue_size("smartrecruiters") == 0, (
             "the size must be computed by the same predicate as the queue itself"
         )
+
+
+async def test_an_answered_page_whose_description_was_lost_is_read_once_more(
+    db_path: Path,
+) -> None:
+    answered = DetailFetch(id="lost", resolved=True)
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="smartrecruiters", run_started_at=NOW, jobs=(_job("lost"),))
+        )
+        await repository.apply_source_batch(
+            SourceBatch(source="smartrecruiters", run_started_at=NOW, detail_fetches=(answered,))
+        )
+        first = await repository.detail_queue("smartrecruiters", 50)
+        await repository.apply_source_batch(
+            SourceBatch(source="smartrecruiters", run_started_at=NOW, detail_fetches=(answered,))
+        )
+        second = await repository.detail_queue("smartrecruiters", 50)
+
+    assert (first, second) == (["lost"], []), (
+        "a lost description is fetched again once, not forever"
+    )
+
+
+async def test_a_workday_posting_with_only_a_count_of_places_stops_being_queued(
+    db_path: Path,
+) -> None:
+    counted = _job(
+        "workday:acme-site:1", source="workday", term="summer-2027", location_raw="2 Locations"
+    )
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="workday", run_started_at=NOW, jobs=(counted,))
+        )
+        first = await repository.detail_queue("workday", 50)
+        for _ in range(2):
+            await repository.apply_source_batch(
+                SourceBatch(
+                    source="workday",
+                    run_started_at=NOW,
+                    detail_fetches=(DetailFetch(id=counted.id, resolved=True),),
+                )
+            )
+        last = await repository.detail_queue("workday", 50)
+
+    assert (first, last) == ([counted.id], [])
+
+
+async def test_a_closed_posting_is_never_queued(db_path: Path) -> None:
+    counted = _job(
+        "workday:acme-site:1", source="workday", term="summer-2027", location_raw="2 Locations"
+    )
+    later = NOW + timedelta(hours=1)
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="workday", run_started_at=NOW, jobs=(counted,))
+        )
+        await repository.apply_source_batch(
+            SourceBatch(source="workday", run_started_at=later, closes_whole_source=True)
+        )
+        queued = await repository.detail_queue("workday", 50)
+
+    assert queued == []
+
+
+async def test_a_later_listing_read_keeps_what_the_posting_page_gave(db_path: Path) -> None:
+    from stage.services.sync import _with_stored_details
+
+    read = _job(
+        "workday:acme-site:9",
+        source="workday",
+        description="Summer 2027.",
+        location_raw="Austin, TX / Boston, MA",
+    )
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="workday", run_started_at=NOW, jobs=(read,))
+        )
+        later = replace(read, description="", location_raw="2 Locations")
+        (carried,) = await _with_stored_details(repository, [later])
+
+    assert (carried.description, carried.location_raw) == (read.description, read.location_raw)
+
+
+async def test_a_posting_waiting_for_its_page_is_read_first_and_decided_by_it(
+    db_path: Path,
+) -> None:
+    from stage.dedup import resolve_duplicates
+    from stage.services.screening import normalize_batch
+
+    title = "Systems Engineer Intern"
+    waiting = _job("smartrecruiters:acme:1", title_raw=title, title_normalized=title.lower())
+    older = _job("smartrecruiters:acme:2", first_seen=NOW - timedelta(days=1))
+
+    def batch(jobs: list[Job], when: datetime) -> SourceBatch:
+        kept, rejected = normalize_batch(jobs)
+        return SourceBatch(
+            source="smartrecruiters",
+            run_started_at=when,
+            jobs=kept,
+            quarantined=rejected,
+            resolve_duplicates=resolve_duplicates,
+        )
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(batch([waiting, older], NOW))
+        queued = await repository.detail_queue("smartrecruiters", 1)
+        later = NOW + timedelta(hours=1)
+        described = replace(waiting, description="Open to Computer Science majors.")
+        await repository.apply_source_batch(batch([described, older], later))
+        again = await repository.detail_queue("smartrecruiters", 50)
+        kept = [job.id for job in await repository.list_jobs(JobFilters(status=None))]
+
+    assert queued == [waiting.id], "the page decides whether it is shown, so it goes first"
+    assert waiting.id not in again
+    assert waiting.id in kept

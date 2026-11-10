@@ -23,6 +23,8 @@ from stage.domain import (
     DiscoveryFinished,
     DiscoveryStarted,
     Platform,
+    SourceFresh,
+    SourceStarted,
     SyncEvent,
     SyncFinished,
     SyncOutcome,
@@ -189,7 +191,12 @@ def test_state_writer_persists_progress_as_valid_json(tmp_path: Path) -> None:
     writer = ScheduleStateWriter.start("sync", tmp_path / "scheduled.log", destination=target)
     writer.waiting(3)
     writer.started("syncing")
-    writer.sync_event(SyncStarted(("ashby",), 2, datetime(2026, 8, 21, tzinfo=UTC)))
+    writer.sync_event(SyncStarted(("ashby", "simplify"), 2002, datetime(2026, 8, 21, tzinfo=UTC)))
+    writer.sync_event(SourceStarted("ashby", 1))
+    writer.sync_event(SourceStarted("simplify", 0, feed=True))
+    writer.sync_event(SourceStarted("lever", 0))
+    writer.sync_event(SourceStarted("themuse", 0, feed=True))
+    writer.sync_event(SourceFresh("themuse", 1, 0, 4.0))
     writer.sync_event(CompanyFinished("ashby", "Example", 4, 15.0))
     writer.sync_event(SyncFinished(SyncOutcome.SUCCESS, 1, 0, 0, (), 30.0))
     writer.complete(sync_exit_code=0, doctor_exit_code=0, exit_code=0)
@@ -197,7 +204,9 @@ def test_state_writer_persists_progress_as_valid_json(tmp_path: Path) -> None:
     payload = json.loads(target.read_text(encoding="utf-8"))
     assert payload["phase"] == "finished"
     assert payload["outcome"] == SyncOutcome.SUCCESS.value
-    assert payload["progress"]["total"] == 2
+    assert payload["progress"]["total"] == 2, (
+        "the boards and lists this run reads, as the terminal counts"
+    )
     assert payload["progress"]["complete"] == 1
     assert payload["progress"]["fetched"] == 4
 
@@ -389,7 +398,8 @@ def test_a_stopped_runner_stops_its_sync_and_says_so(tmp_path: Path, jitter: flo
     assert runner.wait(timeout=30) == 128 + signal.SIGTERM
     state = read_state_path(tmp_path / "sync.json")
     assert state is not None
-    assert (state["phase"], state["outcome"]) == ("finished", "failure")
+    expected = ("stopped", None) if jitter else ("finished", "failure")
+    assert (state["phase"], state.get("outcome")) == expected
     assert "SIGTERM" in str(state["error"])
     assert "Stopped by SIGTERM" in (tmp_path / "scheduled-sync.log").read_text(encoding="utf-8")
     pid_file = tmp_path / "child.pid"
@@ -493,3 +503,37 @@ def test_schedule_status_prints_board_text_as_text() -> None:
 
     assert "Evil [/bold] Corp" in said and "[bold" in said
     assert "[link=file:///x]held[/link]" in said
+
+
+def test_schedule_status_names_the_upgrade_check_while_it_runs(tmp_path: Path) -> None:
+    import io
+
+    from rich.console import Console
+
+    from stage.cli.render.schedule import render_scheduled_run
+    from stage.cli.schedule_state import ScheduleStateWriter, is_active, read_state_path
+
+    path = tmp_path / "sync.json"
+    writer = ScheduleStateWriter.open(path, "sync")
+    writer.rechecking()
+    state = read_state_path(path)
+    buffer = io.StringIO()
+    render_scheduled_run(Console(file=buffer, width=200), state)
+
+    assert is_active(state)
+    assert "checking stored postings" in buffer.getvalue()
+
+
+def test_only_an_ordinary_failure_counts_as_a_warning(tmp_path: Path) -> None:
+    from stage.domain import CompanyFailed
+
+    target = tmp_path / "sync.json"
+    writer = ScheduleStateWriter.start("sync", tmp_path / "scheduled.log", destination=target)
+    writer.started("syncing")
+    writer.sync_event(SyncStarted(("greenhouse",), 3, datetime(2026, 8, 21, tzinfo=UTC)))
+    writer.sync_event(CompanyFailed("greenhouse", "Broken", "returned 500", 1.0))
+    writer.sync_event(CompanyFailed("greenhouse", "Refusing", "returned 403", 1.0, refused=True))
+    writer.sync_event(CompanyFailed("greenhouse", "Gone", "returned 404", 1.0, gone=True))
+    writer.complete(sync_exit_code=0, doctor_exit_code=0, exit_code=0)
+
+    assert json.loads(target.read_text(encoding="utf-8"))["progress"]["warnings"] == 1

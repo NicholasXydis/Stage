@@ -14,6 +14,7 @@ from stage.domain import (
     Company,
     CompanyFinished,
     CompanyStarted,
+    SourceStarted,
     SyncEvent,
     SyncFinished,
     SyncOutcome,
@@ -284,6 +285,7 @@ def test_stage_sync_records_its_progress_and_finish(
 ) -> None:
     events = (
         SyncStarted(sources=("greenhouse",), companies=2, started_at=NOW),
+        SourceStarted(source="greenhouse", companies=2),
         CompanyStarted(source="greenhouse", company="Acme"),
         CompanyFinished(source="greenhouse", company="Acme", fetched=3, elapsed_ms=1.0),
         CompanyFinished(source="greenhouse", company="Beta", fetched=4, elapsed_ms=1.0),
@@ -451,4 +453,6 @@ def test_the_first_sync_after_an_upgrade_checks_stored_postings_once(
 
     said = " ".join(first.output.split())
     assert "checked the ones already stored: 1 posting now rejected" in said
+    assert said.index("Checking your stored postings first") < said.index("already stored")
     assert "already stored" not in second.output
+    assert "Checking your stored postings" not in second.output

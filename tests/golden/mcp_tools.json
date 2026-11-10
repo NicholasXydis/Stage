@@ -331,14 +331,14 @@
   {
     "name": "check_sources",
     "title": "Check sources",
-    "description": "Health of the job boards and feeds Stage reads: open rows per source (a posting two sources list counts in both), errors, volume drops, blocked hosts, and failing or stale boards. It only reads and changes nothing.",
+    "description": "Health of the job boards and feeds Stage reads: open rows per source (a posting two sources list counts in both), errors, volume drops, blocked hosts, and failing, stale, refusing or gone boards. It only reads and changes nothing.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "include_boards": {
           "default": false,
-          "description": "Also list failing and stale boards, up to 100",
+          "description": "Also list failing, stale, refusing and gone boards, up to 100",
           "title": "Include Boards",
           "type": "boolean"
         }

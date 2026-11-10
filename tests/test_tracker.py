@@ -630,6 +630,27 @@ def test_save_applied_and_hide_from_a_listing(db_path: Path) -> None:
     assert after.endswith("1 hidden: stage tracker --status hidden")
 
 
+def test_hiding_an_application_says_how_to_bring_it_back_without_losing_it(
+    db_path: Path,
+) -> None:
+    db = _store(db_path, _catalogue())
+    _listed(db)
+    _run("applied", "2", "--on", "2026-10-01", "--db", db)
+    _listed(db)
+
+    hidden = _run("hide", "2", "--db", db)
+
+    assert hidden[1].startswith(
+        "Hid 1 posting. stage untrack would also forget where it stood, so to bring it back "
+        "run stage tracker --status hidden, then stage track with that list's rows and "
+        "--status applied --on 2026-10-01."
+    )
+    _run("tracker", "--status", "hidden", "--db", db)
+    restored = _run("track", "1", "--status", "applied", "--on", "2026-10-01", "--db", db)
+    assert restored[0] == 0
+    assert "[A] Intern b" in _listed(db), "following the advice keeps the application"
+
+
 def test_hidden_stays_out_of_json_and_untrack_brings_it_back(db_path: Path) -> None:
     db = _store(db_path, _catalogue())
     _listed(db)
@@ -991,6 +1012,20 @@ async def test_heirs_recorded_in_turn_follow_the_chain(db_path: Path) -> None:
     assert [entry.posting_id for entry in _entries()] == [_id("c")]
 
 
+@pytest.mark.parametrize("newer_first", [False, True])
+def test_two_records_handed_to_one_heir_keep_the_newer(newer_first: bool) -> None:
+    from stage.services.tracker import follow_successors
+
+    _seed(
+        _tracked(_id("a"), SAVED, moment=NOW - timedelta(days=2)),
+        _tracked(_id("b"), APPLIED, moment=NOW - timedelta(days=1)),
+    )
+    pairs = [(_id("a"), _id("c")), (_id("b"), _id("c"))]
+
+    assert follow_successors(pairs[::-1] if newer_first else pairs) == 1
+    assert [(entry.posting_id, entry.status) for entry in _entries()] == [(_id("c"), APPLIED)]
+
+
 async def test_a_heir_nobody_could_follow_expires_with_the_quarantine(db_path: Path) -> None:
     from stage.domain import QUARANTINE_RETENTION_DAYS
     from stage.storage import open_repository
@@ -1317,6 +1352,18 @@ def test_a_note_is_kept_when_save_cannot_move_an_applied_posting_back(db_path: P
     assert [(e.status, e.note) for e in _entries()] == [
         (ApplicationStatus.APPLIED, "ask about visas")
     ]
+
+
+def test_a_note_on_a_posting_further_along_is_not_counted_as_saved(db_path: Path) -> None:
+    db = _store(db_path, [_job("a"), _job("b"), _job("c")])
+    _run("applied", _id("b"), "--on", "2026-10-20", "--db", db)
+
+    saved = _run("save", _id("a"), _id("b"), "--note", "visas", "--db", db)
+    applied = _run("applied", _id("c"), _id("b"), "--note", "referral", "--db", db)
+
+    assert saved[1].startswith("Saved 1 posting. Updated the note on 1 more.")
+    assert applied[1].startswith(f"Marked 1 posting applied on {TODAY}. Updated the note on 1")
+    assert _status_of(_id("b")) is ApplicationStatus.APPLIED
 
 
 def test_sending_the_same_date_again_changes_nothing(db_path: Path) -> None:

@@ -308,6 +308,37 @@ async def test_purge_drops_detail_rows_of_postings_that_are_gone(tmp_path: Path)
     assert kept == {f"{FULL_READ_PREFIX}{BOARD}", posting.id}
 
 
+async def test_purge_keeps_the_detail_row_of_a_rejection_waiting_for_its_page(
+    tmp_path: Path,
+) -> None:
+    import sqlite3
+
+    async with open_repository(tmp_path / "p.db") as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="workday",
+                run_started_at=NOW,
+                jobs=(),
+                detail_fetches=(DetailFetch(id="workday:big-careers:r2", resolved=False),),
+            )
+        )
+    connection = sqlite3.connect(tmp_path / "p.db")
+    with connection:
+        connection.execute(
+            "INSERT INTO quarantine (id, source, company, title_raw, reason, first_seen, "
+            "last_seen) VALUES ('workday:big-careers:r2', 'workday', 'Big', 'Intern', "
+            "'unknown-cs-role', ?, ?)",
+            (NOW.isoformat(), NOW.isoformat()),
+        )
+    connection.close()
+    async with open_repository(tmp_path / "p.db") as repository:
+        await repository.purge(NOW)
+    connection = sqlite3.connect(tmp_path / "p.db")
+    kept = {row[0] for row in connection.execute("SELECT id FROM detail_fetches")}
+    connection.close()
+    assert "workday:big-careers:r2" in kept
+
+
 def test_a_pinned_facet_nested_inside_a_location_group_is_still_offered() -> None:
     from stage.domain import WorkdayFacet
     from stage.sources.workday import WorkdayPage, facet_still_offered

@@ -135,6 +135,28 @@ def test_locale_segments_collapse_to_one_canonical_url() -> None:
     assert canonical_apply_url("https://acme.com/fr/jobs/12345") == "https://acme.com/jobs/12345"
 
 
+@pytest.mark.parametrize(
+    ("one", "two"),
+    [
+        (
+            "https://careers-acme.icims.com/jobs/4461/job?mobile=true&needsRedirect=false",
+            "https://careers-acme.icims.com/jobs/4461/software-applications-intern/job",
+        ),
+        (
+            "https://jobs.smartrecruiters.com/Acme/744000159911799",
+            "https://jobs.smartrecruiters.com/Acme/744000159911799-intern-developer",
+        ),
+    ],
+)
+def test_a_posting_link_with_or_without_its_title_names_one_posting(one: str, two: str) -> None:
+    assert canonical_apply_url(one) == canonical_apply_url(two)
+
+
+def test_an_icims_search_page_is_not_a_posting() -> None:
+    search = "https://careers-acme.icims.com/jobs/search?ss=1&searchKeyword=intern"
+    assert canonical_apply_url(search) == "https://careers-acme.icims.com/jobs/search"
+
+
 def test_a_short_link_that_spells_a_language_keeps_its_code() -> None:
     assert canonical_apply_url("https://go.vansh.nyc/Cs") == "https://go.vansh.nyc/Cs"
     assert canonical_apply_url("https://go.vansh.nyc/fr") != canonical_apply_url(

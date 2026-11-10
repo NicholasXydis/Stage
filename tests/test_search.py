@@ -111,6 +111,12 @@ def test_a_company_filter_survives_the_fts_join(repository: SqliteRepository) ->
     assert repository.count_search("intern", JobFilters(company="Coveo Solutions")) == 1
 
 
+def test_a_company_filter_ignores_a_board_label(repository: SqliteRepository) -> None:
+    labelled = JobFilters(company="Coveo Solutions (Workday)")
+
+    assert _ids(repository.search_jobs("intern", labelled)) == {"greenhouse:coveo:2"}
+
+
 def test_a_location_filter_narrows_the_match(repository: SqliteRepository) -> None:
     assert repository.search_jobs("intern", JobFilters(location=LocationBucket.MONTREAL)) == []
     assert _ids(repository.search_jobs("intern", JobFilters(location=LocationBucket.USA))) == {

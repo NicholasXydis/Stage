@@ -103,6 +103,23 @@ def test_an_empty_disallow_or_a_page_that_is_not_robots_txt_allows_everything() 
     assert robots_rules("<html><body>Not found</body></html>", ROBOTS_AGENT).allows("/a")
 
 
+@respx.mock
+async def test_robots_reads_wait_out_a_block_a_sync_stored() -> None:
+    from datetime import timedelta
+
+    from stage.domain import RateState
+    from stage.services.discover import StoredLimits
+
+    route = respx.get(GREENHOUSE).mock(return_value=httpx.Response(200, text="User-agent: *\n"))
+    now = datetime.now(UTC)
+    host = "boards-api.greenhouse.io"
+    held = RateState(host, now, blocked_until=now + timedelta(hours=1), reason="429")
+
+    await read_robots([ACME], limits=StoredLimits({host: held}, now))
+
+    assert route.call_count == 0
+
+
 def test_a_robots_txt_saved_with_a_byte_order_mark_still_counts() -> None:
     assert not robots_rules("\ufeffUser-agent: *\nDisallow: /\n", ROBOTS_AGENT).allows("/jobs")
 

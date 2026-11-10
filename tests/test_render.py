@@ -27,6 +27,7 @@ from stage.domain.workday import WorkdayCrawl
 from stage.services.health import BoardHealth, DoctorReport, SourceHealth, StatsReport
 
 if TYPE_CHECKING:
+    from stage.domain import SyncEvent
     from stage.services.canary import BoardProbe
 
 NOW = datetime(2026, 8, 30, 12, 0, tzinfo=UTC)
@@ -347,7 +348,6 @@ async def test_sync_lines_carry_a_running_count() -> None:
     from stage.domain import (
         CompanyFinished,
         SourceStarted,
-        SyncEvent,
         SyncFinished,
         SyncOutcome,
         SyncStarted,
@@ -358,7 +358,7 @@ async def test_sync_lines_carry_a_running_count() -> None:
     async def events() -> "AsyncIterator[SyncEvent]":
         yield SyncStarted(sources=("greenhouse", "simplify"), companies=3, started_at=now)
         yield SourceStarted(source="greenhouse", companies=3)
-        yield SourceStarted(source="simplify", companies=0)
+        yield SourceStarted(source="simplify", companies=0, feed=True)
         for source, name in (
             ("greenhouse", "Acme"),
             ("greenhouse", "Globex"),
@@ -681,3 +681,216 @@ def test_every_rejected_posting_renders_without_a_rich_table(
     )
 
     assert len(said.splitlines()) == 5_004 and "5,000 rejected postings." in said
+
+
+def test_the_upgrade_check_draws_an_ascii_spinner_and_clock_then_clears() -> None:
+    import time
+
+    from stage.cli.render.progress import waiting_on
+
+    buffer = io.StringIO()
+    console = Console(file=buffer, width=100, force_terminal=True, color_system=None)
+    with waiting_on(console, "Checking"):
+        time.sleep(0.3)
+    drawn = buffer.getvalue()
+
+    assert "Checking  0:00" in drawn
+    assert drawn.isascii()
+    assert drawn.endswith("\x1b[2K")
+
+
+def test_the_upgrade_check_is_one_plain_line_off_a_terminal() -> None:
+    from stage.cli.render.progress import waiting_on
+
+    buffer = io.StringIO()
+    with waiting_on(Console(file=buffer, width=100), "Checking"):
+        pass
+
+    assert buffer.getvalue() == "Checking\n"
+
+
+def _rendered(*events: "SyncEvent") -> str:
+    import asyncio
+    from collections.abc import AsyncIterator
+
+    from stage.cli.render.progress import render_sync
+
+    async def stream() -> AsyncIterator["SyncEvent"]:
+        for event in events:
+            yield event
+
+    buffer = io.StringIO()
+    asyncio.run(render_sync(Console(file=buffer, width=200), stream()))
+    return buffer.getvalue()
+
+
+def test_skipped_boards_and_lists_are_named() -> None:
+    from stage.domain import (
+        SourceFresh,
+        SourceResting,
+        SourceStarted,
+        SyncFinished,
+        SyncOutcome,
+        SyncStarted,
+    )
+
+    said = _rendered(
+        SyncStarted(
+            sources=("themuse", "greenhouse", "ashby"), companies=285, started_at=datetime.now(UTC)
+        ),
+        SourceStarted(source="themuse", companies=0, feed=True),
+        SourceStarted(source="greenhouse", companies=3),
+        SourceStarted(source="ashby", companies=0),
+        SourceFresh(source="themuse", skipped=1, remaining=0, refresh_interval_h=4),
+        SourceFresh(source="greenhouse", skipped=2, remaining=1, refresh_interval_h=5.5),
+        SourceFresh(source="ashby", skipped=282, remaining=0, refresh_interval_h=5.5),
+        SourceResting(source="greenhouse", skipped=1, remaining=1),
+        SyncFinished(SyncOutcome.SUCCESS, 0, 0, 0, (), 1.0),
+    )
+
+    assert "themuse: feed" in said and "ashby: 0 boards" in said
+    assert "fresh: 282 ashby boards read within 5.5h, 0 left" in said
+    assert "fresh: themuse was read within 4h, so it waits for a later run" in said
+    assert "fresh: 2 greenhouse boards read within 5.5h, 1 left" in said
+    assert "resting: 1 greenhouse board backing off after repeated failures" in said
+
+
+def test_a_sync_of_lists_alone_counts_no_boards() -> None:
+    from stage.domain import SyncFinished, SyncOutcome, SyncStarted
+
+    said = _rendered(
+        SyncStarted(sources=("hanzili",), companies=0, started_at=datetime.now(UTC)),
+        SyncFinished(SyncOutcome.SUCCESS, 0, 0, 0, (), 1.0),
+    )
+
+    assert said.startswith("Syncing hanzili\n")
+
+
+def test_boards_that_refuse_this_computer_are_named_but_not_warned_about() -> None:
+    refusing = _board(VisitState.REFUSING, "jobs.aon.com returned 403 (forbidden)")
+    report = _report(sources=(_source(boards=(refusing,)),))
+
+    output = _paint(render_doctor, report, NOW)
+
+    assert "Boards that refuse this computer (1)" in output and "1 refuse here" in output
+    assert "Boards needing a look" not in output
+    assert report.warnings == 0
+
+
+def test_the_quiet_board_advice_names_every_status_that_puts_a_board_there() -> None:
+    from stage.domain.visits import gone, refused
+
+    boards = (_board(VisitState.REFUSING, "returned 401"), _board(VisitState.GONE, "returned 410"))
+    output = " ".join(
+        _paint(render_doctor, _report(sources=(_source(boards=boards),)), NOW).split()
+    )
+
+    assert "They answer 401, 403 or 429" in output and "They answered 404 or 410" in output
+    assert all(refused(f"x returned {code}") for code in (401, 403, 429))
+    assert all(gone(f"x returned {code}") for code in (404, 410))
+
+
+def test_boards_that_no_longer_exist_are_named_but_not_warned_about() -> None:
+    gone = _board(VisitState.GONE, "boards-api.greenhouse.io returned 404 (not found)")
+    report = _report(sources=(_source(boards=(gone,)),))
+
+    output = _paint(render_doctor, report, NOW)
+
+    assert "Boards that no longer exist (1)" in output and "1 gone" in output
+    assert "Boards needing a look" not in output
+    assert report.warnings == 0
+
+
+def test_a_block_on_a_host_that_refuses_this_computer_is_not_a_warning() -> None:
+    refusing = _board(VisitState.REFUSING, "careers.amd.com returned 403 (forbidden)")
+    resting = RateState(
+        bucket="careers.amd.com",
+        consecutive_failures=3,
+        reason="careers.amd.com returned 403 (forbidden)",
+        updated_at=NOW,
+        blocked_until=NOW + timedelta(hours=20),
+    )
+    other = RateState(
+        bucket="jobs.scotiabank.com",
+        consecutive_failures=3,
+        reason="ReadError: connection reset by peer",
+        updated_at=NOW,
+        blocked_until=NOW + timedelta(minutes=4),
+    )
+    report = _report(sources=(_source(boards=(refusing,)),), blocks=(resting, other))
+
+    output = _paint(render_doctor, report, NOW)
+
+    assert report.resting_blocks == (resting,) and report.warning_blocks == (other,)
+    assert report.warnings == 1
+    assert "Resting after a refusal: careers.amd.com." in output
+    blocked = output.split("Blocked buckets", 1)[1].split("Boards that refuse", 1)[0]
+    named = {word.strip(",.:") for word in blocked.split()}
+    assert {"jobs.scotiabank.com"} <= named and not {"careers.amd.com"} & named
+
+
+def test_a_board_gone_again_is_a_quiet_row_not_a_failure() -> None:
+    from stage.domain import CompanyFailed, SyncFinished, SyncOutcome, SyncStarted
+
+    error = "boards-api.greenhouse.io returned 404 (not found)"
+    said = _rendered(
+        SyncStarted(sources=("greenhouse",), companies=1, started_at=datetime.now(UTC)),
+        CompanyFailed("greenhouse", "Pretium", error, 1.0, gone=True),
+        SyncFinished(SyncOutcome.SUCCESS, 0, 0, 0, (), 1.0),
+    )
+
+    assert "gone" in said and "Failed sources" not in said
+    assert "1 board answered not found again" in said
+
+
+def test_a_refusal_seen_before_is_a_quiet_row_not_a_failure() -> None:
+    from stage.domain import CompanyFailed, SyncFinished, SyncOutcome, SyncStarted
+
+    said = _rendered(
+        SyncStarted(sources=("custom_json",), companies=1, started_at=datetime.now(UTC)),
+        CompanyFailed(
+            "custom_json", "Aon", "jobs.aon.com returned 403 (forbidden)", 1.0, refused=True
+        ),
+        SyncFinished(SyncOutcome.SUCCESS, 0, 0, 0, (), 1.0),
+    )
+
+    assert "denied" in said and "1 board refused this computer again" in said
+    assert "Failed sources" not in said
+
+
+@pytest.mark.parametrize(
+    ("stored", "zone", "shown"),
+    [
+        ("2026-11-09T00:00:00+00:00", "America/Toronto", "2026-11-09"),
+        ("2026-11-09T00:00:00+00:00", "Asia/Tokyo", "2026-11-09"),
+        ("2026-11-09T03:30:00+00:00", "America/Toronto", "2026-11-08"),
+    ],
+)
+def test_a_date_only_source_date_is_shown_on_its_own_day(
+    monkeypatch: pytest.MonkeyPatch, stored: str, zone: str, shown: str
+) -> None:
+    import time
+
+    from stage.domain.text import posted_day
+
+    monkeypatch.setenv("TZ", zone)
+    if not hasattr(time, "tzset"):
+        pytest.skip("time zones are set per process only where tzset exists")
+    time.tzset()
+    try:
+        assert posted_day(datetime.fromisoformat(stored)).isoformat() == shown
+    finally:
+        monkeypatch.undo()
+        time.tzset()
+
+
+def test_an_ordinary_failure_is_listed_under_failed_sources() -> None:
+    from stage.domain import CompanyFailed, SyncFinished, SyncOutcome, SyncStarted
+
+    said = _rendered(
+        SyncStarted(sources=("greenhouse",), companies=1, started_at=datetime.now(UTC)),
+        CompanyFailed("greenhouse", "Pretium", "boards-api.greenhouse.io returned 500", 1.0),
+        SyncFinished(SyncOutcome.PARTIAL, 0, 0, 0, ("greenhouse",), 1.0),
+    )
+
+    assert "Failed sources" in said and "greenhouse/Pretium" in said

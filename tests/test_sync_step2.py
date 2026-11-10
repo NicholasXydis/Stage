@@ -393,18 +393,19 @@ def test_a_partial_run_says_which_kind_of_partial_it_was() -> None:
     from stage.services.sync import _partial_reason
 
     unroutable = [Company(name="Acme", platform=Platform.TEAMTAILOR, slug="acme")]
-    assert _partial_reason([], [], [], ["workday"]) == ("1 source left boards for the next sync"), (
-        "budget deferral is rotation working, not a failure"
-    )
-    assert "failed" in _partial_reason(["themuse"], [], [], [])
-    assert "blocked" in _partial_reason([], [], ["workable"], [])
-    assert "cannot read" in _partial_reason([], unroutable, [], [])
-    combined = _partial_reason(["themuse"], [], [], ["workday"])
+    assert _partial_reason(0, [], [], [], ["workday"]) == (
+        "1 source left boards for the next sync"
+    ), "budget deferral is rotation working, not a failure"
+    assert _partial_reason(19, [], [], [], []) == "19 boards failed"
+    assert "failed" in _partial_reason(0, ["themuse"], [], [], [])
+    assert "blocked" in _partial_reason(0, [], [], ["workable"], [])
+    assert "cannot read" in _partial_reason(0, [], unroutable, [], [])
+    combined = _partial_reason(0, ["themuse"], [], [], ["workday"])
     assert combined == "1 source failed, 1 source left boards for the next sync", (
         "every distinct reason must be named, not just the first"
     )
-    assert ";" not in _partial_reason(["a"], unroutable, ["b"], ["c"])
-    assert _partial_reason([], [], [], []) == "", "a clean run needs no explanation"
+    assert ";" not in _partial_reason(2, ["a"], unroutable, ["b"], ["c"])
+    assert _partial_reason(0, [], [], [], []) == "", "a clean run needs no explanation"
 
 
 @pytest.mark.parametrize(

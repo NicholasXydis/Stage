@@ -431,6 +431,16 @@ def test_the_window_never_promises_more_than_stage_keeps() -> None:
         assert "cannot reach further back" in text
 
 
+def test_schedule_enable_names_every_job_it_creates() -> None:
+    from stage.cli.schedule import action_keys
+
+    result = CliRunner().invoke(app, ["schedule", "enable", "--help"])
+    shown = " ".join(ANSI_ESCAPE.sub("", result.stdout).replace("\u2502", " ").split())
+
+    assert action_keys() == ("sync", "discover", "verify")
+    assert "half-hourly sync, weekly discovery and weekly verify" in shown
+
+
 def test_help_explains_a_subcommand() -> None:
     result = CliRunner().invoke(app, ["help", "schedule", "status"])
     nested = CliRunner().invoke(app, ["help", "sync", "status"])

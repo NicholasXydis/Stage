@@ -523,6 +523,7 @@ def _pairwise(incoming: list[Job], existing: list[Job]) -> list[tuple[str, str, 
     parent = {item.id: item.id for item in jobs}
     boards = {item.id: {item.board_key} for item in jobs}
     sources = {item.id: {item.source} for item in jobs}
+    terms = {item.id: {item.term} - {"unknown"} for item in jobs}
     order = {item.id: index for index, item in enumerate(jobs)}
     reason: dict[str, tuple[str, str]] = {}
 
@@ -541,6 +542,7 @@ def _pairwise(incoming: list[Job], existing: list[Job]) -> list[tuple[str, str, 
         parent[right_root] = left_root
         boards[left_root] |= boards[right_root]
         sources[left_root] |= sources[right_root]
+        terms[left_root] |= terms[right_root]
 
     for item in jobs:
         if item.duplicate_of and item.duplicate_of in parent:
@@ -563,6 +565,9 @@ def _pairwise(incoming: list[Job], existing: list[Job]) -> list[tuple[str, str, 
                 if not match or (match.kind is MatchKind.URL) is not by_link:
                     continue
                 if match.kind is MatchKind.URL and left.apply_url_canonical in ambiguous:
+                    continue
+                one, two = terms[left_root], terms[right_root]
+                if match.kind is not MatchKind.URL and one and two and one.isdisjoint(two):
                     continue
                 union(left.id, right.id)
                 demoted = right.id if find(right.id) != right_root else left.id
@@ -828,3 +833,885 @@ def test_two_different_workday_openings_never_merge_on_title() -> None:
     )
 
     assert not would_merge(one, two)
+
+
+def _listed(job_id: str, source: str, company: str, title: str, place: str, url: str = "") -> Job:
+    return replace(job(job_id, source, company, title, url=url), location_raw=place)
+
+
+@pytest.mark.parametrize(
+    ("board", "listed"),
+    [
+        (
+            (
+                "HP",
+                "Software Engineering Intern, AIML Platform - HP IQ",
+                "San Francisco, California",
+            ),
+            (
+                "Hewlett Packard (HP)",
+                "Software Engineering Intern, AIML Platform",
+                "San Francisco, CA",
+            ),
+        ),
+        (
+            (
+                "Northrop Grumman",
+                "2027 Ground Software Engineer Intern - Redondo Beach CA",
+                "Redondo Beach CA",
+            ),
+            ("Northrop Grumman", "Ground Software Engineer Intern", "Redondo Beach, CA"),
+        ),
+        (
+            ("RTX", "Software Engineering Intern (Summer 2027)", "UT-WEST VALLEY CITY"),
+            ("RTX", "Software Engineering Intern", "West Valley City, UT"),
+        ),
+        (
+            (
+                "Commonwealth Fusion Systems",
+                "Intern - Software Engineer - Summer 2027",
+                "Devens, MA",
+            ),
+            ("CFS Energy", "Software Engineer Intern", "Devens, MA"),
+        ),
+        (
+            ("Element Fleet Management", "Forward Deployed Engineer Intern", "Toronto, ON"),
+            ("Element Fleet Management", "Forward Deployed Engineer (FDE) Intern", "Toronto"),
+        ),
+        (
+            ("Nelnet", "Platform Engineer Intern (8 month term)", "CAN - MISSISSAUGA"),
+            ("Nelnet", "Platform Engineer Intern", "Mississauga, Canada"),
+        ),
+        (
+            ("Samsung", "Samsung Care AI Data Analytic Intern", "Plano, TX"),
+            ("Samsung", "Care AI Data Analytic Intern", "Plano, TX"),
+        ),
+        (
+            (
+                "Booz Allen Hamilton",
+                "University \u2013 Summer 27, Cybersecurity Analyst Intern",
+                "McLean, VA",
+            ),
+            ("Booz Allen Hamilton", "Cybersecurity Analyst Intern", "McLean, VA"),
+        ),
+        (
+            (
+                "Apex Technology",
+                "Ground Software Engineering Internship (Spring or Summer 2027)",
+                "Los Angeles",
+            ),
+            ("Apex Technology, Inc.", "Ground Software Engineering Intern", "Los Angeles, CA"),
+        ),
+        (
+            ("Nintendo", "Intern - Software Engineer, CPU Debugger (NTD)", "Redmond, WA"),
+            ("Nintendo", "Software Engineer Intern, CPU Debugger", "Redmond, WA"),
+        ),
+        (
+            (
+                "Walmart",
+                "USA Summer 2027 Corporate Intern: Last Mile Delivery Data Science Intern",
+                "USA",
+            ),
+            ("Walmart", "Data Science Intern, Last Mile Delivery", "Bentonville, AR"),
+        ),
+    ],
+)
+def test_a_list_copy_joins_its_board_posting_despite_names_years_and_places(
+    board: tuple[str, str, str], listed: tuple[str, str, str]
+) -> None:
+    one = _listed("workday:a:1", "workday", *board)
+    two = _listed("vanshb03:b:2", "vanshb03", *listed)
+
+    assert would_merge(one, two).kind is MatchKind.SAME_LANGUAGE
+    assert [link.duplicate_id for link in resolve_duplicates([two], [one])] == [two.id]
+
+
+@pytest.mark.parametrize(
+    ("one", "two"),
+    [
+        ("Software Engineer Intern (Summer 2027)", "Software Engineer Intern (Fall 2027)"),
+        ("Software Intern 2026", "Software Intern 2027"),
+        ("Software Intern - Backend", "Software Intern"),
+        ("Software Intern - HP IQ", "Software Intern - Platform"),
+    ],
+)
+def test_another_term_year_or_team_keeps_two_titles_apart(one: str, two: str) -> None:
+    board = _listed("workday:a:1", "workday", "HP", one, "Palo Alto, CA")
+    listed = _listed("simplify:b:2", "simplify", "HP", two, "Palo Alto, CA")
+
+    assert not would_merge(board, listed)
+
+
+@pytest.mark.parametrize(
+    ("one", "two"),
+    [
+        ("Software Engineer Intern (MS)", "Software Engineer Intern"),
+        ("Software Engineer Intern (NTD)", "Software Engineer Intern (NOA)"),
+    ],
+)
+def test_a_degree_tag_or_another_team_tag_keeps_two_titles_apart(one: str, two: str) -> None:
+    board = _listed("workday:a:1", "workday", "Nintendo", one, "Redmond, WA")
+    listed = _listed("simplify:b:2", "simplify", "Nintendo", two, "Redmond, WA")
+
+    assert not would_merge(board, listed)
+
+
+@pytest.mark.parametrize(
+    ("board", "listed"),
+    [
+        (("L.L.Bean", "Software Developer Intern"), ("Llbean", "Software Developer Intern")),
+        (("Spectrum", "Data Science Intern"), ("Invitation-charter", "Data Science Intern")),
+        (
+            ("Western Alliance", "Summer 2027 Internship - Dallas, TX - Platform Engineering"),
+            ("Western Alliance Bancorporation", "Platform Engineering Intern"),
+        ),
+        (
+            ("Riverside Research", "Software Applications Intern"),
+            ("Riverside Research Institute", "Software Applications Intern"),
+        ),
+        (
+            ("Alaska Air Group", "Software Engineer Intern"),
+            ("Alaska Airlines", "Software Engineer Intern"),
+        ),
+    ],
+)
+def test_a_name_written_another_way_is_shown_once_and_joins(
+    board: tuple[str, str], listed: tuple[str, str]
+) -> None:
+    from stage.normalize import shown_company
+
+    one = _listed("workday:a:1", "workday", shown_company(board[0]), board[1], "Dallas, TX")
+    two = _listed("vanshb03:b:2", "vanshb03", shown_company(listed[0]), listed[1], "Dallas, TX")
+
+    assert one.company == two.company
+    assert would_merge(one, two)
+
+
+def test_hp_enterprise_is_not_hp() -> None:
+    board = _listed("workday:a:1", "workday", "HP", "Software Intern", "Houston, TX")
+    listed = _listed(
+        "simplify:b:2", "simplify", "Hewlett Packard Enterprise", "Software Intern", "Houston, TX"
+    )
+
+    assert not would_merge(board, listed)
+
+
+def test_a_zapply_phenom_link_names_the_same_workday_opening() -> None:
+    from stage.dedup.identity import opening_key
+
+    workday = (
+        "https://danaher.wd1.myworkdayjobs.com/danaherjobs/job/USA---Indianapolis/"
+        "Computer-Science-Data-AI-Co-op-Supply-Chain_R1320599"
+    )
+    phenom = "https://zapply.jobs/l/d/phenom-danaher-R1320599?s=gh-internships-2027"
+    assert opening_key(phenom) == opening_key(workday) == "danaher:1320599"
+
+
+GATEWAY = (
+    "https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway/job/"
+    "US-UT-WEST-VALLEY-CITY-338/Software-Engineering-Intern--Summer-2027-_01886446"
+)
+
+
+@pytest.mark.parametrize(
+    ("link", "merges"),
+    [
+        ("https://zapply.jobs/l/d/workday-globalhr-rec-rtx-ext-gateway-01886446", True),
+        ("https://zapply.jobs/l/d/workday-globalhr-rec-rtx-ext-gateway-01886447", False),
+    ],
+)
+def test_a_zapply_workday_link_names_its_opening(link: str, merges: bool) -> None:
+    from stage.normalize import canonical_apply_url
+
+    board = job(
+        "workday:a:1",
+        "workday",
+        "Pratt & Whitney Canada",
+        "Software Engineering Intern",
+        url=canonical_apply_url(GATEWAY),
+    )
+    listed = job(
+        "zapply:b:2", "zapply", "RTX", "Software Engineering Intern", url=canonical_apply_url(link)
+    )
+
+    assert (would_merge(board, listed).kind is MatchKind.URL) is merges
+    assert bool(resolve_duplicates([listed], [board])) is merges
+
+
+@pytest.mark.parametrize(
+    ("one", "two", "merges"),
+    [
+        (
+            (
+                "Microsoft",
+                "Software Engineer Intern - Redmond",
+                "Redmond, Washington, United States",
+            ),
+            ("Microsoft", "Software Engineer Intern - Cambridge", "Cambridge, MA"),
+            False,
+        ),
+        (
+            ("Visa", "Software Engineer, Intern - Foster City 2027", "US - Foster City, CA"),
+            ("Visa", "Software Engineer Intern", "Ashburn, VA"),
+            False,
+        ),
+        (
+            ("Visa", "Software Engineer, Intern - Foster City 2027", "US - Foster City, CA"),
+            ("Visa", "Software Engineer Intern", "Foster City, CA"),
+            True,
+        ),
+        (
+            ("HP", "Software Product Security Intern - HP IQ", "San Francisco, California"),
+            ("HP Inc.", "Software Product Security Intern, HP IQ", "San Francisco, CA"),
+            True,
+        ),
+        (
+            ("Sherwin-Williams", "R&D Data Visualization Intern", "Brecksville, OH"),
+            (
+                "Sherwin-Williams",
+                "2027 R&D Data Visualization Intern- Cleveland",
+                "Brecksville, OH, United States",
+            ),
+            True,
+        ),
+        (
+            (
+                "Peraton",
+                "Mission Systems Edge Computing Intern \u2013 Norman, OK",
+                "Home, Oklahoma",
+            ),
+            ("Peraton", "Mission Systems Edge Computing Intern - Norman - OK", "Oklahoma, USA"),
+            True,
+        ),
+        (
+            ("Acme", "Data Analyst Intern - New York", "Remote"),
+            ("Acme", "Data Analyst Intern - Chicago", "Remote"),
+            False,
+        ),
+        (
+            ("Engramme", "Back-End Software Engineer Co-op Intern", "SF"),
+            ("Engramme", "Back-End Software Engineer Co-op", "San Francisco, CA"),
+            True,
+        ),
+        (
+            ("Engramme", "Back-End Software Engineer Intern", "SF"),
+            ("Engramme", "Back-End Software Engineer Co-op", "San Francisco, CA"),
+            False,
+        ),
+        (
+            (
+                "National Information Solutions Cooperative",
+                "Intern - Information Security (Cybersecurity)",
+                "Lake St. Louis, MO",
+            ),
+            (
+                "National Information Solutions Cooperative",
+                "Information Security (Cybersecurity) Intern",
+                "Lake St. Louis, MO",
+            ),
+            True,
+        ),
+    ],
+)
+def test_places_and_team_names_in_titles_are_read_as_such(
+    one: tuple[str, str, str], two: tuple[str, str, str], merges: bool
+) -> None:
+    board = _listed("workday:a:1", "workday", *one)
+    listed = _listed("vanshb03:b:2", "vanshb03", *two)
+
+    assert bool(would_merge(board, listed)) is merges
+
+
+def test_a_lettered_workday_number_matches_its_zapply_link() -> None:
+    from stage.normalize import canonical_apply_url
+
+    page = "https://leidos.wd5.myworkdayjobs.com/External/job/Fort-Belvoir-VA/Software-Intern_R-00195576"
+    board = job(
+        "workday:a:1", "workday", "Leidos", "Software Intern", url=canonical_apply_url(page)
+    )
+    link = canonical_apply_url("https://zapply.jobs/l/d/workday-leidos-external-R-00195576")
+    listed = job("zapply:b:2", "zapply", "Leidos", "Software Developer Intern", url=link)
+
+    assert would_merge(board, listed).kind is MatchKind.URL
+
+
+@pytest.mark.parametrize(
+    ("one", "two", "merges"),
+    [
+        (
+            ("Lawrence Livermore National Laboratory (LLNL)", "Power Systems Analytics Intern"),
+            ("LLNL", "Power Systems Analytics Intern"),
+            True,
+        ),
+        (("Cisco (Workday)", "Software Intern"), ("Workday", "Software Intern"), False),
+        (
+            (
+                "LLNL",
+                "Cybersecurity Undergraduate Intern - Cyber and Critical Infrastructure Summer...",
+            ),
+            (
+                "LLNL",
+                "Cybersecurity Undergraduate Intern - Cyber and Critical Infrastructure "
+                "Summer Institute - Summer 2027",
+            ),
+            True,
+        ),
+        (("Acme", "Software Engineer..."), ("Acme", "Software Engineer Intern - Backend"), False),
+        (
+            ("Dow Jones", "Data Analyst Intern"),
+            ("Dow Jones", "Summer 2027 Internship Program \u2013 Data Analyst Intern"),
+            True,
+        ),
+    ],
+)
+def test_acronyms_cut_titles_and_program_names_join_their_posting(
+    one: tuple[str, str], two: tuple[str, str], merges: bool
+) -> None:
+    board = _listed("smartrecruiters:a:1", "smartrecruiters", *one, "Livermore, CA")
+    listed = _listed("zapply:b:2", "zapply", *two, "Livermore, CA")
+
+    assert bool(would_merge(board, listed)) is merges
+    assert bool(resolve_duplicates([listed], [board])) is merges
+
+
+@pytest.mark.parametrize(
+    ("board", "listed"),
+    [
+        (
+            ("BorgWarner", "Software Engineering Intern (Year-Round)"),
+            ("BorgWarner", "Software Engineering Intern"),
+        ),
+        (
+            ("RTX", "Intern: Summer 2027 - Control/Diagnostic Software (Onsite)"),
+            ("RTX", "Control/Diagnostic Software Intern"),
+        ),
+        (("Mindex", "Software Engineer Co-Op - On-site"), ("Mindex", "Software Engineer Co-op")),
+        (
+            ("Royal Bank of Canada", "2027 Capital Markets, AI Engineer (16 Months, Co-op)"),
+            ("Royal Bank of Canada", "AI Engineer Co-op, Capital Markets"),
+        ),
+        (
+            ("Insulet", "Co-op, Embedded Software Test Engineering: January - June 2027 (Onsite)"),
+            ("Insulet", "Embedded Software Test Engineering Co-op"),
+        ),
+        (
+            ("KLA", "Software Engineering Intern (C++, Unix)"),
+            ("KLA", "Software Engineering Intern, C++ and Unix"),
+        ),
+        (("OLG", "Front End Developer Student"), ("OLG", "Front End Developer Intern")),
+        (
+            ("Amazon", "Frontier AI & Robotics Intern - Undergraduate"),
+            ("Amazon.com Services LLC", "Frontier AI & Robotics Intern"),
+        ),
+        (
+            ("Great American Insurance Company", "Emerging Technology Intern - Summer 2027"),
+            ("National Interstate Insurance", "Emerging Technology Intern"),
+        ),
+        (
+            ("Leidos", "Software Engineering & AI Intern"),
+            ("Kudu Dynamics", "Software Engineering & AI Intern"),
+        ),
+        (("Shield AI", "Embedded Firmware Intern - 5810"), ("Shield", "Embedded Firmware Intern")),
+    ],
+)
+def test_extra_words_on_one_copy_do_not_hide_the_same_posting(
+    board: tuple[str, str], listed: tuple[str, str]
+) -> None:
+    one = _listed("workday:a:1", "workday", *board, "Milpitas, CA")
+    two = _listed("vanshb03:b:2", "vanshb03", *listed, "Milpitas, CA")
+
+    assert would_merge(one, two).kind is MatchKind.SAME_LANGUAGE, board[1]
+
+
+@pytest.mark.parametrize(
+    ("one", "two"),
+    [
+        ("Software Co-op (4 months)", "Software Co-op (8 months)"),
+        ("Software Co-op: January - June 2027", "Software Co-op: June - December 2027"),
+        ("Software Intern (Remote)", "Software Intern (Onsite)"),
+        ("Software Intern (Undergraduate)", "Software Intern (Graduate)"),
+        ("Software Intern (Summer)", "Software Intern (Year-Round)"),
+    ],
+)
+def test_two_copies_naming_different_terms_or_work_modes_stay_apart(one: str, two: str) -> None:
+    board = _listed("workday:a:1", "workday", "Acme", one, "Austin, TX")
+    listed = _listed("simplify:b:2", "simplify", "Acme", two, "Austin, TX")
+
+    assert not would_merge(board, listed)
+
+
+def test_two_remote_copies_agree_unless_they_name_different_countries() -> None:
+    from stage.domain import RemoteScope
+
+    board = replace(
+        _listed("workday:a:1", "workday", "GE Aerospace", "AI Intern", "Remote"),
+        location=LocationBucket.UNKNOWN,
+        remote_scope=RemoteScope.UNSPECIFIED,
+    )
+    listed = replace(
+        _listed("vanshb03:b:2", "vanshb03", "GE Aerospace", "AI Intern", "Remote / United States"),
+        remote_scope=RemoteScope.UNSPECIFIED,
+    )
+    canada = replace(listed, remote_scope=RemoteScope.CANADA, location=LocationBucket.CANADA)
+    usa = replace(listed, remote_scope=RemoteScope.US)
+
+    assert would_merge(board, listed)
+    assert not would_merge(canada, usa)
+    assert not would_merge(replace(board, remote_scope=None), listed)
+
+
+def test_a_visa_style_requisition_names_its_opening() -> None:
+    from stage.dedup.identity import opening_key
+
+    early = "https://visa.wd5.myworkdayjobs.com/Visa_Early_Careers/job/US---Foster-City-CA/Data-Science-Intern_REF089883W"
+    general = "https://visa.wd5.myworkdayjobs.com/Visa/job/US---Foster-City-CA/Data-Science-Intern_REF089883W-1"
+
+    assert opening_key(early) == opening_key(general) == "visa:089883"
+
+
+def test_one_list_holding_a_job_twice_folds_into_the_board_posting() -> None:
+    from stage.normalize import canonical_apply_url
+
+    early = "https://visa.wd5.myworkdayjobs.com/Visa_Early_Careers/job/US---Foster-City-CA/Software-Engineer-Intern_REF089875W"
+    general = "https://visa.wd5.myworkdayjobs.com/Visa/job/US---Foster-City-CA/Software-Engineer-Intern_REF089875W"
+    board = _listed(
+        "workday:visa:1",
+        "workday",
+        "Visa",
+        "Software Engineer, Intern - Foster City 2027",
+        "US - Foster City, CA",
+        canonical_apply_url(early),
+    )
+    first = _listed(
+        "simplify:visa:2",
+        "simplify",
+        "Visa",
+        "Software Engineer Intern",
+        "Foster City, CA",
+        canonical_apply_url(early),
+    )
+    second = _listed(
+        "simplify:visa:3",
+        "simplify",
+        "Visa",
+        "Software Engineer Intern",
+        "Foster City, CA",
+        canonical_apply_url(general),
+    )
+    other = _listed(
+        "simplify:visa:4",
+        "simplify",
+        "Visa",
+        "Software Engineer Intern 2027",
+        "Foster City, CA",
+        canonical_apply_url(general.replace("089875", "089919")),
+    )
+
+    linked = {link.duplicate_id for link in resolve_duplicates([first, second, other], [board])}
+
+    assert linked == {first.id, second.id}
+
+
+def _posted(job_id: str, title: str, place: str, term: str = "unknown") -> Job:
+    return replace(_listed(job_id, "workday", "ABB", title, place), term=term)
+
+
+def test_one_board_posting_a_title_twice_in_one_city_shows_it_once() -> None:
+    title = "Automation Engineer Intern - Summer 2027"
+    first = _posted("workday:abb:1", title, "New Berlin, WI")
+    second = _posted("workday:abb:2", title.replace("-", "\u2013"), "New Berlin, WI")
+
+    links = resolve_duplicates([first, second], [])
+
+    assert [(link.duplicate_id, link.canonical_id, link.kind) for link in links] == [
+        (second.id, first.id, "repost")
+    ]
+
+
+@pytest.mark.parametrize(
+    ("title", "place", "term"),
+    [
+        ("Automation Engineer Intern", "Auburn Hills, MI", "unknown"),
+        ("Automation Engineer Intern", "New Berlin, WI", "fall-2027"),
+        ("Automation Engineer Intern II", "New Berlin, WI", "summer-2027"),
+    ],
+)
+def test_another_city_term_or_title_on_one_board_stays_its_own_posting(
+    title: str, place: str, term: str
+) -> None:
+    first = _posted("workday:abb:1", "Automation Engineer Intern", "New Berlin, WI", "summer-2027")
+    second = _posted("workday:abb:2", title, place, term)
+
+    assert not resolve_duplicates([first, second], [])
+
+
+@pytest.mark.parametrize("place", ["2 Locations", ""])
+def test_one_title_twice_with_no_place_named_stays_two_postings(place: str) -> None:
+    first = _posted("workday:abb:1", "Automation Engineer Intern", place)
+    second = _posted("workday:abb:2", "Automation Engineer Intern", place)
+
+    assert not resolve_duplicates([first, second], [])
+
+
+@pytest.mark.parametrize("place", ["Remote", "CAD Remote \u2013 ON", "US-California-Palo Alto"])
+def test_one_title_twice_at_the_same_written_place_shows_it_once(place: str) -> None:
+    first = _posted("workday:abb:1", "Full-stack AI Developer Intern", place)
+    second = _posted("workday:abb:2", "Full-stack AI Developer Intern", place)
+
+    links = resolve_duplicates([first, second], [])
+
+    assert [(link.duplicate_id, link.kind) for link in links] == [(second.id, "repost")]
+
+
+def test_a_copy_with_no_place_joins_the_same_title_from_the_same_employer() -> None:
+    board = replace(
+        _listed(
+            "custom_json:crim:91547", "custom_json", "Luqia", "Stagiaire \u2013 IA de Confiance", ""
+        ),
+        location=LocationBucket.UNKNOWN,
+    )
+    listed = replace(
+        _listed(
+            "espresso-jobs:search:245824",
+            "espresso-jobs",
+            "Luqia",
+            "Stagiaire \u2013 IA de Confiance",
+            "Montr\u00e9al, Qu\u00e9bec, Canada",
+        ),
+        location=LocationBucket.MONTREAL,
+    )
+    other = replace(listed, id="espresso-jobs:search:1", title_raw="Stagiaire \u2013 Vision")
+
+    assert would_merge(board, listed)
+    assert not would_merge(board, other)
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        (
+            (
+                "MITRE",
+                "Internships in Computer Science or Software Engineering",
+                "McLean, Virginia",
+            ),
+            ("MITRE", "Computer Science or Software Engineering Intern", "McLean, VA"),
+        ),
+        (
+            ("Valon Tech", "Software Engineer Intern", "New York City, NY +1"),
+            ("Valon", "Software Engineer Intern", "New York, NY / San Francisco, CA"),
+        ),
+    ],
+)
+def test_internships_in_a_field_and_a_shortened_employer_name_match(
+    first: tuple[str, str, str], second: tuple[str, str, str]
+) -> None:
+    left = _listed("zapply:mitre:1", "zapply", *first)
+    right = _listed("vanshb03:mitre:2", "vanshb03", *second)
+
+    assert would_merge(left, right)
+
+
+def test_a_season_glued_to_its_year_still_reads_as_one() -> None:
+    board = _listed(
+        "lever:tevora:1",
+        "lever",
+        "Tevora",
+        "Cybersecurity Internship Summer2027 - Federal",
+        "Fairfax, VA / Irvine, CA",
+    )
+    listed = _listed(
+        "vanshb03:tevora:2",
+        "vanshb03",
+        "Tevora",
+        "Cybersecurity Intern, Federal",
+        "Fairfax, VA / Irvine, CA",
+    )
+
+    assert would_merge(board, listed).kind is MatchKind.SAME_LANGUAGE
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        (
+            ("Teledyne", "Software Engineering Coop", "Waterloo, ON"),
+            ("Teledyne Technologies Incorporated", "Software Engineering Co-op", "Waterloo, ON"),
+        ),
+        (
+            (
+                "Qualcomm",
+                "FY27 Intern - Machine Learning Engineering Internship - Canada (4 months)",
+                "Markham, ON",
+            ),
+            ("Qualcomm", "Machine Learning Engineering Intern", "Markham, ON"),
+        ),
+        (
+            (
+                "RTX",
+                "Internship \u2013 Raytheon Systems Security Engineer -Onsite",
+                "Tewksbury, MA",
+            ),
+            ("RTX", "Systems Security Engineer Intern", "Tewksbury, MA"),
+        ),
+        (
+            (
+                "Federal Reserve System",
+                "2027 Summer Internship Program - Information Security Intern",
+                "Atlanta, GA",
+            ),
+            ("The Federal Reserve System", "Information Security Intern", "Atlanta, GA"),
+        ),
+    ],
+)
+def test_one_posting_written_two_ways_is_one(
+    first: tuple[str, str, str], second: tuple[str, str, str]
+) -> None:
+    board = _listed("workday:a:1", "workday", *first)
+    listed = _listed("vanshb03:a:2", "vanshb03", *second)
+
+    assert would_merge(board, listed).kind is MatchKind.SAME_LANGUAGE
+
+
+def test_two_titles_naming_different_countries_stay_apart() -> None:
+    canada = _listed(
+        "simplify:a:1",
+        "simplify",
+        "Tenstorrent",
+        "Systems Intern - Validation (Canada)",
+        "Toronto, ON",
+    )
+    usa = _listed(
+        "vanshb03:a:2",
+        "vanshb03",
+        "Tenstorrent",
+        "Systems Intern - Validation (USA)",
+        "Toronto, ON",
+    )
+
+    assert not would_merge(canada, usa)
+
+
+def test_a_repost_reads_internship_as_intern() -> None:
+    from stage.dedup import repost_key
+
+    first = repost_key("Motorola", "2027 Software Engineering Summer Internship", "Plantation, FL")
+    second = repost_key("Motorola", "Software Engineering Intern - Summer 2027", "Plantation, FL")
+
+    assert first and first == second
+
+
+def _proven(index: int, company: str, source: str) -> Job:
+    url = f"https://acme.wd1.myworkdayjobs.com/External/job/Austin-TX/Intern_R{index:05d}"
+    return _listed(f"{source}:x:{index}", source, company, f"Intern {index}", "Austin, TX", url)
+
+
+def test_two_proven_postings_teach_stage_that_two_names_are_one_employer() -> None:
+    from stage.dedup.resolve import learned_employers
+
+    once = [_proven(1, "Initech", "workday"), _proven(1, "Initrode Labs", "simplify")]
+    twice = [*once, _proven(2, "Initech", "workday"), _proven(2, "Initrode Labs", "simplify")]
+
+    assert learned_employers(once, frozenset()) == {}
+    learned = learned_employers(twice, frozenset())
+    assert learned["initech"] == learned["initrode labs"]
+
+
+def test_a_learned_name_joins_a_copy_that_matches_only_by_title() -> None:
+    proofs = [
+        _proven(index, company, source)
+        for index in (1, 2)
+        for company, source in (("Initech", "workday"), ("Initrode Labs", "simplify"))
+    ]
+    board = _listed("workday:x:9", "workday", "Initech", "Data Engineer Intern", "Austin, TX")
+    listed = _listed(
+        "simplify:x:9", "simplify", "Initrode Labs", "Data Engineer Intern", "Austin, TX"
+    )
+
+    links = resolve_duplicates([listed], [board, *proofs])
+
+    assert (listed.id, board.id) in {(link.duplicate_id, link.canonical_id) for link in links}
+    assert not resolve_duplicates([listed], [board]), "without proof the names stay apart"
+
+
+def test_a_repost_with_no_term_joins_but_two_named_terms_never_do() -> None:
+    title, place = "Automation Engineer Intern", "New Berlin, WI"
+    summer = _posted("workday:abb:1", title, place, "summer-2027")
+    unnamed = _posted("workday:abb:2", title, place)
+    fall = _posted("workday:abb:3", title, place, "fall-2027")
+
+    alone = {link.duplicate_id for link in resolve_duplicates([summer, unnamed], [])}
+    linked = {
+        (link.duplicate_id, link.canonical_id)
+        for link in resolve_duplicates([summer, unnamed, fall], [])
+    }
+
+    assert alone == {unnamed.id}
+    assert (fall.id, summer.id) not in linked and (unnamed.id, fall.id) not in linked
+
+
+@pytest.mark.parametrize(
+    ("board", "listed", "merges"),
+    [
+        (
+            ("2027 Software Engineering Intern - Roy UT", "United States-Utah-Roy"),
+            ("Software Engineer Intern", "Linthicum, MD"),
+            False,
+        ),
+        (
+            (
+                "Software Engineering Intern (Summer 2027)",
+                "US-CO-AURORA-S77 ~ 16470 E Hughes Dr ~ BLDG S77",
+            ),
+            ("Software Engineer Intern", "Cambridge, MA"),
+            False,
+        ),
+        (
+            ("2027 Software Engineering Intern - Roy UT", "United States-Utah-Roy"),
+            ("Software Engineering Intern", "Roy, UT"),
+            True,
+        ),
+        (
+            (
+                "Software Engineering Intern (Summer 2027)",
+                "US-CO-AURORA-S77 ~ 16470 E Hughes Dr ~ BLDG S77",
+            ),
+            ("Software Engineer Intern", "Aurora, CO"),
+            True,
+        ),
+    ],
+)
+def test_a_city_in_the_title_or_a_site_code_keeps_two_cities_apart(
+    board: tuple[str, str], listed: tuple[str, str], merges: bool
+) -> None:
+    one = _listed("workday:a:1", "workday", "RTX", *board)
+    two = _listed("vanshb03:b:2", "vanshb03", "RTX", *listed)
+
+    assert bool(would_merge(one, two)) is merges
+
+
+def test_postings_that_name_different_terms_never_merge() -> None:
+    board = job("lever:acme:1", "lever", "Acme", "Cybersecurity Internship", term="winter-2027")
+    listed = job(
+        "simplify:feed:1", "simplify", "Acme", "Cybersecurity Internship", term="summer-2027"
+    )
+    assert not would_merge(board, listed)
+
+
+def test_a_copy_with_no_term_never_joins_two_named_terms_into_one_posting() -> None:
+    summer = job("greenhouse:acme:1", "greenhouse", "Acme", "SWE Intern", term="summer-2027")
+    plain = job("simplify:feed:1", "simplify", "Acme", "SWE Intern")
+    fall = job("zapply:feed:1", "zapply", "Acme", "SWE Intern", term="fall-2027")
+
+    links = resolve_duplicates([summer, plain, fall], [])
+
+    mains = {link.duplicate_id: link.canonical_id for link in links}
+    assert mains.get("zapply:feed:1") != "greenhouse:acme:1"
+    assert mains.get("greenhouse:acme:1") != "zapply:feed:1"
+
+
+def test_a_copy_with_no_term_still_joins_a_posting_whose_copies_disagree() -> None:
+    url = "https://job-boards.greenhouse.io/castelion/jobs/4386047009"
+    board = job(
+        "greenhouse:castelion:1",
+        "greenhouse",
+        "Castelion",
+        "SWE Intern",
+        term="spring-2027",
+        url=url,
+    )
+    labelled = job(
+        "simplify:feed:1", "simplify", "Castelion", "SWE Intern", term="fall-2026", url=url
+    )
+    plain = job("vanshb03:feed:1", "vanshb03", "Castelion", "SWE Intern")
+
+    links = resolve_duplicates([board, labelled, plain], [])
+
+    mains = {link.duplicate_id: link.canonical_id for link in links}
+    assert mains.get("simplify:feed:1") is not None
+    assert mains.get("vanshb03:feed:1") == mains.get("simplify:feed:1")
+
+
+def test_a_list_link_with_an_apply_tail_matches_the_lever_posting() -> None:
+    from stage.normalize import canonical_apply_url
+
+    posting = "https://jobs.lever.co/acme/1234abcd-1234-1234-1234-123456789abc"
+    board = job(
+        "lever:acme:1", "lever", "Acme", "Software Intern", url=canonical_apply_url(posting)
+    )
+    linked = canonical_apply_url(f"{posting}/apply?lever-source=Simplify")
+    listed = job("simplify:feed:1", "simplify", "Acme", "Intern, Software", url=linked)
+    assert would_merge(board, listed).kind is MatchKind.URL
+
+
+def test_a_greenhouse_id_on_the_employer_site_matches_the_board_posting() -> None:
+    board = job(
+        "greenhouse:acme:4567890",
+        "greenhouse",
+        "Acme",
+        "Software Intern",
+        url="https://job-boards.greenhouse.io/acme/jobs/4567890",
+    )
+    listed = job(
+        "simplify:feed:2",
+        "simplify",
+        "Acme Corp",
+        "SWE Intern",
+        url="https://www.acme.com/careers?gh_jid=4567890",
+    )
+    assert would_merge(board, listed).kind is MatchKind.URL
+
+
+@pytest.mark.parametrize(
+    ("url", "named"),
+    [
+        (
+            "https://jobs.lever.co/acme/8b0c1a2e-1234-4abc-9def-0123456789ab",
+            ("lever:*", "8b0c1a2e-1234-4abc-9def-0123456789ab"),
+        ),
+        (
+            "https://jobs.ashbyhq.com/acme/8b0c1a2e-1234-4abc-9def-0123456789ab?utm_source=x",
+            ("ashby:*", "8b0c1a2e-1234-4abc-9def-0123456789ab"),
+        ),
+        (
+            "https://jobs.smartrecruiters.com/Acme/744000123456789-software-intern",
+            ("smartrecruiters:*", "744000123456789"),
+        ),
+        (
+            "https://careers.smartrecruiters.com/Acme/744000123456789",
+            ("smartrecruiters:*", "744000123456789"),
+        ),
+        (
+            "https://zapply.jobs/l/d/workday-acme-software-intern-r12345",
+            ("workday:acme-*", "12345"),
+        ),
+        ("https://boards.greenhouse.io/acme/jobs/4012345", ("greenhouse:*", "4012345")),
+        ("https://job-boards.greenhouse.io/acme/jobs/4012345", ("greenhouse:*", "4012345")),
+        ("https://notgreenhouse.io/acme/jobs/4012345", ("", "")),
+        ("https://example.com/careers?gh_jid=4012345", ("greenhouse:*", "4012345")),
+        ("https://example.com/jobs/1", ("", "")),
+        ("not a url", ("", "")),
+    ],
+)
+def test_a_link_names_the_board_posting_it_points_at(url: str, named: tuple[str, str]) -> None:
+    from stage.normalize.urls import named_posting
+
+    assert named_posting(url) == named
+
+
+@pytest.mark.parametrize(
+    ("identifier", "tail", "names"),
+    [
+        ("greenhouse:acme:4012345", "4012345", True),
+        ("workday:acme-ext:software-intern_r12345", "12345", True),
+        ("workday:acme-ext:r112345", "12345", False),
+        ("lever:acme:abc", "abc", True),
+        ("x:1234567", "4567", False),
+    ],
+)
+def test_a_job_number_names_a_posting_only_on_a_digit_boundary(
+    identifier: str, tail: str, names: bool
+) -> None:
+    from stage.normalize.urls import names_posting
+
+    assert names_posting(identifier, tail) is names

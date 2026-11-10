@@ -89,10 +89,14 @@ async def test_a_queued_detail_row_makes_the_listing_bypass_its_validator(
             httpx.Headers({"etag": '"v1"'}),
             run_time,
         )
+        client.cache.record(f"{ENDPOINT}/0", httpx.Headers({"etag": '"d1"'}), run_time)
         result = await adapter.fetch(acme_sr, client, run_time, None, [queued])
 
     assert "if-none-match" not in {header.lower() for header in listing.calls[0].request.headers}, (
         "a queued board must skip its validator, or the 304 skips the detail phase"
+    )
+    assert "if-none-match" not in {header.lower() for header in detail.calls[0].request.headers}, (
+        "a detail read must not send its validator, or a 304 brings back no body"
     )
     assert detail.call_count == 1
     assert result.jobs[0].description == "Build things."
@@ -134,6 +138,8 @@ async def test_an_empty_page_stops_paging(acme_sr: Company, run_time: datetime) 
         result = await adapter.fetch(acme_sr, client, run_time)
 
     assert len(result.jobs) == 2
+    assert not result.authoritative
+    assert "before the board's stated total" in result.degraded
 
 
 @respx.mock

@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
-from stage.domain import Company, Job, JobStatus, Platform, board_key, job_id
+from stage.domain import Company, HttpValidator, Job, JobStatus, Platform, board_key, job_id
 from stage.sources import get_adapter
 from stage.sources.base import Adapter
 from stage.storage import SourceBatch, open_repository
@@ -147,3 +147,92 @@ def test_an_unresolvable_row_gets_a_key_of_its_own_that_matches_no_job() -> None
 
     assert a != b, "a shared fallback key lets one broken row close another's postings"
     assert not a.startswith("workday:"), "it must match no real job id, so it closes nothing"
+
+
+async def test_a_read_that_would_close_most_of_a_board_waits_for_a_second_read(
+    db_path: Path,
+) -> None:
+    board = "greenhouse:siei"
+    stored = tuple(_job(f"{board}:{index}", NOW) for index in range(10))
+    first, second = NOW + timedelta(hours=1), NOW + timedelta(hours=2)
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse", run_started_at=NOW, jobs=stored, closable_boards=(board,)
+            )
+        )
+        held = await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=first,
+                jobs=(_job(f"{board}:0", first), _job(f"{board}:1", first)),
+                closable_boards=(board,),
+            )
+        )
+        confirmed = await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=second,
+                jobs=(_job(f"{board}:0", second), _job(f"{board}:1", second)),
+                closable_boards=(board,),
+            )
+        )
+
+    assert held.closed == 0, "eight of ten gone in one read waits for a second read"
+    assert confirmed.closed == 8
+
+
+async def test_a_held_close_forgets_the_boards_validator_so_a_304_cannot_keep_it(
+    db_path: Path,
+) -> None:
+    board = "greenhouse:siei"
+    url = "https://boards-api.greenhouse.io/v1/boards/siei/jobs?content=true"
+    other = "https://boards-api.greenhouse.io/v1/boards/other/jobs?content=true"
+    stored = tuple(_job(f"{board}:{index}", NOW) for index in range(10))
+    later = NOW + timedelta(hours=1)
+
+    def read(at: datetime, etag: str, jobs: tuple[Job, ...]) -> SourceBatch:
+        return SourceBatch(
+            source="greenhouse",
+            run_started_at=at,
+            jobs=jobs,
+            closable_boards=(board,),
+            board_urls=((board, (url,)),),
+            validators=(
+                HttpValidator(url=url, etag=etag, fetched_at=at),
+                HttpValidator(url=other, etag=etag, fetched_at=at),
+            ),
+        )
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(read(NOW, '"a"', stored))
+        held = await repository.apply_source_batch(read(later, '"b"', stored[:2]))
+        kept = await repository.load_validators("greenhouse")
+
+    assert held.closed == 0
+    assert url not in kept, "a 304 against the held read would never confirm the close"
+    assert kept[other].etag == '"b"'
+
+
+async def test_a_few_closes_go_through_at_once(db_path: Path) -> None:
+    board = "greenhouse:siei"
+    stored = tuple(_job(f"{board}:{index}", NOW) for index in range(10))
+    later = NOW + timedelta(hours=1)
+
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse", run_started_at=NOW, jobs=stored, closable_boards=(board,)
+            )
+        )
+        result = await repository.apply_source_batch(
+            SourceBatch(
+                source="greenhouse",
+                run_started_at=later,
+                jobs=tuple(_job(f"{board}:{index}", later) for index in range(7)),
+                closable_boards=(board,),
+            )
+        )
+
+    assert result.closed == 3

@@ -191,7 +191,7 @@ def test_a_long_unbroken_run_of_letters_does_not_stall_the_fold() -> None:
 
     payload = "a" * 65536
     started = time.perf_counter()
-    folded = fold.__wrapped__(payload)
+    folded = fold(payload)
     elapsed = time.perf_counter() - started
 
     assert folded == payload
@@ -202,6 +202,19 @@ def test_the_stem_bound_is_wide_enough_for_the_longest_real_word() -> None:
     from stage.lexicon import LONGEST_WORD_STEM
 
     stem = "a" * LONGEST_WORD_STEM
-    assert fold.__wrapped__(f"{stem}·euse") == stem
-    assert fold.__wrapped__("anticonstitutionnellement·euse") == "anticonstitutionnellement"
-    assert fold.__wrapped__("Programmeur·euse") == "programmeur"
+    assert fold(f"{stem}·euse") == stem
+    assert fold("anticonstitutionnellement·euse") == "anticonstitutionnellement"
+    assert fold("Programmeur·euse") == "programmeur"
+
+
+@pytest.mark.parametrize(
+    ("raw", "folded"),
+    [
+        ("C++ Developer Intern", "cpp developer intern"),
+        ("C# and F# Intern", "csharp and fsharp intern"),
+        ("ASP.NET Core and .NET Intern", "asp dotnet core and dotnet intern"),
+        ("Plant C #4 Operator", "plant c 4 operator"),
+    ],
+)
+def test_language_names_keep_their_symbols(raw: str, folded: str) -> None:
+    assert fold(raw) == folded
