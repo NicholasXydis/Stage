@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from http.client import HTTPException
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -34,6 +35,7 @@ MAX_MESSAGES = 4
 TIMEOUT_SECONDS = 15
 SENT_NAME = "notify-sent.json"
 _MARKDOWN = re.compile(r"([\\*_~`|>])")
+_LINE_START = re.compile(r"^(\d*)([#+.)-])")
 
 
 class NotifyError(Exception):
@@ -195,16 +197,25 @@ def _plain(text: str) -> str:
     return _MARKDOWN.sub(r"\\\1", text)
 
 
+def _unlinked(text: str) -> str:
+    flat = " ".join(text.split()).replace("[", "(").replace("]", ")")
+    return _plain(flat).replace("://", r"\://")
+
+
+def _opening(text: str) -> str:
+    return _LINE_START.sub(r"\1\\\2", text)
+
+
 def _link(url: str) -> str:
     return url.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
 
 
 def _entry(posting: Posting) -> str:
-    title = _plain(posting.title[:TITLE_LIMIT].replace("[", "(").replace("]", ")"))
-    where = _plain(posting.location or "location unknown")
-    company = _plain(posting.company)
+    where = _unlinked(posting.location or "location unknown")
+    company = _opening(_unlinked(posting.company))
     if not posting.url:
-        return f"{title}\n{company} · {where}"
+        return f"{_opening(_unlinked(posting.title[:TITLE_LIMIT]))}\n{company} · {where}"
+    title = _plain(posting.title[:TITLE_LIMIT].replace("[", "(").replace("]", ")"))
     return f"[{title}]({_link(posting.url)})\n{company} · {where}"
 
 
@@ -274,9 +285,8 @@ def post(url: str, payload: dict[str, object]) -> None:
         method="POST",
     )
     try:
-        with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            if response.status >= 400:
-                raise NotifyError(f"Discord answered with an error ({response.status}).")
+        with urlopen(request, timeout=TIMEOUT_SECONDS):
+            pass
     except HTTPError as exc:
         if exc.code in (401, 403, 404):
             raise NotifyError(
@@ -286,10 +296,14 @@ def post(url: str, payload: dict[str, object]) -> None:
         if exc.code == 429:
             raise NotifyError("Discord is rate limiting this webhook for now.") from None
         raise NotifyError(f"Discord answered with an error ({exc.code}).") from None
-    except (URLError, TimeoutError) as exc:
-        reason = getattr(exc, "reason", None) or exc
+    except (OSError, HTTPException) as exc:
+        reason = (exc.reason if isinstance(exc, URLError) else None) or exc
         if isinstance(reason, socket.gaierror):
             raise NotifyError("No internet connection, so Stage could not reach Discord.") from None
+        if isinstance(reason, HTTPException):
+            raise NotifyError(
+                "Discord broke off its answer, so Stage cannot tell whether the message arrived."
+            ) from None
         raise NotifyError(f"Stage could not reach Discord ({plain_error(str(reason))}).") from None
 
 

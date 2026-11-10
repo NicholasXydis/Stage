@@ -10,7 +10,7 @@ from mcp.types import CallToolResult, TextContent
 from stage.ai.references import short
 from stage.domain import Job, QuarantinedJob, json_safe, web_url
 from stage.domain.preferences import clean_text
-from stage.domain.text import counted, json_default, plain_error
+from stage.domain.text import counted, json_default, plain_error, posted_day
 from stage.domain.tracker import ApplicationStatus, TrackedPosting
 from stage.services.query import PostingDetail
 from stage.services.tracker import TrackerRow
@@ -111,7 +111,7 @@ def posting_row(job: Job, status: ApplicationStatus | None) -> dict[str, object]
         "url": web_url(job.apply_url_raw),
     }
     if job.source_posted_at is not None:
-        row["posted"] = day(job.source_posted_at)
+        row["posted"] = posted_day(job.source_posted_at).isoformat()
     if status is not None:
         row["tracked"] = status.value
     return row

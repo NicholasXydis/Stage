@@ -327,7 +327,7 @@ def sources(
     ] = False,
     boards: Annotated[
         bool,
-        typer.Option("--boards", help="Include every failing or stale board"),
+        typer.Option("--boards", help="Include every failing, stale, refusing or gone board"),
     ] = False,
     clear_cache: Annotated[
         str | None,

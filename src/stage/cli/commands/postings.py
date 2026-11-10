@@ -49,14 +49,11 @@ async def _tracked(
 ) -> tuple["JobFilters", "TrackerView"]:
     from dataclasses import replace
 
-    from stage.services.tracker import tracker_view
+    from stage.services.tracker import UNTRACKED_PROBLEM, tracker_view
 
     view = await tracker_view(repository)
     if untracked and view.problem:
-        _refuse(
-            "[red]--untracked needs your tracker, which could not be read, so nothing was "
-            "listed.[/red] Run [bold]stage tracker[/bold] to see why."
-        )
+        _refuse(f"[red]{UNTRACKED_PROBLEM}[/red]")
     excluded = view.tracked if untracked else view.hidden
     return replace(filters, excluded_ids=filters.excluded_ids | excluded), view
 
@@ -85,7 +82,7 @@ def _no_location_hint(count: int, command: str, filters: "JobFilters", untracked
         for flag, value in (
             ("--term", filters.term),
             ("--role", filters.role and filters.role.value),
-            ("--language", filters.language and filters.language.value),
+            ("--lang", filters.language and filters.language.value),
             ("--source", filters.source),
             ("--company", filters.company),
         )

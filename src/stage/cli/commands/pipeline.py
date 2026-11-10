@@ -86,14 +86,14 @@ def sync(
 
     from stage.cli.logfile import open_request_log
     from stage.cli.render import plain, terminal
-    from stage.cli.render.progress import render_sync
+    from stage.cli.render.progress import render_sync, waiting_on
     from stage.cli.schedule_state import ScheduleStateWriter
     from stage.companies import RegistryError, load_boards
     from stage.domain import SyncOutcome
     from stage.domain.text import plain_error
     from stage.paths import registry_override
     from stage.runlock import AnotherRunInProgressError, single_run
-    from stage.services.maintenance import rescreen_after_upgrade, upgrade_note
+    from stage.services.maintenance import RECHECK_NOTICE, rescreen, upgrade_note, upgrade_pending
     from stage.services.sync import NoSourcesSelectedError
     from stage.services.sync import sync as sync_service
     from stage.storage import open_repository
@@ -156,10 +156,12 @@ def sync(
                 else None
             )
             async with open_repository(_database(db)) as repository:
-                if not dry_run:
-                    checked = await rescreen_after_upgrade(repository)
-                    if checked is not None:
-                        console.print(plain(upgrade_note(checked)), soft_wrap=True)
+                if not dry_run and await upgrade_pending(repository):
+                    if scheduled_state is not None:
+                        scheduled_state.rechecking()
+                    with waiting_on(console, RECHECK_NOTICE):
+                        checked = await rescreen(repository)
+                    console.print(plain(upgrade_note(checked)), soft_wrap=True)
                 events = sync_service(
                     repository,
                     companies,

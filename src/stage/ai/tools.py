@@ -99,6 +99,10 @@ NO_BROWSER = (
 REFUSED_LINKS = (
     "Postings in refused have no plain http or https apply link, so Stage did not open them."
 )
+UNTRACKED_REFUSED = (
+    "untracked needs the user's tracker, which could not be read, so Stage returned nothing. "
+    "The user can run stage tracker in a terminal to see why."
+)
 NO_LONGER_LISTED = (
     "The employers' own boards no longer list the postings in no_longer_listed, so the pages "
     "that opened for them may say the job is closed."
@@ -316,6 +320,8 @@ class Tools:
         async with self._repository() as repository:
             last_sync = await repository.last_sync_at()
             view = await tracker_view(repository)
+            if untracked and view.problem:
+                raise ToolError(UNTRACKED_REFUSED)
             excluded = view.tracked if untracked else view.hidden
             version = [last_sync, sorted(excluded), described]
             offset = read_cursor(cursor, arguments, version)
@@ -516,7 +522,11 @@ class Tools:
         self,
         include_boards: Annotated[
             bool,
-            Field(description=f"Also list failing and stale boards, up to {MAX_BOARDS}"),
+            Field(
+                description=(
+                    f"Also list failing, stale, refusing and gone boards, up to {MAX_BOARDS}"
+                )
+            ),
             _default(False),
         ] = False,
     ) -> CallToolResult:
@@ -536,6 +546,8 @@ class Tools:
                 "blocked": source.blocked,
                 "failing_boards": len(source.failing_boards),
                 "stale_boards": len(source.stale_boards),
+                "refusing_boards": len(source.refusing_boards),
+                "gone_boards": len(source.gone_boards),
             }
             for source in report.sources
         ]
@@ -557,16 +569,24 @@ class Tools:
                     if state.blocked_until
                     else None,
                     "reason": error_text(state.reason, 200),
+                    "refused": state in report.resting_blocks,
                 }
                 for state in report.blocks
             ],
             "failing_boards": len(report.failing_boards),
             "stale_boards": len(report.stale_boards),
+            "refusing_boards": len(report.refusing_boards),
+            "gone_boards": len(report.gone_boards),
             "stale_after_days": report.stale_after_days,
             "sources": sources,
         }
         if include_boards:
-            boards = [*report.failing_boards, *report.stale_boards]
+            boards = [
+                *report.failing_boards,
+                *report.stale_boards,
+                *report.refusing_boards,
+                *report.gone_boards,
+            ]
             payload["boards"] = [
                 {
                     "source": board.source,
@@ -1037,6 +1057,8 @@ class Tools:
         now = datetime.now(UTC)
         async with self._repository() as repository:
             view = await tracker_view(repository)
+            if untracked and view.problem:
+                raise ToolError(UNTRACKED_REFUSED)
             scoped = replace(
                 filters, excluded_ids=view.tracked if untracked else view.hidden, limit=None
             )

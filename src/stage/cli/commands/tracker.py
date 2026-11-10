@@ -24,7 +24,7 @@ from stage.cli.options import (
 
 if TYPE_CHECKING:
     from stage.domain import ExportFormat
-    from stage.services.tracker import ChangeReport, TrackerListing
+    from stage.services.tracker import Change, ChangeReport, TrackerListing
 
 PANEL = "Applications"
 
@@ -313,25 +313,53 @@ def _refuse_untracked(labels: list[str]) -> NoReturn:
     raise typer.Exit(code=1)
 
 
-def _headline(command: str, report: "ChangeReport", typed: list[str]) -> str:
-    count = len(report.changed)
-    noun = "posting" if count == 1 else "postings"
-    if not count:
-        return "Nothing to change."
-    if all(
+def _noted_only(change: "Change") -> bool:
+    return (
         change.previous is not None
         and change.before is change.entry.status
         and change.previous.on == change.entry.on
-        for change in report.changed
-    ):
-        return f"Updated the note on {count} {noun}."
+    )
+
+
+def _progressed(moved: list["Change"]) -> str:
+    from stage.domain.tracker import ApplicationStatus
+
+    earlier = {
+        (change.before.value, change.previous.on.isoformat())
+        for change in moved
+        if change.before not in (None, ApplicationStatus.SAVED, ApplicationStatus.HIDDEN)
+        and change.previous is not None
+    }
+    if not earlier:
+        return ""
+    if len(earlier) > 1:
+        return "the --status and --on each one had"
+    status, on = earlier.pop()
+    return f"--status {status} --on {on}"
+
+
+def _headline(command: str, report: "ChangeReport", typed: list[str]) -> str:
+    moved = [change for change in report.changed if not _noted_only(change)]
+    noted = len(report.changed) - len(moved)
+    if not moved:
+        noun = "posting" if noted == 1 else "postings"
+        return f"Updated the note on {noted} {noun}." if noted else "Nothing to change."
+    count = len(moved) if command in ("save", "applied") else len(report.changed)
+    noun = "posting" if count == 1 else "postings"
+    more = f" Updated the note on {noted} more." if noted else ""
     if command == "save":
-        return f"Saved {count} {noun}."
+        return f"Saved {count} {noun}.{more}"
     if command == "applied":
-        days = sorted({change.entry.on.isoformat() for change in report.changed})
-        return f"Marked {count} {noun} applied on {', '.join(days)}."
+        days = sorted({change.entry.on.isoformat() for change in moved})
+        return f"Marked {count} {noun} applied on {', '.join(days)}.{more}"
     if command == "hide":
         pronoun = "it" if count == 1 else "them"
+        if progressed := _progressed(moved):
+            return (
+                f"Hid {count} {noun}. stage untrack would also forget where {pronoun} stood, so "
+                f"to bring {pronoun} back run stage tracker --status hidden, then stage track "
+                f"with that list's rows and {progressed}."
+            )
         if any(reference.replace("-", "").isdigit() for reference in typed):
             return (
                 f"Hid {count} {noun}. To bring {pronoun} back, run stage tracker --status "

@@ -140,12 +140,15 @@ def render_source_health(
 
     for source in sources:
         failing, stale = len(source.failing_boards), len(source.stale_boards)
-        if failing:
-            boards = f"[red]{failing} failing[/red]"
-            if stale:
-                boards += f", [yellow]{stale} stale[/yellow]"
-        elif stale:
-            boards = f"[yellow]{stale} stale[/yellow]"
+        refusing, gone = len(source.refusing_boards), len(source.gone_boards)
+        parts = [
+            f"[red]{failing} failing[/red]" if failing else "",
+            f"[yellow]{stale} stale[/yellow]" if stale else "",
+            f"[dim]{refusing} refuse here[/dim]" if refusing else "",
+            f"[dim]{gone} gone[/dim]" if gone else "",
+        ]
+        if any(parts):
+            boards = ", ".join(part for part in parts if part)
         elif source.boards:
             boards = f"[green]{len(source.boards)} ok[/green]"
         else:
@@ -239,7 +242,11 @@ def render_board_health(
         right=("last success", "fails"),
     )
     for board in rows:
-        colour = "red" if board.state is VisitState.FAILING else "yellow"
+        colour = {
+            VisitState.FAILING: "red",
+            VisitState.REFUSING: "dim",
+            VisitState.GONE: "dim",
+        }.get(board.state, "yellow")
         shown.add_row(
             truncate(board.label, 30),
             board.source,
@@ -409,10 +416,10 @@ def render_doctor(
         for source in report.volume_alerts:
             console.print(f"  [red]{source.source}[/red] {escape(source.volume.detail)}")
 
-    if report.blocks:
+    if report.warning_blocks:
         console.print()
         console.print("[bold red]Blocked buckets[/bold red]")
-        for state in report.blocks:
+        for state in report.warning_blocks:
             reason = escape(_first_line(error_text(state.reason))) or "no reason recorded"
             console.print(
                 f"  [red]{escape(state.bucket)}[/red] for another "
@@ -422,6 +429,29 @@ def render_doctor(
 
     if report.failing_boards:
         _render_failing_boards(console, report.failing_boards, limit=limit, verbose=verbose)
+    if report.refusing_boards:
+        _render_quiet_boards(
+            console,
+            "Boards that refuse this computer",
+            report.refusing_boards,
+            "They answer 401, 403 or 429 to this computer. Many refuse servers and cloud "
+            "addresses but answer a home connection. Stage tries them less often and closes "
+            "none of their postings.",
+            limit=limit,
+        )
+        if report.resting_blocks:
+            hosts = ", ".join(sorted(state.bucket for state in report.resting_blocks))
+            console.print(f"[dim]Resting after a refusal: {escape(truncate(hosts, 400))}.[/dim]")
+    if report.gone_boards:
+        _render_quiet_boards(
+            console,
+            "Boards that no longer exist",
+            report.gone_boards,
+            "They answered 404 or 410 three times in a row. Stage checks them less often, "
+            "closes none of their postings and reads them again if they come back. These are "
+            "registry rows to fix or switch off.",
+            limit=limit,
+        )
 
     due = report.due_for_recheck
     if due:
@@ -473,6 +503,23 @@ def _render_failing_boards(
     console.print(
         f"[dim]{advice}" + ("" if verbose else "  --verbose prints each error in full.") + "[/dim]"
     )
+
+
+def _render_quiet_boards(
+    console: Console,
+    heading: str,
+    boards: Sequence["BoardHealth"],
+    advice: str,
+    *,
+    limit: int | None,
+) -> None:
+    console.print()
+    console.print(f"[bold]{heading}[/bold] ({len(boards)})")
+    names = sorted(board.label for board in boards)
+    shown = names if limit is None else names[:limit]
+    console.print(f"  {truncate(', '.join(shown), 400)}")
+    more(console, len(names) - len(shown))
+    console.print(f"[dim]{advice}[/dim]")
 
 
 def _skipped_by_breaker(error: str) -> bool:
@@ -571,7 +618,7 @@ def render_quarantine(
     narrow = console.width < NARROW_COLUMNS
     company_width = 14 if narrow else 16
     location_width = 0 if narrow else 14
-    reason_width = 18 if narrow else 22
+    reason_width = 18 if narrow else max(22, min(49, console.width // 4))
     used = (0 if narrow else 5) + company_width + location_width + reason_width
     title_width = max(16, console.width - used - 2 * ((3 if narrow else 5) + 1))
 
@@ -586,7 +633,8 @@ def render_quarantine(
     def row(entry: QuarantinedJob) -> list[Cell]:
         matched = entry.reason.value
         if entry.matched_phrase:
-            matched += f" ({cut_often(entry.matched_phrase, 24)})"
+            room = max(8, reason_width - len(matched) - 3)
+            matched += f" ({cut_often(entry.matched_phrase, room)})"
         company = Cell(cut_often(entry.company, company_width))
         title = Cell(cut(entry.title_raw, title_width), "dim", entry.apply_url_raw)
         reason = Cell(cut_often(matched, reason_width), "yellow")

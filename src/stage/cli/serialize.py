@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, fields
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from stage.cli.schedule import ScheduleStatus
@@ -17,16 +17,6 @@ from stage.domain import Job, QuarantinedJob, RateState, VisitState
 from stage.domain.text import dump
 
 ERROR_FIELDS = frozenset({"error", "last_error", "reason"})
-
-
-class _ReconfigurableOutput(Protocol):
-    def reconfigure(self, *, encoding: str) -> object: ...
-
-
-def configure_terminal_output(stdout: object, platform: str) -> None:
-    if platform != "win32" or not hasattr(stdout, "reconfigure"):
-        return
-    cast(_ReconfigurableOutput, stdout).reconfigure(encoding="utf-8")
 
 
 def emit(payload: str) -> None:

@@ -591,7 +591,9 @@ async def _adopt_unregistered(
         adopt_unregistered,
         plan_adoption,
         probe_companies,
+        save_limits,
         select_unregistered,
+        stored_limits,
         verify_registry,
     )
     from stage.storage import open_repository
@@ -622,6 +624,7 @@ async def _adopt_unregistered(
             entry.company for entry in report.unregistered if entry.postings or not apply_rows
         ]
         apply_urls = await repository.company_apply_urls(ranked, kept_only=apply_rows)
+        limits = await stored_limits(repository)
     direct_rows, name_rows = select_unregistered(
         ranked,
         apply_urls,
@@ -647,10 +650,14 @@ async def _adopt_unregistered(
     streams = []
     if direct:
         streams.append(
-            verify_registry(direct, platforms=platforms, excluded=excluded, board_checks=True)
+            verify_registry(
+                direct, platforms=platforms, excluded=excluded, board_checks=True, limits=limits
+            )
         )
     if names:
-        streams.append(probe_companies(names, platforms=platforms, excluded=excluded, size=size))
+        streams.append(
+            probe_companies(names, platforms=platforms, excluded=excluded, size=size, limits=limits)
+        )
     with open_probe_journal() as journal:
         for events in streams:
             async for event in events:
@@ -673,8 +680,15 @@ async def _adopt_unregistered(
                     )
 
     outcome, robots = await plan_adoption(
-        rows, results, today=today, adopt_unnamed=adopt_unnamed, check_robots=apply_rows
+        rows,
+        results,
+        today=today,
+        adopt_unnamed=adopt_unnamed,
+        check_robots=apply_rows,
+        limits=limits,
     )
+    async with open_repository(_database(db)) as repository:
+        await save_limits(repository, limits)
     console.print(
         plain(
             f"{outcome.probed} probed: {len(outcome.adopted)} adoptable "

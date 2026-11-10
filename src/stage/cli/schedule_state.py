@@ -20,7 +20,7 @@ HEARTBEAT_INTERVAL_SECONDS = 1.0
 _HEARTBEAT_MISSES_BEFORE_UNRESPONSIVE = 3
 MAX_HEARTBEAT_SECONDS = 86_400.0
 _STATE_RETRY_DELAYS_SECONDS = (0.0, 0.02, 0.1)
-_ACTIVE_PHASES = frozenset({"waiting", "syncing", "discovering", "checking"})
+_ACTIVE_PHASES = frozenset({"waiting", "rechecking", "syncing", "discovering", "checking"})
 _OUTCOMES = frozenset(outcome.value for outcome in SyncOutcome)
 
 
@@ -78,6 +78,7 @@ class ScheduleStateWriter:
         self._payload = payload
         self._dirty: dict[str, object] = {}
         self._last_write = 0.0
+        self._feeds: set[str] = set()
 
     @classmethod
     def start(
@@ -140,6 +141,9 @@ class ScheduleStateWriter:
         self._reload()
         self._set(force=True, phase="checking")
 
+    def rechecking(self) -> None:
+        self._set(force=True, phase="rechecking")
+
     def complete(
         self,
         *,
@@ -154,7 +158,7 @@ class ScheduleStateWriter:
             "doctor_exit_code": doctor_exit_code,
             "exit_code": exit_code,
         }
-        if self._payload.get("phase") not in ("blocked", "offline"):
+        if self._payload.get("phase") not in ("blocked", "offline", "stopped"):
             values["phase"] = "finished"
             values["outcome"] = _outcome(
                 self._payload.get("sync_outcome"), sync_exit_code, doctor_exit_code
@@ -182,6 +186,21 @@ class ScheduleStateWriter:
             error=summary(detail, 240),
         )
 
+    @property
+    def is_waiting(self) -> bool:
+        self._reload()
+        return self._payload.get("phase") == "waiting"
+
+    def stopped(self, detail: str, *, exit_code: int) -> None:
+        self._reload()
+        self._set(
+            force=True,
+            phase="stopped",
+            finished_at=_stamp(datetime.now(UTC)),
+            exit_code=exit_code,
+            error=summary(detail, 240),
+        )
+
     def blocked(self, detail: str) -> None:
         self._reload()
         self._set(
@@ -200,6 +219,7 @@ class ScheduleStateWriter:
             CompanyUnchanged,
             SourceBlocked,
             SourceFailed,
+            SourceFresh,
             SourceStarted,
             SyncFinished,
             SyncStarted,
@@ -208,11 +228,16 @@ class ScheduleStateWriter:
         progress = _progress_from(self._payload)
         values: dict[str, object] = {"phase": "syncing"}
         if isinstance(event, SyncStarted):
-            progress["total"] = event.companies
+            progress["total"] = 0
         elif isinstance(event, SourceStarted):
             progress["source"] = event.source
             progress["source_total"] = event.companies
             progress["source_complete"] = 0
+            _increment(progress, "total", 1 if event.feed else event.companies)
+            if event.feed:
+                self._feeds.add(event.source)
+        elif isinstance(event, SourceFresh) and event.source in self._feeds:
+            _increment(progress, "total", -1)
         elif isinstance(event, CompanyStarted):
             progress["source"] = event.source
             progress["company"] = event.company
@@ -224,7 +249,9 @@ class ScheduleStateWriter:
                 _increment(progress, "fetched", event.fetched)
                 if event.degraded:
                     _increment(progress, "warnings")
-            elif isinstance(event, (CompanyFailed, CompanyDeferred)):
+            elif isinstance(event, CompanyDeferred) or (
+                isinstance(event, CompanyFailed) and not (event.refused or event.gone)
+            ):
                 _increment(progress, "warnings")
         elif isinstance(event, (SourceBlocked, SourceFailed)):
             progress["source"] = event.source

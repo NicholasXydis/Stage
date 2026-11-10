@@ -1,6 +1,7 @@
 import asyncio
 import sqlite3
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -19,7 +20,7 @@ from textual.widgets import DataTable, Footer, Header, Input, OptionList, Static
 
 from stage.domain import DEFAULT_WINDOW_DAYS, MAX_OPEN_AT_ONCE, ExportFormat, JobFilters
 from stage.domain.text import paragraphs, sanitize
-from stage.domain.tracker import MARKERS, ApplicationStatus
+from stage.domain.tracker import MARKERS, ApplicationStatus, moves_back
 from stage.normalize.location import display_location
 from stage.services.tracker import Change, ChangeReport, TrackerView
 from stage.tui.base import HELP, Columns, HelpPanel, StageScreen, laid_out, picked, refill
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from stage.storage import AsyncRepository
 
 AGE_WIDTH = 5
+UNTRACKED_OFF = "Only postings I have not acted on was turned off, since it needs your tracker."
 
 HELP_TEXT = """[b]Find[/b]
   /        search title, employer, text
@@ -75,9 +77,9 @@ def _tracked_notice(status: ApplicationStatus, report: ChangeReport) -> str:
         line = f"Marked {noun} applied."
     else:
         line = f"Hid {noun}."
-    skipped = len(report.unchanged)
-    if skipped:
-        line += f" {skipped:,} already further along stayed as they were."
+    ahead = sum(1 for entry in report.unchanged if moves_back(entry.status, status))
+    if ahead:
+        line += f" {ahead:,} already further along stayed as they were."
     return f"{line} z undoes it."
 
 
@@ -328,7 +330,13 @@ class PostingsScreen(StageScreen[None]):
         from stage.services.tracker import tracker_view
 
         view = await tracker_view(repo)
-        if view.problem and not self._tracker_warned:
+        if view.problem and self.state.untracked:
+            self.state.untracked = False
+            self._tracker_warned = True
+            told(self, f"{UNTRACKED_OFF} {view.problem}", "warning")
+            with suppress(NoMatches):
+                self._render_filters()
+        elif view.problem and not self._tracker_warned:
             self._tracker_warned = True
             told(self, view.problem, "warning")
         excluded = view.tracked if self.state.untracked else view.hidden

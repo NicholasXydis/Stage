@@ -1,5 +1,7 @@
 import json
-from collections.abc import AsyncIterator, Callable, Sequence
+import time
+from collections.abc import AsyncIterator, Callable, Iterator, Sequence
+from contextlib import contextmanager
 from typing import TextIO
 
 from rich.console import Console
@@ -62,6 +64,9 @@ async def render_sync(
     named = 0
     planned_by: dict[str, int] = {}
     done_by: dict[str, int] = {}
+    feeds: set[str] = set()
+    denied = 0
+    missing = 0
 
     def step(marker: str, width: int) -> str:
         counter = f"[dim]{done:>4}/{total}[/dim] " if total else ""
@@ -75,7 +80,7 @@ async def render_sync(
         if isinstance(event, CompanyFinished | CompanyUnchanged | CompanyFailed | CompanyDeferred):
             done_by[under] = done_by.get(under, 0) + 1
         elif isinstance(event, SourceStarted):
-            planned_by[under] = event.companies or 1
+            planned_by[under] = 1 if event.feed else event.companies
             total += planned_by[under]
         elif isinstance(event, SourceFinished) and under in planned_by:
             total += done_by.get(under, 0) - planned_by.pop(under)
@@ -83,9 +88,8 @@ async def render_sync(
             case SyncStarted(sources=sources, companies=companies):
                 named = min(15, max(map(len, sources))) if len(sources) > 1 else 0
                 source_names = ", ".join(sources)
-                console.print(
-                    f"[bold]Syncing[/bold] {counted(companies, 'company board')} via {source_names}"
-                )
+                boards = f"{counted(companies, 'company board')} via " if companies else ""
+                console.print(f"[bold]Syncing[/bold] {boards}{source_names}")
             case UnroutableCompanies(companies=stranded, platforms=platforms):
                 console.print(
                     f"\n[bold red]No adapter for {', '.join(platforms)}.[/bold red] "
@@ -124,8 +128,10 @@ async def render_sync(
                     f"{reason}. Not fetched this run. Clear it with "
                     f"[bold]stage sources --reset-rate-limit {blocked.bucket}[/bold].[/dim]"
                 )
-            case SourceStarted(source=source, companies=companies):
-                size = counted(companies, "board") if companies else "feed"
+            case SourceStarted(source=source, companies=companies, feed=feed):
+                size = "feed" if feed else counted(companies, "board")
+                if feed:
+                    feeds.add(source)
                 if named:
                     console.print(f"  [cyan]{source}[/cyan][dim]: {size}[/dim]")
                 else:
@@ -142,15 +148,20 @@ async def render_sync(
                     f"across its buckets, so this run may use "
                     f"{capped.allowance} of {capped.ceiling} per bucket"
                 )
+            case SourceFresh() as fresh if fresh.source in feeds:
+                console.print(
+                    f"  [dim]fresh:[/dim] {fresh.source} was read within "
+                    f"{fresh.refresh_interval_h:g}h, so it waits for a later run"
+                )
             case SourceFresh() as fresh:
                 console.print(
-                    f"  [dim]fresh:[/dim] {fresh.skipped} refreshed within "
-                    f"{fresh.refresh_interval_h:g}h, {fresh.remaining} left"
+                    f"  [dim]fresh:[/dim] {counted(fresh.skipped, f'{fresh.source} board')} read "
+                    f"within {fresh.refresh_interval_h:g}h, {fresh.remaining} left"
                 )
             case SourceResting() as resting:
                 console.print(
-                    f"  [dim]resting:[/dim] {counted(resting.skipped, 'board')} backing off after "
-                    f"repeated failures, {resting.remaining} left"
+                    f"  [dim]resting:[/dim] {counted(resting.skipped, f'{resting.source} board')} "
+                    f"backing off after repeated failures, {resting.remaining} left"
                 )
             case PlannedRequest(company=company, url=url, has_validator=cached):
                 if not planned:
@@ -183,10 +194,21 @@ async def render_sync(
                     f"{step('[cyan]304[/cyan]', 6)}{truncate(company, 24):<24} "
                     f"{'unchanged':>14} {elapsed / 1000:>6.1f}s"
                 )
-            case CompanyFailed(source=source, company=company, error=error, elapsed_ms=elapsed):
-                failures.append((source, company, error))
+            case CompanyFailed(
+                source=source,
+                company=company,
+                error=error,
+                elapsed_ms=elapsed,
+                refused=refused,
+                gone=gone,
+            ):
+                denied += int(refused)
+                missing += int(gone)
+                if not (refused or gone):
+                    failures.append((source, company, error))
                 done += 1
-                head = step("[red]fail[/red]", 6)
+                marker = "[dim]denied[/dim]" if refused else "[dim]gone[/dim]" if gone else ""
+                head = step(marker or "[red]fail[/red]", 6)
                 room = max(14, min(60, console.width - Text.from_markup(head).cell_len - 33))
                 console.print(
                     f"{head}{truncate(company, 24):<24} {error_cell(error, room)} "
@@ -252,6 +274,16 @@ async def render_sync(
             case _:
                 continue
 
+    if denied:
+        console.print(
+            f"[dim]{counted(denied, 'board')} refused this computer again, so Stage tries them "
+            "less often and closes none of their postings. stage doctor lists them.[/dim]"
+        )
+    if missing:
+        console.print(
+            f"[dim]{counted(missing, 'board')} answered not found again, so Stage checks them "
+            "less often and reads them again if they come back. stage doctor lists them.[/dim]"
+        )
     if failures:
         console.print("\n[bold red]Failed sources[/bold red]")
         for source, company, error in failures:
@@ -523,3 +555,23 @@ def write_request_log(stream: TextIO | None, record: RequestLogged) -> None:
         )
         + "\n"
     )
+
+
+class _Elapsed:
+    def __init__(self, text: str) -> None:
+        self._text = text
+        self._start = time.monotonic()
+
+    def __rich__(self) -> Text:
+        seconds = int(time.monotonic() - self._start)
+        return Text(f"{self._text}  {seconds // 60}:{seconds % 60:02d}")
+
+
+@contextmanager
+def waiting_on(console: Console, text: str) -> Iterator[None]:
+    if not console.is_terminal:
+        console.print(plain(text), soft_wrap=True)
+        yield
+        return
+    with console.status(_Elapsed(text), spinner="line"):
+        yield

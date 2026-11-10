@@ -20,7 +20,7 @@ from stage.cli.render import (
     truncate,
 )
 from stage.domain import DEFAULT_WINDOW_DAYS, UNKNOWN_TERM, Job
-from stage.domain.text import counted
+from stage.domain.text import counted, posted_day
 from stage.domain.text import sanitize as _sanitize
 from stage.domain.tracker import TrackedPosting
 
@@ -186,7 +186,7 @@ def render_posting(
     console.print(field("first seen", f"{job.first_seen.astimezone():%Y-%m-%d} ({age})"))
     console.print(field("last seen", f"{job.last_seen.astimezone():%Y-%m-%d}"))
     if job.source_posted_at:
-        console.print(field("source date", f"{job.source_posted_at.astimezone():%Y-%m-%d}"))
+        console.print(field("source date", posted_day(job.source_posted_at).isoformat()))
     console.print(field("source", f"{job.source} / {job.board_key}"))
     if tracked is not None:
         tracked_fields(console, tracked)

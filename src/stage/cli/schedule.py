@@ -508,10 +508,17 @@ def run_scheduled(
             number = stop.signum if isinstance(stop, _StoppedError) else signal.SIGINT
             name = signal.Signals(number).name
             exit_code = 128 + number
-            state.failed(
-                f"The scheduled {action.key} was stopped by {name} before it finished.",
-                exit_code=exit_code,
-            )
+            if state.is_waiting:
+                state.stopped(
+                    f"The computer stopped the scheduled {action.key} ({name}) before it "
+                    "started. The next run catches up.",
+                    exit_code=exit_code,
+                )
+            else:
+                state.failed(
+                    f"The scheduled {action.key} was stopped by {name} before it finished.",
+                    exit_code=exit_code,
+                )
             stream.write(f"Stopped by {name}: {_timestamp()}\n")
             stream.write(f"exit code: {exit_code}\n")
     return exit_code

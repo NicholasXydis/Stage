@@ -694,11 +694,10 @@ def _cannot_run(exc: Exception) -> str | None:
 
 
 def main() -> None:
-    if sys.platform == "win32":
-        from stage.cli.serialize import configure_terminal_output
+    from stage.cli.encoding import configure_terminal_output
 
-        configure_terminal_output(sys.stdout, sys.platform)
-        configure_terminal_output(sys.stderr, sys.platform)
+    configure_terminal_output(sys.stdout, sys.platform)
+    configure_terminal_output(sys.stderr, sys.platform)
     try:
         app()
     except Exception as exc:

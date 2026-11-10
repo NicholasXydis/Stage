@@ -205,7 +205,7 @@ def _guided(
         parse_locations,
         parse_roles,
     )
-    from stage.lexicon import fold
+    from stage.storage.sql import fold_company
 
     def step[T](question: str, kept: T, shown: str, parse: Callable[[list[str]], T]) -> T:
         while True:
@@ -218,7 +218,7 @@ def _guided(
                 warn(str(exc))
 
     def avoided(values: list[str]) -> tuple[ChosenCompany, ...]:
-        chosen = parse_companies(values, fold, known)
+        chosen = parse_companies(values, fold_company, known)
         check_overlap(follow, chosen)
         return chosen
 
@@ -241,7 +241,7 @@ def _guided(
         "Employers to follow, included from any place",
         current.follow,
         COMPANY_SEPARATOR.join(e.name for e in current.follow),
-        lambda values: parse_companies(values, fold, known),
+        lambda values: parse_companies(values, fold_company, known),
     )
     kept_avoid = tuple(e for e in current.avoid if e.folded not in {f.folded for f in follow})
     avoid = step(

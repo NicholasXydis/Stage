@@ -113,7 +113,12 @@ class SyncScreen(StageScreen[None]):
         from stage.companies import RegistryError, load_boards
         from stage.paths import registry_override
         from stage.runlock import AnotherRunInProgressError, run_lock_path, single_run
-        from stage.services.maintenance import rescreen_after_upgrade, upgrade_note
+        from stage.services.maintenance import (
+            RECHECK_NOTICE,
+            rescreen,
+            upgrade_note,
+            upgrade_pending,
+        )
         from stage.services.sync import sync
 
         repo = self.repository
@@ -138,9 +143,9 @@ class SyncScreen(StageScreen[None]):
             return
         try:
             with single_run("sync", run_lock_path(database), busy="press s again when it finishes"):
-                checked = await rescreen_after_upgrade(repo)
-                if checked is not None:
-                    self.say(quoted(upgrade_note(checked)))
+                if await upgrade_pending(repo):
+                    self.say(quoted(RECHECK_NOTICE))
+                    self.say(quoted(upgrade_note(await rescreen(repo))))
                 async for event in sync(
                     repo,
                     companies,
@@ -170,7 +175,7 @@ class SyncScreen(StageScreen[None]):
         if isinstance(event, SyncStarted):
             self.query_one("#overall", Static).update(overall_bar(0, 1))
         elif isinstance(event, SourceStarted):
-            self._sources[event.source] = (0, event.companies or 1)
+            self._sources[event.source] = (0, 1 if event.feed else event.companies)
         elif isinstance(event, SourceFinished):
             done, _ = self._sources.get(event.source, (0, 0))
             self._sources[event.source] = (done, done)
@@ -182,7 +187,7 @@ class SyncScreen(StageScreen[None]):
             self._done += 1
             if isinstance(event, CompanyFinished):
                 self._fetched += event.fetched
-            elif isinstance(event, CompanyFailed):
+            elif isinstance(event, CompanyFailed) and not (event.refused or event.gone):
                 self._note(f"{event.source}/{event.company}: {plain_error(event.error)}")
         elif isinstance(event, SourceBlocked):
             until = event.blocked_until.astimezone().strftime("%H:%M")
