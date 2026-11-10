@@ -79,7 +79,7 @@ from stage.domain.health import (
 )
 from stage.domain.ids import board_key, board_of, job_id
 from stage.domain.job import Job
-from stage.domain.matching import location_agrees, term_agrees
+from stage.domain.matching import REPOST, location_agrees, term_agrees, terms_conflict
 from stage.domain.priority import SOURCE_PRIORITY, source_rank
 from stage.domain.quarantine import (
     DEFAULT_QUARANTINE_LIMIT,
@@ -122,13 +122,20 @@ from stage.domain.visits import (
     FIRST_READ_PREFIX,
     FULL_READ_PREFIX,
     HEIR_PREFIX,
+    HELD_CLOSE_PREFIX,
+    MASS_CLOSE_MIN,
+    MASS_CLOSE_SHARE,
     REST_AFTER_FAILURES,
+    RULES_PREFIX,
     SEARCH_PREFIX,
     CompanyVisit,
     DetailFetch,
     SourceVisit,
+    gone,
     is_resting,
+    refused,
     rested_until,
+    turned_away,
 )
 from stage.domain.workday import WorkdayCrawl, WorkdayCrawlStep, WorkdayFacet
 
@@ -142,6 +149,7 @@ __all__ = [
     "DEFAULT_QUARANTINE_LIMIT",
     "DEFAULT_WINDOW_DAYS",
     "MAX_OPEN_AT_ONCE",
+    "REPOST",
     "UNKNOWN_TERM",
     "CandidateSkipped",
     "Company",
@@ -153,8 +161,12 @@ __all__ = [
     "DetailFetch",
     "FIRST_READ_PREFIX",
     "FULL_READ_PREFIX",
+    "HELD_CLOSE_PREFIX",
+    "MASS_CLOSE_MIN",
+    "MASS_CLOSE_SHARE",
     "SEARCH_PREFIX",
     "HEIR_PREFIX",
+    "RULES_PREFIX",
     "CompanyDeferred",
     "CompanyFailed",
     "CompanyFinished",
@@ -202,6 +214,9 @@ __all__ = [
     "REST_AFTER_FAILURES",
     "SourceVisit",
     "is_resting",
+    "gone",
+    "refused",
+    "turned_away",
     "rested_until",
     "SourceSignals",
     "SourceStarted",
@@ -253,6 +268,7 @@ __all__ = [
     "source_rank",
     "summary",
     "term_agrees",
+    "terms_conflict",
     "truncate",
     "web_url",
 ]

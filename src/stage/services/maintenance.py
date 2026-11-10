@@ -3,7 +3,15 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
 from stage.dedup import resolve_duplicates
-from stage.domain import IntegrityRepair, Job, PurgeResult, QuarantinedJob, RateState, RoleCategory
+from stage.domain import (
+    UNKNOWN_TERM,
+    IntegrityRepair,
+    Job,
+    PurgeResult,
+    QuarantinedJob,
+    RateState,
+    RoleCategory,
+)
 from stage.storage import AsyncRepository, SourceBatch
 
 RESCREEN_LIMIT = 100_000
@@ -85,14 +93,13 @@ class RescreenResult:
         return max(0, self.total - self.examined)
 
 
-async def rescreen_after_upgrade(
-    repository: AsyncRepository, *, now: datetime | None = None
-) -> RescreenResult | None:
+RECHECK_NOTICE = "Checking your stored postings first. This can take a few minutes."
+
+
+async def upgrade_pending(repository: AsyncRepository) -> bool:
     from stage.paths import rules_stamp
 
-    if await repository.screened_with() == rules_stamp():
-        return None
-    return await rescreen(repository, now=now)
+    return await repository.screened_with() != rules_stamp()
 
 
 def upgrade_note(result: RescreenResult) -> str:
@@ -155,7 +162,7 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
     released, relabelled = await _release_reclassified_quarantine(repository, moment)
     relocated = await repository.refresh_quarantine_locations(_place_resolver())
     relinked = await repository.relink_duplicates(resolve_duplicates, canonical_apply_url)
-    await repository.mark_screened(rules_stamp())
+    await repository.mark_screened(rules_stamp(), at=moment)
     return RescreenResult(
         examined=examined,
         quarantined=quarantined,
@@ -166,6 +173,28 @@ async def rescreen(repository: AsyncRepository, *, now: datetime | None = None) 
         relocated=relocated,
         relinked=relinked,
     )
+
+
+def _current_term(job: Job) -> str:
+    from stage.normalize import resolve_term
+    from stage.normalize.terms import ended_before, fits_title, graduation_only
+
+    since = job.source_posted_at or job.first_seen
+    titled = resolve_term(title=job.title_raw, pivot_year=since.year, posted=since)
+    if titled.conflict:
+        return UNKNOWN_TERM
+    if titled.term != UNKNOWN_TERM:
+        return titled.term
+    if job.term == UNKNOWN_TERM:
+        written = resolve_term(
+            title=job.title_raw, description=job.description, pivot_year=since.year, posted=since
+        ).term
+        return written if fits_title(written, job.title_raw) else UNKNOWN_TERM
+    if ended_before(job.term, since) or not fits_title(job.term, job.title_raw):
+        return UNKNOWN_TERM
+    if graduation_only(job.term, job.title_raw, job.description, since.year):
+        return UNKNOWN_TERM
+    return job.term
 
 
 def _place_resolver() -> Callable[[str, str, str], tuple[str, str | None]]:
@@ -187,13 +216,20 @@ def _reclassifications(
 ) -> tuple[tuple[Job, ...], tuple[QuarantinedJob, ...]]:
     from stage.classify import (
         classify_role,
+        resolve_eligibility,
         screen_degree_scope,
         screen_is_cs_role,
         screen_is_internship,
         screen_location,
     )
     from stage.classify.scope import to_quarantined
-    from stage.normalize import canonical_apply_url, listed_place, resolve_listing
+    from stage.normalize import (
+        canonical_apply_url,
+        detect_language,
+        listed_place,
+        resolve_listing,
+        shown_company,
+    )
 
     candidates: list[Job] = []
     rejected: list[QuarantinedJob] = []
@@ -203,11 +239,20 @@ def _reclassifications(
         title_role = classify_role(job.title_raw, job.description).role
         candidate = replace(
             job,
+            company=shown_company(job.company),
             location_raw=place,
             apply_url_canonical=canonical_apply_url(job.apply_url_raw),
             location=location.bucket,
             remote_scope=location.remote_scope,
             role=title_role if title_role is not RoleCategory.UNKNOWN else job.role,
+            term=_current_term(job),
+        )
+        eligibility = resolve_eligibility(candidate)
+        candidate = replace(
+            candidate,
+            language=detect_language(job.title_raw, job.description).language,
+            degree_requirement=eligibility.degree_requirement,
+            work_auth_flag=eligibility.work_auth_flag,
         )
         candidates.append(candidate)
         rejection = (

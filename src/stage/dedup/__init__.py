@@ -2,6 +2,7 @@ from stage.dedup.identity import (
     SOURCE_PRIORITY,
     MatchKind,
     MatchResult,
+    repost_key,
     title_canonical,
     would_merge,
 )
@@ -13,6 +14,7 @@ __all__ = [
     "MatchKind",
     "MatchResult",
     "rank",
+    "repost_key",
     "resolve_duplicates",
     "title_canonical",
     "would_merge",

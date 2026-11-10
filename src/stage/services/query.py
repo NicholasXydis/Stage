@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from stage.domain import DEFAULT_WINDOW_DAYS, Job, JobFilters, LocationBucket
 from stage.storage import AsyncRepository
 from stage.storage.search import search_terms
+from stage.storage.sql import fold_company
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,13 +122,11 @@ async def search_jobs(
 async def company_match(repository: AsyncRepository, company: str) -> tuple[bool, str | None]:
     from difflib import get_close_matches
 
-    from stage.lexicon import fold
-
     names = await repository.company_names()
-    wanted = fold(company)
-    if company in names or (wanted and any(fold(name) == wanted for name in names)):
+    wanted = fold_company(company)
+    if company in names or (wanted and any(fold_company(name) == wanted for name in names)):
         return True, None
-    contained = sorted((name for name in names if wanted and wanted in fold(name)), key=len)
+    contained = sorted((name for name in names if wanted and wanted in fold_company(name)), key=len)
     if contained:
         return False, contained[0]
     folded: dict[str, str] = {}

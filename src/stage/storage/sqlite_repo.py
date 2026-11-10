@@ -1,4 +1,6 @@
+import os
 import sqlite3
+from contextlib import suppress
 from pathlib import Path, PurePath
 from urllib.parse import quote
 
@@ -14,7 +16,38 @@ from stage.storage.upkeep import Upkeep
 from stage.storage.visits import VisitRecords
 
 BUSY_TIMEOUT_MS = 5000
+ANALYSIS_LIMIT = 400
 WAL_LIMIT_BYTES = 32 * 1024 * 1024
+
+
+def _repost_key(company: str, title: str, place: str | None) -> str:
+    from stage.dedup import repost_key
+
+    return repost_key(company, title, place or "")
+
+
+def _term_ended(term: str, moment: str | None) -> bool:
+    from stage.normalize.terms import ended_before
+    from stage.storage.sql import from_text
+
+    return ended_before(term, from_text(moment))
+
+
+def _term_fits(term: str, title: str | None) -> bool:
+    from stage.normalize.terms import fits_title
+
+    return fits_title(term, title or "")
+
+
+def _other_opening(main: str | None, copy: str | None) -> bool:
+    from stage.dedup.identity import opening_key
+
+    left, right = opening_key(main or ""), opening_key(copy or "")
+    return bool(left and right) and left != right
+
+
+def _unstarted(conn: sqlite3.Connection) -> bool:
+    return conn.execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchone() is None
 
 
 def read_only_uri(path: PurePath) -> str:
@@ -32,6 +65,10 @@ class SqliteRepository(
         connection.create_function(
             "stage_workday_opening", 1, is_workday_opening, deterministic=True
         )
+        connection.create_function("stage_repost_key", 3, _repost_key, deterministic=True)
+        connection.create_function("stage_term_ended", 2, _term_ended, deterministic=True)
+        connection.create_function("stage_term_fits", 2, _term_fits, deterministic=True)
+        connection.create_function("stage_other_opening", 2, _other_opening, deterministic=True)
 
     @classmethod
     def connect(cls, db_path: Path, *, read_only: bool = False) -> "SqliteRepository":
@@ -41,12 +78,20 @@ class SqliteRepository(
                 return reader
         db_path.parent.mkdir(parents=True, exist_ok=True)
         is_new = create_private(db_path)
+        if is_new:
+            try:
+                restrict_permissions(db_path)
+            except OSError:
+                discard_new(db_path)
+                raise
         conn = sqlite3.connect(db_path, isolation_level=None)
         try:
             conn.row_factory = sqlite3.Row
             conn.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
             if not is_new:
                 refuse_foreign_database(conn, db_path)
+                if os.name == "nt" and _unstarted(conn):
+                    restrict_permissions(db_path)
                 tighten_permissions(
                     db_path,
                     db_path.with_name(f"{db_path.name}-wal"),
@@ -60,13 +105,6 @@ class SqliteRepository(
         except BaseException:
             conn.close()
             raise
-        if is_new:
-            try:
-                restrict_permissions(db_path)
-            except OSError:
-                conn.close()
-                discard_new(db_path)
-                raise
         return cls(conn)
 
     @classmethod
@@ -86,4 +124,9 @@ class SqliteRepository(
         return cls(conn)
 
     def close(self) -> None:
+        with suppress(sqlite3.Error):
+            if not self._conn.execute("PRAGMA query_only").fetchone()[0]:
+                self._conn.execute("PRAGMA busy_timeout = 0")
+                self._conn.execute(f"PRAGMA analysis_limit = {ANALYSIS_LIMIT}")
+                self._conn.execute("PRAGMA optimize")
         self._conn.close()

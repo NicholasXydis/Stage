@@ -69,7 +69,7 @@ def coverage_state(
     if not visited:
         return CoverageState.NEVER_REACHED
     visit = classify_visit(last_success_at, consecutive_failures, now, stale_after_days)
-    if visit is VisitState.FAILING:
+    if visit in (VisitState.FAILING, VisitState.REFUSING, VisitState.GONE):
         return CoverageState.FAILING
     if visit is VisitState.STALE:
         return CoverageState.STALE

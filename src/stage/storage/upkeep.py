@@ -7,27 +7,34 @@ from stage.domain import (
     FIRST_READ_PREFIX,
     FULL_READ_PREFIX,
     HEIR_PREFIX,
+    HELD_CLOSE_PREFIX,
     OPEN_RETENTION_DAYS,
     QUARANTINE_RETENTION_DAYS,
+    RULES_PREFIX,
     SEARCH_PREFIX,
+    UNKNOWN_TERM,
     IntegrityFinding,
     IntegrityRepair,
     PurgeResult,
     source_rank,
 )
 from stage.domain.liveness import CHECK_PREFIX
-from stage.storage.rows import CLOSED, OPEN, UPSERT_HEIR, UPSERT_TOMBSTONE
-from stage.storage.sql import EACH, Store, count, listed, marks, starting, to_text
+from stage.storage.rows import CLOSED, OPEN, UPSERT_DETAIL, UPSERT_HEIR, UPSERT_TOMBSTONE
+from stage.storage.sql import EACH, Store, count, from_text, listed, marks, starting, to_text
 
 MAX_CHAIN_REPAIR_PASSES = 8
+RULES_CHANGED = f"{RULES_PREFIX}changed"
 
 _EXPIRED = "(status = ? AND first_seen < ?) OR (status = ? AND first_seen < ?)"
 
+_REPOST = "stage_repost_key({0}.company, {0}.title_raw, {0}.location_raw)"
 _SAME_BOARD = (
     "SELECT a.id FROM jobs a JOIN jobs b ON a.duplicate_of = b.id "
     "WHERE stage_board_of(a.id, a.source) = stage_board_of(b.id, b.source) "
     "AND NOT (a.apply_url_canonical = b.apply_url_canonical "
-    "AND stage_workday_opening(a.apply_url_canonical))"
+    "AND stage_workday_opening(a.apply_url_canonical)) "
+    f"AND NOT ({_REPOST.format('a')} <> '' AND {_REPOST.format('a')} = {_REPOST.format('b')} "
+    f"AND (a.term = b.term OR '{UNKNOWN_TERM}' IN (a.term, b.term)))"
 )
 _CHECKS = (
     (
@@ -82,12 +89,12 @@ def _rejections_cutoff(now: datetime) -> str:
 def promote_orphaned_duplicates(conn: sqlite3.Connection, leaving: Sequence[str]) -> dict[str, str]:
     doomed = set(leaving)
     rows = conn.execute(
-        "SELECT j.id, j.source, j.duplicate_of FROM json_each(?) w "
+        "SELECT j.id, j.source, j.status, j.duplicate_of FROM json_each(?) w "
         "CROSS JOIN jobs j ON j.duplicate_of = w.value",
         (listed(doomed),),
     ).fetchall()
     rows += conn.execute(
-        "SELECT a.id, a.source, a.duplicate_of FROM jobs a LEFT JOIN jobs b "
+        "SELECT a.id, a.source, a.status, a.duplicate_of FROM jobs a LEFT JOIN jobs b "
         "ON a.duplicate_of = b.id WHERE a.duplicate_of IS NOT NULL AND b.id IS NULL"
     ).fetchall()
     return _promote(conn, [row for row in rows if str(row["id"]) not in doomed])
@@ -95,7 +102,7 @@ def promote_orphaned_duplicates(conn: sqlite3.Connection, leaving: Sequence[str]
 
 def promote_open_copies(conn: sqlite3.Connection, closed: Sequence[str]) -> dict[str, str]:
     rows = conn.execute(
-        "SELECT j.id, j.source, j.duplicate_of FROM json_each(?) w "
+        "SELECT j.id, j.source, j.status, j.duplicate_of FROM json_each(?) w "
         "CROSS JOIN jobs j ON j.duplicate_of = w.value WHERE j.status = ?",
         (listed(closed), OPEN),
     ).fetchall()
@@ -103,18 +110,18 @@ def promote_open_copies(conn: sqlite3.Connection, closed: Sequence[str]) -> dict
 
 
 def _promote(conn: sqlite3.Connection, rows: Sequence[sqlite3.Row]) -> dict[str, str]:
-    clusters: dict[str, set[tuple[int, str]]] = {}
+    clusters: dict[str, set[tuple[bool, int, str]]] = {}
     for row in rows:
         clusters.setdefault(str(row["duplicate_of"]), set()).add(
-            source_rank(str(row["source"]), str(row["id"]))
+            (str(row["status"]) != OPEN, *source_rank(str(row["source"]), str(row["id"])))
         )
     successors: dict[str, str] = {}
     for former, members in clusters.items():
-        (_, winner), *rest = sorted(members)
+        (_, _, winner), *rest = sorted(members)
         conn.execute("UPDATE jobs SET duplicate_of = NULL WHERE id = ?", (winner,))
         conn.executemany(
             "UPDATE jobs SET duplicate_of = ? WHERE id = ?",
-            [(winner, member) for _, member in rest],
+            [(winner, member) for _, _, member in rest],
         )
         successors[former] = winner
     return successors
@@ -173,10 +180,19 @@ def _forget_checks(conn: sqlite3.Connection, leaving: Sequence[str]) -> None:
         "(SELECT 1 FROM jobs j WHERE j.id = substr(detail_fetches.id, ?))",
         (starting(CHECK_PREFIX), len(CHECK_PREFIX) + 1),
     )
-    kept = (CHECK_PREFIX, FULL_READ_PREFIX, FIRST_READ_PREFIX, HEIR_PREFIX, SEARCH_PREFIX)
+    kept = (
+        CHECK_PREFIX,
+        HELD_CLOSE_PREFIX,
+        FULL_READ_PREFIX,
+        FIRST_READ_PREFIX,
+        HEIR_PREFIX,
+        SEARCH_PREFIX,
+        RULES_PREFIX,
+    )
     conn.execute(
         f"DELETE FROM detail_fetches WHERE {' AND '.join(['id NOT GLOB ?'] * len(kept))} "
-        "AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.id = detail_fetches.id)",
+        "AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.id = detail_fetches.id) "
+        "AND NOT EXISTS (SELECT 1 FROM quarantine q WHERE q.id = detail_fetches.id)",
         tuple(starting(prefix) for prefix in kept),
     )
 
@@ -268,8 +284,16 @@ class Upkeep(Store):
     def screened_with(self) -> int:
         return int(self._conn.execute("PRAGMA user_version").fetchone()[0])
 
-    def mark_screened(self, stamp: int) -> None:
+    def mark_screened(self, stamp: int, at: datetime | None = None) -> None:
+        if at is not None and self.screened_with() != stamp:
+            self._conn.execute(UPSERT_DETAIL, (RULES_CHANGED, "stage", to_text(at), 1, 1, 0))
         self._conn.execute(f"PRAGMA user_version = {int(stamp)}")
+
+    def rules_changed_at(self) -> datetime | None:
+        row = self._conn.execute(
+            "SELECT fetched_at FROM detail_fetches WHERE id = ?", (RULES_CHANGED,)
+        ).fetchone()
+        return None if row is None else from_text(row[0])
 
     def pending_heirs(self) -> list[tuple[str, str]]:
         rows = self._conn.execute(

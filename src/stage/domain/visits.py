@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -5,6 +6,8 @@ REST_AFTER_FAILURES = 3
 REST_BASE_HOURS = 6
 REST_MAX_HOURS = 168
 _MAX_BACKOFF_STEPS = 8
+_REFUSAL = re.compile(r"\breturned (?:401|403|429)\b")
+_GONE = re.compile(r"\breturned (?:404|410)\b")
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +31,26 @@ class SourceVisit:
     @property
     def never_succeeded(self) -> bool:
         return self.last_success_at is None
+
+    @property
+    def refusing(self) -> bool:
+        return self.consecutive_failures >= REST_AFTER_FAILURES and refused(self.last_error)
+
+    @property
+    def gone(self) -> bool:
+        return self.consecutive_failures >= REST_AFTER_FAILURES and gone(self.last_error)
+
+
+def refused(error: str) -> bool:
+    return bool(_REFUSAL.search(error))
+
+
+def gone(error: str) -> bool:
+    return bool(_GONE.search(error))
+
+
+def turned_away(error: str) -> bool:
+    return refused(error) or gone(error)
 
 
 def rested_until(visit: SourceVisit) -> datetime | None:
@@ -54,16 +77,27 @@ FULL_READ_PREFIX = "full:"
 SEARCH_PREFIX = "search:"
 FIRST_READ_PREFIX = "first:"
 HEIR_PREFIX = "heir:"
+RULES_PREFIX = "rules:"
+HELD_CLOSE_PREFIX = "held:"
+MASS_CLOSE_SHARE = 0.3
+MASS_CLOSE_MIN = 5
 
 __all__ = [
+    "HELD_CLOSE_PREFIX",
+    "MASS_CLOSE_MIN",
+    "MASS_CLOSE_SHARE",
     "FIRST_READ_PREFIX",
     "FULL_READ_PREFIX",
     "HEIR_PREFIX",
+    "RULES_PREFIX",
     "REST_AFTER_FAILURES",
     "SEARCH_PREFIX",
     "CompanyVisit",
     "DetailFetch",
     "SourceVisit",
     "is_resting",
+    "gone",
+    "refused",
+    "turned_away",
     "rested_until",
 ]

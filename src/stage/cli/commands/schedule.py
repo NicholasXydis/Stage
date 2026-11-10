@@ -13,7 +13,7 @@ from stage.cli.options import (
 
 
 @schedule_app.command(
-    "enable", help="Create this user's half-hourly sync and weekly discovery schedule"
+    "enable", help="Create this user's half-hourly sync, weekly discovery and weekly verify"
 )
 def schedule_enable(
     action: Annotated[
@@ -161,7 +161,7 @@ def schedule_test_notify() -> None:
                 company="Stage",
                 title="Test message",
                 location="your machine",
-                url="https://github.com/NicholasXydis/Stage",
+                url="https://pypi.org/project/stage-cli/",
             )
         ],
         total=1,

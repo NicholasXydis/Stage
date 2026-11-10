@@ -37,6 +37,10 @@ class Link(Protocol):
         pass
 
     @property
+    def kind(self) -> str:
+        pass
+
+    @property
     def evidence(self) -> str:
         pass
 
@@ -51,6 +55,7 @@ class SourceBatch:
     jobs: tuple[Job, ...] = field(default_factory=tuple)
     closable_boards: tuple[str, ...] = field(default_factory=tuple)
     unchanged_boards: tuple[str, ...] = field(default_factory=tuple)
+    board_urls: tuple[tuple[str, tuple[str, ...]], ...] = field(default_factory=tuple)
     validators: tuple[HttpValidator, ...] = field(default_factory=tuple)
     rate_state: tuple[RateState, ...] = field(default_factory=tuple)
     workday_facets: tuple[WorkdayFacet, ...] = field(default_factory=tuple)
@@ -101,6 +106,9 @@ class Repository(Protocol):
     def detail_queue_size(self, source: str) -> int:
         pass
 
+    def stored_details(self, ids: Collection[str]) -> dict[str, tuple[str, str]]:
+        pass
+
     def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
         pass
 
@@ -116,7 +124,10 @@ class Repository(Protocol):
     def screened_with(self) -> int:
         pass
 
-    def mark_screened(self, stamp: int) -> None:
+    def mark_screened(self, stamp: int, at: datetime | None = None) -> None:
+        pass
+
+    def rules_changed_at(self) -> datetime | None:
         pass
 
     def purge(self, now: datetime) -> PurgeResult:
@@ -255,7 +266,9 @@ class Repository(Protocol):
     def cached_url_count(self) -> int:
         pass
 
-    def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]:
+    def volume_history(
+        self, limit: int, since: datetime | None = None
+    ) -> Mapping[str, list[VolumePoint]]:
         pass
 
     def run_history(self, limit: int) -> list[SyncRun]:

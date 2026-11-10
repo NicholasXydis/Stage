@@ -7,6 +7,7 @@ from stage.domain.text import counted
 
 MIN_VOLUME_HISTORY = 3
 VOLUME_DROP_RATIO = 0.5
+TINY_VOLUME = 3
 STALE_AFTER_DAYS = 14
 UNRECORDED_VOLUME = -1
 UNRECORDED_FETCH = -1
@@ -23,6 +24,8 @@ class VisitState(StrEnum):
     HEALTHY = "healthy"
     STALE = "stale"
     FAILING = "failing"
+    REFUSING = "refusing"
+    GONE = "gone"
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,14 +90,14 @@ def assess_volume(source: str, history: list[VolumePoint]) -> VolumeSignal:
         )
 
     baseline = float(median(prior))
-    if baseline <= 0:
+    if baseline < TINY_VOLUME:
         return VolumeSignal(
             source=source,
             verdict=VolumeVerdict.HEALTHY,
             latest=latest,
             baseline=baseline,
             samples=len(prior),
-            detail="has never stored anything",
+            detail="keeps too few postings for a drop to mean anything",
         )
 
     if latest == 0:
@@ -141,7 +144,13 @@ def classify_visit(
     consecutive_failures: int,
     now: datetime,
     stale_after_days: int = STALE_AFTER_DAYS,
+    refusing: bool = False,
+    gone: bool = False,
 ) -> VisitState:
+    if refusing:
+        return VisitState.REFUSING
+    if gone:
+        return VisitState.GONE
     if last_success_at is None:
         return VisitState.FAILING
     if consecutive_failures > 0:

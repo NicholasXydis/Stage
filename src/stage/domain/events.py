@@ -15,6 +15,7 @@ class SyncStarted:
 class SourceStarted:
     source: str
     companies: int
+    feed: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +41,8 @@ class CompanyFailed:
     error: str
     elapsed_ms: float
     unreachable: bool = False
+    refused: bool = False
+    gone: bool = False
 
 
 @dataclass(frozen=True, slots=True)

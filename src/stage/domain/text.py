@@ -3,7 +3,7 @@ import re
 import socket
 import unicodedata
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from ipaddress import ip_address
 from urllib.parse import urlsplit
 
@@ -111,6 +111,11 @@ def plain_error(message: str) -> str:
 
 
 WORKDAY_DOMAINS = ("myworkdayjobs.com", "myworkdaysite.com")
+
+
+def posted_day(moment: datetime) -> date:
+    stated = moment.astimezone(UTC)
+    return stated.date() if stated.time() == time() else moment.astimezone().date()
 
 
 def is_workday_opening(canonical: str) -> bool:
@@ -264,15 +269,36 @@ def dump(payload: object) -> str:
     return json.dumps(json_safe(payload), indent=2, ensure_ascii=False, default=json_default)
 
 
+_BOARD_LABEL = re.compile(
+    r"\s*\((?:workday|eightfold|phenom|ashby|campus|corporate|university|students?|interns?"
+    r"|internships|early careers?|early talent|fr|french)\)\s*$",
+    re.IGNORECASE,
+)
+
+
+_LOCATION_COUNT = re.compile(r"\s*[0-9]+ Locations\s*")
+LOCATION_COUNT_GLOB = "[0-9]* Locations"
+
+
+def counts_locations(place: str) -> bool:
+    return _LOCATION_COUNT.fullmatch(place) is not None
+
+
+def plain_company(name: str) -> str:
+    return _BOARD_LABEL.sub("", name) or name
+
+
 def escape_markup(value: str) -> str:
     return sanitize(value).replace("\\", "\\\\").replace("[", "\\[")
 
 
 __all__ = [
+    "LOCATION_COUNT_GLOB",
     "MAX_OPEN_AT_ONCE",
     "WEB_SCHEMES",
     "cells",
     "counted",
+    "counts_locations",
     "did_you_mean",
     "dump",
     "escape_markup",
@@ -283,6 +309,7 @@ __all__ = [
     "json_safe",
     "one_line",
     "paragraphs",
+    "plain_company",
     "plain_error",
     "public_https_url",
     "sanitize",

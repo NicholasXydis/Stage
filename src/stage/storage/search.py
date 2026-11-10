@@ -7,9 +7,9 @@ MAX_TERMS = 32
 
 
 def search_terms(query: str) -> tuple[str, ...]:
-    from stage.lexicon import fold
+    from stage.lexicon import fold_for_search
 
-    found = [term[:MAX_TERM_LENGTH] for term in fold(query).split() if _TERM.match(term)]
+    found = [term[:MAX_TERM_LENGTH] for term in fold_for_search(query).split() if _TERM.match(term)]
     return tuple(found[:MAX_TERMS])
 
 

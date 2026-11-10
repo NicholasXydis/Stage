@@ -152,14 +152,16 @@ class VisitRecords(Store):
             for run in runs
         ]
 
-    def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]:
+    def volume_history(
+        self, limit: int, since: datetime | None = None
+    ) -> Mapping[str, list[VolumePoint]]:
         history: dict[str, list[VolumePoint]] = {}
         for row in self._conn.execute(
             "SELECT source, stored, deferred, blocked, fetched, requests, not_modified "
-            "FROM sync_run_sources "
-            "WHERE run_id IN (SELECT id FROM sync_runs ORDER BY id DESC LIMIT ?) "
+            "FROM sync_run_sources WHERE run_id IN "
+            "(SELECT id FROM sync_runs WHERE started_at >= ? ORDER BY id DESC LIMIT ?) "
             "ORDER BY run_id DESC",
-            (limit,),
+            (to_text(since) if since is not None else "", limit),
         ):
             history.setdefault(str(row["source"]), []).append(
                 VolumePoint(

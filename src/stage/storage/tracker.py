@@ -79,7 +79,15 @@ class TrackerStore:
 
     @classmethod
     def connect(cls, path: Path) -> "TrackerStore":
+        from stage.paths import discard_new, restrict_permissions
+
         created = _create_private(path)
+        if created:
+            try:
+                restrict_permissions(path)
+            except OSError:
+                discard_new(path)
+                raise
         try:
             conn = sqlite3.connect(path, timeout=WAIT_S)
         except sqlite3.Error as exc:
@@ -99,23 +107,20 @@ class TrackerStore:
             version = int(self._conn.execute("PRAGMA user_version").fetchone()[0])
             if version > SCHEMA_VERSION:
                 raise TrackerUnreadableError("it was written by a newer version of Stage")
+            unstarted = version == 0
             if version < SCHEMA_VERSION:
                 with self._conn:
                     self._conn.executescript(_SCHEMA)
                     self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         except sqlite3.Error as exc:
             raise _unreadable(exc) from exc
-        from stage.paths import discard_new, restrict_permissions, tighten_permissions
+        from stage.paths import restrict_permissions, tighten_permissions
 
-        if not created:
-            tighten_permissions(path)
+        if created:
             return
-        try:
+        if os.name == "nt" and unstarted:
             restrict_permissions(path)
-        except OSError:
-            self._conn.close()
-            discard_new(path)
-            raise
+        tighten_permissions(path)
 
     def close(self) -> None:
         self._conn.close()

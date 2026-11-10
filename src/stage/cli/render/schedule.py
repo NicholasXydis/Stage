@@ -13,7 +13,12 @@ _FINISHED = {
     "partial": ("completed with attention", "yellow"),
     "failure": ("failed", "red"),
 }
-_WORKING = {"syncing": "syncing", "discovering": "discovering", "checking": "checking health"}
+_WORKING = {
+    "rechecking": "checking stored postings",
+    "syncing": "syncing",
+    "discovering": "discovering",
+    "checking": "checking health",
+}
 
 
 def render_schedule(console: Console, report: "ScheduleStatus") -> None:
@@ -57,6 +62,11 @@ def render_scheduled_run(console: Console, run: dict[str, object] | None) -> Non
         console.print(
             f"    [yellow]skipped, no internet connection[/yellow] {_time(run.get('finished_at'))}"
         )
+    elif phase == "stopped":
+        console.print(
+            "    [yellow]skipped, the computer stopped it before it started[/yellow] "
+            f"{_time(run.get('finished_at'))}"
+        )
     elif phase == "blocked":
         error = error_cell(str(run.get("error", "")), 200)
         console.print(f"    [yellow]another run holds the lock[/yellow]: {error}")
@@ -74,7 +84,12 @@ def render_scheduled_run(console: Console, run: dict[str, object] | None) -> Non
     else:
         return
     progress = run.get("progress")
-    if isinstance(progress, dict) and phase not in {"blocked", "offline", "unresponsive"}:
+    if isinstance(progress, dict) and phase not in {
+        "blocked",
+        "offline",
+        "stopped",
+        "unresponsive",
+    }:
         complete = progress.get("complete", 0)
         total = progress.get("total", 0)
         if complete or total:

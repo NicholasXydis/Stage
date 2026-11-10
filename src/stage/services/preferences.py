@@ -20,8 +20,9 @@ from stage.domain.preferences import (
     parse_roles,
     parse_terms,
 )
-from stage.domain.text import did_you_mean
+from stage.domain.text import did_you_mean, plain_company
 from stage.storage import AsyncRepository
+from stage.storage.sql import fold_company
 
 FILE_NAME = "preferences.json"
 FORMAT = 1
@@ -111,10 +112,8 @@ def revise_preferences(
     about: str | None = None,
     commas: bool = True,
 ) -> Preferences:
-    from stage.lexicon import fold
-
     def companies(values: Sequence[str]) -> tuple[ChosenCompany, ...]:
-        return parse_companies(values, fold, known, commas=commas)
+        return parse_companies(values, fold_company, known, commas=commas)
 
     revised = Preferences(
         locations=current.locations if locations is None else parse_locations(locations),
@@ -129,9 +128,7 @@ def revise_preferences(
 
 
 async def stored_companies(repository: AsyncRepository) -> dict[str, str]:
-    from stage.lexicon import fold
-
-    return {fold(name): name for name in await repository.company_names()}
+    return {fold_company(name): name for name in await repository.company_names()}
 
 
 def unseen_companies(
@@ -236,12 +233,11 @@ def _company(entry: Any) -> ChosenCompany | None:
     name = entry.get("name")
     if not isinstance(name, str) or not clean_text(name):
         return None
+    shown = clean_text(name)
     folded = entry.get("folded")
-    if not isinstance(folded, str) or not folded:
-        from stage.lexicon import fold
-
-        folded = fold(name)
-    return ChosenCompany(name=clean_text(name), folded=folded) if folded else None
+    if plain_company(shown) != shown or not isinstance(folded, str) or not folded:
+        folded = fold_company(shown)
+    return ChosenCompany(name=shown, folded=folded) if folded else None
 
 
 __all__ = [

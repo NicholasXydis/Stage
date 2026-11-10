@@ -1,11 +1,20 @@
 from bisect import bisect_right
-from collections.abc import Sequence
+from collections import Counter
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 
-from stage.dedup.identity import MatchKind, MatchResult, would_merge
-from stage.domain import Job, source_rank
+from stage.dedup.identity import (
+    MatchKind,
+    MatchResult,
+    employer_acronym,
+    employer_key,
+    employer_name,
+    job_opening,
+    repost_key,
+    would_merge,
+)
+from stage.domain import REPOST, UNKNOWN_TERM, Job, source_rank, terms_conflict
 from stage.domain.text import is_workday_opening
-from stage.lexicon import fold
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +43,34 @@ def _ambiguous_urls(jobs: Sequence[Job]) -> frozenset[str]:
 
 def _same_opening(left: Job, right: Job) -> bool:
     url = left.apply_url_canonical
-    return bool(url) and url == right.apply_url_canonical and is_workday_opening(url)
+    if url and url == right.apply_url_canonical and is_workday_opening(url):
+        return True
+    named = job_opening(left)
+    return bool(named) and named == job_opening(right)
+
+
+def _repost_of(job: Job) -> str:
+    return repost_key(job.company, job.title_raw, job.location_raw)
+
+
+def _reposts(jobs: Sequence[Job], keys: Mapping[str, str]) -> Iterator[list[str]]:
+    grouped: dict[tuple[str, str], list[Job]] = {}
+    for job in jobs:
+        if keys[job.id]:
+            grouped.setdefault((job.board_key, keys[job.id]), []).append(job)
+    for members in grouped.values():
+        terms = {job.term for job in members} - {UNKNOWN_TERM}
+        if len(terms) <= 1:
+            yield [job.id for job in members]
+            continue
+        for term in sorted(terms):
+            yield [job.id for job in members if job.term == term]
+
+
+def _terms_clash(left: Sequence[Job], right: Sequence[Job]) -> bool:
+    one = {job.term for job in left} - {UNKNOWN_TERM}
+    two = {job.term for job in right} - {UNKNOWN_TERM}
+    return bool(one and two) and one.isdisjoint(two)
 
 
 def _one_opening(left: Sequence[Job], right: Sequence[Job]) -> bool:
@@ -46,14 +82,47 @@ def _one_opening(left: Sequence[Job], right: Sequence[Job]) -> bool:
     )
 
 
-def _candidates(jobs: Sequence[Job], touched: set[str]) -> list[set[int]]:
+PROOFS_TO_LEARN = 2
+
+
+def learned_employers(jobs: Sequence[Job], ambiguous: frozenset[str]) -> dict[str, str]:
+    owners: dict[str, set[str]] = {}
+    for job in jobs:
+        url = job.apply_url_canonical if job.apply_url_canonical not in ambiguous else ""
+        if proof := job_opening(job) or url:
+            owners.setdefault(proof, set()).add(employer_name(job.company))
+    proofs = Counter(tuple(sorted(names)) for names in owners.values() if len(names) == 2)
+    parent: dict[str, str] = {}
+
+    def find(name: str) -> str:
+        while parent.setdefault(name, name) != name:
+            name = parent[name]
+        return name
+
+    for (first, second), count in sorted(proofs.items()):
+        if count >= PROOFS_TO_LEARN:
+            parent[max(find(first), find(second))] = min(find(first), find(second))
+    return {name: find(name) for name in list(parent)}
+
+
+def _candidates(
+    jobs: Sequence[Job], touched: set[str], learned: Mapping[str, str]
+) -> list[set[int]]:
     boards = [job.board_key for job in jobs]
     fresh = [job.id in touched for job in jobs]
     blocks: dict[tuple[str, str], list[int]] = {}
     for index, job in enumerate(jobs):
-        blocks.setdefault(("company", fold(job.company).partition(" ")[0]), []).append(index)
+        blocks.setdefault(("company", employer_key(job.company)), []).append(index)
+        if (known := learned.get(employer_name(job.company))) is not None:
+            blocks.setdefault(("learned", known), []).append(index)
+        acronym = employer_acronym(job.company)
+        if acronym and acronym != employer_key(job.company):
+            blocks.setdefault(("company", acronym), []).append(index)
         if job.apply_url_canonical:
             blocks.setdefault(("url", job.apply_url_canonical), []).append(index)
+        named = job_opening(job)
+        if named:
+            blocks.setdefault(("opening", named), []).append(index)
     later: list[set[int]] = [set() for _ in jobs]
     for key, members in blocks.items():
         by_board: dict[str, list[int]] = {}
@@ -81,6 +150,7 @@ def resolve_duplicates(
         pool[job.id] = job
     jobs = sorted(pool.values(), key=rank)
     ambiguous = _ambiguous_urls(jobs)
+    learned = learned_employers(jobs, ambiguous)
 
     parent: dict[str, str] = {job.id: job.id for job in jobs}
     boards: dict[str, set[str]] = {job.id: {job.board_key} for job in jobs}
@@ -114,7 +184,7 @@ def resolve_duplicates(
     touched = {job.id for job in incoming}
     pairs = [
         (index, other)
-        for index, following in enumerate(_candidates(jobs, touched))
+        for index, following in enumerate(_candidates(jobs, touched, learned))
         for other in sorted(following)
     ]
     matched: dict[tuple[int, int], MatchResult] = {}
@@ -130,22 +200,41 @@ def resolve_duplicates(
             if shared and not _one_opening(members[left_root], members[right_root]):
                 continue
             if (index, other) not in matched:
-                matched[index, other] = would_merge(left, right)
+                matched[index, other] = would_merge(left, right, learned)
             match = matched[index, other]
             if not match or (match.kind is MatchKind.URL) is not by_link:
                 continue
             if match.kind is MatchKind.URL and left.apply_url_canonical in ambiguous:
                 continue
+            if match.kind is not MatchKind.URL and _terms_clash(
+                members[left_root], members[right_root]
+            ):
+                continue
             union(left.id, right.id)
             demoted = right.id if find(right.id) != right_root else left.id
             reason[demoted] = (match.kind.value, match.evidence)
 
+    keys = {job.id: _repost_of(job) for job in jobs}
+    for first, *rest in _reposts(jobs, keys):
+        for twin in rest:
+            if not _terms_clash(members[find(first)], members[find(twin)]):
+                union(first, twin)
+
+    by_id = {job.id: job for job in jobs}
     links: list[DuplicateLink] = []
     for job in jobs:
         canonical = find(job.id)
         if canonical == job.id:
             continue
         kind, evidence = reason.get(job.id, ("", ""))
+        main = by_id[canonical]
+        if (
+            main.board_key == job.board_key
+            and keys[job.id]
+            and keys[job.id] == keys[main.id]
+            and not terms_conflict(job.term, main.term)
+        ):
+            kind, evidence = REPOST, job.location_raw
         links.append(
             DuplicateLink(
                 duplicate_id=job.id,

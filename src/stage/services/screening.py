@@ -27,6 +27,7 @@ from stage.normalize import (
     listed_place,
     resolve_listing,
     resolve_term,
+    shown_company,
 )
 
 POOL_THRESHOLD = 500
@@ -55,6 +56,7 @@ def normalize_batch(jobs: Sequence[Job]) -> Screened:
     for job in jobs:
         job = replace(
             job,
+            company=shown_company(job.company),
             location_raw=listed_place(job.location_raw, job.apply_url_raw, job.title_raw),
             source_posted_at=_plausible(job.source_posted_at, job.first_seen),
         )
@@ -64,6 +66,8 @@ def normalize_batch(jobs: Sequence[Job]) -> Screened:
             description=job.description,
             structured_terms=job.signals.terms,
             structured_season=job.signals.season,
+            pivot_year=(job.source_posted_at or job.first_seen).year,
+            posted=job.source_posted_at or job.first_seen,
         )
         role = classify_role(job.title_raw, job.description, job.signals.category)
         language = detect_language(job.title_raw, job.description)

@@ -14,9 +14,9 @@ from stage.domain import (
     UnregisteredCompany,
     coverage_state,
 )
-from stage.lexicon import fold
 from stage.services.discover import GENERIC_TOKENS, name_matches, name_tokens
 from stage.storage import AsyncRepository
+from stage.storage.sql import fold_company
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,7 +173,7 @@ def _contradiction(
     registered: Mapping[str, Company],
     moment: datetime,
 ) -> str:
-    company = registered.get(fold(record.company))
+    company = registered.get(fold_company(record.company))
     if company is not None and company.enabled:
         return f"the registry now polls it on {company.platform.value}"
     if company is not None:
@@ -191,7 +191,7 @@ def contradicted_reviews(
     now: datetime | None = None,
 ) -> tuple[tuple[CoverageClassification, str], ...]:
     moment = now or datetime.now(UTC)
-    registered = {fold(company.name): company for company in companies}
+    registered = {fold_company(company.name): company for company in companies}
     found = [
         (record, reason)
         for record in records

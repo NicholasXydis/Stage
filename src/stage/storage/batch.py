@@ -5,8 +5,20 @@ from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import NamedTuple
 
-from stage.domain import OPEN_RETENTION_DAYS, Job, JobStatus, QuarantinedJob, board_of
-from stage.domain.liveness import CHECK_PREFIX, CHECKED_SOURCES
+from stage.domain import (
+    HELD_CLOSE_PREFIX,
+    MASS_CLOSE_MIN,
+    MASS_CLOSE_SHARE,
+    OPEN_RETENTION_DAYS,
+    REPOST,
+    UNKNOWN_TERM,
+    Job,
+    JobStatus,
+    LocationBucket,
+    QuarantinedJob,
+    board_of,
+)
+from stage.domain.liveness import BOARD_SOURCES, CHECK_PREFIX
 from stage.domain.text import is_workday_opening
 from stage.storage.copies import (
     copies_of_rejected,
@@ -31,8 +43,19 @@ from stage.storage.rows import (
     job_params,
     quarantined_params,
     rate_state_params,
+    stored_locations,
 )
-from stage.storage.sql import EACH, Store, board_rows, count, from_text, listed, marks, to_text
+from stage.storage.sql import (
+    EACH,
+    Store,
+    board_rows,
+    count,
+    from_text,
+    link_of,
+    listed,
+    marks,
+    to_text,
+)
 from stage.storage.upkeep import (
     heirs_of,
     promote_open_copies,
@@ -72,6 +95,26 @@ def _seen(conn: sqlite3.Connection, ids: Iterable[str]) -> dict[str, _Seen]:
     return {str(row["id"]): _Seen(row["listed"], row["rejected"], row["purged"]) for row in rows}
 
 
+def _copies_of_retired(conn: sqlite3.Connection, jobs: Iterable[Job], cutoff: str) -> set[str]:
+    from stage.normalize import named_posting, names_posting
+
+    retired: set[str] = set()
+    for job in jobs:
+        board, tail = named_posting(job.apply_url_canonical or job.apply_url_raw)
+        if not tail:
+            continue
+        rows = conn.execute(
+            "SELECT id FROM tombstones WHERE id GLOB ? AND first_seen < ? AND id <> ?",
+            (f"{board}{tail}", cutoff, job.id),
+        )
+        if any(names_posting(str(row["id"]), tail) for row in rows):
+            retired.add(job.id)
+    return retired
+
+
+_REJECTED_TOUCH = timedelta(days=1)
+
+
 def _first_seen(seen: dict[str, _Seen], started: datetime) -> dict[str, datetime]:
     known: dict[str, datetime] = {}
     for key, found in seen.items():
@@ -91,7 +134,7 @@ def _held_closed(conn: sqlite3.Connection, batch: SourceBatch, jobs: tuple[Job, 
             CHECK_PREFIX,
             CLOSED,
             to_text(batch.run_started_at),
-            int(batch.source not in CHECKED_SOURCES),
+            int(batch.source not in BOARD_SOURCES),
         ),
     )
     return {str(row["id"]) for row in rows}
@@ -112,6 +155,7 @@ def _link_duplicates(
         if board_of(link.duplicate_id, link.duplicate_id)
         != board_of(link.canonical_id, link.canonical_id)
         or is_workday_opening(link.evidence)
+        or link.kind == REPOST
     ]
     duplicates = {duplicate for duplicate, _ in pairs}
     conn.execute(
@@ -119,6 +163,7 @@ def _link_duplicates(
         (listed(job.id for job in jobs if job.id not in duplicates),),
     )
     if not pairs:
+        _inherit_from_copies(conn, [job.id for job in jobs])
         return 0
     conn.executemany(
         "UPDATE jobs SET duplicate_of = ? WHERE id = ?",
@@ -132,7 +177,34 @@ def _link_duplicates(
         "UPDATE jobs SET duplicate_of = ? WHERE duplicate_of = ? AND id != ?",
         [(canonical, duplicate, canonical) for duplicate, canonical in pairs],
     )
+    _inherit_from_copies(conn, [*(job.id for job in jobs), *(canonical for _, canonical in pairs)])
     return len(duplicates)
+
+
+_COPIES = "FROM jobs c WHERE c.duplicate_of = jobs.id AND c.status = ?"
+_CURRENT = (
+    "NOT stage_term_ended(c.term, coalesce(jobs.source_posted_at, jobs.first_seen)) "
+    "AND stage_term_fits(c.term, jobs.title_raw)"
+)
+_PLACED = f"c.location NOT IN {tuple(stored_locations(LocationBucket.UNKNOWN))}"
+_UNPLACED = "TRIM(location_raw) = ''"
+
+
+def _inherit_from_copies(conn: sqlite3.Connection, ids: Sequence[str]) -> None:
+    mains = listed(ids)
+    conn.execute(
+        f"UPDATE jobs SET term = (SELECT MIN(c.term) {_COPIES} AND c.term <> ? AND {_CURRENT}) "
+        f"WHERE id IN {EACH} AND duplicate_of IS NULL AND term = ? "
+        f"AND (SELECT COUNT(DISTINCT c.term) {_COPIES} AND c.term <> ? AND {_CURRENT}) = 1",
+        (OPEN, UNKNOWN_TERM, mains, UNKNOWN_TERM, OPEN, UNKNOWN_TERM),
+    )
+    conn.execute(
+        "UPDATE jobs SET (location_raw, location, remote_scope) = (SELECT c.location_raw, "
+        f"c.location, c.remote_scope {_COPIES} AND {_PLACED} ORDER BY c.id LIMIT 1) "
+        f"WHERE id IN {EACH} AND duplicate_of IS NULL AND {_UNPLACED} "
+        f"AND (SELECT COUNT(DISTINCT c.location) {_COPIES} AND {_PLACED}) = 1",
+        (OPEN, mains, OPEN),
+    )
 
 
 def _reject(
@@ -189,37 +261,69 @@ def _touch(conn: sqlite3.Connection, batch: SourceBatch, stamp: str) -> int:
     touched = 0
     for board in batch.unchanged_boards:
         touched += conn.execute(
-            "UPDATE jobs SET last_seen = ? WHERE source = ? AND id GLOB ? AND status = ?",
-            (stamp, batch.source, board_rows(board), OPEN),
+            "UPDATE jobs SET last_seen = ? WHERE source = ? AND id GLOB ? AND status = ? "
+            "AND last_seen >= coalesce((SELECT fetched_at FROM detail_fetches WHERE id = ?), '')",
+            (
+                stamp,
+                batch.source,
+                board_rows(board),
+                OPEN,
+                f"{HELD_CLOSE_PREFIX}{batch.source}:{board}",
+            ),
         ).rowcount
         conn.execute(
-            "UPDATE quarantine SET last_seen = ? WHERE source = ? AND id GLOB ?",
-            (stamp, batch.source, board_rows(board)),
+            "UPDATE quarantine SET last_seen = ? WHERE source = ? AND id GLOB ? AND last_seen < ?",
+            (
+                stamp,
+                batch.source,
+                board_rows(board),
+                to_text(batch.run_started_at - _REJECTED_TOUCH),
+            ),
         )
     return touched
 
 
-def _close(conn: sqlite3.Connection, batch: SourceBatch, stamp: str) -> tuple[int, list[str]]:
-    if batch.closes_whole_source:
-        gone = [
-            str(row["id"])
-            for row in conn.execute(
-                "SELECT id FROM jobs WHERE source = ? AND status = ? AND last_seen <> ?",
-                (batch.source, OPEN, stamp),
+def _close(
+    conn: sqlite3.Connection, batch: SourceBatch, stamp: str
+) -> tuple[int, list[str], frozenset[str]]:
+    urls = dict(batch.board_urls)
+    boards = ("",) if batch.closes_whole_source else batch.closable_boards
+    gone: list[str] = []
+    held: set[str] = set()
+    for board in boards:
+        rows = board_rows(board) if board else "*"
+        found = _closing(conn, batch.source, board, rows, stamp)
+        if found is None:
+            held.update(
+                url for key, planned in urls.items() if board in ("", key) for url in planned
             )
-        ]
-        conn.execute(f"UPDATE jobs SET status = ? WHERE id IN {EACH}", (CLOSED, listed(gone)))
-        return len(gone), gone
-    gone = [
-        str(row["id"])
-        for board in batch.closable_boards
-        for row in conn.execute(
-            "SELECT id FROM jobs WHERE source = ? AND id GLOB ? AND status = ? AND last_seen <> ?",
-            (batch.source, board_rows(board), OPEN, stamp),
-        )
-    ]
+        gone += found or []
     conn.execute(f"UPDATE jobs SET status = ? WHERE id IN {EACH}", (CLOSED, listed(gone)))
-    return len(gone), gone + _close_list_copies(conn, gone, batch.list_sources, stamp)
+    if batch.closes_whole_source:
+        return len(gone), gone, frozenset(held)
+    copies = _close_list_copies(conn, gone, batch.list_sources, stamp)
+    return len(gone), gone + copies, frozenset(held)
+
+
+def _closing(
+    conn: sqlite3.Connection, source: str, board: str, rows: str, stamp: str
+) -> list[str] | None:
+    found = conn.execute(
+        "SELECT id, last_seen <> ? AS unseen FROM jobs WHERE source = ? AND id GLOB ? "
+        "AND status = ?",
+        (stamp, source, rows, OPEN),
+    ).fetchall()
+    unseen = [str(row["id"]) for row in found if row["unseen"]]
+    marker = f"{HELD_CLOSE_PREFIX}{source}:{board}"
+    if len(unseen) < MASS_CLOSE_MIN or len(unseen) < len(found) * MASS_CLOSE_SHARE:
+        conn.execute("DELETE FROM detail_fetches WHERE id = ?", (marker,))
+        return unseen
+    held = conn.execute("SELECT fetched_at FROM detail_fetches WHERE id = ?", (marker,)).fetchone()
+    if held is not None and str(held["fetched_at"]) < stamp:
+        conn.execute("DELETE FROM detail_fetches WHERE id = ?", (marker,))
+        return unseen
+    conn.execute(UPSERT_DETAIL, (marker, source, stamp, 0, 1, 0))
+    return None
 
 
 def _close_list_copies(
@@ -230,8 +334,9 @@ def _close_list_copies(
     copies = [
         str(row["id"])
         for row in conn.execute(
-            f"SELECT id FROM jobs WHERE duplicate_of IN {EACH} "
-            f"AND source IN ({marks(len(lists))}) AND status = ?",
+            "SELECT c.id FROM jobs c JOIN jobs m ON m.id = c.duplicate_of "
+            f"WHERE c.duplicate_of IN {EACH} AND c.source IN ({marks(len(lists))}) "
+            f"AND c.status = ? AND NOT stage_other_opening({link_of('m')}, {link_of('c')})",
             (listed(gone), *sorted(lists), OPEN),
         )
     ]
@@ -240,7 +345,9 @@ def _close_list_copies(
     return copies
 
 
-def _record_reads(conn: sqlite3.Connection, batch: SourceBatch, stamp: str) -> None:
+def _record_reads(
+    conn: sqlite3.Connection, batch: SourceBatch, stamp: str, held: frozenset[str]
+) -> None:
     conn.executemany(
         UPSERT_VISIT,
         [
@@ -283,6 +390,7 @@ def _record_reads(conn: sqlite3.Connection, batch: SourceBatch, stamp: str) -> N
         ],
     )
     conn.executemany(UPSERT_RATE_STATE, [rate_state_params(state) for state in batch.rate_state])
+    conn.execute(f"DELETE FROM http_cache WHERE url IN {EACH}", (listed(held),))
     conn.executemany(
         UPSERT_VALIDATOR,
         [
@@ -294,6 +402,7 @@ def _record_reads(conn: sqlite3.Connection, batch: SourceBatch, stamp: str) -> N
                 to_text(validator.fetched_at or batch.run_started_at),
             )
             for validator in batch.validators
+            if validator.url not in held
         ],
     )
 
@@ -333,10 +442,12 @@ class BatchWriter(Store):
             seen = _seen(conn, [job.id for job in batch.jobs] + [e.id for e in batch.quarantined])
             cutoff = to_text(started - timedelta(days=OPEN_RETENTION_DAYS))
             known = _first_seen(seen, started)
+            arriving = [job for job in batch.jobs if job.id not in seen]
+            retired = _copies_of_retired(conn, arriving, cutoff)
             jobs = tuple(
                 replace(job, first_seen=known[job.id]) if job.id in known else job
                 for job in batch.jobs
-                if not seen.get(job.id, _UNSEEN).expired(cutoff)
+                if not seen.get(job.id, _UNSEEN).expired(cutoff) and job.id not in retired
             )
             held = _held_closed(conn, batch, jobs)
             jobs = tuple(
@@ -352,12 +463,12 @@ class BatchWriter(Store):
             restore_copies(conn, {job.id for job in jobs})
             _crawl(conn, batch, stamp)
             touched = _touch(conn, batch, stamp)
-            closed, shut = _close(conn, batch, stamp)
+            closed, shut, held_urls = _close(conn, batch, stamp)
             promoted = promote_open_copies(conn, shut)
             remember_heirs(conn, sorted(promoted.items()), stamp)
             heirs = {**heirs, **promoted}
             linked = _link_duplicates(conn, batch.resolve_duplicates, jobs)
-            _record_reads(conn, batch, stamp)
+            _record_reads(conn, batch, stamp, held_urls)
         updated = sum(1 for job in jobs if seen.get(job.id, _UNSEEN).listed is not None)
         return SourceBatchResult(
             source=batch.source,

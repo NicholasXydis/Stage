@@ -4,6 +4,7 @@ import time
 from collections.abc import AsyncIterator, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 from urllib.parse import urlencode, urlsplit
 
 from stage.domain import (
@@ -18,6 +19,7 @@ from stage.domain import (
     PlatformProbed,
     ProbeResult,
     ProbeVerdict,
+    RateState,
     RequestLogged,
     SourceOfRecord,
     UrlResolved,
@@ -33,9 +35,11 @@ from stage.http import (
     RatePosture,
     ValidatorCache,
     failure_text,
+    is_disconnected,
     resolve,
 )
 from stage.lexicon import company_legal_suffixes, fold, generic_company_tokens, name_root_tokens
+from stage.sources import adapter_for_platform, platform_bucket, platform_front
 from stage.sources.platforms import (
     BOARD_PROBES,
     PROBES_BY_PLATFORM,
@@ -49,6 +53,9 @@ from stage.sources.platforms import (
     safe_slug,
     workday_target,
 )
+
+if TYPE_CHECKING:
+    from stage.storage import AsyncRepository
 
 
 class NoMatchingCompanyError(Exception):
@@ -200,8 +207,84 @@ def classify(
 ClientFactory = Callable[[frozenset[str], RatePosture], HttpClient]
 
 
-def _default_client(hosts: frozenset[str], posture: RatePosture) -> HttpClient:
-    return HttpClient(allowed_hosts=hosts, posture=posture, cache=ValidatorCache())
+@dataclass(slots=True)
+class StoredLimits:
+    stored: dict[str, RateState] = field(default_factory=dict)
+    now: datetime = field(default_factory=lambda: datetime.now(UTC))
+    settled: dict[str, RateState] = field(default_factory=dict)
+
+    def factory(self, buckets: Mapping[str, str]) -> ClientFactory:
+        def build(hosts: frozenset[str], posture: RatePosture) -> HttpClient:
+            return HttpClient(
+                allowed_hosts=hosts,
+                posture=posture,
+                cache=ValidatorCache(),
+                rate_state=self.stored,
+                now=self.now,
+                host_buckets=buckets,
+                host_fronts={host: platform_front(host) for host in hosts},
+            )
+
+        return build
+
+    def keep(self, client: HttpClient, heard: "_Heard") -> None:
+        if heard.offline:
+            return
+        for state in client.rate_state(self.now):
+            known = self.stored.get(state.bucket)
+            if known is not None and state.min_interval_override is None:
+                state = replace(state, min_interval_override=known.min_interval_override)
+            self.stored[state.bucket] = self.settled[state.bucket] = state
+
+
+async def stored_limits(repository: "AsyncRepository") -> StoredLimits:
+    return StoredLimits(dict(await repository.load_rate_state()))
+
+
+async def save_limits(repository: "AsyncRepository", limits: StoredLimits) -> None:
+    from stage.storage import SourceBatch
+
+    if limits.settled:
+        await repository.apply_source_batch(
+            SourceBatch(
+                source="discover",
+                run_started_at=limits.now,
+                rate_state=tuple(limits.settled.values()),
+            )
+        )
+
+
+@dataclass(slots=True)
+class _Heard:
+    answered: int = 0
+    cut_off: int = 0
+    stray: int = 0
+
+    def note(self, failure: Exception | None) -> None:
+        if failure is None or _status(failure) is not None:
+            self.answered += 1
+        elif is_disconnected(failure):
+            self.cut_off += 1
+        else:
+            self.stray += 1
+
+    @property
+    def offline(self) -> bool:
+        errors = self.cut_off + self.stray
+        quiet = self.stray <= max(1, errors // 10)
+        return not self.answered and errors >= 2 and self.cut_off > self.stray and quiet
+
+
+def _platform_buckets(platform: Platform, hosts: Iterable[str]) -> dict[str, str]:
+    adapter = adapter_for_platform(platform)
+    shared = adapter.bucket_key if adapter is not None else ""
+    return {host: shared or platform_bucket(host) for host in hosts}
+
+
+def _client_for(
+    client_factory: ClientFactory | None, limits: StoredLimits, buckets: Mapping[str, str]
+) -> ClientFactory:
+    return client_factory or limits.factory(buckets)
 
 
 def resolve_careers_url(url: str) -> DiscoveryEvent:
@@ -398,8 +481,10 @@ async def probe_companies(
     platforms: Sequence[Platform] | None = None,
     excluded: Sequence[Platform] | None = None,
     size: EmployerSize | None = None,
-    client_factory: ClientFactory = _default_client,
+    client_factory: ClientFactory | None = None,
+    limits: StoredLimits | None = None,
 ) -> AsyncIterator[DiscoveryEvent]:
+    paced = limits or StoredLimits()
     probes = _selected_probes(platforms, excluded)
     plans = {name: slug_candidates(name) for name in names}
     tally = _Tally()
@@ -420,10 +505,16 @@ async def probe_companies(
         if not boards:
             continue
         posture = resolve(probe.rate_profile, [DISCOVERY_PROFILE])
-        async with client_factory(_hosts(probe, boards), posture) as client:
-            async for event in _sweep(client, probe, boards, tally, source="discover", size=size):
+        hosts = _hosts(probe, boards)
+        build = _client_for(client_factory, paced, _platform_buckets(probe.platform, hosts))
+        heard = _Heard()
+        async with build(hosts, posture) as client:
+            async for event in _sweep(
+                client, probe, boards, tally, heard, source="discover", size=size
+            ):
                 yield event
             tally.requests += client.request_count
+            paced.keep(client, heard)
     yield tally.finished(non_json=True)
 
 
@@ -433,9 +524,11 @@ async def verify_registry(
     platforms: Sequence[Platform] | None = None,
     excluded: Sequence[Platform] | None = None,
     only: Sequence[str] | None = None,
-    client_factory: ClientFactory = _default_client,
+    client_factory: ClientFactory | None = None,
     board_checks: bool = False,
+    limits: StoredLimits | None = None,
 ) -> AsyncIterator[DiscoveryEvent]:
+    paced = limits or StoredLimits()
     wanted = None if only is None else {fold(name) for name in only}
     catalogue = _EVERY_PROBE if board_checks else PROBES_BY_PLATFORM
     selected = [
@@ -462,10 +555,15 @@ async def verify_registry(
     for platform in ordered:
         probe = catalogue[platform]
         boards = [(company.name, company) for company in grouped[platform]]
-        async with client_factory(_hosts(probe, boards), resolve(probe.rate_profile, [])) as client:
-            async for event in _sweep(client, probe, boards, tally, source="verify"):
+        posture = resolve(probe.rate_profile, []).sized_for(len(boards), len(boards) // 4)
+        hosts = _hosts(probe, boards)
+        build = _client_for(client_factory, paced, _platform_buckets(platform, hosts))
+        heard = _Heard()
+        async with build(hosts, posture) as client:
+            async for event in _sweep(client, probe, boards, tally, heard, source="verify"):
                 yield event
             tally.requests += client.request_count
+            paced.keep(client, heard)
     yield tally.finished(non_json=False)
 
 
@@ -492,6 +590,7 @@ async def _sweep(
     probe: PlatformProbe,
     boards: Sequence[tuple[str, Board]],
     tally: _Tally,
+    heard: _Heard,
     *,
     source: str,
     size: EmployerSize | None = None,
@@ -502,6 +601,7 @@ async def _sweep(
         url = _target(probe, board)[1]
         tally.attempts[key] = tally.attempts.get(key, 0) + 1
         payload, board_name, failure = await _ask(client, probe, board, url)
+        heard.note(failure)
         for record in client.drain_log():
             yield RequestLogged(
                 source=source,
@@ -710,8 +810,9 @@ def _read_by_owner_decision(host: str) -> bool:
 async def read_robots(
     boards: Iterable[Board],
     *,
-    client_factory: ClientFactory = _default_client,
+    client_factory: ClientFactory | None = None,
     timeout: float = ROBOTS_TIMEOUT_S,
+    limits: StoredLimits | None = None,
 ) -> Robots:
     hosts = sorted(
         {
@@ -723,17 +824,24 @@ async def read_robots(
     if not hosts:
         return NO_ROBOTS
     gate = asyncio.Semaphore(ROBOTS_AT_ONCE)
-    async with client_factory(frozenset(hosts), resolve(DISCOVERY_PROFILE, [])) as client:
+    paced = limits or StoredLimits()
+    build = _client_for(client_factory, paced, {host: platform_bucket(host) for host in hosts})
+    heard = _Heard()
+    async with build(frozenset(hosts), resolve(DISCOVERY_PROFILE, [])) as client:
 
         async def read(host: str) -> tuple[str, str]:
             async with gate:
                 try:
                     async with asyncio.timeout(timeout):
-                        return host, (await client.get_text(f"https://{host}/robots.txt")).text
-                except Exception:
+                        text = (await client.get_text(f"https://{host}/robots.txt")).text
+                except Exception as exc:
+                    heard.note(exc)
                     return host, ""
+                heard.note(None)
+                return host, text
 
         found = await asyncio.gather(*(read(host) for host in hosts))
+        paced.keep(client, heard)
     return Robots({host: robots_rules(text, ROBOTS_AGENT) for host, text in found if text})
 
 
@@ -933,13 +1041,14 @@ async def plan_adoption(
     today: date,
     adopt_unnamed: bool = False,
     check_robots: bool = False,
-    client_factory: ClientFactory = _default_client,
+    client_factory: ClientFactory | None = None,
+    limits: StoredLimits | None = None,
 ) -> tuple[AdoptionReport, Robots]:
     outcome = adopt_unregistered(existing, results, today=today, adopt_unnamed=adopt_unnamed)
     if not check_robots or not outcome.adopted:
         return outcome, NO_ROBOTS
     robots = await read_robots(
-        (row.company for row in outcome.adopted), client_factory=client_factory
+        (row.company for row in outcome.adopted), client_factory=client_factory, limits=limits
     )
     screened = adopt_unregistered(
         existing, results, today=today, adopt_unnamed=adopt_unnamed, robots=robots

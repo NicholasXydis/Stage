@@ -21,6 +21,7 @@ from stage.dedup import resolve_duplicates
 from stage.domain import (
     FIRST_READ_PREFIX,
     FULL_READ_PREFIX,
+    REST_AFTER_FAILURES,
     SEARCH_PREFIX,
     BucketPlan,
     Company,
@@ -57,10 +58,13 @@ from stage.domain import (
     WorkdayCrawl,
     WorkdayCrawlStep,
     WorkdayFacet,
+    gone,
     is_resting,
+    refused,
     rotate,
+    turned_away,
 )
-from stage.domain.text import counted, did_you_mean, plain_error
+from stage.domain.text import counted, counts_locations, did_you_mean, plain_error
 from stage.http import (
     CEILING_BACKSTOP,
     REFRESH_SLACK_H,
@@ -76,6 +80,7 @@ from stage.http import (
     skipped_by_breaker,
 )
 from stage.http.profiles import NORMAL_REFRESH_H
+from stage.normalize import canonical_apply_url
 from stage.services.screening import Screener
 from stage.sources import (
     Adapter,
@@ -92,6 +97,7 @@ from stage.sources.base import parse_pages_with
 from stage.sources.workday import WHOLE_READ_BOARDS, WorkdayAdapter, full_read_day
 from stage.storage import AsyncRepository, SourceBatch, SourceBatchResult
 from stage.storage.problems import not_saved
+from stage.storage.sql import fold_company
 
 
 class NoSourcesSelectedError(Exception):
@@ -207,8 +213,6 @@ class Pacing:
     def window(
         self, adapter: Adapter, company: Company, postures: Mapping[str, RatePosture]
     ) -> float:
-        from stage.lexicon import fold
-
         claimed = [
             postures.get(bucket, RatePosture()) for bucket in _adapter_buckets(adapter, [company])
         ]
@@ -217,16 +221,14 @@ class Pacing:
             refresh_interval_h=max(claim.refresh_interval_h for claim in claimed),
             busy_refresh_h=max(claim.busy_refresh_h for claim in claimed),
         )
-        folded = fold(company.name)
+        folded = fold_company(company.name)
         if folded in self.avoided:
             return posture.window(0, 0)
         month, week = self.activity.get(_safe_board_key(adapter, company), (0, 0))
         return posture.window(month, week, folded in self.followed)
 
     def tipped(self, company: Company) -> datetime | None:
-        from stage.lexicon import fold
-
-        folded = fold(company.name)
+        folded = fold_company(company.name)
         return None if folded in self.avoided else self.tips.get(folded)
 
 
@@ -493,14 +495,17 @@ def _safe_plan(adapter: Adapter, company: Company) -> tuple[tuple[str, ...], str
 
 
 def _partial_reason(
-    failed_sources: Sequence[str],
+    failed_boards: int,
+    broken_sources: Sequence[str],
     unroutable: Sequence[Company],
     blocked_sources: Sequence[str],
     deferred_sources: Sequence[str],
 ) -> str:
     reasons = []
-    if failed_sources:
-        reasons.append(f"{counted(len(failed_sources), 'source')} failed")
+    if failed_boards:
+        reasons.append(f"{counted(failed_boards, 'board')} failed")
+    if broken_sources:
+        reasons.append(f"{counted(len(broken_sources), 'source')} failed")
     if blocked_sources:
         reasons.append(f"{counted(len(blocked_sources), 'source')} blocked")
     if deferred_sources:
@@ -558,6 +563,7 @@ class FetchHarvest:
     collected: list[Job] = field(default_factory=list)
     closable: list[str] = field(default_factory=list)
     unchanged: list[str] = field(default_factory=list)
+    urls: dict[str, tuple[str, ...]] = field(default_factory=dict)
     skip_urls: set[str] = field(default_factory=set)
     visits: list[CompanyVisit] = field(default_factory=list)
     resolved_facets: list[WorkdayFacet] = field(default_factory=list)
@@ -568,6 +574,8 @@ class FetchHarvest:
     cut_off: int = 0
     deferred_boards: int = 0
     succeeded: bool = False
+    refusers: frozenset[str] = frozenset()
+    refused: int = 0
 
     @property
     def offline(self) -> bool:
@@ -588,7 +596,10 @@ class FetchHarvest:
             self.deferred_boards += 1
             return CompanyDeferred(source=source, company=label, reason=attempt.error)
         if result is None:
-            self.errors += 1
+            denied = board in self.refusers and refused(attempt.error)
+            missing = board in self.refusers and gone(attempt.error)
+            self.refused += int(denied or missing)
+            self.errors += int(not (denied or missing))
             self.cut_off += int(attempt.cut_off)
             self.skip_urls.update(attempt.planned)
             self.visits.append(
@@ -600,12 +611,15 @@ class FetchHarvest:
                 error=attempt.error,
                 elapsed_ms=attempt.elapsed_ms,
                 unreachable=attempt.unreachable,
+                refused=denied,
+                gone=missing,
             )
         self.visits.append(CompanyVisit(board=board, succeeded=True, label=label))
         if result.not_modified:
             self.unchanged.append(board)
             return CompanyUnchanged(source=source, company=label, elapsed_ms=attempt.elapsed_ms)
         self._keep(board, result, first_read)
+        self.urls[board] = attempt.planned
         if result.degraded:
             self.skip_urls.update(attempt.planned)
             self.skip_urls.update(result.stale_urls)
@@ -674,6 +688,8 @@ class Timings:
 class RunLedger:
     stats: list[SourceRunStats] = field(default_factory=list)
     failed: list[str] = field(default_factory=list)
+    broken: list[str] = field(default_factory=list)
+    failed_boards: int = 0
     succeeded: list[bool] = field(default_factory=list)
     blocked: list[str] = field(default_factory=list)
     deferred: list[str] = field(default_factory=list)
@@ -696,6 +712,7 @@ class RunLedger:
 
     def broke(self, source: str, exc: Exception) -> SourceFailed:
         self.failed.append(source)
+        self.broken.append(source)
         self.stats.append(SourceRunStats(source=source, errors=1))
         said = not_saved(exc) if isinstance(exc, sqlite3.Error) else failure_text(exc)
         return SourceFailed(source=source, error=said)
@@ -713,6 +730,7 @@ class RunLedger:
             self.succeeded.append(True)
         if harvest.errors:
             self.failed.append(source)
+            self.failed_boards += harvest.errors
         if harvest.deferred_boards:
             self.deferred.append(source)
         self.stats.append(
@@ -921,11 +939,35 @@ def _searches_due(
     ]
 
 
+async def _with_stored_details(
+    repository: AsyncRepository, collected: Sequence[Job]
+) -> Sequence[Job]:
+    wanted = [
+        job.id for job in collected if not job.description or counts_locations(job.location_raw)
+    ]
+    stored = await repository.stored_details(wanted) if wanted else {}
+    if not stored:
+        return collected
+    return [_carried(job, stored.get(job.id)) for job in collected]
+
+
+def _carried(job: Job, kept: tuple[str, str] | None) -> Job:
+    if kept is None:
+        return job
+    description, place = kept
+    placed = counts_locations(job.location_raw) and not counts_locations(place) and place
+    return replace(
+        job,
+        description=job.description or description,
+        location_raw=place if placed else job.location_raw,
+    )
+
+
 async def _persist_source_batch(
     repository: AsyncRepository, screener: Screener, batch: SourceBatch, collected: Sequence[Job]
 ) -> tuple[SourceBatchResult, float, float]:
     normalize_clock = time.perf_counter()
-    kept, rejected = await screener(collected)
+    kept, rejected = await screener(await _with_stored_details(repository, collected))
     normalize_ms = _since(normalize_clock)
     write_clock = time.perf_counter()
     counts = await repository.apply_source_batch(replace(batch, jobs=kept, quarantined=rejected))
@@ -962,6 +1004,7 @@ class BoardPlan:
     full_states: Mapping[str, tuple[datetime, bool, bool]] = field(default_factory=dict)
     full_reads: frozenset[str] = frozenset()
     searches: frozenset[str] = frozenset()
+    refusers: frozenset[str] = frozenset()
 
     def opening(self, source: str) -> Iterator[SyncEvent]:
         yield SourceStarted(source=source, companies=len(self.ordered))
@@ -1108,6 +1151,12 @@ async def _plan_boards(
         full_states=full_states,
         full_reads=frozenset(wanted),
         searches=frozenset(searches),
+        refusers=frozenset(
+            board
+            for board, visit in board_visits.items()
+            if visit.consecutive_failures >= REST_AFTER_FAILURES - 1
+            and turned_away(visit.last_error)
+        ),
     )
 
 
@@ -1236,7 +1285,7 @@ async def _run_company_source(
         return
 
     cache = ValidatorCache(plan.seed)
-    harvest = FetchHarvest()
+    harvest = FetchHarvest(refusers=plan.refusers)
     hosts = adapter.hosts_for(plan.ordered)
     async with HttpClient(
         allowed_hosts=hosts,
@@ -1274,6 +1323,7 @@ async def _run_company_source(
             run_started_at=run_started_at,
             closable_boards=tuple(harvest.closable),
             unchanged_boards=tuple(harvest.unchanged),
+            board_urls=tuple(harvest.urls.items()),
             validators=validators,
             rate_state=settled,
             workday_facets=tuple(harvest.resolved_facets),
@@ -1324,7 +1374,7 @@ async def _run_feed_source(
         return
 
     clock = time.perf_counter()
-    yield SourceStarted(source=source, companies=0)
+    yield SourceStarted(source=source, companies=0, feed=True)
     posture = resolve(feed.rate_profile, [])
     seen = (await _visits(repository, source)).get(source)
     last_read = seen.last_success_at if seen is not None else None
@@ -1388,6 +1438,7 @@ async def _run_feed_source(
             rate_state=settled,
             resolve_duplicates=resolve_duplicates,
             closes_whole_source=harvest.whole,
+            board_urls=tuple(harvest.urls.items()),
             detail_fetches=tuple(harvest.detail_outcomes),
             visits=tuple(harvest.visits),
         ),
@@ -1522,7 +1573,9 @@ async def sync(
 
     outcome = ledger.outcome(unroutable)
     partial_reason = (
-        _partial_reason(ledger.failed, unroutable, ledger.blocked, ledger.deferred)
+        _partial_reason(
+            ledger.failed_boards, ledger.broken, unroutable, ledger.blocked, ledger.deferred
+        )
         if outcome is not SyncOutcome.SUCCESS
         else ""
     )
@@ -1535,6 +1588,7 @@ async def sync(
     from stage.services.tracker import follow_recorded
 
     purged = await repository.purge(now_fn())
+    await repository.relink_duplicates(resolve_duplicates, canonical_apply_url)
     await follow_recorded(repository)
 
     await repository.record_sync_run(

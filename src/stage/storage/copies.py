@@ -2,7 +2,7 @@ import sqlite3
 from collections.abc import Callable, Collection, Iterable, Sequence
 from functools import lru_cache
 
-from stage.domain import Job, QuarantinedJob, RejectionReason, source_rank
+from stage.domain import Job, QuarantinedJob, RejectionReason, board_of, source_rank
 from stage.storage.repository import Resolver, SourceBatch
 from stage.storage.rows import OPEN, UPSERT_JOB, job_from, job_params, quarantined_from
 from stage.storage.sql import EACH, fold_company, listed
@@ -40,8 +40,10 @@ def _origin(entry: QuarantinedJob) -> tuple[str, str]:
 
 
 def _inherits(copy: Job, main: QuarantinedJob) -> bool:
-    return not copy.description and source_rank(copy.source, copy.id) > source_rank(
-        main.source, main.id
+    return (
+        not copy.description
+        and copy.board_key != board_of(main.id, main.source)
+        and source_rank(copy.source, copy.id) > source_rank(main.source, main.id)
     )
 
 
@@ -110,14 +112,20 @@ class _Near[T]:
         self._keys_of = keys_of
         self._by_url: dict[str, list[T]] = {}
         self._by_title: dict[tuple[str, frozenset[str]], list[T]] = {}
+        self._by_root: dict[str, list[T]] = {}
 
     def add(self, item: T) -> None:
         if url := self._url_of(item):
             self._by_url.setdefault(url, []).append(item)
-        self._by_title.setdefault(_posting_keys(*self._keys_of(item)), []).append(item)
+        keys = _posting_keys(*self._keys_of(item))
+        self._by_title.setdefault(keys, []).append(item)
+        self._by_root.setdefault(keys[0], []).append(item)
 
     def near(self, url: str, company: str, title: str) -> list[T]:
         return self._by_url.get(url, []) + self._by_title.get(_posting_keys(company, title), [])
+
+    def of_employer(self, url: str, company: str) -> list[T]:
+        return self._by_url.get(url, []) + self._by_root.get(_posting_keys(company, "")[0], [])
 
 
 def copies_of_rejected(
@@ -144,7 +152,7 @@ def copies_of_rejected(
             continue
         near = {
             root.id: root
-            for root in index.near(job.apply_url_canonical, job.company, job.title_raw)
+            for root in index.of_employer(job.apply_url_canonical, job.company)
             if _inherits(job, root)
         }
         pool = [as_job(root) for root in near.values()]

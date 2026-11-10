@@ -8,6 +8,11 @@ from functools import lru_cache
 EACH = "(SELECT value FROM json_each(?))"
 
 
+def link_of(alias: str = "") -> str:
+    prefix = f"{alias}." if alias else ""
+    return f"coalesce(nullif({prefix}apply_url_canonical, ''), {prefix}apply_url_raw)"
+
+
 def listed[T: (str, int)](values: Iterable[T]) -> str:
     return json.dumps(sorted(set(values)))
 
@@ -49,9 +54,10 @@ def limit_clause(limit: int | None, offset: int = 0) -> tuple[str, tuple[int, ..
 
 
 def fold_company(value: str) -> str:
+    from stage.domain.text import plain_company
     from stage.lexicon import fold
 
-    return fold(value)
+    return fold(plain_company(value))
 
 
 def count(conn: sqlite3.Connection, sql: str, params: Iterable[object] = ()) -> int:
@@ -66,7 +72,7 @@ class Store:
         self._conn.execute("BEGIN IMMEDIATE")
         try:
             yield self._conn
+            self._conn.commit()
         except BaseException:
             self._conn.rollback()
             raise
-        self._conn.commit()

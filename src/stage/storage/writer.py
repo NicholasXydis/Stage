@@ -116,6 +116,9 @@ class AsyncRepository:
     async def detail_queue_size(self, source: str) -> int:
         return await self._writer.run(lambda repository: repository.detail_queue_size(source))
 
+    async def stored_details(self, ids: Collection[str]) -> dict[str, tuple[str, str]]:
+        return await self._writer.run(lambda repository: repository.stored_details(ids))
+
     async def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
         return await self._writer.run(lambda repository: repository.load_workday_facets())
 
@@ -147,8 +150,11 @@ class AsyncRepository:
     async def screened_with(self) -> int:
         return await self._writer.run(lambda repository: repository.screened_with())
 
-    async def mark_screened(self, stamp: int) -> None:
-        await self._writer.run(lambda repository: repository.mark_screened(stamp))
+    async def mark_screened(self, stamp: int, at: datetime | None = None) -> None:
+        await self._writer.run(lambda repository: repository.mark_screened(stamp, at))
+
+    async def rules_changed_at(self) -> datetime | None:
+        return await self._writer.run(lambda repository: repository.rules_changed_at())
 
     async def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int:
         return await self._writer.run(lambda repository: repository.relabel_quarantine(entries))
@@ -298,8 +304,10 @@ class AsyncRepository:
     async def last_sync_at(self) -> datetime | None:
         return await self._writer.run(lambda repository: repository.last_sync_at())
 
-    async def volume_history(self, limit: int) -> Mapping[str, list[VolumePoint]]:
-        return await self._writer.run(lambda repository: repository.volume_history(limit))
+    async def volume_history(
+        self, limit: int, since: datetime | None = None
+    ) -> Mapping[str, list[VolumePoint]]:
+        return await self._writer.run(lambda repository: repository.volume_history(limit, since))
 
     async def run_history(self, limit: int) -> list[SyncRun]:
         return await self._writer.run(lambda repository: repository.run_history(limit))

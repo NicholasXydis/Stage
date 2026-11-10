@@ -18,6 +18,7 @@ from stage.domain import (
     classify_visit,
 )
 from stage.domain.text import plain_error
+from stage.domain.visits import refused
 from stage.storage import AsyncRepository
 
 RUN_HISTORY = 20
@@ -70,7 +71,8 @@ class SourceHealth:
     def success_rate(self) -> float | None:
         if not self.boards:
             return None
-        succeeded = sum(1 for board in self.boards if board.state is not VisitState.FAILING)
+        failed = (VisitState.FAILING, VisitState.REFUSING, VisitState.GONE)
+        succeeded = sum(1 for board in self.boards if board.state not in failed)
         return succeeded / len(self.boards)
 
     @property
@@ -80,6 +82,14 @@ class SourceHealth:
     @property
     def stale_boards(self) -> tuple[BoardHealth, ...]:
         return tuple(board for board in self.boards if board.state is VisitState.STALE)
+
+    @property
+    def refusing_boards(self) -> tuple[BoardHealth, ...]:
+        return tuple(board for board in self.boards if board.state is VisitState.REFUSING)
+
+    @property
+    def gone_boards(self) -> tuple[BoardHealth, ...]:
+        return tuple(board for board in self.boards if board.state is VisitState.GONE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,13 +121,35 @@ class DoctorReport:
         return tuple(board for source in self.sources for board in source.stale_boards)
 
     @property
+    def refusing_boards(self) -> tuple[BoardHealth, ...]:
+        return tuple(board for source in self.sources for board in source.refusing_boards)
+
+    @property
+    def gone_boards(self) -> tuple[BoardHealth, ...]:
+        return tuple(board for source in self.sources for board in source.gone_boards)
+
+    @property
+    def resting_blocks(self) -> tuple[RateState, ...]:
+        errors = [board.last_error for board in self.refusing_boards]
+        return tuple(
+            state
+            for state in self.blocks
+            if refused(state.reason) and any(state.bucket in error for error in errors)
+        )
+
+    @property
+    def warning_blocks(self) -> tuple[RateState, ...]:
+        resting = {state.bucket for state in self.resting_blocks}
+        return tuple(state for state in self.blocks if state.bucket not in resting)
+
+    @property
     def warnings(self) -> int:
         return (
             len(self.failing_boards)
             + len(self.stale_boards)
             + len(self.due_for_recheck)
             + len(self.volume_alerts)
-            + len(self.blocks)
+            + len(self.warning_blocks)
         )
 
     @property
@@ -161,7 +193,12 @@ async def _board_health(
                 board=visit.board,
                 label=visit.label or visit.board,
                 state=classify_visit(
-                    visit.last_success_at, visit.consecutive_failures, now, stale_after_days
+                    visit.last_success_at,
+                    visit.consecutive_failures,
+                    now,
+                    stale_after_days,
+                    refusing=visit.refusing,
+                    gone=visit.gone,
                 ),
                 last_success_at=visit.last_success_at,
                 consecutive_failures=visit.consecutive_failures,
@@ -182,7 +219,7 @@ async def doctor(
 ) -> DoctorReport:
     moment = now or datetime.now(UTC)
     runs = await repository.run_history(history)
-    volumes = await repository.volume_history(history)
+    volumes = await repository.volume_history(history, await repository.rules_changed_at())
     stored = await repository.stored_counts()
     boards = await _board_health(repository, moment, stale_after_days, companies)
     rate_state = await repository.load_rate_state()
@@ -192,7 +229,12 @@ async def doctor(
     for run in runs:
         for stats in run.sources:
             latest.setdefault(stats.source, stats)
-    names = sorted(set(volumes) | set(stored) | set(latest) | set(boards))
+    paused = _paused_feeds()
+    names = sorted(
+        name
+        for name in set(volumes) | set(stored) | set(latest) | set(boards)
+        if name not in paused or stored.get(name, 0)
+    )
 
     sources: list[SourceHealth] = []
     for name in names:
@@ -219,7 +261,11 @@ async def doctor(
         last_sync_at=await repository.last_sync_at(),
         integrity=tuple(await repository.integrity_findings(whole_file=whole_file)),
         sources=tuple(sources),
-        blocks=tuple(state for state in rate_state.values() if state.is_blocked(moment)),
+        blocks=tuple(
+            state
+            for state in rate_state.values()
+            if state.is_blocked(moment) and state.bucket not in paused
+        ),
         never_synced=not runs,
         stale_after_days=stale_after_days,
         due_for_recheck=tuple(
@@ -255,3 +301,12 @@ __all__ = [
     "doctor",
     "statistics",
 ]
+
+
+def _paused_feeds() -> frozenset[str]:
+    from stage.sources import get_feeds
+
+    paused = [feed for feed in get_feeds().values() if getattr(feed, "paused", "")]
+    return frozenset(feed.name for feed in paused) | frozenset(
+        getattr(feed, "bucket_key", "") or feed.name for feed in paused
+    )

@@ -27,6 +27,10 @@ LIST_PROBLEM = (
     "Your tracker could not be read, so hidden postings show and none are marked. "
     "Run stage tracker to see why."
 )
+UNTRACKED_PROBLEM = (
+    "--untracked needs your tracker, which could not be read, so nothing was listed. "
+    "Run stage tracker to see why."
+)
 
 
 class TrackerProblemError(Exception):
@@ -302,21 +306,22 @@ def follow_successors(successors: Sequence[tuple[str, str]]) -> int | None:
         with TrackerStore.connect(path) as store:
             store.hold()
             tracked = {entry.posting_id: entry for entry in store.entries()}
-            renamed: dict[str, str] = {}
-            stale: list[str] = []
+            newest: dict[str, TrackedPosting] = {}
+            stale: set[str] = set()
             for former, heir in successors:
                 record = tracked.get(former)
-                if record is None or heir in renamed.values():
+                if record is None or former == heir:
                     continue
-                kept = tracked.get(heir)
+                kept = newest.get(heir) or tracked.get(heir)
                 if kept is not None and kept.changed_at >= record.changed_at:
-                    stale.append(former)
+                    stale.add(former)
                     continue
                 if kept is not None:
-                    stale.append(heir)
-                renamed[former] = heir
+                    stale.add(kept.posting_id)
+                newest[heir] = record
+            renamed = {record.posting_id: heir for heir, record in newest.items()}
             if stale or renamed:
-                store.follow(set(stale), renamed)
+                store.follow(stale, renamed)
     except TrackerUnreadableError:
         return None
     return len(renamed)
@@ -606,6 +611,7 @@ __all__ = [
     "FILE_NAME",
     "FORMATS",
     "LIST_PROBLEM",
+    "UNTRACKED_PROBLEM",
     "Change",
     "ChangeReport",
     "RemoveReport",

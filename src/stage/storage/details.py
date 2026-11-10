@@ -3,7 +3,14 @@ from collections.abc import Collection, Mapping, Sequence
 from datetime import datetime
 
 from stage.domain import UNKNOWN_TERM, Job, RateState, RoleCategory, WorkdayCrawl, WorkdayFacet
-from stage.domain.liveness import CHECK_PREFIX, Liveness, LivenessCheck
+from stage.domain.liveness import (
+    AWAITING_PAGE,
+    BOARD_SOURCES,
+    CHECK_PREFIX,
+    Liveness,
+    LivenessCheck,
+)
+from stage.domain.text import LOCATION_COUNT_GLOB
 from stage.storage.rows import (
     CLOSED,
     OPEN,
@@ -12,30 +19,66 @@ from stage.storage.rows import (
     job_from,
     rate_state_params,
 )
-from stage.storage.sql import EACH, Store, count, from_text, listed, to_text
+from stage.storage.sql import EACH, Store, count, from_text, link_of, listed, to_text
+from stage.storage.upkeep import promote_open_copies, remember_heirs
 
 MAX_DETAIL_ATTEMPTS = 3
+REREAD_ATTEMPTS = 2
 
 _QUEUED = (
     "FROM jobs j LEFT JOIN detail_fetches d ON d.id = j.id "
-    "WHERE j.source = ? AND j.description = '' "
-    "AND (d.id IS NULL OR (d.failed = 1 AND d.attempts < ?)) AND (j.term = ? OR j.role = ?)"
+    "WHERE j.source = ? AND j.status = ? AND ("
+    "(j.description = '' AND (j.term = ? OR j.role = ?) AND (d.id IS NULL "
+    "OR (d.failed = 1 AND d.attempts < ?) OR (d.resolved = 1 AND d.attempts < ?))) "
+    "OR (j.location_raw GLOB ? AND (d.id IS NULL OR d.attempts < ?)))"
+)
+
+
+_AWAITING = (
+    "FROM quarantine q LEFT JOIN detail_fetches d ON d.id = q.id "
+    "WHERE q.source = ? AND q.matched_phrase GLOB ? "
+    "AND (d.id IS NULL OR (d.failed = 1 AND d.attempts < ?))"
+)
+_QUEUE = (
+    f"SELECT j.id, 1 AS rank, j.first_seen {_QUEUED} "
+    f"UNION ALL SELECT q.id, 0 AS rank, q.first_seen {_AWAITING}"
 )
 
 
 def _queued(source: str) -> tuple[object, ...]:
-    return source, MAX_DETAIL_ATTEMPTS, UNKNOWN_TERM, RoleCategory.UNKNOWN.value
+    return (
+        source,
+        OPEN,
+        UNKNOWN_TERM,
+        RoleCategory.UNKNOWN.value,
+        MAX_DETAIL_ATTEMPTS,
+        REREAD_ATTEMPTS,
+        LOCATION_COUNT_GLOB,
+        REREAD_ATTEMPTS,
+        source,
+        f"*{AWAITING_PAGE}",
+        MAX_DETAIL_ATTEMPTS,
+    )
 
 
 class DetailFetches(Store):
     def detail_queue(self, source: str, limit: int) -> list[str]:
         rows = self._conn.execute(
-            f"SELECT j.id {_QUEUED} ORDER BY j.first_seen DESC LIMIT ?", (*_queued(source), limit)
+            f"SELECT id FROM ({_QUEUE}) ORDER BY rank, first_seen DESC LIMIT ?",
+            (*_queued(source), limit),
         )
         return [str(row["id"]) for row in rows]
 
     def detail_queue_size(self, source: str) -> int:
-        return count(self._conn, f"SELECT COUNT(*) {_QUEUED}", _queued(source))
+        return count(self._conn, f"SELECT COUNT(*) FROM ({_QUEUE})", _queued(source))
+
+    def stored_details(self, ids: Collection[str]) -> dict[str, tuple[str, str]]:
+        rows = self._conn.execute(
+            f"SELECT id, description, location_raw FROM jobs WHERE id IN {EACH} "
+            "AND (description <> '' OR NOT location_raw GLOB ?)",
+            (listed(ids), LOCATION_COUNT_GLOB),
+        )
+        return {str(row["id"]): (str(row["description"]), str(row["location_raw"])) for row in rows}
 
     def load_workday_facets(self) -> Mapping[tuple[str, str], WorkdayFacet]:
         rows = self._conn.execute(
@@ -117,9 +160,17 @@ class DetailFetches(Store):
                         shut = [
                             str(row["id"])
                             for row in conn.execute(
-                                "SELECT id FROM jobs WHERE (id = ? OR duplicate_of = ?) "
+                                "SELECT id FROM jobs WHERE (id = ? OR (duplicate_of = ? "
+                                f"AND source NOT IN {EACH} AND NOT stage_other_opening("
+                                f"(SELECT {link_of()} FROM jobs WHERE id = ?), {link_of()}))) "
                                 "AND status = ? ORDER BY id",
-                                (check.id, check.id, OPEN),
+                                (
+                                    check.id,
+                                    check.id,
+                                    listed(sorted(BOARD_SOURCES)),
+                                    check.id,
+                                    OPEN,
+                                ),
                             )
                         ]
                         conn.execute(
@@ -140,6 +191,9 @@ class DetailFetches(Store):
                             for key in keys
                         ],
                     )
+                if closed:
+                    stamp = to_text(max(check.checked_at for check in checks))
+                    remember_heirs(conn, sorted(promote_open_copies(conn, closed).items()), stamp)
                 conn.executemany(UPSERT_PUSHBACK, [rate_state_params(state) for state in pushback])
         finally:
             self._conn.execute(f"PRAGMA busy_timeout = {previous}")
