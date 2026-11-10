@@ -4,6 +4,56 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-11-09
+
+### Fixed
+
+- Syncs closed postings that were still up. A list file that had not changed,
+  a resumed Workday read, and a board whose pages ended early all closed live
+  postings. A read that would close 30% or more of a board now waits for a
+  second read to confirm it.
+- A posting one board took down also closed its copy on another board that
+  still listed it. That copy stays open and shows at once now.
+- `rescreen` fixes terms, degree, work rules and language on stored postings,
+  not only on new ones.
+- Terms are read more carefully. A graduation year is never a term, a title
+  naming two seasons gets none, a winter term lasts until the next April, and
+  French month ranges and codes like H27 count. Place names such as Spring, TX
+  are not seasons.
+- "No clearance required" no longer counts as a work rule, and U.S. and
+  Canadian citizenship rules are caught in more wordings.
+- Two postings for different terms never merge into one, and a check that
+  finds one posting gone no longer closes a list copy naming another job
+  number. List copies match Greenhouse, Lever, Ashby and SmartRecruiters
+  postings by their job number.
+- Greenhouse postings carry the date they first went up, not their last edit.
+- `--untracked` refuses to run when the tracker cannot be read, instead of
+  showing everything as untracked.
+- The database and tracker are private from the moment they are created.
+- Discord escapes employer and place names, and a dropped connection while
+  sending no longer crashes a scheduled run.
+- Stage installs on Intel Macs again. A library it needs stopped shipping a
+  ready-made build for them, so the install tried to compile it and failed.
+- Hiding a posting you applied to says how to bring it back without losing the
+  application. Source dates no longer show a day early, and a terminal that
+  cannot print accents shows ? instead of crashing.
+
+### Changed
+
+- Boards that refuse a server (401, 403, 429) or stay gone (404, 410) are read
+  less often, close nothing and appear quietly in `stage doctor`, not as
+  failures.
+- Lever boards are read one request at a time, a second apart, as Lever asks.
+  `stage discover` remembers which hosts asked Stage to slow down.
+- The negar and zshah lists move to each new season's list on their own. The
+  Muse is paused, since its job API now refuses Stage.
+- Stage's crawler signature, MCP website link and Discord test message point at
+  the PyPI page instead of the repository.
+- New boards for Bank of Canada and Global Relay. Kinaxis, Peraton, Stifel and
+  Blackhawk Network are also read through the iCIMS sites behind their job
+  hubs, which refuse servers. RTX's board was named Pratt & Whitney Canada and
+  now carries its own name.
+
 ## [1.2.0] - 2026-11-03
 
 ### Added
@@ -53,6 +103,7 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   stopping a scheduled run on Windows left its sync running.
 - A sync offline or behind a Wi-Fi login page marked boards as failing, and
   `stage tui` without a terminal spun a CPU core.
+
 ## [1.1.3] - 2026-09-09
 
 ### Fixed
@@ -170,6 +221,7 @@ them in a SQLite database on your own machine.
 
 Python 3.12, 3.13 or 3.14 on macOS, Linux or Windows.
 
+[1.2.1]: https://github.com/NicholasXydis/Stage/releases/tag/v1.2.1
 [1.2.0]: https://github.com/NicholasXydis/Stage/releases/tag/v1.2.0
 [1.1.3]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.3
 [1.1.2]: https://github.com/NicholasXydis/Stage/releases/tag/v1.1.2

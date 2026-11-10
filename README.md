@@ -20,7 +20,7 @@ Free and open source. No account, no hosted service, no telemetry.
 
 ![python](https://img.shields.io/static/v1?label=python&message=3.12%20%7C%203.13%20%7C%203.14&color=4a9eff&logo=python&logoColor=white)
 
-![tests](https://img.shields.io/static/v1?label=tests&message=5%2C366&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=94%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
+![tests](https://img.shields.io/static/v1?label=tests&message=6%2C079&color=44bb00) ![coverage](https://img.shields.io/static/v1?label=coverage&message=94%25&color=44bb00) [![ci](https://img.shields.io/github/actions/workflow/status/NicholasXydis/Stage/ci.yml?branch=main&label=ci&logo=githubactions&logoColor=white)](https://github.com/NicholasXydis/Stage/actions/workflows/ci.yml)
 
 <br>
 
@@ -205,8 +205,8 @@ systemd, or Task Scheduler. Nothing runs until you turn it on.
 Each run reads only what is due, and Stage learns how often each board needs it.
 Community lists are checked every time, and a new posting on one sends Stage to
 that employer's own board on the next run. A board with a new internship this week,
-or a company you follow, is read every hour, and the rest every one to six hours
-depending on how much they post. Workable boards get a gentler three to ten hours.
+or a company you follow, is read every hour, and the rest every one to five and a
+half hours depending on how much they post. Workable boards get a gentler three to ten hours.
 A site that pushes back or slows down gets fewer
 requests, and each computer starts at its own minute.
 `stage schedule enable --every 6h` brings back the old pace.
@@ -226,7 +226,7 @@ stage schedule test-notify        # make sure it works
 
 Create a Discord webhook in the channel you want Stage to post to. It is just a URL Stage uses to send new internships.
 
-Notifications only follow scheduled syncs, not stage sync. Montreal comes first, then the rest of Canada and the US, software before other roles, and a busy run is split over up to four messages so every posting is named. Your machine also needs to be awake. If it misses runs, Stage catches up once when it can run again. Set the webhook on one machine only, because every machine that syncs on a schedule sends its own message.
+Notifications only follow scheduled syncs, not stage sync. Montreal comes first, then the rest of Canada and the US, software before other roles, and a busy run is split over up to four messages. Whatever does not fit is counted at the end, and stage list shows it. Your machine also needs to be awake. If it misses runs, Stage catches up once when it can run again. Set the webhook on one machine only, because every machine that syncs on a schedule sends its own message.
 
 <details>
 <summary><b>Want notifications around the clock?</b></summary>
@@ -308,7 +308,7 @@ Stage/
 ```
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/NicholasXydis/Stage/main/assets/architecture.svg" alt="Stage reads 2,000+ employer boards and 12 community lists with rate limits and caching, normalizes each posting, screens it for internship, CS role, degree and place, keeps what passes and records why the rest was rejected, merges duplicates into one SQLite file on your computer, and serves it to stage list, stage tui, AI apps and Discord" width="100%">
+  <img src="https://raw.githubusercontent.com/NicholasXydis/Stage/main/assets/architecture.svg" alt="Stage reads 2,000+ employer boards and 13 curated feeds with rate limits and caching, normalizes each posting, screens it for internship, CS role, degree and place, keeps what passes and records why the rest was rejected, merges duplicates into one SQLite file on your computer, and serves it to stage list, stage tui, AI apps and Discord" width="100%">
 </div>
 
 ## CI
@@ -349,7 +349,7 @@ and connects two AI apps in a sandbox. What ships is what gets tested.
   follow anything written inside it.
 - Requests are rate limited per host, cached, and retried with backoff, so it
   does not hammer anyone's site.
-- More than nine in ten postings arrive with no description at all. Stage marks those
+- Nearly four in five postings arrive with no description at all. Stage marks those
   fields `unknown` instead of guessing.
 - Missing something you expected? `stage quarantine` shows which rule caught it.
 - Stage also reads community lists such as [Zapply's Internships](https://github.com/zapplyjobs/Internships-2027), [Canada Internships](https://github.com/zapplyjobs/Canada-Internships-2027) and [Vansh's Summer 2027 Internships](https://github.com/vanshb03/Summer2027-Internships).

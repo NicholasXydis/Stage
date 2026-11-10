@@ -34,6 +34,8 @@ classifiers = [
 ]
 dependencies = [
     "beautifulsoup4>=4.15.0",
+    "cryptography<49; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "cryptography>=49; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "fpdf2>=2.8.4",
     "httpx>=0.28.1",
     "mcp>=2.3,<3",
@@ -129,6 +131,7 @@ ignore = ["S101", "S311"]
 "src/stage/services/connect.py" = ["S603"]
 "src/stage/services/background.py" = ["S603"]
 "scripts/app_canary.py" = ["S603", "S607"]
+"scripts/review.py" = ["S608"]
 "src/stage/paths.py" = ["S603"]
 "src/stage/storage/*.py" = ["S608"]
 

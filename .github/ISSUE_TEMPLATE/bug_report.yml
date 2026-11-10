@@ -17,7 +17,7 @@ body:
     attributes:
       label: Version
       description: Output of `stage --version`.
-      placeholder: stage 1.0.0
+      placeholder: stage 1.2.1
     validations:
       required: true
   - type: dropdown

@@ -4,7 +4,7 @@
 
 | Version | Supported |
 | --- | --- |
-| 1.2.0 | ✅ |
+| 1.2.1 | ✅ |
 
 Only the latest release gets security fixes.
 
