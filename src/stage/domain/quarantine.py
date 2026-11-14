@@ -31,6 +31,7 @@ class QuarantinedJob:
     remote_scope: RemoteScope | None = None
     matched_phrase: str = ""
     employment_type: str = ""
+    category: str = ""
 
 
 @dataclass(frozen=True, slots=True)

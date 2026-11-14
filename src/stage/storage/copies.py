@@ -71,6 +71,7 @@ def _rejected_copy(job: Job, origin: str, reason: str) -> QuarantinedJob:
         remote_scope=job.remote_scope,
         matched_phrase=f"{COPY_PREFIX}{origin}{_COPY_REASON}{reason}",
         employment_type=job.signals.employment_type,
+        category=job.signals.category,
     )
 
 
@@ -92,7 +93,7 @@ def as_job(entry: QuarantinedJob, duplicate_of: str | None = None) -> Job:
         location=entry.location,
         remote_scope=entry.remote_scope,
         duplicate_of=duplicate_of,
-        signals=SourceSignals(employment_type=entry.employment_type),
+        signals=SourceSignals(employment_type=entry.employment_type, category=entry.category),
     )
 
 

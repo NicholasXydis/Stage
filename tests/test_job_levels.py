@@ -217,7 +217,7 @@ def test_a_database_from_before_levels_upgrades_in_place(
     SqliteRepository.connect(target).close()
     with closing(sqlite3.connect(target)) as conn, conn:
         assert "level" not in {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
-        assert "employment_type" not in {
+        assert not {"employment_type", "category"} & {
             row[1] for row in conn.execute("PRAGMA table_info(quarantine)")
         }
         conn.execute(
@@ -261,8 +261,10 @@ def test_a_database_from_before_levels_upgrades_in_place(
         repository.close()
 
     assert applied == tuple(migration.version for migration in shipped)
-    assert "level" in jobs_columns and "employment_type" in held_columns
-    assert [(entry.id, entry.employment_type) for entry in held] == [("simplify:feed:9", "")]
+    assert "level" in jobs_columns and {"employment_type", "category"} <= held_columns
+    assert [(entry.id, entry.employment_type, entry.category) for entry in held] == [
+        ("simplify:feed:9", "", "")
+    ]
     assert stored is not None and stored.level is JobLevel.INTERNSHIP
     assert [job.id for job in found] == ["greenhouse:acme:1"]
     assert len(list(tmp_path.glob("stage.db.bak-*"))) == 1

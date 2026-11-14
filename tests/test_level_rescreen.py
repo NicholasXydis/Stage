@@ -14,6 +14,7 @@ from stage.domain import (
     QuarantineFilters,
     RejectionReason,
     RoleCategory,
+    SourceSignals,
 )
 from stage.services import maintenance
 from stage.services.maintenance import rescreen
@@ -32,6 +33,7 @@ def _entry(
     *,
     source: str = "greenhouse",
     employment_type: str = "",
+    category: str = "",
     location: str = "Montreal, QC",
 ) -> QuarantinedJob:
     return QuarantinedJob(
@@ -46,6 +48,7 @@ def _entry(
         location_raw=location,
         matched_phrase=phrase,
         employment_type=employment_type,
+        category=category,
     )
 
 
@@ -247,6 +250,67 @@ async def test_a_markerless_new_grad_feed_row_is_released_once_it_would_pass(
         assert result.released == 1
         assert await _levels(repository) == {"simplify-new-grad:acme:1": JobLevel.NEW_GRAD}
         assert await _reasons(repository) == {}
+
+
+async def test_a_row_rejected_for_its_source_category_is_not_released_by_a_rescreen(
+    db_path: Path,
+) -> None:
+    async with open_repository(db_path) as repository:
+        await _store(
+            repository,
+            [
+                _entry(
+                    "custom:acme:1",
+                    "Software Developer Intern",
+                    RejectionReason.NOT_EARLY_CAREER,
+                    "new graduates",
+                    employment_type="internship",
+                    category="New Graduates",
+                )
+            ],
+        )
+
+        result = await rescreen(repository, now=NOW)
+        rows = await repository.list_quarantined(QuarantineFilters(limit=None))
+
+        assert (result.released, result.relabelled) == (0, 0)
+        assert [(row.reason.value, row.category) for row in rows] == [
+            ("not-early-career", "New Graduates")
+        ]
+        assert await _levels(repository) == {}
+
+
+async def test_a_stored_posting_in_an_excluded_category_is_quarantined_and_stays_there(
+    db_path: Path,
+) -> None:
+    stored = Job(
+        id="custom:acme:1",
+        source="greenhouse",
+        company="Acme",
+        title_raw="Software Developer Intern",
+        title_normalized="software developer intern",
+        apply_url_raw="https://jobs.example.test/1",
+        description="",
+        first_seen=NOW,
+        last_seen=NOW,
+        location_raw="Montreal, QC",
+        location=LocationBucket.MONTREAL,
+        role=RoleCategory.SWE,
+        status=JobStatus.OPEN,
+        level=JobLevel.INTERNSHIP,
+        signals=SourceSignals(employment_type="internship", category="New Graduates"),
+    )
+    async with open_repository(db_path) as repository:
+        await repository.apply_source_batch(
+            SourceBatch(source="greenhouse", run_started_at=NOW, jobs=(stored,))
+        )
+
+        result = await rescreen(repository, now=NOW)
+        rows = await repository.list_quarantined(QuarantineFilters(limit=None))
+
+        assert (result.quarantined, result.released) == (1, 0)
+        assert [(row.id, row.category) for row in rows] == [("custom:acme:1", "New Graduates")]
+        assert await _levels(repository) == {}
 
 
 async def test_a_stored_posting_is_rescreened_to_its_own_level(db_path: Path) -> None:

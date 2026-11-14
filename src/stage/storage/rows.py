@@ -112,6 +112,7 @@ QUARANTINE_COLUMNS = (
     "first_seen",
     "last_seen",
     "employment_type",
+    "category",
 )
 UPSERT_QUARANTINE = upsert(
     "quarantine",
@@ -338,6 +339,7 @@ def quarantined_from(row: sqlite3.Row) -> QuarantinedJob:
         remote_scope=_scope(row["remote_scope"]),
         matched_phrase=row["matched_phrase"],
         employment_type=row["employment_type"],
+        category=row["category"],
     )
 
 
@@ -356,6 +358,7 @@ def quarantined_params(entry: QuarantinedJob, first_seen: datetime) -> tuple[Any
         to_text(first_seen),
         to_text(entry.last_seen),
         entry.employment_type,
+        entry.category,
     )
 
 
