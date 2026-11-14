@@ -283,6 +283,7 @@ async def _release_reclassified_quarantine(
         RejectionReason.NOT_A_CS_ROLE,
         RejectionReason.OUT_OF_SCOPE_LOCATION,
         RejectionReason.NOT_AN_INTERNSHIP,
+        RejectionReason.NOT_EARLY_CAREER,
     ):
         if not remaining:
             break

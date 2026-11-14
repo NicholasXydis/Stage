@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -132,6 +133,53 @@ async def test_the_release_budget_serves_the_older_reasons_before_not_an_interns
             "role1": JobLevel.INTERNSHIP,
         }
         assert list(await _reasons(repository)) == ["grad"], "the new reason takes what is left"
+
+
+async def test_a_not_early_career_row_is_released_when_a_lexicon_change_makes_it_pass(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from stage.lexicon import level_lexicon
+
+    async with open_repository(db_path) as repository:
+        await _store(repository, [_entry("trainee", "Software Engineering Trainee")])
+        await rescreen(repository, now=NOW)
+        assert await _reasons(repository) == {
+            "trainee": ("not-early-career", "no early-career marker in title")
+        }
+
+        real = level_lexicon()
+        monkeypatch.setattr(
+            "stage.classify.level.level_lexicon",
+            lambda: replace(real, entry=real.entry | {"trainee"}),
+        )
+        result = await rescreen(repository, now=NOW)
+
+        assert result.released == 1
+        assert await _levels(repository) == {"trainee": JobLevel.ENTRY}
+        assert await _reasons(repository) == {}
+
+
+async def test_not_early_career_rows_are_scanned_after_every_other_reason(
+    db_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(maintenance, "RESCREEN_LIMIT", 2)
+    async with open_repository(db_path) as repository:
+        await _store(
+            repository,
+            [
+                _entry("first", "Software Engineer, New Grad", RejectionReason.NOT_EARLY_CAREER),
+                _entry("second", "Junior Software Engineer", RejectionReason.NOT_EARLY_CAREER),
+                _entry(
+                    "older", "Software Engineer Intern", RejectionReason.UNKNOWN_CS_ROLE, NO_ROLE
+                ),
+                _entry("middle", "Software Engineer, New Grad"),
+            ],
+        )
+
+        result = await rescreen(repository, now=NOW)
+
+        assert result.released == 2
+        assert set(await _levels(repository)) == {"older", "middle"}
 
 
 async def test_a_stored_posting_is_rescreened_to_its_own_level(db_path: Path) -> None:
