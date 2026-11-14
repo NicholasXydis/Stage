@@ -495,7 +495,7 @@ class WorkdayAdapter:
         capped = not reached_end and not glance
         searched: list[DetailFetch] = []
         if glance and search:
-            found, spent, lost, stopped, new_grad = await _search(
+            found, spent, lost, stopped, new_grad, graded = await _search(
                 client,
                 url,
                 company,
@@ -511,8 +511,8 @@ class WorkdayAdapter:
                     postings.append(posting)
             degraded = sentences(
                 f"Stage read the newest postings of this {total or 0:,}-posting board and "
-                "searched it for internships and new-grad roles, since it has no internship "
-                "filter, so it closes postings only on its weekly full read",
+                f"searched it for internships{' and new-grad roles' if graded else ''}, since it "
+                "has no internship filter, so it closes postings only on its weekly full read",
                 stopped,
                 new_grad,
             )
@@ -604,9 +604,10 @@ class WorkdayAdapter:
 
 async def _search(
     client: HttpClient, url: str, company: Company, budget: int, exhaustive: bool = False
-) -> tuple[list[WorkdayPosting], int, int, str, str]:
+) -> tuple[list[WorkdayPosting], int, int, str, str, bool]:
     found: list[WorkdayPosting] = []
     pages = lost = 0
+    graded = False
     limit = budget if exhaustive else min(budget, SEARCH_PAGES)
     queue = [(NARROW_TEXT, _NARROW_WORDS, exhaustive), (BROAD_TEXT, _BROAD_WORDS, exhaustive)]
     ignored = False
@@ -614,21 +615,23 @@ async def _search(
         text, words, whole = queue.pop(0)
         trailing = words is _NEW_GRAD_WORDS
         offset = total = quiet = 0
+        start = pages
         while True:
             if pages >= limit:
-                return (
-                    found,
-                    pages,
-                    lost,
-                    *_halted(f"stopped after {counted(pages, 'page')}", trailing),
+                outcome = (
+                    "did not run, since the internship searches used the board's page budget"
+                    if trailing and pages == start
+                    else f"stopped after {counted(pages, 'page')}"
                 )
+                return found, pages, lost, *_halted(outcome, trailing), False
             try:
                 response = await client.post_json(url, body=_search_body({}, offset, text))
                 page, dropped = _validate(response.payload, company)
             except CaptivePortalError:
                 raise
             except (HttpError, httpx.HTTPError, PayloadValidationError) as exc:
-                return found, pages, lost, *_halted(f"failed ({failure_text(exc)})", trailing)
+                outcome = f"failed ({failure_text(exc)})"
+                return found, pages, lost, *_halted(outcome, trailing), False
             pages += 1
             lost += dropped
             found.extend(page.jobPostings)
@@ -647,7 +650,8 @@ async def _search(
                 queue.extend((term, (fold(term),), False) for term in SINGLE_TERMS if exhaustive)
             else:
                 queue.append((NEW_GRAD_TEXT, _NEW_GRAD_WORDS, False))
-    return found, pages, lost, IGNORED_OR if ignored and not exhaustive else "", ""
+        graded = graded or trailing
+    return found, pages, lost, IGNORED_OR if ignored and not exhaustive else "", "", graded
 
 
 IGNORED_OR = (
@@ -667,8 +671,8 @@ def _halted(outcome: str, new_grad: bool) -> tuple[str, str]:
     if not new_grad:
         return _search_note(outcome), ""
     return "", (
-        f"The new-grad search {outcome}, so new-grad postings past the newest ones wait for "
-        "the next sync"
+        f"The new-grad search {outcome}, so new-grad postings it did not reach may be missed "
+        "until a later search"
     )
 
 

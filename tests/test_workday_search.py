@@ -412,9 +412,10 @@ async def test_a_new_grad_search_that_finds_nothing_costs_one_request() -> None:
 @respx.mock
 async def test_a_board_that_ignores_or_is_not_asked_a_new_grad_or() -> None:
     asked = _serve()
-    await _fetch()
+    result = await _fetch()
 
     assert NEW_GRAD_TEXT not in [text for text, _ in asked]
+    assert "new-grad" not in result.degraded
 
 
 @respx.mock
@@ -444,7 +445,10 @@ async def test_the_new_grad_search_never_takes_pages_the_internship_searches_nee
 
     assert [text for text, _ in asked if text] == [NARROW_TEXT, BROAD_TEXT]
     assert "The internship search" not in result.degraded
-    assert "The new-grad search stopped after 2 pages" in result.degraded
+    assert "The new-grad search did not run, since the internship searches used" in result.degraded
+    assert "searched it for internships, since" in result.degraded, "no new-grad query was sent"
+    assert "new-grad roles" not in result.degraded.split("The new-grad search")[0]
+    assert "next sync" not in result.degraded
     assert DetailFetch(id=f"{SEARCH_PREFIX}workday:big-careers") in result.detail_fetches
 
 
@@ -460,6 +464,8 @@ async def test_a_new_grad_search_cut_short_is_not_repeated_every_sync() -> None:
 
     assert _offsets(asked, NEW_GRAD_TEXT) == [0]
     assert "The new-grad search stopped after 3 pages" in result.degraded
+    assert "searched it for internships, since" in result.degraded, "the new-grad query was cut"
+    assert "next sync" not in result.degraded
     assert "The internship search" not in result.degraded
     assert DetailFetch(id=f"{SEARCH_PREFIX}workday:big-careers") in result.detail_fetches
 
@@ -473,6 +479,7 @@ async def test_a_new_grad_search_that_fails_keeps_what_the_internship_searches_f
     assert _offsets(asked, NEW_GRAD_TEXT) == [0]
     assert len(_kept(result)) == 3
     assert "The new-grad search failed" in result.degraded
+    assert "searched it for internships, since" in result.degraded
     assert "The internship search" not in result.degraded
     assert DetailFetch(id=f"{SEARCH_PREFIX}workday:big-careers") in result.detail_fetches
 
