@@ -5,6 +5,7 @@ from stage.domain import (
     CoverageClassification,
     Job,
     JobFilters,
+    JobLevel,
     JobStatus,
     Language,
     LocationBucket,
@@ -186,12 +187,15 @@ class PostingReads(Store):
             (listed(job_ids), CLOSED),
         )
 
-    def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
+    def open_counts_by_company(
+        self, keys: Collection[str], levels: Collection[JobLevel] | None = None
+    ) -> dict[str, int]:
+        chosen = f"AND j.level IN {EACH} " if levels else ""
         rows = self._conn.execute(
             "SELECT j.company_fold, COUNT(*) AS total FROM json_each(?) w "
             "CROSS JOIN jobs j ON j.company_fold = w.value "
-            "WHERE j.duplicate_of IS NULL AND j.status = ? GROUP BY j.company_fold",
-            (listed(keys), OPEN),
+            f"WHERE j.duplicate_of IS NULL AND j.status = ? {chosen}GROUP BY j.company_fold",
+            (listed(keys), OPEN, *((listed(level.value for level in levels),) if levels else ())),
         )
         return {str(row["company_fold"]): int(row["total"]) for row in rows}
 

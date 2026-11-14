@@ -12,6 +12,7 @@ from stage.domain import (
     IntegrityRepair,
     Job,
     JobFilters,
+    JobLevel,
     JobStatus,
     PurgeResult,
     QuarantinedJob,
@@ -186,7 +187,9 @@ class Repository(Protocol):
     def ids_with_prefix(self, prefix: str) -> list[str]:
         pass
 
-    def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
+    def open_counts_by_company(
+        self, keys: Collection[str], levels: Collection[JobLevel] | None = None
+    ) -> dict[str, int]:
         pass
 
     def canonical_ids(self, job_ids: Collection[str]) -> dict[str, str]:

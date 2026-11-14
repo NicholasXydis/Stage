@@ -30,8 +30,8 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Rejected postings that are not early-career now say `not-early-career`.
   After the upgrade Stage re-screens older rejections and releases the ones that
   now qualify.
-- Status counts in AI apps, and title suggestions for an employer, follow the
-  internships-only default. The TUI statistics screen counts every level and says
+- Status counts and followed or avoided employer counts in AI apps, and title
+  suggestions for an employer, follow the internships-only default. The TUI statistics screen counts every level and says
   so.
 - `stage coverage` counts an employer as posting internships only when a
   rejected title passes the internship screen.

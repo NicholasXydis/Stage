@@ -14,6 +14,7 @@ from stage.domain import (
     IntegrityRepair,
     Job,
     JobFilters,
+    JobLevel,
     JobStatus,
     PurgeResult,
     QuarantinedJob,
@@ -241,8 +242,12 @@ class AsyncRepository:
     async def ids_with_prefix(self, prefix: str) -> list[str]:
         return await self._writer.run(lambda repository: repository.ids_with_prefix(prefix))
 
-    async def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
-        return await self._writer.run(lambda repository: repository.open_counts_by_company(keys))
+    async def open_counts_by_company(
+        self, keys: Collection[str], levels: Collection[JobLevel] | None = None
+    ) -> dict[str, int]:
+        return await self._writer.run(
+            lambda repository: repository.open_counts_by_company(keys, levels)
+        )
 
     async def canonical_ids(self, job_ids: Collection[str]) -> dict[str, str]:
         return await self._writer.run(lambda repository: repository.canonical_ids(job_ids))

@@ -1312,6 +1312,27 @@ async def test_preferences_change_only_the_fields_sent(catalogue: Path, mode: st
     assert read["choices"]["locations"] == ["montreal", "canada", "usa"]
 
 
+async def test_followed_employer_counts_follow_the_internship_default(tmp_path: Path) -> None:
+    jobs = [
+        *_catalogue_jobs(),
+        replace(
+            _job("grad", company="Jane Street", title="Software Engineer, New Grad"),
+            level=JobLevel.NEW_GRAD,
+        ),
+    ]
+    database = _seed(tmp_path / "followed.db", jobs, syncs=2)
+    async with _connected(database) as client:
+        saved = await _ok(client, "set_preferences", {"follow": ["jane street"]})
+        read = await _ok(client, "get_preferences")
+        searched = await _ok(client, "search_postings", {"company": "Jane Street", "limit": 50})
+        every = await _ok(
+            client, "search_postings", {"company": "Jane Street", "level": "all", "limit": 50}
+        )
+    assert saved["follow"] == [{"name": "Jane Street", "open_postings": 1}]
+    assert read["follow"] == saved["follow"]
+    assert searched["total"] == 1 and every["total"] == 2
+
+
 async def test_preferences_refuse_what_cli_refuses(catalogue: Path) -> None:
     async with _connected(catalogue) as client:
         both = await _refused(client, "set_preferences", {"follow": ["Acme"], "avoid": ["acme"]})
