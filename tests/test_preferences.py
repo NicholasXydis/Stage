@@ -837,6 +837,24 @@ def test_prefs_show_counts_open_postings_per_employer(db_path: Path) -> None:
     assert not db_path.with_name("x.db").exists()
 
 
+def test_prefs_employer_counts_follow_the_internship_default(db_path: Path) -> None:
+    from dataclasses import replace
+
+    grad = replace(
+        _job("followed-grad", company="Cisco", location=LocationBucket.USA),
+        title_raw="Software Engineer, New Grad",
+        level=JobLevel.NEW_GRAD,
+    )
+    db = _store(db_path, [*_catalogue(), grad])
+    save_preferences(Preferences(follow=(ChosenCompany("Cisco", "cisco"),)))
+
+    shown = _plain(CliRunner().invoke(app, ["prefs", "--show", "--db", db]).stdout)
+    listed = CliRunner().invoke(app, ["list", "--company", "Cisco", "--all", "--db", db])
+
+    assert "Following Cisco (2 open)" in shown, "the new-grad posting is not an internship"
+    assert "New Grad" not in _plain(listed.stdout)
+
+
 def test_employers_show_with_semicolons_and_accept_them_back(db_path: Path) -> None:
     db = _store(db_path, [_job("a", company="SRC, Inc"), _job("b", company="Cisco")])
 
