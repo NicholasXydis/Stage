@@ -3,7 +3,15 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import replace
 from functools import lru_cache
 
-from stage.domain import Job, JobLevel, QuarantinedJob, RejectionReason, board_of, source_rank
+from stage.domain import (
+    Job,
+    JobLevel,
+    QuarantinedJob,
+    RejectionReason,
+    SourceSignals,
+    board_of,
+    source_rank,
+)
 from stage.storage.repository import Resolver, SourceBatch
 from stage.storage.rows import OPEN, UPSERT_JOB, job_from, job_params, quarantined_from
 from stage.storage.sql import EACH, fold_company, listed
@@ -62,6 +70,7 @@ def _rejected_copy(job: Job, origin: str, reason: str) -> QuarantinedJob:
         location=job.location,
         remote_scope=job.remote_scope,
         matched_phrase=f"{COPY_PREFIX}{origin}{_COPY_REASON}{reason}",
+        employment_type=job.signals.employment_type,
     )
 
 
@@ -83,6 +92,7 @@ def as_job(entry: QuarantinedJob, duplicate_of: str | None = None) -> Job:
         location=entry.location,
         remote_scope=entry.remote_scope,
         duplicate_of=duplicate_of,
+        signals=SourceSignals(employment_type=entry.employment_type),
     )
 
 

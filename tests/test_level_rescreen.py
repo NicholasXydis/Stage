@@ -29,18 +29,23 @@ def _entry(
     title: str,
     reason: RejectionReason = RejectionReason.NOT_AN_INTERNSHIP,
     phrase: str = "no internship marker in title",
+    *,
+    source: str = "greenhouse",
+    employment_type: str = "",
+    location: str = "Montreal, QC",
 ) -> QuarantinedJob:
     return QuarantinedJob(
         id=identifier,
-        source="greenhouse",
+        source=source,
         company="Acme",
         title_raw=title,
         reason=reason,
         first_seen=NOW,
         last_seen=NOW,
         apply_url_raw=f"https://jobs.example.test/{identifier}",
-        location_raw="Montreal, QC",
+        location_raw=location,
         matched_phrase=phrase,
+        employment_type=employment_type,
     )
 
 
@@ -180,6 +185,68 @@ async def test_not_early_career_rows_are_scanned_after_every_other_reason(
 
         assert result.released == 2
         assert set(await _levels(repository)) == {"older", "middle"}
+
+
+async def test_a_markerless_new_grad_feed_row_keeps_its_reason_through_a_rescreen(
+    db_path: Path,
+) -> None:
+    async with open_repository(db_path) as repository:
+        await _store(
+            repository,
+            [
+                _entry(
+                    "simplify-new-grad:acme:1",
+                    "Software Engineer",
+                    RejectionReason.OUT_OF_SCOPE_LOCATION,
+                    "Berlin, Germany",
+                    source="simplify-new-grad",
+                    employment_type="new grad",
+                    location="Berlin, Germany",
+                ),
+                _entry(
+                    "greenhouse:acme:2",
+                    "Software Engineer",
+                    RejectionReason.OUT_OF_SCOPE_LOCATION,
+                    "Berlin, Germany",
+                    location="Berlin, Germany",
+                ),
+            ],
+        )
+
+        result = await rescreen(repository, now=NOW)
+        rows = await repository.list_quarantined(QuarantineFilters(limit=None))
+
+        assert result.released == 0
+        assert {row.id: (row.reason.value, row.employment_type) for row in rows} == {
+            "simplify-new-grad:acme:1": ("out-of-scope-location", "new grad"),
+            "greenhouse:acme:2": ("not-early-career", ""),
+        }
+
+
+async def test_a_markerless_new_grad_feed_row_is_released_once_it_would_pass(
+    db_path: Path,
+) -> None:
+    async with open_repository(db_path) as repository:
+        await _store(
+            repository,
+            [
+                _entry(
+                    "simplify-new-grad:acme:1",
+                    "Software Engineer",
+                    RejectionReason.OUT_OF_SCOPE_LOCATION,
+                    "Berlin, Germany",
+                    source="simplify-new-grad",
+                    employment_type="new grad",
+                    location="Montreal, QC",
+                )
+            ],
+        )
+
+        result = await rescreen(repository, now=NOW)
+
+        assert result.released == 1
+        assert await _levels(repository) == {"simplify-new-grad:acme:1": JobLevel.NEW_GRAD}
+        assert await _reasons(repository) == {}
 
 
 async def test_a_stored_posting_is_rescreened_to_its_own_level(db_path: Path) -> None:

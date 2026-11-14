@@ -11,6 +11,7 @@ from stage.domain import (
     QuarantinedJob,
     RateState,
     RoleCategory,
+    SourceSignals,
 )
 from stage.storage import AsyncRepository, SourceBatch
 
@@ -304,6 +305,7 @@ async def _release_reclassified_quarantine(
             location_raw=entry.location_raw,
             location=entry.location,
             remote_scope=entry.remote_scope,
+            signals=SourceSignals(employment_type=entry.employment_type),
         )
         for entry in entries
     )

@@ -92,4 +92,5 @@ def to_quarantined(job: Job, rejection: Rejection) -> QuarantinedJob:
         location=job.location,
         remote_scope=job.remote_scope,
         matched_phrase=rejection.matched_phrase,
+        employment_type=job.signals.employment_type,
     )

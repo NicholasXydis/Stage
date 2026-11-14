@@ -30,6 +30,7 @@ class QuarantinedJob:
     location: LocationBucket = LocationBucket.UNKNOWN
     remote_scope: RemoteScope | None = None
     matched_phrase: str = ""
+    employment_type: str = ""
 
 
 @dataclass(frozen=True, slots=True)

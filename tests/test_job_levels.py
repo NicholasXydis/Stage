@@ -9,7 +9,15 @@ import pytest
 from typer.testing import CliRunner
 
 from stage.cli.app import app
-from stage.domain import Job, JobFilters, JobLevel, LocationBucket, RejectionReason, RoleCategory
+from stage.domain import (
+    Job,
+    JobFilters,
+    JobLevel,
+    LocationBucket,
+    QuarantineFilters,
+    RejectionReason,
+    RoleCategory,
+)
 from stage.domain.filters import DEFAULT_LEVELS, EVERY_LEVEL, with_default_levels
 from stage.domain.preferences import PreferenceError, Preferences, parse_levels
 from stage.services.preferences import load_preferences, preferences_path, save_preferences
@@ -209,6 +217,22 @@ def test_a_database_from_before_levels_upgrades_in_place(
     SqliteRepository.connect(target).close()
     with closing(sqlite3.connect(target)) as conn, conn:
         assert "level" not in {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
+        assert "employment_type" not in {
+            row[1] for row in conn.execute("PRAGMA table_info(quarantine)")
+        }
+        conn.execute(
+            "INSERT INTO quarantine (id, source, company, title_raw, reason, first_seen, "
+            "last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                "simplify:feed:9",
+                "simplify",
+                "Acme",
+                "Software Engineer",
+                "out-of-scope-location",
+                to_text(NOW),
+                to_text(NOW),
+            ),
+        )
         conn.execute(
             "INSERT INTO jobs (id, source, company, title_raw, title_normalized, apply_url_raw, "
             "first_seen, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -230,10 +254,15 @@ def test_a_database_from_before_levels_upgrades_in_place(
         applied = migrations.applied_versions(repository._conn)
         stored = repository.get_job("greenhouse:acme:1")
         found = repository.list_jobs(JobFilters(levels=DEFAULT_LEVELS))
+        jobs_columns = {row[1] for row in repository._conn.execute("PRAGMA table_info(jobs)")}
+        held_columns = {row[1] for row in repository._conn.execute("PRAGMA table_info(quarantine)")}
+        held = repository.list_quarantined(QuarantineFilters(limit=None))
     finally:
         repository.close()
 
     assert applied == tuple(migration.version for migration in shipped)
+    assert "level" in jobs_columns and "employment_type" in held_columns
+    assert [(entry.id, entry.employment_type) for entry in held] == [("simplify:feed:9", "")]
     assert stored is not None and stored.level is JobLevel.INTERNSHIP
     assert [job.id for job in found] == ["greenhouse:acme:1"]
     assert len(list(tmp_path.glob("stage.db.bak-*"))) == 1
