@@ -2,7 +2,7 @@
   {
     "name": "search_postings",
     "title": "Search postings",
-    "description": "Find open internship postings, newest first. Without words it lists postings first seen in the last 14 days. With words it searches titles, employers and descriptions across every stored posting. Filters combine. Postings the user hid are always left out. Returns 25 by default and up to 100, or 250 compact rows per page with all_matches. Every answer has the total, a next_cursor when more remain, and when Stage last synced.",
+    "description": "Find open early-career postings, newest first. Internships unless a level is chosen. Without words it lists postings first seen in the last 14 days. With words it searches titles, employers and descriptions across every stored posting. Filters combine. Postings the user hid are always left out. Returns 25 by default and up to 100, or 250 compact rows per page with all_matches. Every answer has the total, a next_cursor when more remain, and when Stage last synced.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,
@@ -57,6 +57,25 @@
           "description": "The kind of work",
           "title": "Role"
         },
+        "level": {
+          "anyOf": [
+            {
+              "enum": [
+                "internship",
+                "new-grad",
+                "entry",
+                "all"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "internship, new-grad, entry, or all. Internships only by default",
+          "title": "Level"
+        },
         "term": {
           "anyOf": [
             {
@@ -107,7 +126,7 @@
         },
         "mine": {
           "default": false,
-          "description": "Apply the places, roles, terms and employers the user saved",
+          "description": "Apply the places, roles, levels, terms and employers the user saved",
           "title": "Mine",
           "type": "boolean"
         },
@@ -249,7 +268,7 @@
   {
     "name": "review_quarantine",
     "title": "Review rejected postings",
-    "description": "List postings Stage rejected and why: outside Canada and the US, not an internship, graduate degrees only, not a computer science role, or a role Stage could not place. Use it when the user asks why a posting is missing.",
+    "description": "List postings Stage rejected and why: outside Canada and the US, not an internship or early-career role, graduate degrees only, not a computer science role, or a role Stage could not place. Use it when the user asks why a posting is missing.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,
@@ -262,7 +281,8 @@
                 "not-an-internship",
                 "out-of-scope-degree",
                 "not-a-cs-role",
-                "unknown-cs-role"
+                "unknown-cs-role",
+                "not-early-career"
               ],
               "type": "string"
             },
@@ -588,7 +608,7 @@
   {
     "name": "get_preferences",
     "title": "Get preferences",
-    "description": "The user's saved places, roles, terms, followed and avoided employers, and note about themselves, plus the values each field accepts.",
+    "description": "The user's saved places, roles, levels, terms, followed and avoided employers, and note about themselves, plus the values each field accepts.",
     "inputSchema": {
       "type": "object",
       "additionalProperties": false,
@@ -665,6 +685,28 @@
           "default": null,
           "description": "Kinds of work to keep",
           "title": "Roles"
+        },
+        "levels": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "internship",
+                  "new-grad",
+                  "entry"
+                ],
+                "type": "string"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Levels to keep. An empty list keeps internships only",
+          "title": "Levels"
         },
         "terms": {
           "anyOf": [

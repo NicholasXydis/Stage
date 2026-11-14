@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 from stage.cli.app import app
 from stage.cli.options import run_async
-from stage.domain import PurgeResult
+from stage.domain import JobLevel, PurgeResult
 
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
@@ -66,6 +66,7 @@ def _seeded(
                         last_seen=now,
                         location_raw="Montreal, QC",
                         status=JobStatus.OPEN,
+                        level=JobLevel.INTERNSHIP,
                     )
                 )
             await repository.apply_source_batch(
@@ -1614,6 +1615,7 @@ def _same_title_batch() -> tuple["Job", ...]:
             location_raw="Montreal, QC",
             source_posted_at=posted,
             status=JobStatus.OPEN,
+            level=JobLevel.INTERNSHIP,
         )
 
     return (

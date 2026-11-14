@@ -58,7 +58,7 @@ def test_international_locations_are_quarantined(run_time: datetime) -> None:
 
 def test_a_rejection_explains_the_evidence(run_time: datetime) -> None:
     _, rejected = normalize_batch([_job("1", "Remote", run_time, FULL_TIME)])
-    assert rejected[0].reason is RejectionReason.NOT_AN_INTERNSHIP
+    assert rejected[0].reason is RejectionReason.NOT_EARLY_CAREER
     assert rejected[0].matched_phrase, "a rejection must record why"
     assert rejected[0].location_raw == "Remote"
 
@@ -143,7 +143,7 @@ async def test_quarantined_postings_leave_the_jobs_table(db_path: Path, run_time
 
         entries = await repository.list_quarantined(QuarantineFilters())
         assert [entry.id for entry in entries] == ["reject"]
-        assert await repository.quarantine_reason_counts() == {"not-an-internship": 1}
+        assert await repository.quarantine_reason_counts() == {"not-early-career": 1}
 
 
 async def test_a_posting_already_stored_is_moved_when_a_rule_starts_rejecting_it(
@@ -209,7 +209,7 @@ async def test_quarantine_filters(db_path: Path, run_time: datetime) -> None:
         assert await repository.count_quarantined(QuarantineFilters(source="lever")) == 0
         assert (
             await repository.count_quarantined(
-                QuarantineFilters(reason=RejectionReason.NOT_AN_INTERNSHIP)
+                QuarantineFilters(reason=RejectionReason.NOT_EARLY_CAREER)
             )
             == 2
         )

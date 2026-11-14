@@ -51,20 +51,19 @@ class SpeedyApplyFeed:
     rate_profile: ClassVar[str] = "feeds"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = ""
+    kind: ClassVar[str] = "internship"
+    employment_type: ClassVar[str] = "internship"
+    files: ClassVar[tuple[str, ...]] = ("README.md", "INTERN_INTL.md")
 
     def season_year(self, now: datetime) -> int:
         return upcoming_season_year(now)
 
     def plan(self, now: datetime) -> tuple[str, ...]:
         year = self.season_year(now)
-        sources = (
-            (f"{year}-SWE-College-Jobs", "README.md"),
-            (f"{year}-SWE-College-Jobs", "INTERN_INTL.md"),
-            (f"{year}-AI-College-Jobs", "README.md"),
-            (f"{year}-AI-College-Jobs", "INTERN_INTL.md"),
-        )
         return tuple(
-            CONTENT_URL.format(repository=repository, path=path) for repository, path in sources
+            CONTENT_URL.format(repository=f"{year}-{track}-College-Jobs", path=path)
+            for track in ("SWE", "AI")
+            for path in self.files
         )
 
     async def fetch(self, client: HttpClient, now: datetime) -> FetchResult:
@@ -87,7 +86,7 @@ class SpeedyApplyFeed:
                 self.name,
                 str(self.season_year(now)),
                 {"text": text},
-                f"{self.name} has no internship table rows at {url}",
+                f"{self.name} has no {self.kind} table rows at {url}",
             )
         listings, dropped = validate_rows(
             SpeedyApplyListing, rows, source=self.name, slug=str(self.season_year(now))
@@ -144,10 +143,18 @@ class SpeedyApplyFeed:
             first_seen=now,
             last_seen=now,
             source_posted_at=posted,
-            signals=SourceSignals(employment_type="internship"),
+            signals=SourceSignals(employment_type=self.employment_type),
         )
 
 
 def _place_in_link(url: str) -> str:
     match = WORKDAY_PLACE.match(url)
     return collapse_whitespace(unquote(match["place"])) if match is not None else ""
+
+
+@register_feed
+class SpeedyApplyNewGradFeed(SpeedyApplyFeed):
+    name: ClassVar[str] = "speedyapply-new-grad"
+    kind: ClassVar[str] = "new-grad"
+    employment_type: ClassVar[str] = "new grad"
+    files: ClassVar[tuple[str, ...]] = ("NEW_GRAD_USA.md", "NEW_GRAD_INTL.md")

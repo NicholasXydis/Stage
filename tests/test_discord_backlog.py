@@ -1,5 +1,6 @@
 import json
 from contextlib import closing
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from stage.domain import (
     Company,
     DetailFetch,
     Job,
+    JobLevel,
     JobStatus,
     Platform,
     SyncFinished,
@@ -45,6 +47,7 @@ def _job(identifier: str, moment: datetime) -> Job:
         last_seen=moment,
         location_raw="Montreal, QC",
         status=JobStatus.OPEN,
+        level=JobLevel.INTERNSHIP,
     )
 
 
@@ -268,3 +271,23 @@ async def test_a_big_run_names_every_posting_across_follow_up_messages(
     assert 1 < len(sent) <= notify.MAX_MESSAGES
     assert all(f"example.com/{index})" in named for index in range(60))
     assert await _announce(db, monkeypatch) == [], "a second run must not repeat them"
+
+
+async def test_only_internships_are_announced_whatever_else_a_run_finds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = tmp_path / "levels.db"
+    moment = datetime.now(UTC)
+    grad = replace(
+        _job("greenhouse:acme:grad", moment),
+        title_raw="Software Engineer, New Grad",
+        title_normalized="software engineer new grad",
+        level=JobLevel.NEW_GRAD,
+    )
+    await _seed(db, (_job("greenhouse:acme:intern", moment), grad))
+
+    sent = await _announce(db, monkeypatch)
+
+    named = "".join(message["embeds"][0]["description"] for message in sent)
+    assert "Software Engineering Intern" in named
+    assert "New Grad" not in named

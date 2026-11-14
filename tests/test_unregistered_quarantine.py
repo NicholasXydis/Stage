@@ -20,12 +20,17 @@ NOW = datetime(2026, 8, 16, 12, 0, tzinfo=UTC)
 REGISTERED = (Company(name="Coveo", platform=Platform.GREENHOUSE, slug="coveo"),)
 
 
-def _rejected(identifier: str, company: str, reason: RejectionReason) -> QuarantinedJob:
+def _rejected(
+    identifier: str,
+    company: str,
+    reason: RejectionReason,
+    title: str = "Mechanical Engineering Intern",
+) -> QuarantinedJob:
     return QuarantinedJob(
         id=identifier,
         source="simplify",
         company=company,
-        title_raw="Mechanical Engineering Intern",
+        title_raw=title,
         reason=reason,
         first_seen=NOW,
         last_seen=NOW,
@@ -62,6 +67,18 @@ async def _seed(path: Path) -> None:
                     _rejected("simplify:feed:4", "Notintern", RejectionReason.NOT_AN_INTERNSHIP),
                     _rejected("simplify:feed:5", "Notintern", RejectionReason.NOT_AN_INTERNSHIP),
                     _rejected("simplify:feed:6", "Notintern", RejectionReason.NOT_AN_INTERNSHIP),
+                    _rejected(
+                        "simplify:feed:7",
+                        "Gradsales",
+                        RejectionReason.NOT_A_CS_ROLE,
+                        "New Grad Account Executive",
+                    ),
+                    _rejected(
+                        "simplify:feed:8",
+                        "Gradsales",
+                        RejectionReason.OUT_OF_SCOPE_DEGREE,
+                        "Junior Software Engineer",
+                    ),
                 ),
             )
         )
@@ -102,6 +119,9 @@ async def test_rejection_on_role_outranks_rejection_on_the_internship_screen(
     rows = {row.company: row for row in report.unregistered}
     assert rows["Roleblocked"].posts_internships is True
     assert rows["Notintern"].posts_internships is False
+    assert rows["Gradsales"].posts_internships is False, (
+        "new-grad and entry titles rejected on role or degree are not internship evidence"
+    )
     order = [row.company for row in report.unregistered]
     assert order.index("Roleblocked") < order.index("Notintern"), (
         "a board that posts internships must outrank one rejected on the internship screen"

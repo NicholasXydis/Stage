@@ -8,7 +8,7 @@ import pytest
 from textual.pilot import Pilot
 from textual.widgets import DataTable, Input, OptionList, Static
 
-from stage.domain import Job, LocationBucket
+from stage.domain import Job, JobLevel, LocationBucket
 from stage.domain.tracker import (
     ApplicationStatus,
     Snapshot,
@@ -45,6 +45,7 @@ def _job(name: str, hours: int, url: str = "") -> Job:
         location_raw="Montreal, QC",
         location=LocationBucket.MONTREAL,
         term="summer-2027",
+        level=JobLevel.INTERNSHIP,
     )
 
 

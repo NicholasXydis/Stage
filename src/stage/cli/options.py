@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from rich.text import Text
 
     from stage.companies import PersonalBoards
-    from stage.domain import JobFilters
+    from stage.domain import JobFilters, JobLevel
     from stage.domain.preferences import Preferences
     from stage.storage import AsyncRepository
 
@@ -150,7 +150,9 @@ app = typer.Typer(
     cls=_Banner,
     no_args_is_help=False,
     invoke_without_command=True,
-    help="Aggregates CS internship postings into a local SQLite database.",
+    help=(
+        "Aggregates early-career CS postings (internships by default) into a local SQLite database."
+    ),
     epilog="Run stage help for a guide with examples.",
 )
 schedule_app = typer.Typer(
@@ -265,6 +267,14 @@ RoleOption = Annotated[
             "Filter by role: swe, security, data, ml-ai, quant, infra, embedded, "
             "general-cs, unknown"
         ),
+    ),
+]
+LevelOption = Annotated[
+    list[str] | None,
+    typer.Option(
+        "--level",
+        metavar="LEVEL",
+        help="Filter by level: internship (the default), new-grad, entry, all",
     ),
 ]
 LanguageOption = Annotated[
@@ -433,6 +443,18 @@ def _validated_source(value: str | None) -> str | None:
     raise InvalidOptionError(_unknown("source", value, names))
 
 
+def _validated_level(value: str | None) -> "tuple[JobLevel | None, frozenset[JobLevel]]":
+    if value is None:
+        return None, frozenset()
+    from stage.domain.filters import ALL_LEVELS, chosen_level
+    from stage.domain.preferences import CHOOSABLE_LEVELS
+
+    choices = [*(level.value for level in CHOOSABLE_LEVELS), ALL_LEVELS]
+    if value.strip().lower() in choices:
+        return chosen_level(value.strip().lower())
+    raise InvalidOptionError(_unknown("level", value, choices))
+
+
 def _filters(
     *,
     location: list[str] | None,
@@ -442,21 +464,26 @@ def _filters(
     source: list[str] | None,
     company: list[str] | None,
     limit: int | None,
+    level: list[str] | None = None,
     mine: bool = False,
     as_json: bool = False,
 ) -> "tuple[JobFilters, Preferences | None]":
     from stage.domain import JobFilters, Language, LocationBucket, RoleCategory
+    from stage.domain.filters import with_default_levels
 
+    chosen, levels = _validated_level(_one(level, "--level"))
     filters = JobFilters(
         location=_parse_enum(_one(location, "--location"), LocationBucket, "--location"),
         term=_validated_term(_one(term, "--term")),
         role=_parse_enum(_one(role, "--role"), RoleCategory, "--role"),
+        level=chosen,
         language=_parse_enum(_one(language, "--lang"), Language, "--lang"),
         source=_validated_source(_one(source, "--source")),
         company=_one(company, "--company"),
         limit=limit,
+        levels=levels,
     )
-    return _mine(filters, as_json) if mine else (filters, None)
+    return _mine(filters, as_json) if mine else (with_default_levels(filters), None)
 
 
 def _one(values: list[str] | None, flag: str, *, mine: bool = True) -> str | None:
@@ -560,7 +587,8 @@ def _no_such_posting(posting: str) -> str:
 
 
 _HELP_GUIDE = (
-    "Stage aggregates CS internship postings into a local SQLite database.\n"
+    "Stage aggregates early-career CS postings (internships by default) into a local SQLite\n"
+    "database.\n"
     "\nStart here:\n"
     "  stage sync                          Fetch and save current postings\n"
     "  stage tui                           Browse everything in a full screen\n"
@@ -572,13 +600,15 @@ _HELP_GUIDE = (
     "  stage export --format csv           Save every match to a file\n"
     "\nFilters, on list, search, and export:\n"
     "  stage list --role swe --last 3      Filters combine\n"
+    "  stage list --level all              Every level, not only internships\n"
     "  stage search python --lang en       English postings only\n"
     "  stage list --all                    Every match, not just the first page\n"
     "  stage list --last 1                 Only the last day\n"
     "  stage prefs                         Save the places, roles, terms you want\n"
     "  stage list --mine                   Only postings that fit them\n"
     "\n"
-    "  [--role --location --term --lang --source --company --mine --untracked --last]\n"
+    "  [--role --level --location --term --lang --source --company\n"
+    "   --mine --untracked --last]\n"
     "\nYour applications:\n"
     "  stage save 3                        Keep a posting to come back to\n"
     "  stage applied 1-4                   Mark postings as applied today\n"

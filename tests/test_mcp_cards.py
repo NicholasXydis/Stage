@@ -13,7 +13,7 @@ from mcp.server.apps import APP_MIME_TYPE, EXTENSION_ID
 from mcp.types import TextContent, TextResourceContents
 
 from stage.ai.server import ACTIONS, CARD, CARD_TOOLS, CATALOGUE, build_server
-from stage.domain import Job, LocationBucket, RoleCategory, SyncOutcome, SyncRun
+from stage.domain import Job, JobLevel, LocationBucket, RoleCategory, SyncOutcome, SyncRun
 from stage.paths import card_path
 from stage.storage.repository import SourceBatch
 from stage.storage.sqlite_repo import SqliteRepository
@@ -54,6 +54,7 @@ def _job(name: str, hours: int, url: str = "") -> Job:
         location=LocationBucket.MONTREAL,
         term="summer-2027",
         role=RoleCategory.SWE,
+        level=JobLevel.INTERNSHIP,
     )
 
 
@@ -166,6 +167,7 @@ async def test_a_search_answer_names_the_search_it_ran(stored: Path) -> None:
         "words": "intern",
         "location": None,
         "role": None,
+        "level": None,
         "term": None,
         "language": None,
         "company": None,

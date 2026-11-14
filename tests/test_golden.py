@@ -60,6 +60,7 @@ def test_golden(case: dict[str, Any]) -> None:
         "term": job.term,
         "role": job.role.value,
         "language": job.language.value,
+        "level": job.level.value,
     }
     assert actual == {key: expected[key] for key in actual}
 
@@ -83,6 +84,7 @@ def test_the_goldens_cover_every_rule_category_in_both_languages() -> None:
     reasons = {case["expected"]["reason"] for case in cases if not case["expected"]["kept"]}
     assert {
         "not-an-internship",
+        "not-early-career",
         "out-of-scope-location",
         "unknown-cs-role",
     } == reasons, "only reachable reasons appear in the golden set"

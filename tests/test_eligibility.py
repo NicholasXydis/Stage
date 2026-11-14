@@ -306,12 +306,12 @@ def test_a_title_naming_a_lower_degree_beside_the_doctorate_is_kept(title: str) 
     assert screen_degree_scope(_job(title)) is None, title
 
 
-def test_the_degree_screen_runs_after_internship_and_before_the_cs_role_screen() -> None:
+def test_the_degree_screen_runs_after_level_and_before_the_cs_role_screen() -> None:
     ordinary = _job("Senior Data Scientist, PhD")
     kept, rejected = normalize_batch([ordinary])
     assert not kept
-    assert rejected[0].reason is RejectionReason.NOT_AN_INTERNSHIP, (
-        "a posting that is not an internship is rejected on that ground first"
+    assert rejected[0].reason is RejectionReason.NOT_EARLY_CAREER, (
+        "a posting that is not early-career is rejected on that ground first"
     )
 
     doctorate = _job("PhD Research Intern")

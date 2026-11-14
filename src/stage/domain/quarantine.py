@@ -13,6 +13,7 @@ class RejectionReason(StrEnum):
     OUT_OF_SCOPE_DEGREE = "out-of-scope-degree"
     NOT_A_CS_ROLE = "not-a-cs-role"
     UNKNOWN_CS_ROLE = "unknown-cs-role"
+    NOT_EARLY_CAREER = "not-early-career"
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +30,8 @@ class QuarantinedJob:
     location: LocationBucket = LocationBucket.UNKNOWN
     remote_scope: RemoteScope | None = None
     matched_phrase: str = ""
+    employment_type: str = ""
+    category: str = ""
 
 
 @dataclass(frozen=True, slots=True)

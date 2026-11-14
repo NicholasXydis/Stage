@@ -5,6 +5,7 @@ from stage.domain import (
     CoverageClassification,
     Job,
     JobFilters,
+    JobLevel,
     JobStatus,
     Language,
     LocationBucket,
@@ -40,7 +41,7 @@ _NEWEST_FIRST = (
     "jobs.id ASC"
 )
 _COMPOSITION_COLUMNS = frozenset(
-    {"source", "location", "role", "term", "language", "status", "degree_requirement"}
+    {"source", "location", "role", "level", "term", "language", "status", "degree_requirement"}
 )
 _KEPT_URLS = 5
 
@@ -68,6 +69,8 @@ def _clauses(filters: JobFilters) -> tuple[list[str], list[Any]]:
         where("jobs.degree_requirement = ?", [filters.degree.value])
     if filters.role is not None:
         where("jobs.role = ?", [filters.role.value])
+    if filters.level is not None:
+        where("jobs.level = ?", [filters.level.value])
     if filters.language in (Language.EN, Language.FR):
         where(*_among("jobs.language", (filters.language.value, Language.BILINGUAL.value)))
     elif filters.language is not None:
@@ -96,6 +99,8 @@ def _clauses(filters: JobFilters) -> tuple[list[str], list[Any]]:
         where(placed, places)
     if filters.roles:
         where(*_among("jobs.role", {role.value for role in filters.roles}))
+    if filters.levels:
+        where(*_among("jobs.level", {level.value for level in filters.levels}))
     if filters.terms:
         where(*_among("jobs.term", filters.terms))
     if filters.avoid_companies:
@@ -182,12 +187,15 @@ class PostingReads(Store):
             (listed(job_ids), CLOSED),
         )
 
-    def open_counts_by_company(self, keys: Collection[str]) -> dict[str, int]:
+    def open_counts_by_company(
+        self, keys: Collection[str], levels: Collection[JobLevel] | None = None
+    ) -> dict[str, int]:
+        chosen = f"AND j.level IN {EACH} " if levels else ""
         rows = self._conn.execute(
             "SELECT j.company_fold, COUNT(*) AS total FROM json_each(?) w "
             "CROSS JOIN jobs j ON j.company_fold = w.value "
-            "WHERE j.duplicate_of IS NULL AND j.status = ? GROUP BY j.company_fold",
-            (listed(keys), OPEN),
+            f"WHERE j.duplicate_of IS NULL AND j.status = ? {chosen}GROUP BY j.company_fold",
+            (listed(keys), OPEN, *((listed(level.value for level in levels),) if levels else ())),
         )
         return {str(row["company_fold"]): int(row["total"]) for row in rows}
 

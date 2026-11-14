@@ -11,6 +11,7 @@ from stage.domain import (
     QuarantinedJob,
     RateState,
     RoleCategory,
+    SourceSignals,
 )
 from stage.storage import AsyncRepository, SourceBatch
 
@@ -217,9 +218,9 @@ def _reclassifications(
     from stage.classify import (
         classify_role,
         resolve_eligibility,
+        resolve_level,
         screen_degree_scope,
         screen_is_cs_role,
-        screen_is_internship,
         screen_location,
     )
     from stage.classify.scope import to_quarantined
@@ -254,15 +255,17 @@ def _reclassifications(
             degree_requirement=eligibility.degree_requirement,
             work_auth_flag=eligibility.work_auth_flag,
         )
-        candidates.append(candidate)
+        level, rejection = resolve_level(candidate)
+        candidate = replace(candidate, level=level)
         rejection = (
-            screen_is_internship(candidate)
+            rejection
             or screen_location(candidate)
             or screen_degree_scope(candidate)
             or screen_is_cs_role(candidate)
         )
         if rejection is not None:
             rejected.append(to_quarantined(candidate, rejection))
+        candidates.append(candidate)
     return tuple(candidates), tuple(rejected)
 
 
@@ -280,6 +283,8 @@ async def _release_reclassified_quarantine(
         RejectionReason.UNKNOWN_CS_ROLE,
         RejectionReason.NOT_A_CS_ROLE,
         RejectionReason.OUT_OF_SCOPE_LOCATION,
+        RejectionReason.NOT_AN_INTERNSHIP,
+        RejectionReason.NOT_EARLY_CAREER,
     ):
         if not remaining:
             break
@@ -300,6 +305,7 @@ async def _release_reclassified_quarantine(
             location_raw=entry.location_raw,
             location=entry.location,
             remote_scope=entry.remote_scope,
+            signals=SourceSignals(employment_type=entry.employment_type, category=entry.category),
         )
         for entry in entries
     )

@@ -501,7 +501,7 @@ def test_rejection_reasons_are_read_through_the_reason_index(tmp_path: Path) -> 
         )
         connection = repository._conn
         connection.set_trace_callback(statements.append)
-        found = repository.quarantine_company_reasons(("not-a-cs-role",))
+        found = repository.quarantine_company_titles(("not-a-cs-role",))
         connection.set_trace_callback(None)
         plans = [
             " ".join(str(row[3]) for row in connection.execute(f"EXPLAIN QUERY PLAN {sql}"))
@@ -511,5 +511,5 @@ def test_rejection_reasons_are_read_through_the_reason_index(tmp_path: Path) -> 
     finally:
         repository.close()
 
-    assert found == {"Acme": {"not-a-cs-role": 1}}
+    assert found == {"Acme": ("Engineer",)}
     assert plans and all("idx_quarantine_reason_first_seen" in plan for plan in plans), plans

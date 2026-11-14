@@ -1,0 +1,182 @@
+# Titles that screen_internship rejects or does not recognise are sorted here into new-grad,
+# entry, or not early-career. Order of precedence: blocked phrases are scrubbed, seniority wins,
+# then new-grad markers, then entry markers.
+
+seniority:
+  - senior
+  - sr
+  - staff
+  - principal
+  - lead
+  - manager
+  - director
+  - head of
+  - architect
+  - vp
+  - vice president
+  - chief
+  - distinguished
+  - supervisor
+  - mid level
+  - intermediate
+  - experienced
+  - expert
+  - gestionnaire
+  - directeur
+  - directrice
+  - responsable
+  - superviseur
+  - intermediaire
+
+# Phrases that look like early-career markers but name something else. They are removed from the
+# title before the markers are read.
+blocked:
+  - campus recruiter
+  - campus recruiters
+  - campus recruiting
+  - campus talent
+  - campus dining
+  - campus security
+  - campus ambassador
+  - graduate assistant
+  - graduate research
+  - graduate teaching
+  - graduate admissions
+  - graduate school
+  - associate director
+  - associate counsel
+  - associate attorney
+  - associate dean
+  - associate professor
+  - associate vice president
+
+new_grad:
+  - new grad
+  - new grads
+  - new graduate
+  - new graduates
+  - recent grad
+  - recent grads
+  - recent graduate
+  - recent graduates
+  - university grad
+  - university grads
+  - university graduate
+  - university graduates
+  - college grad
+  - college grads
+  - college graduate
+  - college graduates
+  - college hire
+  - college hires
+  - college program
+  - campus hire
+  - campus hires
+  - campus program
+  - campus graduate
+  - graduate program
+  - graduate programs
+  - graduate programme
+  - graduate programmes
+  - graduate scheme
+  - graduate trainee
+  - early career
+  - early careers
+  - rotational program
+  - rotational programme
+  - rotational graduate
+  - nouveau diplome
+  - nouveaux diplomes
+  - nouvelle diplomee
+  - nouvelles diplomees
+  - jeune diplome
+  - jeune diplomee
+  - jeunes diplomes
+  - diplome recent
+  - diplomee recente
+
+entry:
+  - entry level
+  - junior
+  - jr
+  - apprentice
+  - niveau d entree
+  - debutant
+  - debutante
+
+# A feed that lists only new-grad postings says so in its employment type, which stands in for a title
+# with no marker. It never overrides seniority, a blocked phrase or an internship disqualifier.
+structured_new_grad:
+  - new grad
+  - new graduate
+  - early career
+
+# A role noun gives "associate", "graduate", "campus", and a level numeral something to attach to, so
+# "Associate Software Engineer" and "Software Engineer I" count while "Associate Counsel" and
+# "Deli Shift Leader I" do not.
+role_nouns:
+  - engineer
+  - developer
+  - programmer
+  - scientist
+  - researcher
+  - analyst
+  - sde
+  - swe
+  - sdet
+  - ingenieur
+  - ingenieure
+  - developpeur
+  - developpeuse
+  - programmeur
+  - analyste
+  - scientifique
+
+associate_words:
+  - associate
+
+new_grad_words:
+  - graduate
+  - grad
+  - campus
+
+level_words:
+  - level
+  - l
+
+# A numeral that closes a title phrase ("Backend II", "Data & AI III - Full Time") reads as a seniority
+# grade, unless the word before it says the numeral counts something else.
+non_level_words:
+  - team
+  - phase
+  - part
+  - wave
+  - cohort
+  - batch
+  - track
+  - region
+  - zone
+  - squad
+  - pod
+  - group
+  - round
+  - tranche
+  - program
+  - stage
+  - year
+  - tier
+  - series
+
+entry_levels:
+  - i
+  - "1"
+
+seniority_levels:
+  - ii
+  - iii
+  - iv
+  - v
+  - "2"
+  - "3"
+  - "4"
+  - "5"

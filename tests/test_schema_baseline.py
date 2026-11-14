@@ -27,12 +27,13 @@ TABLES = frozenset(
 TRIGGERS = frozenset({"jobs_fts_after_insert", "jobs_fts_after_update", "jobs_fts_after_delete"})
 
 
-def test_one_migration_ships_and_it_is_the_baseline() -> None:
+def test_the_baseline_ships_first_and_each_later_migration_follows_it() -> None:
     migrations = discover()
-    assert [migration.version for migration in migrations] == [BASELINE], (
-        "the schema ships as one declared baseline; a second file is a history to replay"
+    versions = [migration.version for migration in migrations]
+    assert versions == list(range(BASELINE, BASELINE + len(versions))), (
+        "the schema starts from one declared baseline, and upgrades follow it in order"
     )
-    assert latest_version() == BASELINE
+    assert latest_version() == versions[-1]
 
 
 def test_the_baseline_declares_the_schema_directly_and_never_alters_it() -> None:
@@ -46,7 +47,7 @@ def test_a_fresh_database_is_at_the_baseline_with_every_object_present(
 ) -> None:
     repository = SqliteRepository.connect(db_path)
     try:
-        assert applied_versions(repository._conn) == (BASELINE,)
+        assert applied_versions(repository._conn) == tuple(range(BASELINE, latest_version() + 1))
         names = {
             row[0]
             for row in repository._conn.execute(

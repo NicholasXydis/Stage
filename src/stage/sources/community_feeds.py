@@ -44,6 +44,7 @@ class _CommunityFeed:
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = ""
     templates: ClassVar[tuple[str, ...]] = ()
+    employment_type: ClassVar[str] = ""
 
     def season_year(self, now: datetime) -> int:
         return upcoming_season_year(now)
@@ -99,6 +100,7 @@ class _CommunityFeed:
             last_seen=now,
             source_posted_at=posted,
             signals=SourceSignals(
+                employment_type=self.employment_type,
                 season=listing.season,
                 sponsorship=listing.sponsorship,
             ),
@@ -111,4 +113,13 @@ class VanshFeed(_CommunityFeed):
     templates: ClassVar[tuple[str, ...]] = (
         "https://raw.githubusercontent.com/vanshb03/Summer{year}-Internships/dev/"
         ".github/scripts/listings.json",
+    )
+
+
+@register_feed
+class VanshNewGradFeed(_CommunityFeed):
+    name: ClassVar[str] = "vanshb03-new-grad"
+    employment_type: ClassVar[str] = "new grad"
+    templates: ClassVar[tuple[str, ...]] = (
+        "https://raw.githubusercontent.com/vanshb03/New-Grad-{year}/dev/.github/scripts/listings.json",
     )

@@ -10,6 +10,7 @@ from stage.cli.render.health import render_quarantine
 from stage.cli.render.postings import render_jobs, render_posting
 from stage.domain import (
     Job,
+    JobLevel,
     LocationBucket,
     QuarantinedJob,
     RejectionReason,
@@ -43,6 +44,7 @@ def _job(identifier: str = "greenhouse:acme:1") -> Job:
         location_raw=f"Montréal {HOSTILE}",
         location=LocationBucket.MONTREAL,
         compensation=f"$20/h {HOSTILE}",
+        level=JobLevel.INTERNSHIP,
     )
 
 

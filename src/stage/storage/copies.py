@@ -1,8 +1,17 @@
 import sqlite3
-from collections.abc import Callable, Collection, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import replace
 from functools import lru_cache
 
-from stage.domain import Job, QuarantinedJob, RejectionReason, board_of, source_rank
+from stage.domain import (
+    Job,
+    JobLevel,
+    QuarantinedJob,
+    RejectionReason,
+    SourceSignals,
+    board_of,
+    source_rank,
+)
 from stage.storage.repository import Resolver, SourceBatch
 from stage.storage.rows import OPEN, UPSERT_JOB, job_from, job_params, quarantined_from
 from stage.storage.sql import EACH, fold_company, listed
@@ -61,6 +70,8 @@ def _rejected_copy(job: Job, origin: str, reason: str) -> QuarantinedJob:
         location=job.location,
         remote_scope=job.remote_scope,
         matched_phrase=f"{COPY_PREFIX}{origin}{_COPY_REASON}{reason}",
+        employment_type=job.signals.employment_type,
+        category=job.signals.category,
     )
 
 
@@ -82,6 +93,7 @@ def as_job(entry: QuarantinedJob, duplicate_of: str | None = None) -> Job:
         location=entry.location,
         remote_scope=entry.remote_scope,
         duplicate_of=duplicate_of,
+        signals=SourceSignals(employment_type=entry.employment_type, category=entry.category),
     )
 
 
@@ -203,14 +215,14 @@ def followers_of_rejected(
     return tuple(followers.values())
 
 
-def restore_copies(conn: sqlite3.Connection, accepted: Collection[str]) -> None:
+def restore_copies(conn: sqlite3.Connection, accepted: Mapping[str, JobLevel]) -> None:
     if not accepted:
         return
     rows = conn.execute(
         "SELECT * FROM quarantine WHERE reason = ? AND matched_phrase GLOB ?", (_DEGREE, _COPY_GLOB)
     )
     back = [
-        as_job(entry, origin)
+        replace(as_job(entry, origin), level=accepted[origin])
         for entry in map(quarantined_from, rows)
         if (origin := copied_from(entry.matched_phrase)[0]) in accepted
     ]

@@ -110,6 +110,25 @@
           "description": "The kind of work",
           "title": "Role"
         },
+        "level": {
+          "anyOf": [
+            {
+              "enum": [
+                "internship",
+                "new-grad",
+                "entry",
+                "all"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "internship, new-grad, entry, or all. Internships only by default",
+          "title": "Level"
+        },
         "term": {
           "anyOf": [
             {
@@ -160,7 +179,7 @@
         },
         "mine": {
           "default": false,
-          "description": "Apply the places, roles, terms and employers the user saved",
+          "description": "Apply the places, roles, levels, terms and employers the user saved",
           "title": "Mine",
           "type": "boolean"
         },

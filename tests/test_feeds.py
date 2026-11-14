@@ -7,15 +7,15 @@ import httpx
 import pytest
 import respx
 
-from stage.domain import Job, JobStatus
+from stage.domain import Job, JobLevel, JobStatus, RejectionReason
 from stage.http import HttpClient, profile
 from stage.normalize import canonical_apply_url, is_tracker_url
 from stage.services.screening import normalize_batch
-from stage.sources import get_feeds, upcoming_season_year
-from stage.sources.simplify import SimplifyFeed
+from stage.sources import FeedAdapter, get_feeds, upcoming_season_year
+from stage.sources.simplify import NEW_GRAD_URL, SimplifyFeed, SimplifyNewGradFeed
 
 
-def _client(feed: SimplifyFeed) -> HttpClient:
+def _client(feed: FeedAdapter) -> HttpClient:
     return HttpClient(allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False)
 
 
@@ -77,6 +77,126 @@ async def test_listings_map_to_jobs_and_skip_inactive(run_time: datetime) -> Non
     assert [job.title_raw for job in result.jobs] == ["Software Engineer Intern"]
     assert result.jobs[0].source == "simplify"
     assert result.jobs[0].location_raw == "Montréal, QC"
+
+
+def _new_grad_listing(listing_id: str, title: str, **fields: object) -> dict[str, object]:
+    return {
+        "id": listing_id,
+        "company_name": "Acme",
+        "title": title,
+        "url": f"https://jobs.example/{listing_id}",
+        "locations": ["Seattle, WA"],
+        "active": True,
+        "is_visible": True,
+        "category": "Software",
+        "sponsorship": "Offers Sponsorship",
+        "degrees": ["Bachelor's"],
+        "source": "Simplify",
+        **fields,
+    }
+
+
+def test_the_new_grad_list_is_its_own_feed_and_the_internship_feed_is_untouched(
+    run_time: datetime,
+) -> None:
+    feeds = get_feeds()
+    assert isinstance(feeds["simplify-new-grad"], SimplifyNewGradFeed)
+    assert type(feeds["simplify"]) is SimplifyFeed
+    assert SimplifyNewGradFeed().plan(run_time) == (NEW_GRAD_URL,)
+    assert "New-Grad-Positions/dev/.github/scripts/listings.json" in NEW_GRAD_URL
+    assert SimplifyNewGradFeed().plan(run_time) == SimplifyNewGradFeed().plan(
+        datetime(2026, 3, 1, tzinfo=UTC)
+    ), "the new-grad repository has no season in its name"
+    assert SimplifyFeed.employment_type == ""
+
+
+@respx.mock
+async def test_new_grad_listings_map_to_jobs_that_never_claim_to_be_internships(
+    run_time: datetime,
+) -> None:
+    feed = SimplifyNewGradFeed()
+    respx.get(NEW_GRAD_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                _new_grad_listing("n1", "Software Engineer", date_posted=1_760_000_000),
+                _new_grad_listing("n2", "Closed Role", active=False),
+                _new_grad_listing("n3", "Hidden Role", is_visible=False),
+            ],
+        )
+    )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert result.authoritative
+    (job,) = result.jobs
+    assert job.source == "simplify-new-grad"
+    assert job.id.startswith("simplify-new-grad:")
+    assert job.signals.employment_type == "new grad"
+    assert job.signals.terms == ()
+    assert job.signals.category == "Software"
+    assert job.source_posted_at is not None
+
+
+@respx.mock
+async def test_a_new_grad_listing_with_no_title_marker_is_kept_as_new_grad(
+    run_time: datetime,
+) -> None:
+    feed = SimplifyNewGradFeed()
+    respx.get(NEW_GRAD_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                _new_grad_listing("n1", "Software Engineer"),
+                _new_grad_listing("n2", "Junior Software Engineer"),
+                _new_grad_listing("n3", "Senior Software Engineer"),
+                _new_grad_listing("n4", "Software Engineer II"),
+                _new_grad_listing("n5", "Software Engineering Intern"),
+            ],
+        )
+    )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+    kept, rejected = normalize_batch(list(result.jobs))
+
+    assert {entry.title_raw: entry.level for entry in kept} == {
+        "Software Engineer": JobLevel.NEW_GRAD,
+        "Junior Software Engineer": JobLevel.ENTRY,
+        "Software Engineering Intern": JobLevel.INTERNSHIP,
+    }
+    assert {entry.title_raw: entry.reason for entry in rejected} == {
+        "Senior Software Engineer": RejectionReason.NOT_EARLY_CAREER,
+        "Software Engineer II": RejectionReason.NOT_EARLY_CAREER,
+    }
+
+
+@respx.mock
+async def test_the_internship_feed_still_sends_no_employment_type(run_time: datetime) -> None:
+    feed = SimplifyFeed()
+    respx.get(feed.plan(run_time)[0]).mock(
+        return_value=httpx.Response(
+            200, json=[_new_grad_listing("a1", "Software Engineer", terms=["Summer 2027"])]
+        )
+    )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert result.jobs[0].signals.employment_type == ""
+    assert result.jobs[0].signals.terms == ("Summer 2027",)
+    kept, rejected = normalize_batch(list(result.jobs))
+    assert not kept, "a markerless title from the internship list is still not an early-career job"
+    assert len(rejected) == 1
+
+
+@respx.mock
+async def test_a_new_grad_payload_that_is_not_a_list_fails_loudly(run_time: datetime) -> None:
+    from stage.sources.base import PayloadValidationError
+
+    feed = SimplifyNewGradFeed()
+    respx.get(NEW_GRAD_URL).mock(return_value=httpx.Response(200, json={"listings": []}))
+    async with _client(feed) as client:
+        with pytest.raises(PayloadValidationError, match="other than a JSON list of listings"):
+            await feed.fetch(client, run_time)
 
 
 @respx.mock
@@ -484,3 +604,76 @@ def test_an_identity_parameter_is_normalised_so_two_spellings_agree() -> None:
 def test_an_unreasonable_identity_value_is_ignored_rather_than_carried() -> None:
     assert canonical_apply_url("https://acme.com/j?id=" + "x" * 200) == "https://acme.com/j"
     assert canonical_apply_url("https://acme.com/j?id=a%20b") == "https://acme.com/j"
+
+
+def test_the_vanshb03_new_grad_list_is_its_own_feed_built_from_a_year(run_time: datetime) -> None:
+    from stage.sources.community_feeds import VanshFeed, VanshNewGradFeed
+
+    feeds = get_feeds()
+    assert isinstance(feeds["vanshb03-new-grad"], VanshNewGradFeed)
+    assert type(feeds["vanshb03"]) is VanshFeed
+    assert VanshFeed.employment_type == ""
+    (url,) = VanshNewGradFeed().plan(run_time)
+    assert url == (
+        f"https://raw.githubusercontent.com/vanshb03/New-Grad-{upcoming_season_year(run_time)}/"
+        "dev/.github/scripts/listings.json"
+    )
+    assert "New-Grad-2027" in VanshNewGradFeed().plan(datetime(2026, 9, 1, tzinfo=UTC))[0]
+
+
+@respx.mock
+async def test_vanshb03_new_grad_rows_map_to_jobs_that_never_claim_to_be_internships(
+    run_time: datetime,
+) -> None:
+    from stage.sources.community_feeds import VanshNewGradFeed
+
+    feed = VanshNewGradFeed()
+    respx.get(feed.plan(run_time)[0]).mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "id": "g1",
+                    "company_name": "Qualcomm",
+                    "title": "Embedded DSP Software Engineer",
+                    "url": "https://go.vansh.nyc/i2",
+                    "locations": ["San Diego, CA"],
+                    "active": True,
+                    "is_visible": True,
+                    "date_posted": 1_743_415_809,
+                    "sponsorship": "Other",
+                },
+                {"id": "g2", "company_name": "Acme", "title": "Senior Engineer", "active": True},
+                {"id": "g3", "company_name": "Acme", "title": "Closed Role", "active": False},
+            ],
+        )
+    )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+    kept, rejected = normalize_batch(list(result.jobs))
+
+    assert result.authoritative
+    assert {job.source for job in result.jobs} == {"vanshb03-new-grad"}
+    assert {job.signals.employment_type for job in result.jobs} == {"new grad"}
+    assert [(entry.title_raw, entry.level) for entry in kept] == [
+        ("Embedded DSP Software Engineer", JobLevel.NEW_GRAD)
+    ]
+    assert [entry.title_raw for entry in rejected] == ["Senior Engineer"]
+
+
+@respx.mock
+async def test_the_vanshb03_internship_feed_still_sends_no_employment_type(
+    run_time: datetime,
+) -> None:
+    from stage.sources.community_feeds import VanshFeed
+
+    feed = VanshFeed()
+    respx.get(feed.plan(run_time)[0]).mock(
+        return_value=httpx.Response(
+            200, json=[{"id": "1", "company_name": "Acme", "title": "Intern", "active": True}]
+        )
+    )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert result.jobs[0].signals.employment_type == ""

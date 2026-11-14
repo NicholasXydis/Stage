@@ -12,6 +12,7 @@ from stage.domain import (
     Language,
     LocationBucket,
     RemoteScope,
+    levels_conflict,
     location_agrees,
     term_agrees,
     terms_conflict,
@@ -317,7 +318,11 @@ def would_merge(left: Job, right: Job, learned: Mapping[str, str] = NOTHING_LEAR
     if opening and other:
         return MatchResult()
 
-    if not _company_matches(left, right, learned) or terms_conflict(left.term, right.term):
+    if (
+        not _company_matches(left, right, learned)
+        or terms_conflict(left.term, right.term)
+        or levels_conflict(left.level, right.level)
+    ):
         return MatchResult()
 
     if not _placeless_twin(left, right) and (
@@ -356,7 +361,7 @@ def _cross_language(left: Job, right: Job) -> MatchResult:
     pair = {left.language, right.language}
     if Language.EN not in pair or Language.FR not in pair:
         return MatchResult()
-    if not term_agrees(left.term, right.term):
+    if not term_agrees(left.term, right.term, left.level, right.level):
         return MatchResult()
 
     canonical = title_canonical(left.title_raw)

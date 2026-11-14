@@ -11,7 +11,7 @@ import pytest
 from textual.widgets import DataTable, Footer, Input, Static
 from textual.worker import WorkerCancelled
 
-from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
+from stage.domain import Job, JobLevel, LocationBucket, QuarantinedJob, RejectionReason
 from stage.tui.app import StageApp
 from stage.tui.screens.postings import PostingsScreen
 
@@ -43,6 +43,7 @@ def _seed(path: Path, count: int = 3, description: str = "") -> Path:
                     last_seen=NOW,
                     location_raw="Montreal, QC, Canada; Toronto, ON, Canada",
                     location=LocationBucket.MONTREAL,
+                    level=JobLevel.INTERNSHIP,
                 )
                 for index in range(count)
             ),
@@ -415,6 +416,7 @@ def _old(path: Path) -> Path:
                     last_seen=seen,
                     location_raw="Montreal, QC",
                     location=LocationBucket.MONTREAL,
+                    level=JobLevel.INTERNSHIP,
                 ),
             ),
         )
@@ -603,6 +605,7 @@ def _crowded(path: Path, count: int = 40) -> Path:
                     description="",
                     first_seen=NOW,
                     last_seen=NOW,
+                    level=JobLevel.INTERNSHIP,
                 )
                 for index in range(count)
             ),

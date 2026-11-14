@@ -323,7 +323,7 @@ async def test_a_new_posting_reaches_discord(
 ) -> None:
     from datetime import UTC, datetime, timedelta
 
-    from stage.domain import Job, JobStatus, SyncOutcome, SyncRun
+    from stage.domain import Job, JobLevel, JobStatus, SyncOutcome, SyncRun
     from stage.storage import open_repository
     from stage.storage.repository import SourceBatch
 
@@ -355,6 +355,7 @@ async def test_a_new_posting_reaches_discord(
                         last_seen=now,
                         location_raw="Montreal, QC",
                         status=JobStatus.OPEN,
+                        level=JobLevel.INTERNSHIP,
                     ),
                 ),
                 closable_boards=("greenhouse:acme",),
@@ -371,7 +372,7 @@ async def test_a_new_posting_reaches_discord(
 async def _seed_one_new_posting(db: Path) -> None:
     from datetime import UTC, datetime, timedelta
 
-    from stage.domain import Job, JobStatus, SyncOutcome, SyncRun
+    from stage.domain import Job, JobLevel, JobStatus, SyncOutcome, SyncRun
     from stage.storage import open_repository
     from stage.storage.repository import SourceBatch
 
@@ -402,6 +403,7 @@ async def _seed_one_new_posting(db: Path) -> None:
                         last_seen=now,
                         location_raw="Montreal, QC",
                         status=JobStatus.OPEN,
+                        level=JobLevel.INTERNSHIP,
                     ),
                 ),
                 closable_boards=("greenhouse:acme",),

@@ -747,6 +747,11 @@ undergraduate_tokens:
   - licence
   - baccalaureat
   - bac 3
+# In a new-grad or entry title these name the level, not a graduate degree.
+early_career_title_tokens:
+  - graduate
+  - grad
+
 graduate_title_tokens:
   - masters
   - master s

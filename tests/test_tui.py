@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from stage.tui.screens.review import ReviewScreen
     from stage.tui.screens.sync import SyncScreen
 
+from stage.domain import JobLevel
 from stage.tui.state import FilterState
 
 
@@ -1405,6 +1406,7 @@ def _seed(path: Path, count: int = 3) -> None:
                     role=RoleCategory.SWE,
                     term="summer-2027" if index else "fall-2026",
                     degree_requirement=DegreeRequirement.UNKNOWN,
+                    level=JobLevel.INTERNSHIP,
                 )
                 for index in range(count)
             ),
@@ -2930,6 +2932,7 @@ def _seed_long(path: Path) -> None:
                     last_seen=when,
                     location_raw="Montreal, QC",
                     location=LocationBucket.MONTREAL,
+                    level=JobLevel.INTERNSHIP,
                 ),
             ),
             quarantined=(

@@ -8,6 +8,7 @@ from stage.domain import (
     CoverageDisposition,
     DegreeRequirement,
     Job,
+    JobLevel,
     JobStatus,
     Language,
     LocationBucket,
@@ -73,6 +74,7 @@ JOB_COLUMNS = (
     "language",
     "term",
     "role",
+    "level",
     "work_auth_flag",
     "degree_requirement",
     "compensation",
@@ -109,6 +111,8 @@ QUARANTINE_COLUMNS = (
     "matched_phrase",
     "first_seen",
     "last_seen",
+    "employment_type",
+    "category",
 )
 UPSERT_QUARANTINE = upsert(
     "quarantine",
@@ -273,6 +277,7 @@ def job_from(row: sqlite3.Row) -> Job:
         language=Language(row["language"]),
         term=row["term"],
         role=RoleCategory(row["role"]),
+        level=JobLevel(row["level"]),
         work_auth_flag=bool(row["work_auth_flag"]),
         degree_requirement=DegreeRequirement(row["degree_requirement"]),
         compensation=row["compensation"],
@@ -305,6 +310,7 @@ def job_params(job: Job) -> tuple[Any, ...]:
         job.language.value,
         job.term,
         job.role.value,
+        job.level.value,
         int(job.work_auth_flag),
         job.degree_requirement.value,
         job.compensation,
@@ -332,6 +338,8 @@ def quarantined_from(row: sqlite3.Row) -> QuarantinedJob:
         location=location_bucket(row["location"]),
         remote_scope=_scope(row["remote_scope"]),
         matched_phrase=row["matched_phrase"],
+        employment_type=row["employment_type"],
+        category=row["category"],
     )
 
 
@@ -349,6 +357,8 @@ def quarantined_params(entry: QuarantinedJob, first_seen: datetime) -> tuple[Any
         entry.matched_phrase,
         to_text(first_seen),
         to_text(entry.last_seen),
+        entry.employment_type,
+        entry.category,
     )
 
 

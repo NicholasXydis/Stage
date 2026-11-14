@@ -42,6 +42,13 @@ class RoleCategory(StrEnum):
     UNKNOWN = "unknown"
 
 
+class JobLevel(StrEnum):
+    INTERNSHIP = "internship"
+    NEW_GRAD = "new-grad"
+    ENTRY = "entry"
+    UNKNOWN = "unknown"
+
+
 class DegreeRequirement(StrEnum):
     NONE = "none"
     BACHELORS = "bachelors"

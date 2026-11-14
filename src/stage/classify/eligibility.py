@@ -5,11 +5,12 @@ from urllib.parse import urlsplit
 
 from stage.classify.role import classify_role
 from stage.classify.scope import Rejection
-from stage.domain import DegreeRequirement, Job, RejectionReason
+from stage.domain import DegreeRequirement, Job, JobLevel, RejectionReason
 from stage.domain.liveness import AWAITING_PAGE, PAGED_SOURCES
 from stage.lexicon import QualifiedTitles, eligibility_lexicon, fold
 
 _ORDER = ("phd", "masters", "bachelors")
+_EARLY_CAREER = frozenset({JobLevel.NEW_GRAD, JobLevel.ENTRY})
 _CLAUSE = 60
 _NOT_A_DEGREE = re.compile(
     r",\s*MS\s*(?=$|\)|\d{5})"
@@ -125,6 +126,9 @@ def screen_degree_scope(job: Job) -> Rejection | None:
     lexicon = eligibility_lexicon()
 
     body = fold(f"{job.title_raw} {job.description}")
+    graduate_tokens = lexicon.graduate_title_tokens
+    if job.level in _EARLY_CAREER:
+        graduate_tokens = graduate_tokens - lexicon.early_career_title_tokens
 
     required = _restricted_hit(body, lexicon.phd_required, lexicon.undergraduate_tokens)
     if required:
@@ -144,7 +148,7 @@ def screen_degree_scope(job: Job) -> Rejection | None:
     if token and not _hit(title, lexicon.degree_list_tokens):
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=token)
 
-    graduate = _hit(title, lexicon.graduate_title_tokens) or token
+    graduate = _hit(title, graduate_tokens) or token
     if graduate and not _hit(title, lexicon.undergraduate_tokens):
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=graduate)
 
@@ -159,13 +163,13 @@ def screen_degree_scope(job: Job) -> Rejection | None:
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=convention)
     if _hit(title, lexicon.undergraduate_tokens) or _hit(title, lexicon.degree_list_tokens):
         return None
-    linked = _linked_degree(job.apply_url_raw)
+    linked = _linked_degree(job.apply_url_raw, graduate_tokens)
     if linked:
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=linked)
     return None
 
 
-def _linked_degree(url: str) -> str:
+def _linked_degree(url: str, graduate_tokens: frozenset[str]) -> str:
     lexicon = eligibility_lexicon()
     try:
         path = urlsplit(url or "").path
@@ -174,7 +178,7 @@ def _linked_degree(url: str) -> str:
     slug = fold(path.rstrip("/").rpartition("/")[2])
     if len(slug.split()) < 3 or _hit(slug, lexicon.undergraduate_tokens):
         return ""
-    graduate = frozenset(phrase for phrase in lexicon.graduate_title_tokens if len(phrase) > 3)
+    graduate = frozenset(phrase for phrase in graduate_tokens if len(phrase) > 3)
     return _hit(slug, lexicon.phd_title_tokens) or _hit(slug, graduate)
 
 

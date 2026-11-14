@@ -16,6 +16,7 @@ from stage.domain.preferences import (
     clean_text,
     parse_about,
     parse_companies,
+    parse_levels,
     parse_locations,
     parse_roles,
     parse_terms,
@@ -106,6 +107,7 @@ def revise_preferences(
     *,
     locations: Sequence[str] | None = None,
     roles: Sequence[str] | None = None,
+    levels: Sequence[str] | None = None,
     terms: Sequence[str] | None = None,
     follow: Sequence[str] | None = None,
     avoid: Sequence[str] | None = None,
@@ -122,6 +124,7 @@ def revise_preferences(
         follow=current.follow if follow is None else companies(follow),
         avoid=current.avoid if avoid is None else companies(avoid),
         about=current.about if about is None else parse_about(about),
+        levels=current.levels if levels is None else parse_levels(levels),
     )
     check_overlap(revised.follow, revised.avoid)
     return revised
@@ -158,6 +161,7 @@ def _payload(preferences: Preferences) -> dict[str, Any]:
         "format": FORMAT,
         "locations": [location.value for location in preferences.locations],
         "roles": [role.value for role in preferences.roles],
+        "levels": [level.value for level in preferences.levels],
         "terms": list(preferences.terms),
         "follow": [{"name": e.name, "folded": e.folded} for e in preferences.follow],
         "avoid": [{"name": e.name, "folded": e.folded} for e in preferences.avoid],
@@ -205,6 +209,7 @@ def _from_payload(payload: dict[str, Any], label: str) -> LoadedPreferences:
         follow=tuple(company for company in follow if company.folded not in avoided),
         avoid=avoid,
         about=about,
+        levels=field("levels", parse_levels, ()),
     )
     return LoadedPreferences(preferences, tuple(problems))
 

@@ -13,7 +13,7 @@ from mcp.types import PromptReference, ResourceTemplateReference, TextContent
 from stage.ai.prompts import CATALOGUE, MAX_SUGGESTIONS, PLACES, ROLES
 from stage.ai.server import ACTIONS, build_server
 from stage.ai.server import CATALOGUE as TOOLS
-from stage.domain import Job, LocationBucket, RoleCategory
+from stage.domain import Job, JobLevel, LocationBucket, RoleCategory
 from stage.storage.repository import SourceBatch
 from stage.storage.sqlite_repo import SqliteRepository
 
@@ -23,7 +23,15 @@ TOOL_NAMES = {name for name, *_ in TOOLS}
 ACTION_NAMES = {name for name, *_ in ACTIONS}
 
 
-def _job(name: str, company: str, title: str, term: str, *, hours: int = 1) -> Job:
+def _job(
+    name: str,
+    company: str,
+    title: str,
+    term: str,
+    *,
+    hours: int = 1,
+    level: JobLevel = JobLevel.INTERNSHIP,
+) -> Job:
     seen = NOW - timedelta(hours=hours)
     return Job(
         id=f"greenhouse:{company.lower()[:8]}:{name}",
@@ -39,6 +47,7 @@ def _job(name: str, company: str, title: str, term: str, *, hours: int = 1) -> J
         location=LocationBucket.MONTREAL,
         term=term,
         role=RoleCategory.SWE,
+        level=level,
     )
 
 
@@ -49,6 +58,7 @@ def stored(tmp_path: Path) -> Path:
     jobs = [
         _job("1", "Shopify", "Backend Developer Intern", "summer-2027"),
         _job("2", "Shopify", "Data Engineering Intern", "fall-2026"),
+        _job("6", "Shopify", "Software Engineer, New Grad", "unknown", level=JobLevel.NEW_GRAD),
         _job("3", "ShopBack", "Software Intern", "winter-2027"),
         _job("4", "Jane Street", "Quant Developer Intern", "summer-2026"),
         _job("5", "Evil‮\x07 Corp", "Intern​ [/bold]", "unknown"),
@@ -109,6 +119,7 @@ async def test_the_five_prompts_are_listed_with_titles_and_arguments(stored: Pat
     ]
     assert [arg.name for arg in arguments["find_matches"]] == [
         "role",
+        "level",
         "location",
         "term",
         "company",
@@ -326,7 +337,11 @@ def test_prompts_and_their_titles_are_plain_ascii() -> None:
         ("whats_neww", {}, 'Stage has no prompt named "whats_neww". Did you mean "whats_new"?'),
         ("nope", {}, 'Stage has no prompt named "nope". Stage has: find_matches,'),
         ("whats_new", {"x": "1"}, 'There is no argument "x". whats_new takes no arguments.'),
-        ("find_matches", {"place": "usa"}, "find_matches takes company, location, role, term."),
+        (
+            "find_matches",
+            {"place": "usa"},
+            "find_matches takes company, level, location, role, term.",
+        ),
         ("find_matches", {"rol": "swe"}, 'Did you mean "role"? find_matches takes company,'),
     ],
 )

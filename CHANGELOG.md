@@ -4,6 +4,42 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- New-grad and entry-level postings. Every posting now carries a level:
+  `internship`, `new-grad` or `entry`. Experienced roles (senior, staff, lead,
+  manager, grade II and up) are still rejected. The level comes from the title,
+  such as "New Grad", "Junior" or "Software Engineer I".
+- `--level internship|new-grad|entry|all` on `list`, `search` and `export`, a
+  level filter in the TUI and the AI tools, and `stage prefs --level` for the
+  levels `--mine` keeps. Nothing changes until you ask: with no level chosen you
+  still see internships only.
+- Three new-grad lists: Simplify's New-Grad-Positions, SpeedyApply's new-grad
+  tables and Vansh's New-Grad list, each its own source (`simplify-new-grad`,
+  `speedyapply-new-grad`, `vanshb03-new-grad`). A posting from one of them with
+  no level word in its title is kept as new-grad instead of rejected.
+- Workday boards too big to read whole are also searched for new grad, new
+  graduate, university graduate, early career, entry level and junior, after the
+  internship searches and within the same page budget. Boards with an internship
+  filter are not searched for new-grad roles yet.
+
+### Changed
+
+- Rejected postings that are not early-career now say `not-early-career`.
+  After the upgrade Stage re-screens older rejections and releases the ones that
+  now qualify.
+- Status counts in AI apps and title suggestions for an employer follow the
+  internships-only default. The open counts beside followed and avoided
+  employers in `stage prefs` and in AI apps follow your saved levels, or
+  internships when you saved none. The TUI statistics screen counts every level and says
+  so.
+- `stage coverage` counts an employer as posting internships only when a
+  rejected title passes the internship screen.
+- A Roman numeral closing a role phrase, as in "Software Engineer Full Stack /
+  Backend II", now reads as a seniority grade.
+
 ## [1.2.1] - 2026-11-09
 
 ### Fixed

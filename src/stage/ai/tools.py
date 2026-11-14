@@ -46,6 +46,7 @@ Place = Literal["montreal", "canada", "usa", "unknown"]
 Role = Literal[
     "swe", "security", "data", "ml-ai", "quant", "infra", "embedded", "general-cs", "unknown"
 ]
+Level = Literal["internship", "new-grad", "entry", "all"]
 Language = Literal["en", "fr", "bilingual", "unknown"]
 Status = Literal["saved", "applied", "interviewing", "offer", "rejected", "withdrawn", "hidden"]
 Reason = Literal[
@@ -54,9 +55,11 @@ Reason = Literal[
     "out-of-scope-degree",
     "not-a-cs-role",
     "unknown-cs-role",
+    "not-early-career",
 ]
 ChosenPlace = Literal["montreal", "canada", "usa"]
 ChosenRole = Literal["swe", "security", "data", "ml-ai", "quant", "infra", "embedded", "general-cs"]
+ChosenLevel = Literal["internship", "new-grad", "entry"]
 SEASONS = ("summer", "fall", "winter", "spring")
 TERM = rf"^(({'|'.join(SEASONS)})-[0-9]{{4}}|unknown)$"
 CHOSEN_TERM = rf"^({'|'.join(SEASONS)})-[0-9]{{4}}$"
@@ -189,6 +192,11 @@ PlaceFilter = Annotated[
     _default(None),
 ]
 RoleFilter = Annotated[Role | None, Field(description="The kind of work"), _default(None)]
+LevelFilter = Annotated[
+    Level | None,
+    Field(description="internship, new-grad, entry, or all. Internships only by default"),
+    _default(None),
+]
 TermFilter = Annotated[
     str | None,
     Field(pattern=TERM, description="A term such as summer-2027, or unknown"),
@@ -202,7 +210,7 @@ LanguageFilter = Annotated[
 ]
 Mine = Annotated[
     bool,
-    Field(description="Apply the places, roles, terms and employers the user saved"),
+    Field(description="Apply the places, roles, levels, terms and employers the user saved"),
     _default(False),
 ]
 Untracked = Annotated[
@@ -272,6 +280,7 @@ class Tools:
         words: Words = "",
         location: PlaceFilter = None,
         role: RoleFilter = None,
+        level: LevelFilter = None,
         term: TermFilter = None,
         language: LanguageFilter = None,
         company: Company = None,
@@ -303,6 +312,7 @@ class Tools:
             "words": words,
             "location": location,
             "role": role,
+            "level": level,
             "term": term,
             "language": language,
             "company": company,
@@ -313,7 +323,7 @@ class Tools:
             "all_matches": all_matches,
         }
         page = COMPACT_PAGE if all_matches else limit
-        filters, described, notes = _chosen(location, role, term, language, company, mine)
+        filters, described, notes = _chosen(location, role, level, term, language, company, mine)
         query = words if words.strip() else ""
         window = _window(query, days)
         now = datetime.now(UTC)
@@ -427,6 +437,7 @@ class Tools:
         return answer({**payload, **freshness(last_sync, now)})
 
     async def database_status(self) -> CallToolResult:
+        from stage.domain.filters import with_default_levels
         from stage.services.background import sync_progress
         from stage.services.health import statistics
         from stage.services.preferences import load_preferences
@@ -434,13 +445,19 @@ class Tools:
         now = datetime.now(UTC)
         async with self._repository() as repository:
             report = await statistics(repository, history=SYNC_HISTORY)
-            open_now = await repository.count_jobs(JobFilters(limit=None))
+            open_now = await repository.count_jobs(with_default_levels(JobFilters(limit=None)))
             recent = await repository.count_jobs(
-                JobFilters(limit=None, first_seen_after=now - timedelta(days=DEFAULT_WINDOW_DAYS))
+                with_default_levels(
+                    JobFilters(
+                        limit=None, first_seen_after=now - timedelta(days=DEFAULT_WINDOW_DAYS)
+                    )
+                )
             )
             since = await repository.previous_sync_at()
             fresh = (
-                await repository.count_jobs(JobFilters(limit=None, first_seen_after=since))
+                await repository.count_jobs(
+                    with_default_levels(JobFilters(limit=None, first_seen_after=since))
+                )
                 if since is not None
                 else None
             )
@@ -470,7 +487,9 @@ class Tools:
                 "background_sync": _background(sync_progress(self.database)),
                 "preferences_saved": not load_preferences().preferences.is_empty,
                 "notes": [
-                    "stored_by counts every stored posting, open or closed, without duplicates."
+                    "open_postings, recent_postings and new_since_previous_sync count internships, "
+                    "the same default as search_postings.",
+                    "stored_by counts every stored posting, open or closed, without duplicates.",
                 ],
                 **freshness(last_sync, now),
             }
@@ -833,6 +852,13 @@ class Tools:
         roles: Annotated[
             list[ChosenRole] | None, Field(max_length=8, description="Kinds of work to keep")
         ] = None,
+        levels: Annotated[
+            list[ChosenLevel] | None,
+            Field(
+                max_length=3,
+                description="Levels to keep. An empty list keeps internships only",
+            ),
+        ] = None,
         terms: Annotated[
             list[Annotated[str, Field(pattern=CHOSEN_TERM), BeforeValidator(_lowered)]] | None,
             Field(max_length=12, description="Terms such as summer-2027"),
@@ -871,7 +897,7 @@ class Tools:
             unseen_companies,
         )
 
-        fields = (locations, roles, terms, follow, avoid, about)
+        fields = (locations, roles, levels, terms, follow, avoid, about)
         changing = any(value is not None for value in fields)
         if clear and changing:
             raise ToolError("clear deletes every saved preference, so send it alone.")
@@ -907,6 +933,7 @@ class Tools:
                     known,
                     locations=locations,
                     roles=roles,
+                    levels=levels,
                     terms=terms,
                     follow=follow,
                     avoid=avoid,
@@ -1030,6 +1057,7 @@ class Tools:
         words: Words = "",
         location: PlaceFilter = None,
         role: RoleFilter = None,
+        level: LevelFilter = None,
         term: TermFilter = None,
         language: LanguageFilter = None,
         company: Company = None,
@@ -1051,7 +1079,7 @@ class Tools:
         unusable = _no_folder(root)
         if unusable:
             raise ToolError(unusable)
-        filters, described, notes = _chosen(location, role, term, language, company, mine)
+        filters, described, notes = _chosen(location, role, level, term, language, company, mine)
         query = words if words.strip() else ""
         window = _window(query, days)
         now = datetime.now(UTC)
@@ -1127,7 +1155,7 @@ class Tools:
         now = datetime.now(UTC)
         try:
             async with self._repository() as repository:
-                counts = await repository.open_counts_by_company(wanted)
+                counts = await repository.open_counts_by_company(wanted, preferences.shown_levels())
                 last_sync = await repository.last_sync_at()
         except ToolError as exc:
             return None, _synced(None, now, str(exc)), str(exc)
@@ -1198,6 +1226,7 @@ async def _resolved(repository: AsyncRepository, ids: list[str]) -> list[str]:
 def _chosen(
     location: str | None,
     role: str | None,
+    level: str | None,
     term: str | None,
     language: str | None,
     company: str | None,
@@ -1205,18 +1234,22 @@ def _chosen(
 ) -> tuple[JobFilters, str, list[str]]:
     from stage.domain import Language as Written
     from stage.domain import LocationBucket, RoleCategory
+    from stage.domain.filters import chosen_level, with_default_levels
     from stage.services.preferences import load_preferences
 
+    chosen, levels = chosen_level(level) if level else (None, frozenset())
     filters = JobFilters(
         location=LocationBucket(location) if location else None,
         term=term,
         role=RoleCategory(role) if role else None,
+        level=chosen,
         language=Written(language) if language else None,
         company=company,
         limit=None,
+        levels=levels,
     )
     if not mine:
-        return filters, "", []
+        return with_default_levels(filters), "", []
     loaded = load_preferences()
     if loaded.damaged:
         raise ToolError(
@@ -1291,12 +1324,13 @@ def _count(counts: dict[str, int] | None, key: str) -> int | None:
 
 
 def _preferences(preferences: Preferences, counts: dict[str, int] | None) -> dict[str, object]:
-    from stage.domain.preferences import CHOOSABLE_LOCATIONS, CHOOSABLE_ROLES
+    from stage.domain.preferences import CHOOSABLE_LEVELS, CHOOSABLE_LOCATIONS, CHOOSABLE_ROLES
 
     return {
         "saved": not preferences.is_empty,
         "locations": [location.value for location in preferences.locations],
         "roles": [role.value for role in preferences.roles],
+        "levels": [level.value for level in preferences.levels],
         "terms": list(preferences.terms),
         "follow": [
             {"name": company.name, "open_postings": _count(counts, company.folded)}
@@ -1310,6 +1344,7 @@ def _preferences(preferences: Preferences, counts: dict[str, int] | None) -> dic
         "choices": {
             "locations": [location.value for location in CHOOSABLE_LOCATIONS],
             "roles": [role.value for role in CHOOSABLE_ROLES],
+            "levels": [level.value for level in CHOOSABLE_LEVELS],
             "terms": "a season and a year, such as summer-2027",
         },
     }
@@ -1403,6 +1438,7 @@ def _command(arguments: dict[str, object]) -> str:
     flags = {
         "location": "--location",
         "role": "--role",
+        "level": "--level",
         "term": "--term",
         "language": "--lang",
         "company": "--company",
@@ -1418,4 +1454,4 @@ def _command(arguments: dict[str, object]) -> str:
     return " ".join(parts)
 
 
-__all__ = ["CHOSEN_TERM", "SEASONS", "TERM", "ChosenPlace", "ChosenRole", "Tools"]
+__all__ = ["CHOSEN_TERM", "SEASONS", "TERM", "ChosenLevel", "ChosenPlace", "ChosenRole", "Tools"]

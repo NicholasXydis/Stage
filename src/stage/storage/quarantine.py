@@ -49,23 +49,22 @@ class QuarantineStore(Store):
         return {str(row["reason"]): int(row["total"]) for row in rows}
 
     def quarantine_company_counts(self) -> dict[str, dict[str, int]]:
-        return self._by_company("source")
-
-    def quarantine_company_reasons(
-        self, reasons: Collection[str] = ()
-    ) -> dict[str, dict[str, int]]:
-        return self._by_company("reason", reasons)
-
-    def _by_company(self, column: str, reasons: Collection[str] = ()) -> dict[str, dict[str, int]]:
         found: dict[str, dict[str, int]] = {}
-        chosen = f"WHERE reason IN {EACH} " if reasons else ""
         for row in self._conn.execute(
-            f"SELECT company, {column} AS part, COUNT(*) AS total FROM quarantine "
-            f"{chosen}GROUP BY company, {column}",
-            (listed(reasons),) if reasons else (),
+            "SELECT company, source, COUNT(*) AS total FROM quarantine GROUP BY company, source"
         ):
-            found.setdefault(str(row["company"]), {})[str(row["part"])] = int(row["total"])
+            found.setdefault(str(row["company"]), {})[str(row["source"])] = int(row["total"])
         return found
+
+    def quarantine_company_titles(self, reasons: Collection[str]) -> dict[str, tuple[str, ...]]:
+        found: dict[str, list[str]] = {}
+        for row in self._conn.execute(
+            "SELECT DISTINCT company, title_raw FROM quarantine "
+            f"WHERE reason IN {EACH} ORDER BY company, title_raw",
+            (listed(reasons),),
+        ):
+            found.setdefault(str(row["company"]), []).append(str(row["title_raw"]))
+        return {company: tuple(titles) for company, titles in found.items()}
 
     def relabel_quarantine(self, entries: Sequence[QuarantinedJob]) -> int:
         if not entries:

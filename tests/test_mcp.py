@@ -26,6 +26,7 @@ from stage.ai.shape import CAUTION, DESCRIPTION_LIMIT, ago, make_cursor, read_cu
 from stage.cli.app import app
 from stage.domain import (
     Job,
+    JobLevel,
     LocationBucket,
     QuarantinedJob,
     RateState,
@@ -79,6 +80,7 @@ def _job(
         term="summer-2027",
         role=role,
         duplicate_of=duplicate_of,
+        level=JobLevel.INTERNSHIP,
     )
 
 
@@ -429,6 +431,7 @@ def test_the_command_for_every_match_repeats_each_filter() -> None:
         "words": "",
         "location": None,
         "role": None,
+        "level": None,
         "term": None,
         "language": None,
         "company": None,
@@ -1005,6 +1008,23 @@ async def test_database_status_reports_size_freshness_and_breakdowns(catalogue: 
     assert found["preferences_saved"] is False
 
 
+async def test_database_status_counts_internships_like_the_default_search(tmp_path: Path) -> None:
+    jobs = [
+        *_catalogue_jobs(),
+        replace(
+            _job("grad", hours=1, title="Software Engineer, New Grad"), level=JobLevel.NEW_GRAD
+        ),
+        replace(_job("entry", hours=2, title="Junior Developer"), level=JobLevel.ENTRY),
+    ]
+    database = _seed(tmp_path / "levels.db", jobs, syncs=2)
+    async with _connected(database) as client:
+        found = await _ok(client, "database_status")
+        searched = await _ok(client, "search_postings", {"limit": 50})
+    assert found["open_postings"] == 10 and found["recent_postings"] == 9
+    assert found["recent_postings"] == searched["total"]
+    assert any("internships" in note for note in found["notes"])
+
+
 async def test_review_quarantine_lists_rejections_with_their_reason(catalogue: Path) -> None:
     async with _connected(catalogue) as client:
         found = await _ok(client, "review_quarantine", {"reason": "out-of-scope-location"})
@@ -1290,6 +1310,51 @@ async def test_preferences_change_only_the_fields_sent(catalogue: Path, mode: st
     assert read["follow"] == first["follow"] and read["avoid"] == second["avoid"]
     assert read["roles"] == [] and read["about"] == "Likes C" and read["notes"] == []
     assert read["choices"]["locations"] == ["montreal", "canada", "usa"]
+
+
+async def test_followed_employer_counts_follow_the_internship_default(tmp_path: Path) -> None:
+    jobs = [
+        *_catalogue_jobs(),
+        replace(
+            _job("grad", company="Jane Street", title="Software Engineer, New Grad"),
+            level=JobLevel.NEW_GRAD,
+        ),
+    ]
+    database = _seed(tmp_path / "followed.db", jobs, syncs=2)
+    async with _connected(database) as client:
+        saved = await _ok(client, "set_preferences", {"follow": ["jane street"]})
+        read = await _ok(client, "get_preferences")
+        searched = await _ok(client, "search_postings", {"company": "Jane Street", "limit": 50})
+        every = await _ok(
+            client, "search_postings", {"company": "Jane Street", "level": "all", "limit": 50}
+        )
+    assert saved["follow"] == [{"name": "Jane Street", "open_postings": 1}]
+    assert read["follow"] == saved["follow"]
+    assert searched["total"] == 1 and every["total"] == 2
+
+
+async def test_followed_employer_counts_follow_the_saved_levels(tmp_path: Path) -> None:
+    jobs = [
+        *_catalogue_jobs(),
+        replace(
+            _job("grad", company="Gradco", title="Software Engineer, New Grad"),
+            level=JobLevel.NEW_GRAD,
+        ),
+    ]
+    database = _seed(tmp_path / "saved.db", jobs, syncs=2)
+    async with _connected(database) as client:
+        default = await _ok(client, "set_preferences", {"follow": ["gradco", "jane street"]})
+        grads = await _ok(client, "set_preferences", {"levels": ["new-grad"]})
+        read = await _ok(client, "get_preferences")
+    assert default["follow"] == [
+        {"name": "Gradco", "open_postings": 0},
+        {"name": "Jane Street", "open_postings": 1},
+    ]
+    assert grads["follow"] == [
+        {"name": "Gradco", "open_postings": 1},
+        {"name": "Jane Street", "open_postings": 0},
+    ]
+    assert read["follow"] == grads["follow"]
 
 
 async def test_preferences_refuse_what_cli_refuses(catalogue: Path) -> None:
