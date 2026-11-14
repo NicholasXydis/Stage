@@ -299,6 +299,7 @@ class LevelLexicon:
     associate_words: frozenset[str]
     new_grad_words: frozenset[str]
     level_words: frozenset[str]
+    non_level_words: frozenset[str]
     entry_levels: frozenset[str]
     seniority_levels: frozenset[str]
 
@@ -316,6 +317,7 @@ def level_lexicon() -> LevelLexicon:
         associate_words=_folded_set(payload, "associate_words", source),
         new_grad_words=_folded_set(payload, "new_grad_words", source),
         level_words=_folded_set(payload, "level_words", source),
+        non_level_words=_folded_set(payload, "non_level_words", source),
         entry_levels=_folded_set(payload, "entry_levels", source),
         seniority_levels=_folded_set(payload, "seniority_levels", source),
     )

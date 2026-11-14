@@ -13,6 +13,8 @@ _ASSOCIATE_BETWEEN = 3
 _NEW_GRAD_BETWEEN = 5
 _TRAILING = 2
 _RANGE_JOINERS = frozenset({"to", "and", "or", "through"})
+_SEGMENT_BREAK = re.compile(r"\s[-\u2013\u2014]\s|[,|:;]")
+_ROMAN = frozenset({"ii", "iii", "iv", "v"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +78,28 @@ def _numbered(title: str, lexicon: LevelLexicon) -> tuple[str, str]:
     return "", entry
 
 
+def _closing_numeral(title: str, lexicon: LevelLexicon) -> str:
+    tokens: list[str] = []
+    closers: list[int] = []
+    for segment in _SEGMENT_BREAK.split(_GROUPED.sub(" | ", title)):
+        found = _tokens(segment)
+        if found:
+            tokens.extend(found)
+            closers.append(len(tokens) - 1)
+    if not any(token in lexicon.role_nouns for token in tokens):
+        return ""
+    for index in closers:
+        token = tokens[index]
+        if token not in _ROMAN or index == 0:
+            continue
+        before = tokens[index - 1]
+        numerals = lexicon.entry_levels | lexicon.seniority_levels
+        if before in numerals or before in _RANGE_JOINERS or before in lexicon.non_level_words:
+            continue
+        return f"{before} {token}"
+    return ""
+
+
 def _attached(folded: str, words: frozenset[str], nouns: frozenset[str], between: int) -> str:
     tokens = folded.split()
     for index, token in enumerate(tokens):
@@ -104,6 +128,7 @@ def classify_early_career(title: str) -> LevelVerdict:
 
     senior = _longest_hit(f" {folded} ", lexicon.seniority)
     ranked, level_phrase = _numbered(title, lexicon)
+    ranked = ranked or _closing_numeral(title, lexicon)
     if senior or ranked:
         return LevelVerdict(matched_phrase=senior or ranked)
 

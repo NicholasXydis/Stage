@@ -144,6 +144,24 @@ level_words:
   - level
   - l
 
+# A numeral that closes a title phrase ("Backend II", "Data & AI III - Full Time") reads as a seniority
+# grade, unless the word before it says the numeral counts something else.
+non_level_words:
+  - team
+  - phase
+  - part
+  - wave
+  - cohort
+  - batch
+  - track
+  - region
+  - zone
+  - squad
+  - pod
+  - group
+  - round
+  - tranche
+
 entry_levels:
   - i
   - "1"

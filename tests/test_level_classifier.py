@@ -244,6 +244,7 @@ def test_the_level_lexicon_rejects_a_marker_that_is_also_a_seniority_word(
         "new_grad": ["new grad"],
         "entry": ["junior"],
         "structured_new_grad": ["new grad"],
+        "non_level_words": ["team"],
         "role_nouns": ["engineer"],
         "associate_words": ["associate"],
         "new_grad_words": ["graduate"],
@@ -322,3 +323,65 @@ def test_screening_keeps_a_markerless_title_from_a_new_grad_feed() -> None:
         ("Software Engineer", JobLevel.NEW_GRAD)
     ]
     assert [entry.reason for entry in rejected] == [RejectionReason.NOT_EARLY_CAREER]
+
+
+@pytest.mark.parametrize(
+    ("title", "phrase"),
+    [
+        ("Software Engineer Full Stack / Backend II - Full-Time - United States", "backend ii"),
+        ("Software Engineer Data & AI II - Full Time - United States", "ai ii"),
+        ("Graduate Software Engineer - State Estimation & Prediction - III", "prediction iii"),
+        ("Software Engineer, Backend III (Remote)", "backend iii"),
+        ("Software Engineer: Backend IV", "backend iv"),
+        ("Platform Engineer | Infrastructure II", "infrastructure ii"),
+        ("New Grad Software Engineer II", "engineer ii"),
+    ],
+)
+def test_a_roman_numeral_closing_a_phrase_is_a_seniority_grade(title: str, phrase: str) -> None:
+    for hint in ("", "new grad"):
+        verdict = screen_level(title, employment_type=hint)
+
+        assert verdict.rejected, title
+        assert verdict.matched_phrase == phrase
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Software Engineer I / II",
+        "Software Engineer I to III - Digital Engineering",
+        "Software Engineer I, II",
+        "Research Engineer I or II - Embedded Development Engineer",
+    ],
+)
+def test_a_range_that_starts_at_the_entry_grade_is_not_a_seniority_grade(title: str) -> None:
+    from stage.classify.level import classify_early_career
+
+    assert classify_early_career(title).matched_phrase == ""
+    assert screen_level(title, employment_type="new grad").level is JobLevel.NEW_GRAD
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Software Engineer, Team 2",
+        "Software Engineer - Phase II",
+        "Software Engineer - Cohort 3",
+        "Software Engineer Full Stack / Backend 2",
+        "Program II",
+        "Henry III",
+    ],
+)
+def test_a_numeral_that_does_not_close_a_graded_role_phrase_is_left_alone(title: str) -> None:
+    from stage.classify.level import classify_early_career
+
+    verdict = classify_early_career(title)
+
+    assert verdict.matched_phrase == "", title
+    assert screen_level(title, employment_type="new grad").level is JobLevel.NEW_GRAD
+
+
+def test_the_entry_grade_still_reads_as_entry_next_to_a_separator() -> None:
+    assert screen_level("Software Engineer I - Backend").level is JobLevel.ENTRY
+    assert screen_level("Software Engineer I (Remote)").level is JobLevel.ENTRY
+    assert screen_level("Data Scientist I | Core").level is JobLevel.ENTRY
