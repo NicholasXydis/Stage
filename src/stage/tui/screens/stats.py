@@ -123,9 +123,10 @@ class StatsScreen(StageScreen[None]):
         )
         seen = trend(jobs)
         scope = (
-            f"[b]{counted(total, 'posting')}[/b]\n"
+            f"[b]{counted(total, 'posting')}[/b] at every level\n"
             if len(jobs) >= total
-            else f"[b]{total:,}[/b] postings, measured on the most recent {len(jobs):,}\n"
+            else f"[b]{total:,}[/b] postings at every level, measured on the most recent "
+            f"{len(jobs):,}\n"
         )
         parts = [scope]
         parts.extend(f"\n[b]{title}[/b]\n{bars(counts, width)}" for title, counts in blocks)

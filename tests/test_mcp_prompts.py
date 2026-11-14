@@ -13,7 +13,7 @@ from mcp.types import PromptReference, ResourceTemplateReference, TextContent
 from stage.ai.prompts import CATALOGUE, MAX_SUGGESTIONS, PLACES, ROLES
 from stage.ai.server import ACTIONS, build_server
 from stage.ai.server import CATALOGUE as TOOLS
-from stage.domain import Job, LocationBucket, RoleCategory
+from stage.domain import Job, JobLevel, LocationBucket, RoleCategory
 from stage.storage.repository import SourceBatch
 from stage.storage.sqlite_repo import SqliteRepository
 
@@ -23,7 +23,15 @@ TOOL_NAMES = {name for name, *_ in TOOLS}
 ACTION_NAMES = {name for name, *_ in ACTIONS}
 
 
-def _job(name: str, company: str, title: str, term: str, *, hours: int = 1) -> Job:
+def _job(
+    name: str,
+    company: str,
+    title: str,
+    term: str,
+    *,
+    hours: int = 1,
+    level: JobLevel = JobLevel.INTERNSHIP,
+) -> Job:
     seen = NOW - timedelta(hours=hours)
     return Job(
         id=f"greenhouse:{company.lower()[:8]}:{name}",
@@ -39,6 +47,7 @@ def _job(name: str, company: str, title: str, term: str, *, hours: int = 1) -> J
         location=LocationBucket.MONTREAL,
         term=term,
         role=RoleCategory.SWE,
+        level=level,
     )
 
 
@@ -49,6 +58,7 @@ def stored(tmp_path: Path) -> Path:
     jobs = [
         _job("1", "Shopify", "Backend Developer Intern", "summer-2027"),
         _job("2", "Shopify", "Data Engineering Intern", "fall-2026"),
+        _job("6", "Shopify", "Software Engineer, New Grad", "unknown", level=JobLevel.NEW_GRAD),
         _job("3", "ShopBack", "Software Intern", "winter-2027"),
         _job("4", "Jane Street", "Quant Developer Intern", "summer-2026"),
         _job("5", "Evil‮\x07 Corp", "Intern​ [/bold]", "unknown"),

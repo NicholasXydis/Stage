@@ -1008,6 +1008,23 @@ async def test_database_status_reports_size_freshness_and_breakdowns(catalogue: 
     assert found["preferences_saved"] is False
 
 
+async def test_database_status_counts_internships_like_the_default_search(tmp_path: Path) -> None:
+    jobs = [
+        *_catalogue_jobs(),
+        replace(
+            _job("grad", hours=1, title="Software Engineer, New Grad"), level=JobLevel.NEW_GRAD
+        ),
+        replace(_job("entry", hours=2, title="Junior Developer"), level=JobLevel.ENTRY),
+    ]
+    database = _seed(tmp_path / "levels.db", jobs, syncs=2)
+    async with _connected(database) as client:
+        found = await _ok(client, "database_status")
+        searched = await _ok(client, "search_postings", {"limit": 50})
+    assert found["open_postings"] == 10 and found["recent_postings"] == 9
+    assert found["recent_postings"] == searched["total"]
+    assert any("internships" in note for note in found["notes"])
+
+
 async def test_review_quarantine_lists_rejections_with_their_reason(catalogue: Path) -> None:
     async with _connected(catalogue) as client:
         found = await _ok(client, "review_quarantine", {"reason": "out-of-scope-location"})

@@ -328,9 +328,12 @@ async def _terms(repository: Any) -> list[str]:
 
 async def _titles(repository: Any, company: str) -> list[str]:
     from stage.domain import JobFilters
+    from stage.domain.filters import with_default_levels
     from stage.services.query import list_jobs
 
-    listing = await list_jobs(repository, JobFilters(company=company, limit=None), window_days=None)
+    listing = await list_jobs(
+        repository, with_default_levels(JobFilters(company=company, limit=None)), window_days=None
+    )
     return [text(job.title_raw, TITLE_LIMIT) for job in listing.jobs]
 
 

@@ -437,6 +437,7 @@ class Tools:
         return answer({**payload, **freshness(last_sync, now)})
 
     async def database_status(self) -> CallToolResult:
+        from stage.domain.filters import with_default_levels
         from stage.services.background import sync_progress
         from stage.services.health import statistics
         from stage.services.preferences import load_preferences
@@ -444,13 +445,19 @@ class Tools:
         now = datetime.now(UTC)
         async with self._repository() as repository:
             report = await statistics(repository, history=SYNC_HISTORY)
-            open_now = await repository.count_jobs(JobFilters(limit=None))
+            open_now = await repository.count_jobs(with_default_levels(JobFilters(limit=None)))
             recent = await repository.count_jobs(
-                JobFilters(limit=None, first_seen_after=now - timedelta(days=DEFAULT_WINDOW_DAYS))
+                with_default_levels(
+                    JobFilters(
+                        limit=None, first_seen_after=now - timedelta(days=DEFAULT_WINDOW_DAYS)
+                    )
+                )
             )
             since = await repository.previous_sync_at()
             fresh = (
-                await repository.count_jobs(JobFilters(limit=None, first_seen_after=since))
+                await repository.count_jobs(
+                    with_default_levels(JobFilters(limit=None, first_seen_after=since))
+                )
                 if since is not None
                 else None
             )
@@ -480,7 +487,9 @@ class Tools:
                 "background_sync": _background(sync_progress(self.database)),
                 "preferences_saved": not load_preferences().preferences.is_empty,
                 "notes": [
-                    "stored_by counts every stored posting, open or closed, without duplicates."
+                    "open_postings, recent_postings and new_since_previous_sync count internships, "
+                    "the same default as search_postings.",
+                    "stored_by counts every stored posting, open or closed, without duplicates.",
                 ],
                 **freshness(last_sync, now),
             }
