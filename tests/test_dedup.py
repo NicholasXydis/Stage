@@ -10,7 +10,7 @@ from stage.dedup import (
     title_canonical,
     would_merge,
 )
-from stage.domain import Job, Language, LocationBucket, RoleCategory, location_agrees
+from stage.domain import Job, JobLevel, Language, LocationBucket, RoleCategory, location_agrees
 
 WHEN = datetime(2026, 8, 3, tzinfo=UTC)
 
@@ -25,6 +25,7 @@ def job(
     term: str = "unknown",
     language: Language = Language.EN,
     url: str = "",
+    level: JobLevel = JobLevel.UNKNOWN,
 ) -> Job:
     return Job(
         id=job_id,
@@ -41,6 +42,7 @@ def job(
         term=term,
         language=language,
         role=RoleCategory.UNKNOWN,
+        level=level,
     )
 
 
@@ -1715,3 +1717,104 @@ def test_a_job_number_names_a_posting_only_on_a_digit_boundary(
     from stage.normalize.urls import names_posting
 
     assert names_posting(identifier, tail) is names
+
+
+def test_an_internship_and_a_new_grad_posting_of_one_title_never_merge() -> None:
+    def posting(job_id: str, source: str, level: JobLevel) -> Job:
+        return job(
+            job_id,
+            source,
+            "Acme",
+            "Software Engineer 2027",
+            location=LocationBucket.MONTREAL,
+            term="summer-2027",
+            level=level,
+        )
+
+    intern = posting("a", "greenhouse", JobLevel.INTERNSHIP)
+    grad = posting("b", "simplify", JobLevel.NEW_GRAD)
+    twin = posting("c", "simplify", JobLevel.INTERNSHIP)
+
+    assert not would_merge(intern, grad)
+    assert would_merge(intern, twin).kind is MatchKind.SAME_LANGUAGE
+    assert [link.duplicate_id for link in resolve_duplicates([intern, grad, twin], [])] == ["c"]
+
+
+def test_a_level_never_stops_a_shared_url_from_merging() -> None:
+    url = "https://boards.greenhouse.io/a/1"
+    left = job("a", "greenhouse", "Acme", "Software Engineer", url=url, level=JobLevel.NEW_GRAD)
+    right = job("b", "simplify", "Acme", "Software Engineer", url=url, level=JobLevel.ENTRY)
+
+    assert would_merge(left, right).kind is MatchKind.URL
+
+
+def test_reposts_on_one_board_are_kept_apart_by_level() -> None:
+    place = "Montreal, QC"
+    first = job(
+        "greenhouse:acme:1", "greenhouse", "Acme", "Software Engineer", level=JobLevel.ENTRY
+    )
+    second = job(
+        "greenhouse:acme:2", "greenhouse", "Acme", "Software Engineer", level=JobLevel.NEW_GRAD
+    )
+    third = job(
+        "greenhouse:acme:3", "greenhouse", "Acme", "Software Engineer", level=JobLevel.ENTRY
+    )
+    jobs = [replace(posting, location_raw=place) for posting in (first, second, third)]
+
+    links = resolve_duplicates(jobs, [])
+
+    assert [(link.duplicate_id, link.canonical_id) for link in links] == [
+        ("greenhouse:acme:3", "greenhouse:acme:1")
+    ]
+
+
+def _twins(first: JobLevel, second: JobLevel) -> tuple[Job, Job]:
+    english = job(
+        "a",
+        "greenhouse",
+        "Ubisoft",
+        "Software Developer",
+        location=LocationBucket.MONTREAL,
+        language=Language.EN,
+        level=first,
+    )
+    french = job(
+        "b",
+        "simplify",
+        "Ubisoft",
+        "Développeur logiciel",
+        location=LocationBucket.MONTREAL,
+        language=Language.FR,
+        level=second,
+    )
+    return english, french
+
+
+@pytest.mark.parametrize("level", [JobLevel.NEW_GRAD, JobLevel.ENTRY])
+def test_termless_full_time_twins_in_two_languages_merge(level: JobLevel) -> None:
+    english, french = _twins(level, level)
+
+    assert would_merge(english, french).kind is MatchKind.CROSS_LANGUAGE
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [
+        (JobLevel.INTERNSHIP, JobLevel.INTERNSHIP),
+        (JobLevel.UNKNOWN, JobLevel.UNKNOWN),
+        (JobLevel.NEW_GRAD, JobLevel.ENTRY),
+        (JobLevel.NEW_GRAD, JobLevel.INTERNSHIP),
+    ],
+)
+def test_termless_twins_do_not_merge_unless_both_are_the_same_full_time_level(
+    first: JobLevel, second: JobLevel
+) -> None:
+    english, french = _twins(first, second)
+
+    assert not would_merge(english, french)
+
+
+def test_a_term_on_only_one_twin_still_blocks_the_merge() -> None:
+    english, french = _twins(JobLevel.NEW_GRAD, JobLevel.NEW_GRAD)
+
+    assert not would_merge(replace(english, term="summer-2027"), french)

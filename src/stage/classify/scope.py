@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from stage.domain import Job, LocationBucket, QuarantinedJob, RejectionReason
+from stage.domain import Job, JobLevel, LocationBucket, QuarantinedJob, RejectionReason
 
 _YEAR = re.compile(r"(?<!\d-)\b20[0-9]{2}\b(?!-\d)")
 _VERSIONED = re.compile(
@@ -27,6 +27,17 @@ def screen_is_internship(job: Job) -> Rejection | None:
         )
     ended = _term_ended(job)
     return Rejection(RejectionReason.NOT_AN_INTERNSHIP, ended) if ended else None
+
+
+def resolve_level(job: Job) -> tuple[JobLevel, Rejection | None]:
+    from stage.classify.level import screen_level
+
+    verdict = screen_level(job.title_raw, job.signals.employment_type, job.signals.category)
+    if verdict.rejected:
+        return JobLevel.UNKNOWN, Rejection(RejectionReason.NOT_EARLY_CAREER, verdict.matched_phrase)
+    if verdict.level is JobLevel.INTERNSHIP and (ended := _term_ended(job)):
+        return verdict.level, Rejection(RejectionReason.NOT_AN_INTERNSHIP, ended)
+    return verdict.level, None
 
 
 def _term_ended(job: Job) -> str:

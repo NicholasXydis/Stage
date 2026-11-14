@@ -14,13 +14,13 @@ from typing import cast
 from stage.classify import (
     classify_role,
     resolve_eligibility,
+    resolve_level,
     screen_degree_scope,
     screen_is_cs_role,
-    screen_is_internship,
     screen_location,
     to_quarantined,
 )
-from stage.domain import Job, JobLevel, QuarantinedJob
+from stage.domain import Job, QuarantinedJob
 from stage.normalize import (
     canonical_apply_url,
     detect_language,
@@ -83,14 +83,16 @@ def normalize_batch(jobs: Sequence[Job]) -> Screened:
             degree_requirement=eligibility.degree_requirement,
             work_auth_flag=eligibility.work_auth_flag,
         )
+        level, rejection = resolve_level(normalized)
+        normalized = replace(normalized, level=level)
         rejection = (
-            screen_is_internship(normalized)
+            rejection
             or screen_location(normalized)
             or screen_degree_scope(normalized)
             or screen_is_cs_role(normalized)
         )
         if rejection is None:
-            kept.append(replace(normalized, level=JobLevel.INTERNSHIP))
+            kept.append(normalized)
         else:
             rejected.append(to_quarantined(normalized, rejection))
     return tuple(kept), tuple(rejected)

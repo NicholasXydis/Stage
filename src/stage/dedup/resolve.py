@@ -13,7 +13,15 @@ from stage.dedup.identity import (
     repost_key,
     would_merge,
 )
-from stage.domain import REPOST, UNKNOWN_TERM, Job, source_rank, terms_conflict
+from stage.domain import (
+    REPOST,
+    UNKNOWN_TERM,
+    Job,
+    JobLevel,
+    levels_conflict,
+    source_rank,
+    terms_conflict,
+)
 from stage.domain.text import is_workday_opening
 
 
@@ -58,19 +66,32 @@ def _reposts(jobs: Sequence[Job], keys: Mapping[str, str]) -> Iterator[list[str]
     for job in jobs:
         if keys[job.id]:
             grouped.setdefault((job.board_key, keys[job.id]), []).append(job)
-    for members in grouped.values():
-        terms = {job.term for job in members} - {UNKNOWN_TERM}
-        if len(terms) <= 1:
-            yield [job.id for job in members]
-            continue
-        for term in sorted(terms):
-            yield [job.id for job in members if job.term == term]
+    for group in grouped.values():
+        levels = {job.level for job in group} - {JobLevel.UNKNOWN}
+        for level in sorted(levels) if len(levels) > 1 else [None]:
+            members = group if level is None else [job for job in group if job.level == level]
+            terms = {job.term for job in members} - {UNKNOWN_TERM}
+            if len(terms) <= 1:
+                yield [job.id for job in members]
+                continue
+            for term in sorted(terms):
+                yield [job.id for job in members if job.term == term]
 
 
 def _terms_clash(left: Sequence[Job], right: Sequence[Job]) -> bool:
     one = {job.term for job in left} - {UNKNOWN_TERM}
     two = {job.term for job in right} - {UNKNOWN_TERM}
     return bool(one and two) and one.isdisjoint(two)
+
+
+def _levels_clash(left: Sequence[Job], right: Sequence[Job]) -> bool:
+    one = {job.level for job in left} - {JobLevel.UNKNOWN}
+    two = {job.level for job in right} - {JobLevel.UNKNOWN}
+    return bool(one and two) and one.isdisjoint(two)
+
+
+def _clash(left: Sequence[Job], right: Sequence[Job]) -> bool:
+    return _terms_clash(left, right) or _levels_clash(left, right)
 
 
 def _one_opening(left: Sequence[Job], right: Sequence[Job]) -> bool:
@@ -206,9 +227,7 @@ def resolve_duplicates(
                 continue
             if match.kind is MatchKind.URL and left.apply_url_canonical in ambiguous:
                 continue
-            if match.kind is not MatchKind.URL and _terms_clash(
-                members[left_root], members[right_root]
-            ):
+            if match.kind is not MatchKind.URL and _clash(members[left_root], members[right_root]):
                 continue
             union(left.id, right.id)
             demoted = right.id if find(right.id) != right_root else left.id
@@ -217,7 +236,7 @@ def resolve_duplicates(
     keys = {job.id: _repost_of(job) for job in jobs}
     for first, *rest in _reposts(jobs, keys):
         for twin in rest:
-            if not _terms_clash(members[find(first)], members[find(twin)]):
+            if not _clash(members[find(first)], members[find(twin)]):
                 union(first, twin)
 
     by_id = {job.id: job for job in jobs}
@@ -233,6 +252,7 @@ def resolve_duplicates(
             and keys[job.id]
             and keys[job.id] == keys[main.id]
             and not terms_conflict(job.term, main.term)
+            and not levels_conflict(job.level, main.level)
         ):
             kind, evidence = REPOST, job.location_raw
         links.append(

@@ -747,6 +747,49 @@ undergraduate_tokens:
   - licence
   - baccalaureat
   - bac 3
+# Phrases about the applicant's current enrolment in a master's or doctoral programme. An
+# internship that asks for them wants a graduate student. A new-grad or entry posting that says
+# them is talking to people about to graduate, so they do not reject those levels. Phrases that
+# require the degree itself (phd required, graduate degree required) stay rejecting.
+enrollment_status:
+  - must be enrolled in a phd
+  - must be enrolled in a ph.d.
+  - must be enrolled in a doctoral program
+  - must be pursuing a phd
+  - currently enrolled in a phd
+  - currently enrolled in a doctoral program
+  - currently pursuing a phd
+  - enrolled in a phd program
+  - enrolled in a doctoral program
+  - pursuing a phd
+  - phd student
+  - current phd studies
+  - current phd or msc studies
+  - inscrit au doctorat
+  - inscrite au doctorat
+  - inscrit e au doctorat
+  - must be enrolled in a master
+  - currently enrolled in a master
+  - currently pursuing a master
+  - last year of a master
+  - final year of a master
+  - enrolled in your last year of a master
+  - pursuing ms or phd
+  - pursuing an ms or phd
+  - pursuing masters or phd
+  - pursuing a masters or phd
+  - pursuing a master's or phd
+  - pursuing a masters or doctorate
+  - current ms or phd student
+  - a master's or phd student
+  - current graduate student
+  - inscrit a la maitrise
+
+# In a new-grad or entry title these name the level, not a graduate degree.
+early_career_title_tokens:
+  - graduate
+  - grad
+
 graduate_title_tokens:
   - masters
   - master s

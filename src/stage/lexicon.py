@@ -14,6 +14,7 @@ LOCATIONS_FILE = "locations.yaml"
 INCLUSIVE_SUFFIXES_FILE = "inclusive_suffixes.yaml"
 TERMS_FILE = "terms.yaml"
 INTERNSHIP_FILE = "internship.yaml"
+LEVELS_FILE = "levels.yaml"
 WORKDAY_FACETS_FILE = "workday_facets.yaml"
 ROLES_FILE = "roles.yaml"
 ELIGIBILITY_FILE = "eligibility.yaml"
@@ -288,6 +289,49 @@ def internship_lexicon() -> InternshipLexicon:
 
 
 @dataclass(frozen=True, slots=True)
+class LevelLexicon:
+    seniority: frozenset[str]
+    blocked: frozenset[str]
+    new_grad: frozenset[str]
+    entry: frozenset[str]
+    role_nouns: frozenset[str]
+    associate_words: frozenset[str]
+    new_grad_words: frozenset[str]
+    level_words: frozenset[str]
+    entry_levels: frozenset[str]
+    seniority_levels: frozenset[str]
+
+
+@lru_cache(maxsize=1)
+def level_lexicon() -> LevelLexicon:
+    payload, source = _load(LEVELS_FILE)
+    lexicon = LevelLexicon(
+        seniority=_folded_phrases(payload, "seniority", source),
+        blocked=_folded_phrases(payload, "blocked", source),
+        new_grad=_folded_phrases(payload, "new_grad", source),
+        entry=_folded_phrases(payload, "entry", source),
+        role_nouns=_folded_set(payload, "role_nouns", source),
+        associate_words=_folded_set(payload, "associate_words", source),
+        new_grad_words=_folded_set(payload, "new_grad_words", source),
+        level_words=_folded_set(payload, "level_words", source),
+        entry_levels=_folded_set(payload, "entry_levels", source),
+        seniority_levels=_folded_set(payload, "seniority_levels", source),
+    )
+    for first, second, name in (
+        (
+            lexicon.seniority,
+            lexicon.new_grad | lexicon.entry,
+            "seniority and an early-career marker",
+        ),
+        (lexicon.entry_levels, lexicon.seniority_levels, "entry and seniority level numerals"),
+        (lexicon.new_grad, lexicon.entry, "new-grad and entry markers"),
+    ):
+        if overlap := first & second:
+            raise LexiconError(f"{source}: {', '.join(sorted(overlap))} is listed as both {name}")
+    return lexicon
+
+
+@dataclass(frozen=True, slots=True)
 class QualifiedTitles:
     titles: frozenset[str]
     needs: frozenset[str]
@@ -307,6 +351,8 @@ class EligibilityLexicon:
     degree_list_tokens: frozenset[str]
     undergraduate_tokens: frozenset[str]
     graduate_title_tokens: frozenset[str]
+    enrollment_status: frozenset[str]
+    early_career_title_tokens: frozenset[str]
     graduate_by_convention: frozenset[str]
     graduate_by_employer: Mapping[str, frozenset[str]]
     undergraduate_by_employer: Mapping[str, frozenset[str]]
@@ -353,6 +399,8 @@ def eligibility_lexicon() -> EligibilityLexicon:
         degree_list_tokens=_folded_phrases(payload, "degree_list_tokens", source),
         undergraduate_tokens=_folded_phrases(payload, "undergraduate_tokens", source),
         graduate_title_tokens=_folded_phrases(payload, "graduate_title_tokens", source),
+        enrollment_status=_folded_phrases(payload, "enrollment_status", source),
+        early_career_title_tokens=_folded_phrases(payload, "early_career_title_tokens", source),
         graduate_by_convention=_folded_phrases(payload, "graduate_by_convention", source),
         graduate_by_employer=_phrase_map(payload, "graduate_by_employer", source),
         undergraduate_by_employer=_phrase_map(payload, "undergraduate_by_employer", source),

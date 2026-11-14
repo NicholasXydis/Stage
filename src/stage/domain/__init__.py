@@ -80,7 +80,13 @@ from stage.domain.health import (
 )
 from stage.domain.ids import board_key, board_of, job_id
 from stage.domain.job import Job
-from stage.domain.matching import REPOST, location_agrees, term_agrees, terms_conflict
+from stage.domain.matching import (
+    REPOST,
+    levels_conflict,
+    location_agrees,
+    term_agrees,
+    terms_conflict,
+)
 from stage.domain.priority import SOURCE_PRIORITY, source_rank
 from stage.domain.quarantine import (
     DEFAULT_QUARANTINE_LIMIT,
@@ -264,6 +270,7 @@ __all__ = [
     "graphemes",
     "job_id",
     "json_safe",
+    "levels_conflict",
     "location_agrees",
     "public_https_url",
     "sanitize",

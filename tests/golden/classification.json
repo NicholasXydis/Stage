@@ -15,7 +15,8 @@
         "remote_scope": null,
         "term": "summer-2027",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -33,7 +34,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "security",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -51,7 +53,8 @@
         "remote_scope": null,
         "term": "fall-2026",
         "role": "data",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -69,7 +72,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "ml-ai",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -87,7 +91,8 @@
         "remote_scope": null,
         "term": "summer-2027",
         "role": "quant",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -105,7 +110,8 @@
         "remote_scope": "remote-canada",
         "term": "unknown",
         "role": "infra",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -123,7 +129,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "embedded",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -141,7 +148,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "embedded",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -159,7 +167,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -177,7 +186,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "data",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -195,7 +205,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "security",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -213,7 +224,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "ml-ai",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -231,7 +243,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "embedded",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -249,7 +262,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -267,7 +281,8 @@
         "remote_scope": null,
         "term": "fall-2026",
         "role": "swe",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -285,7 +300,8 @@
         "remote_scope": null,
         "term": "winter-2027",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -308,7 +324,8 @@
         "remote_scope": null,
         "term": "summer-2027",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -328,7 +345,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -350,7 +368,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -368,7 +387,8 @@
         "remote_scope": "remote-us",
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -386,7 +406,8 @@
         "remote_scope": "remote-unspecified",
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -404,7 +425,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -422,7 +444,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -440,7 +463,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -458,7 +482,8 @@
         "remote_scope": "remote-us",
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -488,8 +513,8 @@
       },
       "expected": {
         "kept": false,
-        "reason": "not-an-internship",
-        "matched_phrase": "no internship marker in title",
+        "reason": "not-early-career",
+        "matched_phrase": "staff",
         "location": "montreal"
       }
     },
@@ -504,7 +529,7 @@
       },
       "expected": {
         "kept": false,
-        "reason": "not-an-internship",
+        "reason": "not-early-career",
         "matched_phrase": "internal auditor",
         "location": "canada"
       }
@@ -520,13 +545,13 @@
       },
       "expected": {
         "kept": false,
-        "reason": "not-an-internship",
-        "matched_phrase": "stage manager",
+        "reason": "not-early-career",
+        "matched_phrase": "manager",
         "location": "usa"
       }
     },
     {
-      "id": "reject-new-grad",
+      "id": "newgrad-en",
       "input": {
         "source": "greenhouse",
         "company": "Acme",
@@ -535,10 +560,13 @@
         "signals": {}
       },
       "expected": {
-        "kept": false,
-        "reason": "not-an-internship",
-        "matched_phrase": "new grad",
-        "location": "montreal"
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en",
+        "level": "new-grad"
       }
     },
     {
@@ -552,8 +580,8 @@
       },
       "expected": {
         "kept": false,
-        "reason": "not-an-internship",
-        "matched_phrase": "internship program manager",
+        "reason": "not-early-career",
+        "matched_phrase": "manager",
         "location": "usa"
       }
     },
@@ -572,7 +600,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -606,7 +635,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "swe",
-        "language": "bilingual"
+        "language": "bilingual",
+        "level": "internship"
       }
     },
     {
@@ -620,8 +650,8 @@
       },
       "expected": {
         "kept": false,
-        "reason": "not-an-internship",
-        "matched_phrase": "no internship marker in title",
+        "reason": "not-early-career",
+        "matched_phrase": "senior",
         "location": "montreal"
       }
     },
@@ -640,7 +670,8 @@
         "remote_scope": null,
         "term": "summer-2027",
         "role": "embedded",
-        "language": "en"
+        "language": "en",
+        "level": "internship"
       }
     },
     {
@@ -658,7 +689,8 @@
         "remote_scope": null,
         "term": "summer-2027",
         "role": "quant",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -676,7 +708,8 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "infra",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
       }
     },
     {
@@ -694,7 +727,145 @@
         "remote_scope": null,
         "term": "unknown",
         "role": "embedded",
-        "language": "fr"
+        "language": "fr",
+        "level": "internship"
+      }
+    },
+    {
+      "id": "entry-en",
+      "input": {
+        "source": "greenhouse",
+        "company": "Stripe",
+        "title_raw": "Junior Software Engineer",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en",
+        "level": "entry"
+      }
+    },
+    {
+      "id": "entry-numbered",
+      "input": {
+        "source": "lever",
+        "company": "Databricks",
+        "title_raw": "Software Engineer I, Backend (Continuous Delivery)",
+        "location_raw": "Toronto, ON, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "canada",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "en",
+        "level": "entry"
+      }
+    },
+    {
+      "id": "newgrad-fr",
+      "input": {
+        "source": "lever",
+        "company": "Behaviour Interactive",
+        "title_raw": "D\u00e9veloppeur logiciel - nouveau dipl\u00f4m\u00e9",
+        "location_raw": "Montr\u00e9al, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": true,
+        "location": "montreal",
+        "remote_scope": null,
+        "term": "unknown",
+        "role": "swe",
+        "language": "fr",
+        "level": "new-grad"
+      }
+    },
+    {
+      "id": "reject-numbered-senior",
+      "input": {
+        "source": "greenhouse",
+        "company": "Stripe",
+        "title_raw": "Software Engineer III",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-early-career",
+        "matched_phrase": "engineer iii",
+        "location": "montreal"
+      }
+    },
+    {
+      "id": "reject-seniority-beats-level",
+      "input": {
+        "source": "greenhouse",
+        "company": "Stripe",
+        "title_raw": "Senior Software Engineer I",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-early-career",
+        "matched_phrase": "senior",
+        "location": "montreal"
+      }
+    },
+    {
+      "id": "reject-associate-counsel",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Associate Counsel",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-early-career",
+        "matched_phrase": "associate counsel",
+        "location": "montreal"
+      }
+    },
+    {
+      "id": "trap-new-grad-generalist",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Startup Generalist (New Grad)",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "unknown-cs-role",
+        "matched_phrase": "no matching CS role or source category",
+        "location": "montreal"
+      }
+    },
+    {
+      "id": "reject-term-ended",
+      "input": {
+        "source": "greenhouse",
+        "company": "Acme",
+        "title_raw": "Software Engineer Intern, Summer 2025",
+        "location_raw": "Montreal, QC, Canada",
+        "signals": {}
+      },
+      "expected": {
+        "kept": false,
+        "reason": "not-an-internship",
+        "matched_phrase": "summer 2025 has ended",
+        "location": "montreal"
       }
     }
   ]

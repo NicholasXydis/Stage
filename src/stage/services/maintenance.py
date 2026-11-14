@@ -7,7 +7,6 @@ from stage.domain import (
     UNKNOWN_TERM,
     IntegrityRepair,
     Job,
-    JobLevel,
     PurgeResult,
     QuarantinedJob,
     RateState,
@@ -218,9 +217,9 @@ def _reclassifications(
     from stage.classify import (
         classify_role,
         resolve_eligibility,
+        resolve_level,
         screen_degree_scope,
         screen_is_cs_role,
-        screen_is_internship,
         screen_location,
     )
     from stage.classify.scope import to_quarantined
@@ -255,16 +254,16 @@ def _reclassifications(
             degree_requirement=eligibility.degree_requirement,
             work_auth_flag=eligibility.work_auth_flag,
         )
+        level, rejection = resolve_level(candidate)
+        candidate = replace(candidate, level=level)
         rejection = (
-            screen_is_internship(candidate)
+            rejection
             or screen_location(candidate)
             or screen_degree_scope(candidate)
             or screen_is_cs_role(candidate)
         )
         if rejection is not None:
             rejected.append(to_quarantined(candidate, rejection))
-        else:
-            candidate = replace(candidate, level=JobLevel.INTERNSHIP)
         candidates.append(candidate)
     return tuple(candidates), tuple(rejected)
 
@@ -283,6 +282,7 @@ async def _release_reclassified_quarantine(
         RejectionReason.UNKNOWN_CS_ROLE,
         RejectionReason.NOT_A_CS_ROLE,
         RejectionReason.OUT_OF_SCOPE_LOCATION,
+        RejectionReason.NOT_AN_INTERNSHIP,
     ):
         if not remaining:
             break

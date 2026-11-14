@@ -243,6 +243,7 @@ async def _announce_new_postings(repository: Any, console: Any) -> None:
     from stage.cli import notify
     from stage.cli.render import plain
     from stage.domain import JobFilters
+    from stage.domain.filters import with_default_levels
     from stage.normalize.location import display_location
     from stage.services.query import list_jobs
 
@@ -257,7 +258,7 @@ async def _announce_new_postings(repository: Any, console: Any) -> None:
         runs = await repository.run_history(1)
         if runs:
             since = min(since, runs[0].started_at)
-    filters = replace(JobFilters(limit=None), first_seen_after=since)
+    filters = with_default_levels(replace(JobFilters(limit=None), first_seen_after=since))
     listing = await list_jobs(repository, filters, window_days=None)
     current = [job for job in listing.jobs if job.first_seen <= now]
     if not current:

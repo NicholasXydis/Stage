@@ -282,7 +282,7 @@ def test_show_prints_the_level(db_path: Path) -> None:
     assert "level new-grad" in _plain(result.stdout)
 
 
-def test_every_posting_screening_keeps_is_an_internship() -> None:
+def test_screening_labels_a_kept_posting_and_rejects_the_rest_as_not_early_career() -> None:
     from stage.services.screening import normalize_batch
 
     job = Job(
@@ -301,7 +301,7 @@ def test_every_posting_screening_keeps_is_an_internship() -> None:
     kept, rejected = normalize_batch([job, _job("staff", JobLevel.UNKNOWN)])
 
     assert [entry.level for entry in kept] == [JobLevel.INTERNSHIP]
-    assert [entry.reason for entry in rejected] == [RejectionReason.NOT_AN_INTERNSHIP]
+    assert [entry.reason for entry in rejected] == [RejectionReason.NOT_EARLY_CAREER]
 
 
 def test_the_tui_filters_by_level_and_keeps_internships_by_default() -> None:
