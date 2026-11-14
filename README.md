@@ -176,12 +176,12 @@ for more:
 
 ```bash
 stage list --level new-grad          # one level
-stage list --level new-grad --level entry
 stage list --level all               # every level
-stage prefs --level new-grad,entry   # save levels for --mine ("" goes back to internships only)
+stage prefs --level new-grad,entry   # save levels, then list them with --mine
+stage list --mine                    # only postings that fit your saved levels and more
 ```
 
-`--level` also works on `search` and `export`, in the TUI filter panel (`f`),
+`stage prefs --level ""` goes back to internships only. `--level` takes one value per command and also works on `search` and `export`, in the TUI filter panel (`f`),
 and in AI apps. The level comes from the posting's title and, for the new-grad
 lists below, from the list itself. Stage reads Simplify's New-Grad-Positions,
 SpeedyApply's new-grad tables and Vansh's New-Grad list as sources of their own
@@ -383,7 +383,7 @@ and connects two AI apps in a sandbox. What ships is what gets tested.
 - Nearly four in five postings arrive with no description at all. Stage marks those
   fields `unknown` instead of guessing.
 - Missing something you expected? `stage quarantine` shows which rule caught it.
-- Stage also reads community lists such as [Zapply's Internships](https://github.com/zapplyjobs/Internships-2027), [Canada Internships](https://github.com/zapplyjobs/Canada-Internships-2027) [Vansh's Summer 2027 Internships](https://github.com/vanshb03/Summer2027-Internships), and their new-grad counterparts ([Simplify's New-Grad-Positions](https://github.com/SimplifyJobs/New-Grad-Positions), [SpeedyApply's college jobs](https://github.com/speedyapply/2027-SWE-College-Jobs) and [Vansh's New-Grad-2027](https://github.com/vanshb03/New-Grad-2027)).
+- Stage also reads community lists such as [Zapply's Internships](https://github.com/zapplyjobs/Internships-2027), [Canada Internships](https://github.com/zapplyjobs/Canada-Internships-2027), [Vansh's Summer 2027 Internships](https://github.com/vanshb03/Summer2027-Internships), and their new-grad counterparts ([Simplify's New-Grad-Positions](https://github.com/SimplifyJobs/New-Grad-Positions), [SpeedyApply's college jobs](https://github.com/speedyapply/2027-SWE-College-Jobs) and [Vansh's New-Grad-2027](https://github.com/vanshb03/New-Grad-2027)).
 
 ## Learn more
 
