@@ -243,6 +243,7 @@ def test_the_level_lexicon_rejects_a_marker_that_is_also_a_seniority_word(
         "blocked": ["campus recruiter"],
         "new_grad": ["new grad"],
         "entry": ["junior"],
+        "structured_new_grad": ["new grad"],
         "role_nouns": ["engineer"],
         "associate_words": ["associate"],
         "new_grad_words": ["graduate"],
@@ -265,3 +266,59 @@ def test_the_shipped_level_lexicon_loads() -> None:
     assert "senior" in lexicon.seniority
     assert "new grad" in lexicon.new_grad
     assert lexicon.entry_levels.isdisjoint(lexicon.seniority_levels)
+
+
+def test_a_new_grad_feed_stands_in_for_a_title_with_no_marker() -> None:
+    verdict = screen_level("Software Engineer", employment_type="new grad")
+
+    assert verdict.level is JobLevel.NEW_GRAD
+    assert verdict.matched_phrase == "new grad"
+    assert screen_level("Software Engineer", employment_type="Early Career").level is (
+        JobLevel.NEW_GRAD
+    )
+    assert screen_level("Software Engineer").rejected, "no hint, no marker"
+    assert screen_level("Software Engineer", employment_type="Full-time").rejected
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Senior Software Engineer",
+        "Software Engineer II",
+        "Staff Software Engineer",
+        "Campus Recruiter",
+        "Associate Director, Engineering",
+        "Returning Intern Program Manager",
+    ],
+)
+def test_the_new_grad_hint_never_overrides_seniority_or_a_blocked_phrase(title: str) -> None:
+    assert screen_level(title, employment_type="new grad").rejected, title
+
+
+def test_a_title_marker_beats_the_new_grad_hint() -> None:
+    assert screen_level("Junior Software Engineer", employment_type="new grad").level is (
+        JobLevel.ENTRY
+    )
+    assert screen_level("Software Engineering Intern", employment_type="new grad").level is (
+        JobLevel.INTERNSHIP
+    )
+
+
+def test_a_new_grad_feed_is_never_read_as_an_internship_feed() -> None:
+    from stage.classify import screen_internship
+
+    assert not screen_internship("Software Engineer", employment_type="new grad").is_internship
+
+
+def test_screening_keeps_a_markerless_title_from_a_new_grad_feed() -> None:
+    kept, rejected = normalize_batch(
+        [
+            _job("Software Engineer", employment_type="new grad"),
+            _job("Software Engineer", url="https://example.test/2"),
+        ]
+    )
+
+    assert [(entry.title_raw, entry.level) for entry in kept] == [
+        ("Software Engineer", JobLevel.NEW_GRAD)
+    ]
+    assert [entry.reason for entry in rejected] == [RejectionReason.NOT_EARLY_CAREER]

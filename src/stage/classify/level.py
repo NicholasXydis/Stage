@@ -130,6 +130,10 @@ def screen_level(title: str, employment_type: str = "", category: str = "") -> L
     if internship.is_internship:
         return LevelVerdict(JobLevel.INTERNSHIP, ", ".join(internship.matched))
     verdict = classify_early_career(title)
+    if verdict.rejected and not verdict.matched_phrase and not internship.disqualified_by:
+        hint = _longest_hit(f" {fold(employment_type)} ", level_lexicon().structured_new_grad)
+        if hint:
+            return LevelVerdict(JobLevel.NEW_GRAD, hint)
     if verdict.rejected and not verdict.matched_phrase:
         return LevelVerdict(matched_phrase=internship.disqualified_by or NO_MARKER)
     return verdict

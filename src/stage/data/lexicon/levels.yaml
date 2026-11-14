@@ -104,6 +104,13 @@ entry:
   - debutant
   - debutante
 
+# A feed that lists only new-grad postings says so in its employment type, which stands in for a title
+# with no marker. It never overrides seniority, a blocked phrase or an internship disqualifier.
+structured_new_grad:
+  - new grad
+  - new graduate
+  - early career
+
 # A role noun gives "associate", "graduate", "campus", and a level numeral something to attach to, so
 # "Associate Software Engineer" and "Software Engineer I" count while "Associate Counsel" and
 # "Deli Shift Leader I" do not.

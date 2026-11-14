@@ -294,6 +294,7 @@ class LevelLexicon:
     blocked: frozenset[str]
     new_grad: frozenset[str]
     entry: frozenset[str]
+    structured_new_grad: frozenset[str]
     role_nouns: frozenset[str]
     associate_words: frozenset[str]
     new_grad_words: frozenset[str]
@@ -310,6 +311,7 @@ def level_lexicon() -> LevelLexicon:
         blocked=_folded_phrases(payload, "blocked", source),
         new_grad=_folded_phrases(payload, "new_grad", source),
         entry=_folded_phrases(payload, "entry", source),
+        structured_new_grad=_folded_phrases(payload, "structured_new_grad", source),
         role_nouns=_folded_set(payload, "role_nouns", source),
         associate_words=_folded_set(payload, "associate_words", source),
         new_grad_words=_folded_set(payload, "new_grad_words", source),
