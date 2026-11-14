@@ -67,7 +67,7 @@ BOARDS = {
 }
 FEEDS = sorted(get_feeds())
 ANSWERED = frozenset({"403", "404", "500", "network login"})
-MULTI_FILE_LISTS = frozenset({"speedyapply", "vanshb03"})
+MULTI_FILE_LISTS = frozenset({"speedyapply", "speedyapply-new-grad", "vanshb03"})
 SOURCES = sorted(BOARDS) + FEEDS
 
 
