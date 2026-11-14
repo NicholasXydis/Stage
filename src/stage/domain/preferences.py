@@ -61,7 +61,7 @@ class Preferences:
             filters,
             locations=self._locations() if placed else frozenset(),
             roles=self._roles() if filters.role is None else frozenset(),
-            levels=filters.levels if filters.level_chosen else self._levels(),
+            levels=filters.levels if filters.level_chosen else self.shown_levels(),
             terms=self._terms() if filters.term is None else frozenset(),
             avoid_companies=frozenset(e.folded for e in self.avoid) if named else frozenset(),
             follow_companies=frozenset(e.folded for e in self.follow)
@@ -99,7 +99,7 @@ class Preferences:
     def _roles(self) -> frozenset[RoleCategory]:
         return frozenset(self.roles) | ALWAYS_ROLES if self.roles else frozenset()
 
-    def _levels(self) -> frozenset[JobLevel]:
+    def shown_levels(self) -> frozenset[JobLevel]:
         return frozenset(self.levels) or DEFAULT_LEVELS
 
     def _terms(self) -> frozenset[str]:

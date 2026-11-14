@@ -33,7 +33,6 @@ from stage.ai.shape import (
     tracker_row,
 )
 from stage.domain import DEFAULT_WINDOW_DAYS, MAX_OPEN_AT_ONCE, Job, JobFilters, JobStatus
-from stage.domain.filters import DEFAULT_LEVELS
 from stage.domain.preferences import Preferences
 from stage.domain.text import counted, did_you_mean, first_line, plain_error
 from stage.storage import AsyncRepository, DatabaseWriter, open_repository
@@ -1156,7 +1155,7 @@ class Tools:
         now = datetime.now(UTC)
         try:
             async with self._repository() as repository:
-                counts = await repository.open_counts_by_company(wanted, DEFAULT_LEVELS)
+                counts = await repository.open_counts_by_company(wanted, preferences.shown_levels())
                 last_sync = await repository.last_sync_at()
         except ToolError as exc:
             return None, _synced(None, now, str(exc)), str(exc)

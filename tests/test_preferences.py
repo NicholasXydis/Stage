@@ -855,6 +855,28 @@ def test_prefs_employer_counts_follow_the_internship_default(db_path: Path) -> N
     assert "New Grad" not in _plain(listed.stdout)
 
 
+def test_prefs_employer_counts_follow_the_saved_levels(db_path: Path) -> None:
+    from dataclasses import replace
+
+    only_grad = replace(
+        _job("grad-only", company="Gradco", location=LocationBucket.USA),
+        title_raw="Software Engineer, New Grad",
+        level=JobLevel.NEW_GRAD,
+    )
+    db = _store(db_path, [*_catalogue(), only_grad])
+    follow = (ChosenCompany("Gradco", "gradco"), ChosenCompany("Cisco", "cisco"))
+    save_preferences(Preferences(follow=follow))
+    default = _plain(CliRunner().invoke(app, ["prefs", "--show", "--db", db]).stdout)
+    save_preferences(Preferences(follow=follow, levels=(JobLevel.NEW_GRAD,)))
+    grads = _plain(CliRunner().invoke(app, ["prefs", "--show", "--db", db]).stdout)
+    save_preferences(Preferences(follow=follow, levels=(JobLevel.INTERNSHIP, JobLevel.NEW_GRAD)))
+    both = _plain(CliRunner().invoke(app, ["prefs", "--show", "--db", db]).stdout)
+
+    assert "Following Gradco (0 open); Cisco (2 open)" in default
+    assert "Following Gradco (1 open); Cisco (0 open)" in grads
+    assert "Following Gradco (1 open); Cisco (2 open)" in both
+
+
 def test_employers_show_with_semicolons_and_accept_them_back(db_path: Path) -> None:
     db = _store(db_path, [_job("a", company="SRC, Inc"), _job("b", company="Cisco")])
 

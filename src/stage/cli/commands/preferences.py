@@ -339,7 +339,6 @@ def _stored_companies(db: "Path | None") -> dict[str, str]:
 
 
 def _open_counts(preferences: "Preferences", db: "Path | None") -> dict[str, int] | None:
-    from stage.domain.filters import DEFAULT_LEVELS
 
     wanted = {company.folded for company in (*preferences.follow, *preferences.avoid)}
     database = _database(db)
@@ -348,7 +347,10 @@ def _open_counts(preferences: "Preferences", db: "Path | None") -> dict[str, int
     return _unless_unreadable(
         database,
         lambda: _with_db(
-            database, lambda repository: repository.open_counts_by_company(wanted, DEFAULT_LEVELS)
+            database,
+            lambda repository: repository.open_counts_by_company(
+                wanted, preferences.shown_levels()
+            ),
         ),
         None,
         warn=False,

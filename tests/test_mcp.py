@@ -1333,6 +1333,30 @@ async def test_followed_employer_counts_follow_the_internship_default(tmp_path: 
     assert searched["total"] == 1 and every["total"] == 2
 
 
+async def test_followed_employer_counts_follow_the_saved_levels(tmp_path: Path) -> None:
+    jobs = [
+        *_catalogue_jobs(),
+        replace(
+            _job("grad", company="Gradco", title="Software Engineer, New Grad"),
+            level=JobLevel.NEW_GRAD,
+        ),
+    ]
+    database = _seed(tmp_path / "saved.db", jobs, syncs=2)
+    async with _connected(database) as client:
+        default = await _ok(client, "set_preferences", {"follow": ["gradco", "jane street"]})
+        grads = await _ok(client, "set_preferences", {"levels": ["new-grad"]})
+        read = await _ok(client, "get_preferences")
+    assert default["follow"] == [
+        {"name": "Gradco", "open_postings": 0},
+        {"name": "Jane Street", "open_postings": 1},
+    ]
+    assert grads["follow"] == [
+        {"name": "Gradco", "open_postings": 1},
+        {"name": "Jane Street", "open_postings": 0},
+    ]
+    assert read["follow"] == grads["follow"]
+
+
 async def test_preferences_refuse_what_cli_refuses(catalogue: Path) -> None:
     async with _connected(catalogue) as client:
         both = await _refused(client, "set_preferences", {"follow": ["Acme"], "avoid": ["acme"]})
