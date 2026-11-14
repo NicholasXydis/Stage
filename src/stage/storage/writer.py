@@ -271,11 +271,11 @@ class AsyncRepository:
     async def quarantine_company_counts(self) -> dict[str, dict[str, int]]:
         return await self._writer.run(lambda repository: repository.quarantine_company_counts())
 
-    async def quarantine_company_reasons(
-        self, reasons: Collection[str] = ()
-    ) -> dict[str, dict[str, int]]:
+    async def quarantine_company_titles(
+        self, reasons: Collection[str]
+    ) -> dict[str, tuple[str, ...]]:
         return await self._writer.run(
-            lambda repository: repository.quarantine_company_reasons(reasons)
+            lambda repository: repository.quarantine_company_titles(reasons)
         )
 
     async def company_apply_urls(

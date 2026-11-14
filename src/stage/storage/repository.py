@@ -235,9 +235,7 @@ class Repository(Protocol):
     def quarantine_company_counts(self) -> dict[str, dict[str, int]]:
         pass
 
-    def quarantine_company_reasons(
-        self, reasons: Collection[str] = ()
-    ) -> dict[str, dict[str, int]]:
+    def quarantine_company_titles(self, reasons: Collection[str]) -> dict[str, tuple[str, ...]]:
         pass
 
     def company_apply_urls(

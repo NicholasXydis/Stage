@@ -1,7 +1,8 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from stage.classify import screen_internship
 from stage.companies import board_label
 from stage.domain import (
     STALE_AFTER_DAYS,
@@ -112,11 +113,19 @@ INTERNSHIP_EVIDENCE_REASONS = frozenset(
 )
 
 
+def _internship_evidence(titles: dict[str, tuple[str, ...]]) -> frozenset[str]:
+    return frozenset(
+        company
+        for company, listed in titles.items()
+        if any(screen_internship(title).is_internship for title in listed)
+    )
+
+
 def _unregistered(
     companies: Sequence[Company],
     seen: dict[str, dict[str, int]],
     rejected: dict[str, dict[str, int]],
-    reasons: dict[str, dict[str, int]],
+    evidence: Collection[str],
     classifications: Sequence[CoverageClassification],
 ) -> tuple[UnregisteredCompany, ...]:
     exact_names = {name_tokens(company.name) for company in companies}
@@ -138,18 +147,13 @@ def _unregistered(
         if any(name_matches(entry.company, name) for entry in classifications):
             continue
         sources = seen.get(name, {})
-        rejections = reasons.get(name, {})
         unknown.append(
             UnregisteredCompany(
                 company=name,
                 sources=tuple(sorted(sources or rejected.get(name, {}))),
                 postings=sum(sources.values()),
                 quarantined=sum(rejected.get(name, {}).values()),
-                posts_internships=any(
-                    count > 0
-                    for reason, count in rejections.items()
-                    if reason in INTERNSHIP_EVIDENCE_REASONS
-                ),
+                posts_internships=name in evidence,
             )
         )
     return tuple(
@@ -215,17 +219,19 @@ async def coverage(
 
     seen = await repository.company_counts() if unregistered else {}
     rejected = await repository.quarantine_company_counts() if unregistered else {}
-    reasons = (
-        await repository.quarantine_company_reasons(INTERNSHIP_EVIDENCE_REASONS)
+    evidence = (
+        _internship_evidence(
+            await repository.quarantine_company_titles(INTERNSHIP_EVIDENCE_REASONS)
+        )
         if unregistered
-        else {}
+        else frozenset()
     )
     classifications = await repository.coverage_classifications()
     return CoverageReport(
         contradictions=contradicted_reviews(classifications, companies, now=moment),
         rows=_registry_rows(enabled, postings, visits, moment, stale_after_days),
         unregistered=(
-            _unregistered(companies, seen, rejected, reasons, classifications)
+            _unregistered(companies, seen, rejected, evidence, classifications)
             if unregistered
             else ()
         ),
