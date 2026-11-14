@@ -192,33 +192,26 @@ def test_only_an_internship_is_rejected_for_an_ended_term() -> None:
     ]
 
 
-ENROLLED = "You are currently enrolled in a master's program or currently pursuing a PhD."
-
-
-def test_current_enrolment_does_not_reject_a_new_grad_or_entry_posting() -> None:
+@pytest.mark.parametrize(
+    "description",
+    [
+        "You are currently pursuing a PhD.",
+        "Currently enrolled in a master's program.",
+        "PhD required.",
+        "A graduate degree required.",
+        "Master's required for this role.",
+    ],
+)
+def test_a_graduate_degree_role_is_rejected_at_every_level(description: str) -> None:
     kept, rejected = normalize_batch(
         [
-            _job("Software Engineer, New Grad", ENROLLED),
-            _job("Junior Software Engineer", ENROLLED, url="https://example.test/2"),
-            _job("Software Engineer Intern", ENROLLED, url="https://example.test/3"),
+            _job("Software Engineer, New Grad", description),
+            _job("Junior Software Engineer", description, url="https://example.test/2"),
         ]
     )
 
-    assert {entry.level for entry in kept} == {JobLevel.NEW_GRAD, JobLevel.ENTRY}
-    assert [(entry.title_raw, entry.reason) for entry in rejected] == [
-        ("Software Engineer Intern", RejectionReason.OUT_OF_SCOPE_DEGREE)
-    ]
-
-
-@pytest.mark.parametrize(
-    "description",
-    ["PhD required.", "A graduate degree required.", "Master's required for this role."],
-)
-def test_a_required_graduate_degree_still_rejects_a_new_grad_posting(description: str) -> None:
-    kept, rejected = normalize_batch([_job("Software Engineer, New Grad", description)])
-
     assert not kept
-    assert rejected[0].reason is RejectionReason.OUT_OF_SCOPE_DEGREE
+    assert {entry.reason for entry in rejected} == {RejectionReason.OUT_OF_SCOPE_DEGREE}
 
 
 def test_graduate_in_a_new_grad_title_is_not_a_graduate_degree() -> None:

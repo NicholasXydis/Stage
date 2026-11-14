@@ -126,21 +126,20 @@ def screen_degree_scope(job: Job) -> Rejection | None:
     lexicon = eligibility_lexicon()
 
     body = fold(f"{job.title_raw} {job.description}")
-    phd_required = lexicon.phd_required
-    graduate_degrees = lexicon.degree_required.get(
-        "phd", frozenset()
-    ) | lexicon.degree_required.get("masters", frozenset())
     graduate_tokens = lexicon.graduate_title_tokens
     if job.level in _EARLY_CAREER:
-        phd_required = phd_required - lexicon.enrollment_status
-        graduate_degrees = graduate_degrees - lexicon.enrollment_status
         graduate_tokens = graduate_tokens - lexicon.early_career_title_tokens
 
-    required = _restricted_hit(body, phd_required, lexicon.undergraduate_tokens)
+    required = _restricted_hit(body, lexicon.phd_required, lexicon.undergraduate_tokens)
     if required:
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=required)
 
-    graduate_only = _restricted_hit(body, graduate_degrees, lexicon.undergraduate_tokens)
+    graduate_only = _restricted_hit(
+        body,
+        lexicon.degree_required.get("phd", frozenset())
+        | lexicon.degree_required.get("masters", frozenset()),
+        lexicon.undergraduate_tokens,
+    )
     if graduate_only:
         return Rejection(reason=RejectionReason.OUT_OF_SCOPE_DEGREE, matched_phrase=graduate_only)
 

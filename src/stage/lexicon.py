@@ -351,7 +351,6 @@ class EligibilityLexicon:
     degree_list_tokens: frozenset[str]
     undergraduate_tokens: frozenset[str]
     graduate_title_tokens: frozenset[str]
-    enrollment_status: frozenset[str]
     early_career_title_tokens: frozenset[str]
     graduate_by_convention: frozenset[str]
     graduate_by_employer: Mapping[str, frozenset[str]]
@@ -399,7 +398,6 @@ def eligibility_lexicon() -> EligibilityLexicon:
         degree_list_tokens=_folded_phrases(payload, "degree_list_tokens", source),
         undergraduate_tokens=_folded_phrases(payload, "undergraduate_tokens", source),
         graduate_title_tokens=_folded_phrases(payload, "graduate_title_tokens", source),
-        enrollment_status=_folded_phrases(payload, "enrollment_status", source),
         early_career_title_tokens=_folded_phrases(payload, "early_career_title_tokens", source),
         graduate_by_convention=_folded_phrases(payload, "graduate_by_convention", source),
         graduate_by_employer=_phrase_map(payload, "graduate_by_employer", source),
