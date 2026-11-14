@@ -11,11 +11,11 @@ from stage.domain import Job, JobLevel, JobStatus, RejectionReason
 from stage.http import HttpClient, profile
 from stage.normalize import canonical_apply_url, is_tracker_url
 from stage.services.screening import normalize_batch
-from stage.sources import get_feeds, upcoming_season_year
+from stage.sources import FeedAdapter, get_feeds, upcoming_season_year
 from stage.sources.simplify import NEW_GRAD_URL, SimplifyFeed, SimplifyNewGradFeed
 
 
-def _client(feed: SimplifyFeed) -> HttpClient:
+def _client(feed: FeedAdapter) -> HttpClient:
     return HttpClient(allowed_hosts=feed.hosts, posture=profile(feed.rate_profile), jitter=False)
 
 
@@ -604,3 +604,76 @@ def test_an_identity_parameter_is_normalised_so_two_spellings_agree() -> None:
 def test_an_unreasonable_identity_value_is_ignored_rather_than_carried() -> None:
     assert canonical_apply_url("https://acme.com/j?id=" + "x" * 200) == "https://acme.com/j"
     assert canonical_apply_url("https://acme.com/j?id=a%20b") == "https://acme.com/j"
+
+
+def test_the_vanshb03_new_grad_list_is_its_own_feed_built_from_a_year(run_time: datetime) -> None:
+    from stage.sources.community_feeds import VanshFeed, VanshNewGradFeed
+
+    feeds = get_feeds()
+    assert isinstance(feeds["vanshb03-new-grad"], VanshNewGradFeed)
+    assert type(feeds["vanshb03"]) is VanshFeed
+    assert VanshFeed.employment_type == ""
+    (url,) = VanshNewGradFeed().plan(run_time)
+    assert url == (
+        f"https://raw.githubusercontent.com/vanshb03/New-Grad-{upcoming_season_year(run_time)}/"
+        "dev/.github/scripts/listings.json"
+    )
+    assert "New-Grad-2027" in VanshNewGradFeed().plan(datetime(2026, 9, 1, tzinfo=UTC))[0]
+
+
+@respx.mock
+async def test_vanshb03_new_grad_rows_map_to_jobs_that_never_claim_to_be_internships(
+    run_time: datetime,
+) -> None:
+    from stage.sources.community_feeds import VanshNewGradFeed
+
+    feed = VanshNewGradFeed()
+    respx.get(feed.plan(run_time)[0]).mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "id": "g1",
+                    "company_name": "Qualcomm",
+                    "title": "Embedded DSP Software Engineer",
+                    "url": "https://go.vansh.nyc/i2",
+                    "locations": ["San Diego, CA"],
+                    "active": True,
+                    "is_visible": True,
+                    "date_posted": 1_743_415_809,
+                    "sponsorship": "Other",
+                },
+                {"id": "g2", "company_name": "Acme", "title": "Senior Engineer", "active": True},
+                {"id": "g3", "company_name": "Acme", "title": "Closed Role", "active": False},
+            ],
+        )
+    )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+    kept, rejected = normalize_batch(list(result.jobs))
+
+    assert result.authoritative
+    assert {job.source for job in result.jobs} == {"vanshb03-new-grad"}
+    assert {job.signals.employment_type for job in result.jobs} == {"new grad"}
+    assert [(entry.title_raw, entry.level) for entry in kept] == [
+        ("Embedded DSP Software Engineer", JobLevel.NEW_GRAD)
+    ]
+    assert [entry.title_raw for entry in rejected] == ["Senior Engineer"]
+
+
+@respx.mock
+async def test_the_vanshb03_internship_feed_still_sends_no_employment_type(
+    run_time: datetime,
+) -> None:
+    from stage.sources.community_feeds import VanshFeed
+
+    feed = VanshFeed()
+    respx.get(feed.plan(run_time)[0]).mock(
+        return_value=httpx.Response(
+            200, json=[{"id": "1", "company_name": "Acme", "title": "Intern", "active": True}]
+        )
+    )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert result.jobs[0].signals.employment_type == ""
