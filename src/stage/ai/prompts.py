@@ -108,7 +108,7 @@ def whats_new() -> str:
     return " ".join(
         [
             (
-                "Using Stage, show me the internship postings that are new for me. Call "
+                "Using Stage, show me the postings that are new for me. Call "
                 "search_postings with new=true, mine=true and untracked=true."
             ),
             NO_PREFERENCES,
@@ -121,7 +121,7 @@ def whats_new() -> str:
 def weekly_digest() -> str:
     return " ".join(
         [
-            "Give me my weekly internship digest from Stage.",
+            "Give me my weekly digest of new postings from Stage.",
             (
                 "1. Call search_postings with days=7 and mine=true. If I saved no preferences, "
                 "search without mine and say so."
@@ -156,7 +156,7 @@ def find_matches(
         ask = f"Call search_postings with mine=true. {NO_PREFERENCES}"
     return " ".join(
         [
-            "Find internship postings for me in Stage.",
+            "Find postings for me in Stage. They are internships unless I name another level.",
             ask,
             "Show the ten best matches and the total. " + LISTING,
             "Offer to save the ones I like with track_postings, and save nothing I did not pick.",
@@ -184,7 +184,7 @@ def prepare_application(
             "1. Ask me which employer and posting I want to prepare for, then find it with "
             "search_postings."
         )
-        heading = "Help me prepare an internship application."
+        heading = "Help me prepare a job application."
     else:
         search = f"company={employer}" + (f" and words={words}" if words else "")
         find = (

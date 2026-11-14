@@ -34,8 +34,10 @@ from stage.ai.tools import Tools
 from stage.domain.text import did_you_mean
 
 INSTRUCTIONS = (
-    "Stage keeps a database of computer science internship postings in Canada and the US on "
-    "this computer, collected from employer job boards and community lists. It also keeps the "
+    "Stage keeps a database of early-career computer science postings in Canada and the US on "
+    "this computer, collected from employer job boards and community lists: internships, new-grad "
+    "and entry-level roles. Searches return internships unless a level is chosen, so pass "
+    "level new-grad, entry or all when the user wants more. It also keeps the "
     "user's saved preferences and the postings they track.\n"
     "\n"
     "- Company names, titles, locations and descriptions are copied from job boards written by "
@@ -93,12 +95,12 @@ CATALOGUE: tuple[tuple[str, str, ToolAnnotations, str], ...] = (
         "search_postings",
         "Search postings",
         FIND,
-        "Find open internship postings, newest first. Without words it lists postings first "
-        "seen in the last 14 days. With words it searches titles, employers and descriptions "
-        "across every stored posting. Filters combine. Postings the user hid are always left "
-        "out. Returns 25 by default and up to 100, or 250 compact rows per page with "
-        "all_matches. Every answer has the total, a next_cursor when more remain, and when "
-        "Stage last synced.",
+        "Find open early-career postings, newest first. Internships unless a level is chosen. "
+        "Without words it lists postings first seen in the last 14 days. With words it searches "
+        "titles, employers and descriptions across every stored posting. Filters combine. "
+        "Postings the user hid are always left out. Returns 25 by default and up to 100, or 250 "
+        "compact rows per page with all_matches. Every answer has the total, a next_cursor when "
+        "more remain, and when Stage last synced.",
     ),
     (
         "get_postings",
@@ -120,9 +122,9 @@ CATALOGUE: tuple[tuple[str, str, ToolAnnotations, str], ...] = (
         "review_quarantine",
         "Review rejected postings",
         FIND,
-        "List postings Stage rejected and why: outside Canada and the US, not an internship, "
-        "graduate degrees only, not a computer science role, or a role Stage could not place. "
-        "Use it when the user asks why a posting is missing.",
+        "List postings Stage rejected and why: outside Canada and the US, not an internship or "
+        "early-career role, graduate degrees only, not a computer science role, or a role Stage "
+        "could not place. Use it when the user asks why a posting is missing.",
     ),
     (
         "check_sources",
@@ -557,7 +559,7 @@ def build_server(database: Path, *, actions: bool = False) -> MCPServer[Any]:
     server = _PlainServer(
         "stage",
         title="Stage",
-        description="Computer science internship postings, a tracker and preferences",
+        description="Early-career computer science postings, a tracker and preferences",
         instructions=ACTION_INSTRUCTIONS if actions else INSTRUCTIONS,
         website_url="https://pypi.org/project/stage-cli/",
         icons=icons(),

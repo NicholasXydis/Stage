@@ -12,7 +12,7 @@
 
 ### One command. Thousands of internships.
 
-**Every CS internship you can actually apply to, in one place.**
+**Every early-career CS role you can actually apply to, in one place.** Internships by default, with new-grad and entry-level roles when you ask for them.
 
 Free and open source. No account, no hosted service, no telemetry.
 
@@ -49,7 +49,7 @@ Free and open source. No account, no hosted service, no telemetry.
 ## Why
 Internships disappear fast. By the time you find the right posting, hundreds of students may already be ahead of you. Most job boards make it worse by burying relevant roles under senior positions, research jobs, and listings nowhere near you.
 
-Stage scans 2,000+ employer career boards and finds internships CS undergrads in Canada and the U.S. can actually apply to. Every rejected posting is logged with the exact reason it was filtered out.
+Stage scans 2,000+ employer career boards and finds early-career CS roles that students and new graduates in Canada and the U.S. can actually apply to: internships, new-grad roles and entry-level roles. You see internships unless you choose otherwise (see [Levels](#levels)). Every rejected posting is logged with the exact reason it was filtered out.
 
 It has kept **3,877** postings out of **341,837** screened so far.
 
@@ -148,16 +148,47 @@ Filters work the same on `list`, `search`, and `export`:
 | Filter | What it takes |
 | --- | --- |
 | `--role` | swe, security, data, ml-ai, quant, infra, embedded, general-cs |
+| `--level` | internship (the default), new-grad, entry, all |
 | `--location` | montreal, canada (the rest of Canada), usa, unknown |
 | `--term` | summer-2027, fall-2026, winter-2027, and so on |
 | `--lang` | en, fr, bilingual |
-| `--source` | greenhouse, lever, workday, simplify, speedyapply, and more |
+| `--source` | greenhouse, lever, workday, simplify, simplify-new-grad, speedyapply, speedyapply-new-grad, vanshb03, vanshb03-new-grad, and more |
 | `--company` | one employer, in any case |
 | `--all` | every match, not just the first page |
 | `--last N` | only postings first seen in the last N days. Stage keeps postings for 14 days, so this narrows the list and cannot reach further back |
 
 Mistype one and Stage tells you what it accepts, rather than showing you an
 empty list.
+
+## Levels
+
+Stage keeps three early-career levels, and tags every posting with one:
+
+| Level | What it covers |
+| --- | --- |
+| `internship` | internships, co-ops and student placements |
+| `new-grad` | new graduate, university graduate and early-career programs |
+| `entry` | entry-level, junior, associate and "I" grade engineering roles |
+
+Experienced roles (senior, staff, lead, manager, grades II and up) are
+rejected. **The default is internships only**, so nothing changes until you ask
+for more:
+
+```bash
+stage list --level new-grad          # one level
+stage list --level new-grad --level entry
+stage list --level all               # every level
+stage prefs --level new-grad,entry   # save levels for --mine ("" goes back to internships only)
+```
+
+`--level` also works on `search` and `export`, in the TUI filter panel (`f`),
+and in AI apps. The level comes from the posting's title and, for the new-grad
+lists below, from the list itself. Stage reads Simplify's New-Grad-Positions,
+SpeedyApply's new-grad tables and Vansh's New-Grad list as sources of their own
+(`simplify-new-grad`, `speedyapply-new-grad`, `vanshb03-new-grad`), and searches
+Workday boards that have no internship filter for new-grad words too. A
+posting from one of those lists whose title has no level word is kept as new-grad
+instead of rejected, and a senior grade in the title still rejects it.
 
 ## The full-screen browser
 
@@ -166,7 +197,7 @@ stage tui
 ```
 
 Press `/` to search and `f` for filters. Arrows move, enter picks, escape
-closes. Your preferences, untracked only, role, location, language, how far back
+closes. Your preferences, untracked only, role, level, location, language, how far back
 to look, new-since-last-sync and the employer you are sitting on all live in that
 one panel.
 `space` marks rows and `o` opens every one you marked. `w` expands the full
@@ -179,7 +210,7 @@ numbers are a CLI idea. In the TUI you move a cursor instead.
 ## Your preferences and applications
 
 ```bash
-stage prefs                   # save the places, roles and terms you want
+stage prefs                   # save the places, roles, levels and terms you want
 stage list --mine             # only postings that fit them
 stage save 3                  # keep a posting to come back to
 stage applied 1-4             # mark rows as applied today
@@ -295,9 +326,9 @@ Stage/
 │  ├─ tui/                  Textual screens over the same services; safe.py escapes output
 │  ├─ ai/                   stage mcp: tools, prompts and answers for AI apps
 │  ├─ domain/               the types every layer speaks: jobs, filters, enums, events
-│  ├─ sources/              13 ATS adapters + 13 curated feeds
+│  ├─ sources/              13 ATS adapters + 16 curated feeds
 │  ├─ services/             sync, discover, query, export, preferences, tracker, connect, health
-│  ├─ classify/             role, internship scope, degree eligibility, location
+│  ├─ classify/             level, role, degree eligibility, location
 │  ├─ normalize/            location, term, language, apply-url canonicalisation
 │  ├─ dedup/                cross-source duplicate resolution
 │  ├─ http/                 rate posture, circuit breaker, validator cache
@@ -308,7 +339,7 @@ Stage/
 ```
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/NicholasXydis/Stage/main/assets/architecture.svg" alt="Stage reads 2,000+ employer boards and 13 curated feeds with rate limits and caching, normalizes each posting, screens it for internship, CS role, degree and place, keeps what passes and records why the rest was rejected, merges duplicates into one SQLite file on your computer, and serves it to stage list, stage tui, AI apps and Discord" width="100%">
+  <img src="https://raw.githubusercontent.com/NicholasXydis/Stage/main/assets/architecture.svg" alt="Stage reads 2,000+ employer boards and 16 curated feeds with rate limits and caching, normalizes each posting, screens it for early-career level, CS role, degree and place, keeps what passes and records why the rest was rejected, merges duplicates into one SQLite file on your computer, and serves it to stage list, stage tui, AI apps and Discord" width="100%">
 </div>
 
 ## CI
@@ -352,7 +383,7 @@ and connects two AI apps in a sandbox. What ships is what gets tested.
 - Nearly four in five postings arrive with no description at all. Stage marks those
   fields `unknown` instead of guessing.
 - Missing something you expected? `stage quarantine` shows which rule caught it.
-- Stage also reads community lists such as [Zapply's Internships](https://github.com/zapplyjobs/Internships-2027), [Canada Internships](https://github.com/zapplyjobs/Canada-Internships-2027) and [Vansh's Summer 2027 Internships](https://github.com/vanshb03/Summer2027-Internships).
+- Stage also reads community lists such as [Zapply's Internships](https://github.com/zapplyjobs/Internships-2027), [Canada Internships](https://github.com/zapplyjobs/Canada-Internships-2027) [Vansh's Summer 2027 Internships](https://github.com/vanshb03/Summer2027-Internships), and their new-grad counterparts ([Simplify's New-Grad-Positions](https://github.com/SimplifyJobs/New-Grad-Positions), [SpeedyApply's college jobs](https://github.com/speedyapply/2027-SWE-College-Jobs) and [Vansh's New-Grad-2027](https://github.com/vanshb03/New-Grad-2027)).
 
 ## Learn more
 

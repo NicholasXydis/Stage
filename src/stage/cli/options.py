@@ -150,7 +150,9 @@ app = typer.Typer(
     cls=_Banner,
     no_args_is_help=False,
     invoke_without_command=True,
-    help="Aggregates CS internship postings into a local SQLite database.",
+    help=(
+        "Aggregates early-career CS postings (internships by default) into a local SQLite database."
+    ),
     epilog="Run stage help for a guide with examples.",
 )
 schedule_app = typer.Typer(
@@ -585,7 +587,8 @@ def _no_such_posting(posting: str) -> str:
 
 
 _HELP_GUIDE = (
-    "Stage aggregates CS internship postings into a local SQLite database.\n"
+    "Stage aggregates early-career CS postings (internships by default) into a local SQLite\n"
+    "database.\n"
     "\nStart here:\n"
     "  stage sync                          Fetch and save current postings\n"
     "  stage tui                           Browse everything in a full screen\n"

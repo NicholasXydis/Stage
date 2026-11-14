@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="410" viewBox="0 0 1000 410" role="img" aria-labelledby="title desc">
   <title id="title">How Stage works</title>
-  <desc id="desc">Stage reads 2,000+ employer boards and 13 curated feeds with rate limits and caching, normalizes each posting, and screens it for internship, CS role, degree and place. Kept postings are merged across sources into one SQLite file on your computer, and rejected ones are kept with the rule that caught them. The file feeds stage list, stage tui, AI apps through stage mcp, and Discord.</desc>
+  <desc id="desc">Stage reads 2,000+ employer boards and 16 curated feeds with rate limits and caching, normalizes each posting, and screens it for early-career level, CS role, degree and place. Kept postings are merged across sources into one SQLite file on your computer, and rejected ones are kept with the rule that caught them. The file feeds stage list, stage tui, AI apps through stage mcp, and Discord.</desc>
 
   <defs>
     <marker id="arrow" markerWidth="4" markerHeight="4" refX="3" refY="2" orient="auto">
@@ -22,7 +22,7 @@
     <text x="115" y="84" fill="#F0F6FC">boards</text>
 
     <rect x="30" y="122" width="170" height="58" rx="12" fill="#161B22" stroke="#30363D" stroke-width="2"/>
-    <text x="115" y="146" fill="#F0F6FC">13 curated</text>
+    <text x="115" y="146" fill="#F0F6FC">16 curated</text>
     <text x="115" y="166" fill="#F0F6FC">feeds</text>
 
     <path d="M200 69C226 69 226 100 248 100" fill="none" stroke="#3B82F6" stroke-width="3" marker-end="url(#arrow)"/>
@@ -42,7 +42,7 @@
 
     <rect x="746" y="66" width="224" height="88" rx="12" fill="#111C30" stroke="#3B82F6" stroke-width="2"/>
     <text x="858" y="92" fill="#F0F6FC" font-size="15">Screen</text>
-    <text x="858" y="114" fill="#8B949E" font-size="12" font-weight="400">internship? CS role?</text>
+    <text x="858" y="114" fill="#8B949E" font-size="12" font-weight="400">level? CS role?</text>
     <text x="858" y="134" fill="#8B949E" font-size="12" font-weight="400">degree? Canada or US?</text>
 
     <path d="M806 154V242" stroke="#238636" stroke-width="3" marker-end="url(#green-arrow)"/>
