@@ -385,3 +385,22 @@ def test_the_entry_grade_still_reads_as_entry_next_to_a_separator() -> None:
     assert screen_level("Software Engineer I - Backend").level is JobLevel.ENTRY
     assert screen_level("Software Engineer I (Remote)").level is JobLevel.ENTRY
     assert screen_level("Data Scientist I | Core").level is JobLevel.ENTRY
+
+
+@pytest.mark.parametrize(
+    ("title", "level"),
+    [
+        ("Software Engineer - New Grad Program II", JobLevel.NEW_GRAD),
+        ("Software Engineer, Early Career - Stage II", JobLevel.NEW_GRAD),
+        ("Engineer Apprentice - Year II", JobLevel.ENTRY),
+        ("Software Engineer, New Grad - Tier II", JobLevel.NEW_GRAD),
+        ("Developer, Junior Series III", JobLevel.ENTRY),
+    ],
+)
+def test_a_numeral_counting_a_program_stage_year_tier_or_series_is_not_a_grade(
+    title: str, level: JobLevel
+) -> None:
+    verdict = screen_level(title)
+
+    assert verdict.level is level, title
+    assert not verdict.rejected

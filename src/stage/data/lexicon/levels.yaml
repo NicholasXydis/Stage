@@ -161,6 +161,11 @@ non_level_words:
   - group
   - round
   - tranche
+  - program
+  - stage
+  - year
+  - tier
+  - series
 
 entry_levels:
   - i
