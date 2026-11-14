@@ -22,6 +22,7 @@ from stage.services.sync import _quiet_day, _reserve_for, sync
 from stage.sources.workday import (
     BROAD_TEXT,
     NARROW_TEXT,
+    NEW_GRAD_TEXT,
     PAGE_SIZE,
     WHOLE_READ_BOARDS,
     WorkdayAdapter,
@@ -62,9 +63,13 @@ def _answer(tenant: str, kind: str, body: dict[str, object]) -> httpx.Response:
     if body["searchText"] == NARROW_TEXT:
         return httpx.Response(200, json={"total": 0, "jobPostings": []})
     if body["searchText"]:
-        assert body["searchText"] == BROAD_TEXT
-        found = 3 + int(_share(tenant, "found") * 30)
-        rows = [_row(tenant, 5000 + i, f"Software Intern {i}", i // 4) for i in range(found)]
+        assert body["searchText"] in (BROAD_TEXT, NEW_GRAD_TEXT)
+        grad = body["searchText"] == NEW_GRAD_TEXT
+        found = 3 + int(_share(tenant, "grad" if grad else "found") * 30)
+        title = "New Grad Engineer" if grad else "Software Intern"
+        rows = [
+            _row(tenant, (9000 if grad else 5000) + i, f"{title} {i}", i // 4) for i in range(found)
+        ]
         page = rows[offset : offset + PAGE_SIZE]
         return httpx.Response(200, json={"total": 0 if offset else found, "jobPostings": page})
     facets = [{"facetParameter": "timeType", "values": [{"id": "f-full", "descriptor": "Full"}]}]

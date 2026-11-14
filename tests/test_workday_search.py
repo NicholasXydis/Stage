@@ -6,16 +6,18 @@ import httpx
 import pytest
 import respx
 
-from stage.classify import screen_internship
-from stage.domain import SEARCH_PREFIX, Company, DetailFetch, Platform
+from stage.classify import screen_internship, screen_level
+from stage.domain import SEARCH_PREFIX, Company, DetailFetch, JobLevel, Platform
 from stage.http import BucketBlockedError, HttpClient, RatePosture
-from stage.lexicon import fold, internship_lexicon
+from stage.lexicon import fold, internship_lexicon, level_lexicon
 from stage.services.sync import _searches_due
 from stage.sources.base import FetchResult
 from stage.sources.workday import (
     BROAD_TEXT,
     CRAWL_PAGE_CAP,
     NARROW_TEXT,
+    NEW_GRAD_TERMS,
+    NEW_GRAD_TEXT,
     PAGE_SIZE,
     SEARCH_PAGES,
     SEARCH_TERMS,
@@ -85,7 +87,7 @@ def _serve(answers: Mapping[str, Answer] | None = None) -> Asked:
             return httpx.Response(
                 200, json={"total": 900, "jobPostings": newest, "facets": NO_INTERN}
             )
-        assert text in (NARROW_TEXT, BROAD_TEXT, *SINGLE_TERMS)
+        assert text in (NARROW_TEXT, BROAD_TEXT, NEW_GRAD_TEXT, *SINGLE_TERMS)
         return (answers or {}).get(text, nothing)(offset)
 
     respx.post(CXS).mock(side_effect=answer)
@@ -360,3 +362,152 @@ def test_spare_pages_go_to_boards_without_a_facet_first() -> None:
     ceiling = WorkdayAdapter.retry_reserve + 21 + 5
     budgets, _ = WorkdayAdapter.crawl_budgets([*faceted, bare], {}, facets, ceiling)
     assert budgets[bare.registry_key] == CRAWL_PAGE_CAP, "a faceted board rarely needs page 2"
+
+
+def test_every_new_grad_search_word_is_a_level_marker_and_the_text_fits_one_query() -> None:
+    lexicon = level_lexicon()
+    markers = lexicon.new_grad | lexicon.entry
+    for term in NEW_GRAD_TERMS:
+        assert fold(term) in markers, term
+    assert len(NEW_GRAD_TEXT.split(" OR ")) <= 10, "Workday drops matches past 10 clauses"
+    assert not set(NEW_GRAD_TERMS) & set(SEARCH_TERMS), "the internship search keeps its own words"
+    assert NEW_GRAD_TEXT not in (NARROW_TEXT, BROAD_TEXT)
+
+
+@respx.mock
+async def test_a_board_whose_or_works_is_then_searched_for_new_grad_roles() -> None:
+    asked = _serve(
+        {
+            BROAD_TEXT: _paged(_rows("I", "Data Intern", 3)),
+            NEW_GRAD_TEXT: _paged(
+                [
+                    _row("G1", "Software Engineer, New Grad"),
+                    _row("G2", "Junior Developer"),
+                    _row("G3", "Senior Software Engineer"),
+                ]
+            ),
+        }
+    )
+    result = await _fetch()
+
+    assert [text for text, _ in asked if text] == [NARROW_TEXT, BROAD_TEXT, NEW_GRAD_TEXT]
+    levels = {job.title_raw: screen_level(job.title_raw).level for job in result.jobs}
+    assert levels["Software Engineer, New Grad"] is JobLevel.NEW_GRAD
+    assert levels["Junior Developer"] is JobLevel.ENTRY
+    assert levels["Senior Software Engineer"] is JobLevel.UNKNOWN
+    assert {job.signals.employment_type for job in result.jobs} == {""}
+    assert "internships and new-grad roles" in result.degraded
+    assert DetailFetch(id=f"{SEARCH_PREFIX}workday:big-careers") in result.detail_fetches
+
+
+@respx.mock
+async def test_a_new_grad_search_that_finds_nothing_costs_one_request() -> None:
+    asked = _serve({BROAD_TEXT: _paged(_rows("I", "Data Intern", 3))})
+    await _fetch()
+
+    assert _offsets(asked, NEW_GRAD_TEXT) == [0]
+    assert len([text for text, _ in asked if text]) == 3
+
+
+@respx.mock
+async def test_a_board_that_ignores_or_is_not_asked_a_new_grad_or() -> None:
+    asked = _serve()
+    await _fetch()
+
+    assert NEW_GRAD_TEXT not in [text for text, _ in asked]
+
+
+@respx.mock
+async def test_the_new_grad_search_stops_after_two_pages_naming_no_term_even_on_a_whole_read_board(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "stage.sources.workday.WHOLE_READ_BOARDS", frozenset({"workday:big-careers"})
+    )
+    rows = _rows("G", "New Grad Engineer", 20) + _rows("D", "Accountant", 400)
+    asked = _serve({BROAD_TEXT: _paged(_rows("I", "Data Intern", 3)), NEW_GRAD_TEXT: _paged(rows)})
+    await _fetch(budget=40, full_read=True)
+
+    assert _offsets(asked, NEW_GRAD_TEXT) == [0, 20, 40]
+
+
+@respx.mock
+async def test_the_new_grad_search_never_takes_pages_the_internship_searches_need() -> None:
+    asked = _serve(
+        {
+            NARROW_TEXT: _paged(_rows("S", "Summer Associate", 3)),
+            BROAD_TEXT: _paged(_rows("I", "Data Intern", 3)),
+            NEW_GRAD_TEXT: _paged(_rows("G", "New Grad Engineer", 200)),
+        }
+    )
+    result = await _fetch(budget=3)
+
+    assert [text for text, _ in asked if text] == [NARROW_TEXT, BROAD_TEXT]
+    assert "The internship search" not in result.degraded
+    assert "The new-grad search stopped after 2 pages" in result.degraded
+    assert DetailFetch(id=f"{SEARCH_PREFIX}workday:big-careers") in result.detail_fetches
+
+
+@respx.mock
+async def test_a_new_grad_search_cut_short_is_not_repeated_every_sync() -> None:
+    asked = _serve(
+        {
+            BROAD_TEXT: _paged(_rows("I", "Data Intern", 3)),
+            NEW_GRAD_TEXT: _paged(_rows("G", "New Grad Engineer", 200)),
+        }
+    )
+    result = await _fetch(budget=4)
+
+    assert _offsets(asked, NEW_GRAD_TEXT) == [0]
+    assert "The new-grad search stopped after 3 pages" in result.degraded
+    assert "The internship search" not in result.degraded
+    assert DetailFetch(id=f"{SEARCH_PREFIX}workday:big-careers") in result.detail_fetches
+
+
+@respx.mock
+async def test_a_new_grad_search_that_fails_keeps_what_the_internship_searches_found() -> None:
+    interns = _rows("I", "Data Intern", 3)
+    asked = _serve({BROAD_TEXT: _paged(interns), NEW_GRAD_TEXT: lambda _: httpx.Response(404)})
+    result = await _fetch()
+
+    assert _offsets(asked, NEW_GRAD_TEXT) == [0]
+    assert len(_kept(result)) == 3
+    assert "The new-grad search failed" in result.degraded
+    assert "The internship search" not in result.degraded
+    assert DetailFetch(id=f"{SEARCH_PREFIX}workday:big-careers") in result.detail_fetches
+
+
+@respx.mock
+async def test_a_failed_internship_search_still_skips_the_new_grad_search() -> None:
+    asked = _serve({BROAD_TEXT: lambda _: httpx.Response(404)})
+    result = await _fetch()
+
+    assert [text for text, _ in asked if text] == [NARROW_TEXT, BROAD_TEXT]
+    assert "internship search failed" in result.degraded
+    assert not any(
+        isinstance(entry, DetailFetch) and entry.id.startswith(SEARCH_PREFIX)
+        for entry in result.detail_fetches
+    )
+
+
+@respx.mock
+async def test_a_board_with_an_internship_facet_is_never_searched_for_new_grad_roles() -> None:
+    facets = [
+        {
+            "facetParameter": "workerSubType",
+            "values": [{"id": "f-intern", "descriptor": "Intern", "count": 2}],
+        }
+    ]
+    asked: list[dict[str, object]] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        asked.append(body)
+        rows = _rows("I", "Data Intern", 2) if body["appliedFacets"] else _rows("R", "Analyst", 20)
+        return httpx.Response(200, json={"total": len(rows), "jobPostings": rows, "facets": facets})
+
+    respx.post(CXS).mock(side_effect=answer)
+    result = await _fetch()
+
+    assert {body["searchText"] for body in asked} == {""}
+    assert {job.signals.employment_type for job in result.jobs} == {"internship"}
