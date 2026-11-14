@@ -11,7 +11,8 @@ import pytest
 from typer.testing import CliRunner
 
 from stage.cli.app import app
-from stage.domain import Job, JobFilters, LocationBucket, RoleCategory
+from stage.domain import Job, JobFilters, JobLevel, LocationBucket, RoleCategory
+from stage.domain.filters import DEFAULT_LEVELS
 from stage.domain.preferences import (
     MAX_ABOUT,
     MAX_COMPANIES,
@@ -73,6 +74,7 @@ def _job(
         location=location,
         role=role,
         term=term,
+        level=JobLevel.INTERNSHIP,
     )
 
 
@@ -133,10 +135,10 @@ def _seeded(db_path: Path) -> str:
     return db
 
 
-def test_empty_preferences_change_nothing() -> None:
+def test_empty_preferences_change_nothing_but_keep_internships_only() -> None:
     filters = JobFilters(limit=10)
 
-    assert Preferences().apply(filters) == filters
+    assert Preferences().apply(filters) == replace(filters, levels=DEFAULT_LEVELS)
     assert Preferences().is_empty
     assert not Preferences().narrows
 
@@ -614,7 +616,7 @@ def test_the_guided_setup_keeps_changes_clears_and_retries() -> None:
     from stage.cli.commands.preferences import _guided
 
     current = Preferences(locations=(LocationBucket.USA,), roles=(RoleCategory.SWE,), about="hello")
-    answers = iter(["", "designer", "quant, data", "-", "Shopify", "", "-"])
+    answers = iter(["", "designer", "quant, data", "", "-", "Shopify", "", "-"])
     warnings: list[str] = []
 
     def ask(question: str, shown: str) -> str:
@@ -648,7 +650,7 @@ def test_the_guided_setup_refuses_to_avoid_what_it_just_followed() -> None:
     current = Preferences(
         avoid=(ChosenCompany("Shopify", "shopify"), ChosenCompany("Acme", "acme"))
     )
-    answers = iter(["", "", "", "Shopify", "shopify", "Acme, Ubisoft", ""])
+    answers = iter(["", "", "", "", "Shopify", "shopify", "Acme, Ubisoft", ""])
     warnings: list[str] = []
 
     result = _guided(current, {}, lambda _, shown: next(answers) or shown, warnings.append)
@@ -672,6 +674,7 @@ def test_the_setup_asks_plain_questions() -> None:
     assert questions == [
         "Locations (montreal, canada, usa)",
         "Roles (swe, security, data, ml-ai, quant, infra, embedded, general-cs)",
+        "Levels (internship, new-grad, entry)",
         "Terms (such as summer-2027)",
         "Employers to follow, included from any place",
         "Employers to leave out",
@@ -709,7 +712,7 @@ def test_prefs_in_a_terminal_walks_through_each_question(
     monkeypatch.setattr(command, "_interactive", lambda: True)
 
     result = CliRunner().invoke(
-        app, ["prefs"], input="montreal\nswe, robotics\nswe\nsummer-2027\n\n\nstudent\n"
+        app, ["prefs"], input="montreal\nswe, robotics\nswe\n\nsummer-2027\n\n\nstudent\n"
     )
     said = _plain(result.stdout)
     saved = load_preferences().preferences
@@ -1300,7 +1303,7 @@ def test_prefs_save_and_show_followed_employers_beside_a_broken_database(
     else:
         _store(broken, [_job("a", company="Shopify")])
         with closing(sqlite3.connect(broken)) as conn, conn:
-            conn.execute("UPDATE schema_migrations SET version = 999")
+            conn.execute("UPDATE schema_migrations SET version = version + 998")
     saved = CliRunner().invoke(app, ["prefs", "--follow", "Shopify", "--db", str(broken)])
     shown = CliRunner().invoke(app, ["prefs", "--show", "--db", str(broken)])
     data = CliRunner().invoke(app, ["prefs", "--avoid", "Acme", "--json", "--db", str(broken)])

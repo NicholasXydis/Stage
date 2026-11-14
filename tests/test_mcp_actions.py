@@ -25,7 +25,7 @@ from stage.ai.server import (
     build_server,
 )
 from stage.cli.app import app
-from stage.domain import Job, LocationBucket, RoleCategory, SyncOutcome, SyncRun
+from stage.domain import Job, JobLevel, LocationBucket, RoleCategory, SyncOutcome, SyncRun
 from stage.services import background
 from stage.services.background import SyncStart, progress_path
 from stage.storage.repository import SourceBatch
@@ -67,6 +67,7 @@ def _job(
         location=location,
         term=term,
         role=RoleCategory.SWE,
+        level=JobLevel.INTERNSHIP,
     )
 
 

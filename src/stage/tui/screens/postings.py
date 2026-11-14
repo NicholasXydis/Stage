@@ -419,6 +419,7 @@ class PostingsScreen(StageScreen[None]):
                 status.value if status is not None else None,
                 display_location(job.location_raw) or None,
                 job.role.value if job.role.value != "unknown" else None,
+                job.level.value if job.level.value != "unknown" else None,
                 job.term if job.term != "unknown" else None,
                 job.language.value.upper() if job.language.value != "unknown" else None,
                 age_label(job.first_seen, datetime.now(UTC)),

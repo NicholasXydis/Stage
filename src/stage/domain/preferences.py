@@ -2,8 +2,8 @@ import re
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, replace
 
-from stage.domain.enums import UNKNOWN_TERM, LocationBucket, RoleCategory
-from stage.domain.filters import JobFilters
+from stage.domain.enums import UNKNOWN_TERM, JobLevel, LocationBucket, RoleCategory
+from stage.domain.filters import DEFAULT_LEVELS, JobFilters
 from stage.domain.text import unknown_choice
 
 MAX_ABOUT = 2_000
@@ -17,6 +17,7 @@ CHOOSABLE_ROLES = tuple(
     role for role in RoleCategory if role not in (RoleCategory.HARDWARE, RoleCategory.UNKNOWN)
 )
 ALWAYS_ROLES = frozenset({RoleCategory.GENERAL_CS, RoleCategory.UNKNOWN})
+CHOOSABLE_LEVELS = tuple(level for level in JobLevel if level is not JobLevel.UNKNOWN)
 COVERED_BY = {LocationBucket.CANADA: (LocationBucket.MONTREAL,)}
 COMPANY_SEPARATOR = "; "
 
@@ -43,6 +44,7 @@ class Preferences:
     follow: tuple[ChosenCompany, ...] = ()
     avoid: tuple[ChosenCompany, ...] = ()
     about: str = ""
+    levels: tuple[JobLevel, ...] = ()
 
     @property
     def is_empty(self) -> bool:
@@ -50,7 +52,7 @@ class Preferences:
 
     @property
     def narrows(self) -> bool:
-        return bool(self.locations or self.roles or self.terms or self.avoid)
+        return bool(self.locations or self.roles or self.levels or self.terms or self.avoid)
 
     def apply(self, filters: JobFilters) -> JobFilters:
         named = filters.company is None
@@ -59,6 +61,7 @@ class Preferences:
             filters,
             locations=self._locations() if placed else frozenset(),
             roles=self._roles() if filters.role is None else frozenset(),
+            levels=filters.levels if filters.level_chosen else self._levels(),
             terms=self._terms() if filters.term is None else frozenset(),
             avoid_companies=frozenset(e.folded for e in self.avoid) if named else frozenset(),
             follow_companies=frozenset(e.folded for e in self.follow)
@@ -73,6 +76,8 @@ class Preferences:
             parts.append(", ".join(location.value for location in self.locations))
         if self.roles and filters.role is None:
             parts.append(", ".join(role.value for role in self.roles))
+        if self.levels and filters.levels == frozenset(self.levels):
+            parts.append(", ".join(level.value for level in self.levels))
         if self.terms and filters.term is None:
             parts.append(", ".join(self.terms))
         if self.follow and placed and (filters.company is None or self._follows(filters)):
@@ -93,6 +98,9 @@ class Preferences:
 
     def _roles(self) -> frozenset[RoleCategory]:
         return frozenset(self.roles) | ALWAYS_ROLES if self.roles else frozenset()
+
+    def _levels(self) -> frozenset[JobLevel]:
+        return frozenset(self.levels) or DEFAULT_LEVELS
 
     def _terms(self) -> frozenset[str]:
         return frozenset(self.terms) | {UNKNOWN_TERM} if self.terms else frozenset()
@@ -130,6 +138,17 @@ def parse_roles(values: Iterable[str]) -> tuple[RoleCategory, ...]:
         if role is None:
             raise PreferenceError(unknown_choice("role", value, list(allowed)))
         chosen.append(role)
+    return tuple(dict.fromkeys(chosen))
+
+
+def parse_levels(values: Iterable[str]) -> tuple[JobLevel, ...]:
+    allowed = {level.value: level for level in CHOOSABLE_LEVELS}
+    chosen: list[JobLevel] = []
+    for value in split_values(values):
+        level = allowed.get(value.lower())
+        if level is None:
+            raise PreferenceError(unknown_choice("level", value, list(allowed)))
+        chosen.append(level)
     return tuple(dict.fromkeys(chosen))
 
 
@@ -221,6 +240,7 @@ def parse_about(value: str) -> str:
 
 __all__ = [
     "ALWAYS_ROLES",
+    "CHOOSABLE_LEVELS",
     "CHOOSABLE_LOCATIONS",
     "CHOOSABLE_ROLES",
     "COMPANY_SEPARATOR",
@@ -233,6 +253,7 @@ __all__ = [
     "clean_text",
     "parse_about",
     "parse_companies",
+    "parse_levels",
     "parse_locations",
     "parse_roles",
     "parse_terms",

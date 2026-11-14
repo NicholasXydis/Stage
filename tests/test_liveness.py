@@ -16,6 +16,7 @@ from stage.domain import (
     CompanyVisit,
     Job,
     JobFilters,
+    JobLevel,
     JobStatus,
     RateState,
     RoleCategory,
@@ -77,6 +78,7 @@ def _job(
         role=RoleCategory.SWE,
         term="summer-2027",
         duplicate_of=duplicate_of,
+        level=JobLevel.INTERNSHIP,
     )
 
 

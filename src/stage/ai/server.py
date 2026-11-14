@@ -45,9 +45,9 @@ INSTRUCTIONS = (
     "reference such as speedyapply:acme:#3f9a2c1b4d0e. Send it back exactly as given. Ids are "
     "for calling tools: show the user titles, employers, places, dates and links, and give an "
     "id only when they ask for one. Row numbers from the user's terminal do not work here.\n"
-    "- Prefer filters (location, role, term, company, mine) over many searches with different "
-    "words. Without words, search_postings lists the newest postings from the last 14 days. "
-    "With words it searches every stored posting.\n"
+    "- Prefer filters (location, role, level, term, company, mine) over many searches with "
+    "different words. Without words, search_postings lists the newest postings from the last "
+    "14 days. With words it searches every stored posting.\n"
     "- location canada means Canada outside Montreal, which has its own value. For all of "
     "Canada, search montreal and canada, or use mine when the user saved canada.\n"
     "- mine applies the user's saved preferences. If none are saved, ask which places, roles "
@@ -169,7 +169,7 @@ CATALOGUE: tuple[tuple[str, str, ToolAnnotations, str], ...] = (
         "get_preferences",
         "Get preferences",
         FIND,
-        "The user's saved places, roles, terms, followed and avoided employers, and note "
+        "The user's saved places, roles, levels, terms, followed and avoided employers, and note "
         "about themselves, plus the values each field accepts.",
     ),
     (

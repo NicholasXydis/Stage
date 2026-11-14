@@ -4,6 +4,7 @@ from datetime import datetime
 from stage.domain.enums import (
     UNKNOWN_TERM,
     DegreeRequirement,
+    JobLevel,
     JobStatus,
     Language,
     LocationBucket,
@@ -34,6 +35,7 @@ class Job:
     remote_scope: RemoteScope | None = None
     term: str = UNKNOWN_TERM
     role: RoleCategory = RoleCategory.UNKNOWN
+    level: JobLevel = JobLevel.UNKNOWN
     work_auth_flag: bool = False
     degree_requirement: DegreeRequirement = DegreeRequirement.UNKNOWN
     compensation: str | None = None

@@ -18,6 +18,7 @@ from stage.domain import (
     ExportFormat,
     Job,
     JobFilters,
+    JobLevel,
     JobStatus,
     LocationBucket,
     SyncOutcome,
@@ -97,6 +98,7 @@ def _job(
         location=LocationBucket.MONTREAL,
         term="summer-2027",
         duplicate_of=duplicate_of,
+        level=JobLevel.INTERNSHIP,
     )
 
 

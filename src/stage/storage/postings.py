@@ -40,7 +40,7 @@ _NEWEST_FIRST = (
     "jobs.id ASC"
 )
 _COMPOSITION_COLUMNS = frozenset(
-    {"source", "location", "role", "term", "language", "status", "degree_requirement"}
+    {"source", "location", "role", "level", "term", "language", "status", "degree_requirement"}
 )
 _KEPT_URLS = 5
 
@@ -68,6 +68,8 @@ def _clauses(filters: JobFilters) -> tuple[list[str], list[Any]]:
         where("jobs.degree_requirement = ?", [filters.degree.value])
     if filters.role is not None:
         where("jobs.role = ?", [filters.role.value])
+    if filters.level is not None:
+        where("jobs.level = ?", [filters.level.value])
     if filters.language in (Language.EN, Language.FR):
         where(*_among("jobs.language", (filters.language.value, Language.BILINGUAL.value)))
     elif filters.language is not None:
@@ -96,6 +98,8 @@ def _clauses(filters: JobFilters) -> tuple[list[str], list[Any]]:
         where(placed, places)
     if filters.roles:
         where(*_among("jobs.role", {role.value for role in filters.roles}))
+    if filters.levels:
+        where(*_among("jobs.level", {level.value for level in filters.levels}))
     if filters.terms:
         where(*_among("jobs.term", filters.terms))
     if filters.avoid_companies:

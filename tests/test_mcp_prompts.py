@@ -109,6 +109,7 @@ async def test_the_five_prompts_are_listed_with_titles_and_arguments(stored: Pat
     ]
     assert [arg.name for arg in arguments["find_matches"]] == [
         "role",
+        "level",
         "location",
         "term",
         "company",
@@ -326,7 +327,11 @@ def test_prompts_and_their_titles_are_plain_ascii() -> None:
         ("whats_neww", {}, 'Stage has no prompt named "whats_neww". Did you mean "whats_new"?'),
         ("nope", {}, 'Stage has no prompt named "nope". Stage has: find_matches,'),
         ("whats_new", {"x": "1"}, 'There is no argument "x". whats_new takes no arguments.'),
-        ("find_matches", {"place": "usa"}, "find_matches takes company, location, role, term."),
+        (
+            "find_matches",
+            {"place": "usa"},
+            "find_matches takes company, level, location, role, term.",
+        ),
         ("find_matches", {"rol": "swe"}, 'Did you mean "role"? find_matches takes company,'),
     ],
 )

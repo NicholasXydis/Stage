@@ -14,6 +14,7 @@ from stage.cli.options import (
     JsonOption,
     LanguageOption,
     LastDaysOption,
+    LevelOption,
     LocationOption,
     MineOption,
     NewOption,
@@ -77,11 +78,14 @@ def _hidden_hint(count: int) -> str:
 def _no_location_hint(count: int, command: str, filters: "JobFilters", untracked: bool) -> str:
     from shlex import quote
 
+    from stage.domain.filters import level_flag
+
     typed = [
         (flag, value)
         for flag, value in (
             ("--term", filters.term),
             ("--role", filters.role and filters.role.value),
+            ("--level", level_flag(filters)),
             ("--lang", filters.language and filters.language.value),
             ("--source", filters.source),
             ("--company", filters.company),
@@ -153,6 +157,7 @@ def list_postings(
     location: LocationOption = None,
     term: TermOption = None,
     role: RoleOption = None,
+    level: LevelOption = None,
     language: LanguageOption = None,
     source: SourceOption = None,
     company: CompanyOption = None,
@@ -184,6 +189,7 @@ def list_postings(
             location=location,
             term=term,
             role=role,
+            level=level,
             language=language,
             source=source,
             company=company,
@@ -254,6 +260,7 @@ def search(
     location: LocationOption = None,
     term: TermOption = None,
     role: RoleOption = None,
+    level: LevelOption = None,
     language: LanguageOption = None,
     source: SourceOption = None,
     company: CompanyOption = None,
@@ -300,6 +307,7 @@ def search(
             location=location,
             term=term,
             role=role,
+            level=level,
             language=language,
             source=source,
             company=company,
@@ -567,6 +575,7 @@ def export(
     location: LocationOption = None,
     term: TermOption = None,
     role: RoleOption = None,
+    level: LevelOption = None,
     language: LanguageOption = None,
     source: SourceOption = None,
     company: CompanyOption = None,
@@ -601,6 +610,7 @@ def export(
             location=location,
             term=term,
             role=role,
+            level=level,
             language=language,
             source=source,
             company=company,

@@ -316,7 +316,7 @@ tr.gone td { color: var(--muted); }
   const SHOWN = 5;
   const PAGE = 100;
   const INLINE_PAGE = 25;
-  const FIELDS = ["words", "location", "role", "term", "language", "company", "mine", "untracked", "new", "days"];
+  const FIELDS = ["words", "location", "role", "level", "term", "language", "company", "mine", "untracked", "new", "days"];
   const PLACES = new Map([
     ["montreal", "Montreal"],
     ["canada", "Canada outside Montreal"],
@@ -333,6 +333,12 @@ tr.gone td { color: var(--muted); }
     ["embedded", "Embedded"],
     ["general-cs", "General CS"],
     ["unknown", "Other roles"],
+  ]);
+  const LEVELS = new Map([
+    ["internship", "Internships"],
+    ["new-grad", "New grad"],
+    ["entry", "Entry level"],
+    ["all", "Every level"],
   ]);
   const LANGUAGES = new Map([
     ["en", "English"],
@@ -814,7 +820,7 @@ tr.gone td { color: var(--muted); }
     if (company) {
       parts.push(clip(company, 60));
     }
-    for (const [map, key] of [[PLACES, args.location], [ROLES, args.role], [LANGUAGES, args.language]]) {
+    for (const [map, key] of [[PLACES, args.location], [ROLES, args.role], [LEVELS, args.level], [LANGUAGES, args.language]]) {
       const label = named(map, key);
       if (label) {
         parts.push(label);

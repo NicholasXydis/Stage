@@ -20,7 +20,7 @@ from stage.classify import (
     screen_location,
     to_quarantined,
 )
-from stage.domain import Job, QuarantinedJob
+from stage.domain import Job, JobLevel, QuarantinedJob
 from stage.normalize import (
     canonical_apply_url,
     detect_language,
@@ -90,7 +90,7 @@ def normalize_batch(jobs: Sequence[Job]) -> Screened:
             or screen_is_cs_role(normalized)
         )
         if rejection is None:
-            kept.append(normalized)
+            kept.append(replace(normalized, level=JobLevel.INTERNSHIP))
         else:
             rejected.append(to_quarantined(normalized, rejection))
     return tuple(kept), tuple(rejected)

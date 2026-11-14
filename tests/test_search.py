@@ -8,6 +8,7 @@ from stage.domain import (
     DegreeRequirement,
     Job,
     JobFilters,
+    JobLevel,
     Language,
     LocationBucket,
     QuarantinedJob,
@@ -50,6 +51,7 @@ def _job(
         term="summer-2027",
         degree_requirement=DegreeRequirement.UNKNOWN,
         duplicate_of=duplicate_of,
+        level=JobLevel.INTERNSHIP,
     )
 
 

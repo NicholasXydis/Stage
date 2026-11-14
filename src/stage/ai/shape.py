@@ -106,6 +106,7 @@ def posting_row(job: Job, status: ApplicationStatus | None) -> dict[str, object]
         "location": full_place(job.location_raw, job.location.value),
         "region": job.location.value,
         "role": job.role.value,
+        "level": job.level.value,
         "term": job.term,
         "first_seen": day(job.first_seen),
         "url": web_url(job.apply_url_raw),

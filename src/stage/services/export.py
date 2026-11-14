@@ -48,6 +48,7 @@ COLUMNS: tuple[tuple[str, Callable[[Job], str]], ...] = (
     ("location_bucket", lambda job: job.location.value),
     ("term", lambda job: job.term),
     ("role", lambda job: job.role.value),
+    ("level", lambda job: job.level.value),
     ("language", lambda job: job.language.value),
     ("first_seen", lambda job: job.first_seen.astimezone(UTC).date().isoformat()),
     ("source", lambda job: job.source),

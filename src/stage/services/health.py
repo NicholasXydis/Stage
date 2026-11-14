@@ -22,7 +22,7 @@ from stage.domain.visits import refused
 from stage.storage import AsyncRepository
 
 RUN_HISTORY = 20
-COMPOSITION_COLUMNS = ("source", "location", "role", "term", "language")
+COMPOSITION_COLUMNS = ("source", "location", "role", "level", "term", "language")
 
 
 @dataclass(frozen=True, slots=True)

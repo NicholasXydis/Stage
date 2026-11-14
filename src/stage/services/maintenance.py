@@ -7,6 +7,7 @@ from stage.domain import (
     UNKNOWN_TERM,
     IntegrityRepair,
     Job,
+    JobLevel,
     PurgeResult,
     QuarantinedJob,
     RateState,
@@ -254,7 +255,6 @@ def _reclassifications(
             degree_requirement=eligibility.degree_requirement,
             work_auth_flag=eligibility.work_auth_flag,
         )
-        candidates.append(candidate)
         rejection = (
             screen_is_internship(candidate)
             or screen_location(candidate)
@@ -263,6 +263,9 @@ def _reclassifications(
         )
         if rejection is not None:
             rejected.append(to_quarantined(candidate, rejection))
+        else:
+            candidate = replace(candidate, level=JobLevel.INTERNSHIP)
+        candidates.append(candidate)
     return tuple(candidates), tuple(rejected)
 
 

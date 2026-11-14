@@ -114,6 +114,7 @@ class StatsScreen(StageScreen[None]):
         width = min(BAR_WIDTH, max(8, self.app.size.width - LABEL_WIDTH - 14))
         blocks = (
             ("Postings by role", Counter(job.role.value for job in jobs)),
+            ("Postings by level", Counter(job.level.value for job in jobs)),
             ("Postings by location", Counter(job.location.value for job in jobs)),
             ("Postings by term", Counter(job.term for job in jobs)),
             ("Top employers", Counter(job.company for job in jobs)),

@@ -26,6 +26,7 @@ from stage.ai.shape import CAUTION, DESCRIPTION_LIMIT, ago, make_cursor, read_cu
 from stage.cli.app import app
 from stage.domain import (
     Job,
+    JobLevel,
     LocationBucket,
     QuarantinedJob,
     RateState,
@@ -79,6 +80,7 @@ def _job(
         term="summer-2027",
         role=role,
         duplicate_of=duplicate_of,
+        level=JobLevel.INTERNSHIP,
     )
 
 
@@ -429,6 +431,7 @@ def test_the_command_for_every_match_repeats_each_filter() -> None:
         "words": "",
         "location": None,
         "role": None,
+        "level": None,
         "term": None,
         "language": None,
         "company": None,

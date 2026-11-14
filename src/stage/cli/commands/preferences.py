@@ -31,7 +31,7 @@ SHOWN_IN_FULL = 72
 
 @app.command(
     "prefs",
-    help="Save the places, roles and terms that --mine uses",
+    help="Save the places, roles, levels and terms that --mine uses",
     rich_help_panel="Everyday",
 )
 def prefs(
@@ -51,6 +51,17 @@ def prefs(
             help=(
                 "swe, security, data, ml-ai, quant, infra, embedded, general-cs. Repeat the "
                 'flag or separate with commas, "" clears'
+            ),
+        ),
+    ] = None,
+    level: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--level",
+            metavar="LEVEL",
+            help=(
+                "internship, new-grad, entry. Repeat the flag or separate with commas, "
+                '"" clears (internship only)'
             ),
         ),
     ] = None,
@@ -93,7 +104,7 @@ def prefs(
         preferences_lock,
     )
 
-    changing = bool(location or role or term or follow or avoid) or about is not None
+    changing = bool(location or role or level or term or follow or avoid) or about is not None
     if clear and (changing or show):
         _refuse("[red]--clear cannot be combined with other options.[/red]")
     if show and changing:
@@ -117,6 +128,7 @@ def prefs(
     for flag, values in (
         ("--location", location),
         ("--role", role),
+        ("--level", level),
         ("--term", term),
         ("--follow", follow),
         ("--avoid", avoid),
@@ -128,7 +140,9 @@ def prefs(
         try:
             with preferences_lock():
                 current = load_preferences().preferences
-                updated = _updated(current, known, location, role, term, follow, avoid, about)
+                updated = _updated(
+                    current, known, location, role, level, term, follow, avoid, about
+                )
                 _finish(updated, known, db, as_json, before=current)
         except (PreferenceError, InvalidOptionError) as exc:
             _print_failure(exc)
@@ -157,6 +171,7 @@ def _updated(
     known: "Mapping[str, str]",
     location: list[str] | None,
     role: list[str] | None,
+    level: list[str] | None,
     term: list[str] | None,
     follow: list[str] | None,
     avoid: list[str] | None,
@@ -169,6 +184,7 @@ def _updated(
         known,
         locations=location or None,
         roles=role or None,
+        levels=level or None,
         terms=_terms(term) if term else None,
         follow=follow or None,
         avoid=avoid or None,
@@ -193,6 +209,7 @@ def _guided(
     warn: Callable[[str], None],
 ) -> "Preferences":
     from stage.domain.preferences import (
+        CHOOSABLE_LEVELS,
         CHOOSABLE_LOCATIONS,
         CHOOSABLE_ROLES,
         COMPANY_SEPARATOR,
@@ -202,6 +219,7 @@ def _guided(
         check_overlap,
         parse_about,
         parse_companies,
+        parse_levels,
         parse_locations,
         parse_roles,
     )
@@ -224,6 +242,7 @@ def _guided(
 
     places = ", ".join(location.value for location in CHOOSABLE_LOCATIONS)
     kinds = ", ".join(role.value for role in CHOOSABLE_ROLES)
+    stages = ", ".join(level.value for level in CHOOSABLE_LEVELS)
     locations = step(
         f"Locations ({places})",
         current.locations,
@@ -235,6 +254,12 @@ def _guided(
         current.roles,
         ", ".join(role.value for role in current.roles),
         parse_roles,
+    )
+    levels = step(
+        f"Levels ({stages})",
+        current.levels,
+        ", ".join(level.value for level in current.levels),
+        parse_levels,
     )
     terms = step("Terms (such as summer-2027)", current.terms, ", ".join(current.terms), _terms)
     follow = step(
@@ -256,7 +281,7 @@ def _guided(
         current.about,
         lambda v: parse_about(v[0]),
     )
-    return Preferences(locations, roles, terms, follow, avoid, about)
+    return Preferences(locations, roles, terms, follow, avoid, about, levels)
 
 
 def _finish(

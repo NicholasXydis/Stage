@@ -177,6 +177,7 @@ def render_posting(
     console.print(field("location", where))
     state("term", job.term)
     state("role", job.role.value)
+    state("level", job.level.value)
     state("language", job.language.value)
     state("degree", job.degree_requirement.value)
     if job.work_auth_flag:
@@ -271,6 +272,8 @@ def render_preferences(
     console.print(plain("Saved your preferences." if saved else "Your preferences", "bold"))
     console.print(field("Locations", listed([v.value for v in preferences.locations])))
     console.print(field("Roles", listed([v.value for v in preferences.roles])))
+    levels = [v.value for v in preferences.levels]
+    console.print(field("Levels", listed(levels) if levels else "internship (the default)"))
     console.print(field("Terms", listed(list(preferences.terms))))
     follow = [with_open(e.name, e.folded) for e in preferences.follow]
     avoid = [with_open(e.name, e.folded) for e in preferences.avoid]
@@ -293,7 +296,7 @@ def render_preferences(
     else:
         console.print(
             "[dim]Nothing chosen yet. Run [bold]stage prefs[/bold] in a terminal, or pass "
-            "--location, --role and --term.[/dim]"
+            "--location, --role, --level and --term.[/dim]"
         )
 
 

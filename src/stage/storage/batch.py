@@ -460,7 +460,7 @@ class BatchWriter(Store):
                 f"DELETE FROM quarantine WHERE id IN {EACH}",
                 (listed(job.id for job in jobs if seen.get(job.id, _UNSEEN).rejected is not None),),
             )
-            restore_copies(conn, {job.id for job in jobs})
+            restore_copies(conn, {job.id: job.level for job in jobs})
             _crawl(conn, batch, stamp)
             touched = _touch(conn, batch, stamp)
             closed, shut, held_urls = _close(conn, batch, stamp)

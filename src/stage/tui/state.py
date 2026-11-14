@@ -5,10 +5,13 @@ from typing import TYPE_CHECKING, Any
 from stage.domain import (
     DEFAULT_WINDOW_DAYS,
     JobFilters,
+    JobLevel,
     Language,
     LocationBucket,
     RoleCategory,
 )
+from stage.domain.filters import ALL_LEVELS, EVERY_LEVEL, with_default_levels
+from stage.domain.preferences import CHOOSABLE_LEVELS
 
 if TYPE_CHECKING:
     from stage.domain.preferences import Preferences
@@ -20,12 +23,14 @@ LAST_DAYS_CHOICES: tuple[int, ...] = (7, 14, 30, 0)
 
 FILTER_FIELDS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     ("role", "Role", tuple(value.value for value in RoleCategory if value.value != "hardware")),
+    ("level", "Level", (*(value.value for value in CHOOSABLE_LEVELS), ALL_LEVELS)),
     ("location", "Location", tuple(value.value for value in LocationBucket)),
     ("language", "Language", tuple(value.value for value in Language)),
 )
 
 _ENUMS: dict[str, Any] = {
     "role": RoleCategory,
+    "level": JobLevel,
     "location": LocationBucket,
     "language": Language,
 }
@@ -129,6 +134,9 @@ class FilterState:
     def as_filters(self, preferences: "Preferences | None" = None) -> JobFilters:
         chosen: dict[str, Any] = {}
         for name, value in self.values.items():
+            if name == "level" and value == ALL_LEVELS:
+                chosen["levels"] = EVERY_LEVEL
+                continue
             enum = _ENUMS.get(name)
             if enum is None:
                 if any(name == field_name for field_name, _ in _OPEN_FIELDS):
@@ -141,7 +149,7 @@ class FilterState:
         filters = JobFilters(limit=None if self.show_all else self.limit, **chosen)
         if self.mine and preferences is not None and preferences.narrows:
             return preferences.apply(filters)
-        return filters
+        return with_default_levels(filters)
 
 
 def theme_path() -> Path:
