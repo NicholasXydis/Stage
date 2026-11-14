@@ -21,6 +21,10 @@ LISTINGS_URL = (
     "https://raw.githubusercontent.com/SimplifyJobs/Summer{year}-Internships/dev/.github/"
     "scripts/listings.json"
 )
+NEW_GRAD_URL = (
+    "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/dev/.github/scripts/"
+    "listings.json"
+)
 
 
 class SimplifyListing(BaseModel):
@@ -46,9 +50,13 @@ class SimplifyFeed:
     rate_profile: ClassVar[str] = "feeds"
     hosts: ClassVar[frozenset[str]] = frozenset({HOST})
     bucket_key: ClassVar[str] = ""
+    employment_type: ClassVar[str] = ""
 
     def season_year(self, now: datetime) -> int:
         return upcoming_season_year(now)
+
+    def slug(self, now: datetime) -> str:
+        return str(self.season_year(now))
 
     def plan(self, now: datetime) -> tuple[str, ...]:
         return (LISTINGS_URL.format(year=self.season_year(now)),)
@@ -62,7 +70,7 @@ class SimplifyFeed:
             lambda listing: self._to_job(listing, now),
             [listing for listing in listings if listing.active and listing.is_visible],
             source=self.name,
-            slug=str(self.season_year(now)),
+            slug=self.slug(now),
         )
         dropped += unconvertible
         return FetchResult(
@@ -75,13 +83,11 @@ class SimplifyFeed:
         if not isinstance(payload, list):
             raise payload_error(
                 self.name,
-                str(self.season_year(now)),
+                self.slug(now),
                 payload,
                 f"{self.name} answered with something other than a JSON list of listings",
             )
-        return validate_rows(
-            SimplifyListing, payload, source=self.name, slug=str(self.season_year(now))
-        )
+        return validate_rows(SimplifyListing, payload, source=self.name, slug=self.slug(now))
 
     def _to_job(self, listing: SimplifyListing, now: datetime) -> Job:
         posted = (
@@ -102,9 +108,22 @@ class SimplifyFeed:
             last_seen=now,
             source_posted_at=posted,
             signals=SourceSignals(
+                employment_type=self.employment_type,
                 terms=tuple(listing.terms),
                 sponsorship=listing.sponsorship,
                 degrees=tuple(listing.degrees),
                 category=listing.category,
             ),
         )
+
+
+@register_feed
+class SimplifyNewGradFeed(SimplifyFeed):
+    name: ClassVar[str] = "simplify-new-grad"
+    employment_type: ClassVar[str] = "new grad"
+
+    def slug(self, now: datetime) -> str:
+        return "new-grad"
+
+    def plan(self, now: datetime) -> tuple[str, ...]:
+        return (NEW_GRAD_URL,)

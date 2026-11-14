@@ -17,6 +17,7 @@ SOURCE_PRIORITY: tuple[str, ...] = (
     "espresso-jobs",
     "themuse",
     "simplify",
+    "simplify-new-grad",
     "vanshb03",
     "speedyapply",
     "zshah101",
