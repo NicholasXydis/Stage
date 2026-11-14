@@ -5,11 +5,12 @@ import httpx
 import pytest
 import respx
 
-from stage.domain import RateState
+from stage.domain import JobLevel, RateState, RejectionReason
 from stage.http import BucketBlockedError, HttpClient, profile
+from stage.services.screening import normalize_batch
 from stage.sources import get_feeds
 from stage.sources.base import PayloadValidationError
-from stage.sources.speedyapply import SpeedyApplyFeed, SpeedyApplyListing
+from stage.sources.speedyapply import SpeedyApplyFeed, SpeedyApplyListing, SpeedyApplyNewGradFeed
 
 
 def _client(feed: SpeedyApplyFeed) -> HttpClient:
@@ -231,3 +232,129 @@ def test_a_blank_place_is_read_from_a_workday_link(
 ) -> None:
     listing = SpeedyApplyListing(company="Acme", title="Intern", location=location, url=url)
     assert SpeedyApplyFeed()._to_job(listing, run_time).location_raw == expected
+
+
+def test_the_new_grad_tables_are_their_own_feed_and_the_internship_plan_is_unchanged(
+    run_time: datetime,
+) -> None:
+    feed = SpeedyApplyNewGradFeed()
+    year = feed.season_year(run_time)
+    base = "https://raw.githubusercontent.com/speedyapply"
+
+    assert get_feeds()["speedyapply-new-grad"] is not None
+    assert feed.plan(run_time) == (
+        f"{base}/{year}-SWE-College-Jobs/main/NEW_GRAD_USA.md",
+        f"{base}/{year}-SWE-College-Jobs/main/NEW_GRAD_INTL.md",
+        f"{base}/{year}-AI-College-Jobs/main/NEW_GRAD_USA.md",
+        f"{base}/{year}-AI-College-Jobs/main/NEW_GRAD_INTL.md",
+    )
+    assert SpeedyApplyFeed().plan(run_time) == (
+        f"{base}/{year}-SWE-College-Jobs/main/README.md",
+        f"{base}/{year}-SWE-College-Jobs/main/INTERN_INTL.md",
+        f"{base}/{year}-AI-College-Jobs/main/README.md",
+        f"{base}/{year}-AI-College-Jobs/main/INTERN_INTL.md",
+    )
+    assert feed.hosts == frozenset({"raw.githubusercontent.com"})
+
+
+@respx.mock
+async def test_new_grad_tables_map_to_jobs_that_never_claim_to_be_internships(
+    run_time: datetime,
+) -> None:
+    feed = SpeedyApplyNewGradFeed()
+    for index, url in enumerate(feed.plan(run_time)):
+        respx.get(url).mock(
+            return_value=httpx.Response(
+                200,
+                text=_table(
+                    f"Acme {index}",
+                    "Software Engineer",
+                    "Seattle, WA",
+                    f"https://jobs.example/{index}",
+                    age="4d",
+                ),
+            )
+        )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert result.authoritative
+    assert len(result.jobs) == 4
+    assert {job.source for job in result.jobs} == {"speedyapply-new-grad"}
+    assert {job.signals.employment_type for job in result.jobs} == {"new grad"}
+    assert {job.source_posted_at for job in result.jobs} == {run_time - timedelta(days=4)}
+
+
+@respx.mock
+async def test_new_grad_rows_are_kept_at_their_level_whatever_the_title_says(
+    run_time: datetime,
+) -> None:
+    feed = SpeedyApplyNewGradFeed()
+    rows = "".join(
+        _table(company, title, "Seattle, WA", f"https://jobs.example/{company}").split("\n", 2)[2]
+        for company, title in (
+            ("Alpha", "Software Engineer"),
+            ("Bravo", "Junior Software Engineer"),
+            ("Charlie", "Software Engineer, New Grad"),
+            ("Delta", "Senior Software Engineer"),
+            ("Echo", "Software Dev Engineer II"),
+        )
+    )
+    table = (
+        "| Company | Position | Location | Salary | Posting | Age |\n|---|---|---|---|---|---|\n"
+    )
+    for url in feed.plan(run_time):
+        respx.get(url).mock(return_value=httpx.Response(200, text=table + rows))
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+    kept, rejected = normalize_batch(list(result.jobs))
+
+    assert {entry.title_raw: entry.level for entry in kept} == {
+        "Software Engineer": JobLevel.NEW_GRAD,
+        "Junior Software Engineer": JobLevel.ENTRY,
+        "Software Engineer, New Grad": JobLevel.NEW_GRAD,
+    }
+    assert {entry.reason for entry in rejected} == {RejectionReason.NOT_EARLY_CAREER}
+    assert {entry.title_raw for entry in rejected} == {
+        "Senior Software Engineer",
+        "Software Dev Engineer II",
+    }
+
+
+@respx.mock
+async def test_a_new_grad_file_with_no_table_fails_loudly_and_names_new_grad(
+    run_time: datetime,
+) -> None:
+    feed = SpeedyApplyNewGradFeed()
+    respx.get(feed.plan(run_time)[0]).mock(return_value=httpx.Response(200, text="renamed"))
+
+    async with _client(feed) as client:
+        with pytest.raises(PayloadValidationError, match="no new-grad table rows"):
+            await feed.fetch(client, run_time)
+
+
+@respx.mock
+async def test_a_missing_new_grad_file_closes_nothing_for_that_feed_only(
+    run_time: datetime,
+) -> None:
+    feed = SpeedyApplyNewGradFeed()
+    urls = feed.plan(run_time)
+    for index, url in enumerate(urls):
+        if index == 3:
+            respx.get(url).mock(return_value=httpx.Response(404))
+        else:
+            respx.get(url).mock(
+                return_value=httpx.Response(
+                    200,
+                    text=_table(
+                        f"Acme {index}", "Data Engineer", "Austin, TX", f"https://j.example/{index}"
+                    ),
+                )
+            )
+    async with _client(feed) as client:
+        result = await feed.fetch(client, run_time)
+
+    assert len(result.jobs) == 3
+    assert not result.authoritative
+    assert "1 of 4 files unavailable" in result.degraded
+    assert result.stale_urls == (urls[3],)
